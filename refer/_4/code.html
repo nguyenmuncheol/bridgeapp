@@ -1,0 +1,245 @@
+<!DOCTYPE html><html lang="ko" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>The Bridge - 기쁨 라브리</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/framer-motion/10.16.4/framer-motion.umd.min.js"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f7f9ff",
+                        "on-primary-container": "#fdfcff",
+                        "on-secondary-fixed": "#341100",
+                        "surface-container-high": "#e5e8ef",
+                        "secondary-fixed-dim": "#ffb691",
+                        "surface-container-highest": "#e0e2e9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f7f9ff",
+                        "on-tertiary-fixed-variant": "#614000",
+                        "on-tertiary-fixed": "#291800",
+                        "surface-tint": "#366289",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#763710",
+                        "on-primary-fixed-variant": "#1a4a70",
+                        "primary": "#335f87",
+                        "error": "#ba1a1a",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#ffdbcb",
+                        "tertiary-fixed-dim": "#f1be73",
+                        "surface-variant": "#e0e2e9",
+                        "surface-container": "#ebeef4",
+                        "secondary-container": "#fda374",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#181c21",
+                        "primary-fixed-dim": "#a0caf8",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eef1f7",
+                        "background": "#f7f9ff",
+                        "on-secondary-fixed-variant": "#73350e",
+                        "on-primary-fixed": "#001d34",
+                        "primary-fixed": "#cfe5ff",
+                        "on-surface-variant": "#42474e",
+                        "outline-variant": "#c2c7cf",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#4e78a1",
+                        "on-background": "#181c21",
+                        "surface-dim": "#d7dae0",
+                        "tertiary": "#7a5513",
+                        "outline": "#72777f",
+                        "inverse-primary": "#a0caf8",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-surface": "#2d3136",
+                        "tertiary-container": "#966d2a",
+                        "surface-container-low": "#f1f4fa",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#ffddb0",
+                        "secondary": "#914c24"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "unit": "4px",
+                        "container-padding": "20px",
+                        "stack-md": "16px",
+                        "stack-lg": "32px",
+                        "max-width": "480px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "body-sm": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Be Vietnam Pro"],
+                        "label-md": ["Be Vietnam Pro"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #f7f9ff; /* surface */
+            -webkit-tap-highlight-color: transparent;
+        }
+        .main-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #f7f9ff;
+            position: relative;
+            padding-bottom: 90px; /* Space for bottom nav */
+        }
+        /* Custom scrollbar for horizontal lists */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface">
+<div class="main-container shadow-[0px_0px_24px_rgba(93,135,177,0.05)]">
+<!-- TopAppBar (Based on JSON instructions) -->
+<header class="docked full-width top-0 sticky z-40 bg-surface dark:bg-surface-dim flat no shadows flex justify-between items-center px-container-padding h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover border border-surface-variant" data-alt="A small, circular thumbnail image representing a warm, welcoming community group, featuring bright sunny colors and smiling silhouettes in an abstract modern style, perfectly fitting a light-mode UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBTfFOrob69rr8wK9qanJ_kieqGPilWUR0QQSjX-CR2RckN3KXpdUAsmZcqzoctyANFllaYmVe2PFsQmrfDN64lxzKRJHd2d-pQVs305IKNkwr3zEpk2JF7o9INC9Ckm-vcNni-rv6pLz1qxDvleS3CCrSqTR-k-_CpeC7k4eIDKE5lxS2Ns9WGF9MKpSOhyNJZ4irKgfZJEHOfszcmfmdBG3H9eeFhLM10Z8rJQJ9kOZkznDwtDo">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">기쁨 라브리</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors scale-95 duration-200 ease-in-out">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</header>
+<!-- Announcement Banner -->
+<div class="px-container-padding py-2 mt-2">
+<div class="bg-secondary-fixed text-on-secondary-fixed rounded-xl p-3 flex items-start gap-3 shadow-[0px_4px_12px_rgba(93,135,177,0.08)]">
+<span class="material-symbols-outlined text-secondary mt-0.5" style="font-variation-settings: 'FILL' 1;">campaign</span>
+<p class="font-body-sm text-body-sm text-on-secondary-fixed-variant leading-relaxed">이번 주 주일에는 라브리실에서 만나요! 😊</p>
+</div>
+</div>
+<!-- Sub-Tabs -->
+<div class="px-container-padding mt-4 mb-2 sticky top-16 z-30 bg-surface/90 backdrop-blur-sm pt-2">
+<div class="flex gap-2 p-1 bg-surface-container-high rounded-full overflow-hidden hide-scrollbar">
+<button class="flex-1 py-2 px-4 rounded-full bg-surface text-primary font-label-md text-label-md shadow-[0px_2px_8px_rgba(93,135,177,0.1)] transition-all">소통게시판</button>
+
+<button class="flex-1 py-2 px-4 rounded-full text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container transition-all">주소록</button>
+</div>
+</div>
+<!-- Content Area: 소통게시판 (Communication Board) -->
+<main class="px-container-padding flex flex-col gap-stack-md mt-4">
+<!-- Post Card 1 -->
+<div class="bg-surface-container-lowest rounded-3xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] active:scale-98 transition-transform duration-150">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md text-label-md">이</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">이은진 집사</p>
+<p class="font-body-sm text-[12px] text-outline">2시간 전</p>
+</div>
+</div>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">
+                    오늘 말씀 너무 은혜로웠습니다! 특히 3번째 대지에서 목사님께서 나눠주신 예화가 깊이 와닿았어요. 다들 이번 한 주도 평안하시길 기도합니다. 🙏
+                </p>
+<div class="flex items-center gap-4 text-outline pt-2 border-t border-surface-variant">
+<button class="flex items-center gap-1 hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-body-sm text-[12px]">12</span>
+</button>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="font-body-sm text-[12px]">3</span>
+</button>
+</div>
+</div>
+<!-- Post Card 2 -->
+<div class="bg-surface-container-lowest rounded-3xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] active:scale-98 transition-transform duration-150">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-label-md text-label-md">김</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">김민수 성도</p>
+<p class="font-body-sm text-[12px] text-outline">어제 오후 5:30</p>
+</div>
+</div>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-3">
+                    다음 주 주일 간식 당번입니다. 샌드위치랑 과일 준비해갈게요! 알러지 있으신 분 미리 말씀해주세요~
+                </p>
+<div class="rounded-xl overflow-hidden mb-4">
+<img class="w-full h-40 object-cover" data-alt="A beautifully arranged plate of fresh assorted sandwiches and colorful sliced fruits on a clean modern wooden table, bright natural sunlight illuminating the fresh ingredients, conveying a warm community gathering atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJrMu6W8gyulyUrdMZ_Qnd6PaBF61_Me98gXlQcfoT3LbQQOcQeqZiC2KnmLtsjsGT8_d54qUDWCqD4ggZEgcPjk0rcf7DM2jvHAH0WNIDGl57dHK2jK1qa8tceALFdOAwEp3LcbpYesvFYoICsL4PeqKRLIeO2o0Avxf6S8TEwbHlOmGE7uVd19HiwHQ7r5SJ5UqDh7q4USGhnbx1Fngd5XJTwj261dQxklUYsezqoZ-amfTaygA">
+</div>
+<div class="flex items-center gap-4 text-outline pt-2 border-t border-surface-variant">
+<button class="flex items-center gap-1 hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-body-sm text-[12px]">8</span>
+</button>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="font-body-sm text-[12px]">5</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (FAB) for Communication Board -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-[20px] shadow-[0px_8px_24px_rgba(51,95,135,0.25)] flex items-center justify-center hover:bg-primary-container transition-colors z-30 active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit</span>
+</button>
+<!-- BottomNavBar (Based on JSON instructions) -->
+<nav class="fixed bottom-0 left-0 right-0 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container-lowest dark:bg-inverse-surface w-full max-w-max-width mx-auto rounded-t-xl shadow-[0px_-4px_12px_rgba(93,135,177,0.08)] z-50">
+<!-- Inactive -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-xl transition-colors">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-[11px]">Home</span>
+</button>
+<!-- Active (Lavri tab) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1.5 Active: scale-98 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-md text-[11px] font-bold">Lavri</span>
+</button>
+<!-- Inactive -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-xl transition-colors">
+<span class="material-symbols-outlined mb-1">diversity_1</span>
+<span class="font-label-md text-[11px]">Sharing</span>
+</button>
+<!-- Inactive -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-xl transition-colors">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-[11px]">My Page</span>
+</button>
+</nav>
+</div>
+</body></html>

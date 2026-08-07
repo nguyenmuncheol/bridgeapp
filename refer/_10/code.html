@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Photo Gallery - The Bridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#fda374",
+                        "primary": "#335f87",
+                        "tertiary-fixed-dim": "#f1be73",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#966d2a",
+                        "surface-container-low": "#f1f4fa",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#a0caf8",
+                        "outline": "#72777f",
+                        "surface-tint": "#366289",
+                        "surface-dim": "#d7dae0",
+                        "surface-container-highest": "#e0e2e9",
+                        "inverse-on-surface": "#eef1f7",
+                        "on-tertiary-fixed-variant": "#614000",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffddb0",
+                        "inverse-primary": "#a0caf8",
+                        "on-surface": "#181c21",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#fdfcff",
+                        "primary-fixed": "#cfe5ff",
+                        "secondary-fixed-dim": "#ffb691",
+                        "inverse-surface": "#2d3136",
+                        "surface-variant": "#e0e2e9",
+                        "surface-container": "#ebeef4",
+                        "on-background": "#181c21",
+                        "on-secondary-fixed": "#341100",
+                        "surface-container-high": "#e5e8ef",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f7f9ff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#291800",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#73350e",
+                        "secondary": "#914c24",
+                        "on-primary-fixed": "#001d34",
+                        "on-secondary-container": "#763710",
+                        "surface-bright": "#f7f9ff",
+                        "on-surface-variant": "#42474e",
+                        "tertiary": "#7a5513",
+                        "outline-variant": "#c2c7cf",
+                        "secondary-fixed": "#ffdbcb",
+                        "primary-container": "#4e78a1",
+                        "on-primary-fixed-variant": "#1a4a70",
+                        "on-tertiary-container": "#fffbff",
+                        "background": "#f7f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "max-width": "480px",
+                        "stack-sm": "8px",
+                        "stack-lg": "32px",
+                        "unit": "4px",
+                        "container-padding": "20px",
+                        "stack-md": "16px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Be Vietnam Pro"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-sm": ["Be Vietnam Pro"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            /* Force dark mode for this specific overlay view */
+            background-color: #000000;
+            color: #ffffff;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+        }
+        .gallery-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background-color: #000000;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Top and Bottom bar gradients for readability over images */
+        .gradient-top {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+        }
+        .gradient-bottom {
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased">
+<!-- Modal Container -->
+<div class="gallery-container">
+<!-- Top App Bar (Overlay) -->
+<header class="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-container-padding py-4 gradient-top">
+<button aria-label="Close" class="text-white hover:text-primary-fixed-dim transition-colors p-2 -ml-2 rounded-full">
+<span class="material-symbols-outlined" style="font-size: 28px;">close</span>
+</button>
+<div class="flex-1 text-center">
+<h1 class="font-headline-sm text-headline-sm text-white truncate px-4">2023 전교인 수련회</h1>
+<p class="font-label-md text-label-md text-white/70 mt-1">5 / 124</p>
+</div>
+<!-- Empty div for flex balance -->
+<div class="w-11"></div>
+</header>
+<!-- Main Image Area -->
+<main class="flex-1 flex items-center justify-center relative w-full h-full overflow-hidden" id="image-carousel">
+<!-- Left Arrow (Hidden on small screens, shown on hover/desktop) -->
+<button class="absolute left-4 z-40 bg-black/30 hover:bg-black/60 rounded-full p-2 text-white hidden md:block transition-all backdrop-blur-sm">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<!-- The Image -->
+<img alt="수련회 사진" class="w-full h-full object-contain touch-pan-x snap-center" data-alt="A vibrant, high-quality photograph of a large outdoor church gathering. People of all ages are sitting on the grass under a bright sunny sky, listening attentively to a speaker on a small stage. The mood is joyful, community-focused, and peaceful. The lighting is natural and bright, fitting a modern, welcoming church community retreat. Warm tones emphasize human connection." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlxRk0t6DVPNi8Jh6u_Lau4uuh1V4G3v7uCS2WKwKyyYir7xhS-SuXnVTVWV-EeT6SI_pIcGcrYupLW27F77BQ4ST2hKb2jh7zvWB_XBZH_MJooOf607EtMLXKbUCZ6D3KWV8UYFM34lS63SSRwHaY4Z2GoBFpEm7doxA27ng1eh1rKjT6_dbiU9RnocquPlD4XnVFEZIYD_Av_F3ZzESWEBKmUIRL_Z3Todkqx7pOHgDKYr3LGPw"/>
+<!-- Right Arrow (Hidden on small screens, shown on hover/desktop) -->
+<button class="absolute right-4 z-40 bg-black/30 hover:bg-black/60 rounded-full p-2 text-white hidden md:block transition-all backdrop-blur-sm">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</main>
+<!-- Bottom Controls & Info (Overlay) -->
+<footer class="absolute bottom-0 left-0 right-0 z-50 gradient-bottom pt-12 pb-8 px-container-padding flex flex-col gap-4">
+<!-- Caption/Date -->
+<div class="text-left">
+<p class="font-body-md text-body-md text-white mb-1">오후의 야외 예배 시간</p>
+<p class="font-label-md text-label-md text-white/60">2023년 8월 15일</p>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center justify-between mt-2">
+<button class="flex items-center gap-2 text-white/90 hover:text-primary-fixed transition-colors py-2 group">
+<span class="material-symbols-outlined text-white group-hover:text-primary-fixed">download</span>
+<span class="font-label-md text-label-md">저장</span>
+</button>
+<button class="flex items-center gap-2 text-white/90 hover:text-primary-fixed transition-colors py-2 group">
+<span class="material-symbols-outlined text-white group-hover:text-primary-fixed">share</span>
+<span class="font-label-md text-label-md">공유</span>
+</button>
+</div>
+</footer>
+</div>
+<!-- Script for basic interaction simulation -->
+<script>
+        // Simple touch swipe simulation for visual completeness
+        const carousel = document.getElementById('image-carousel');
+        let startX;
+        let isDown = false;
+
+        carousel.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX;
+        });
+
+        carousel.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+
+        carousel.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+
+        carousel.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX;
+            const walk = (x - startX); // Simulate swipe feel
+            // In a real app, this would trigger image change
+            if(Math.abs(walk) > 50) {
+                 isDown = false; // reset after trigger
+            }
+        });
+        
+        // Touch events
+        carousel.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+        });
+        carousel.addEventListener('touchend', (e) => {
+            const endX = e.changedTouches[0].clientX;
+            const diffX = startX - endX;
+             if(Math.abs(diffX) > 50) {
+                 // swipe detected
+             }
+        });
+    </script>
+</body></html>

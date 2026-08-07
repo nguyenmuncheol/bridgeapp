@@ -1,0 +1,412 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>The Bridge - Prayer Requests</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/framer-motion/10.16.4/framer-motion.umd.js"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#4e78a1",
+                      "surface-tint": "#366289",
+                      "surface-bright": "#f7f9ff",
+                      "on-tertiary-fixed": "#291800",
+                      "surface-container-highest": "#e0e2e9",
+                      "surface-container-low": "#f1f4fa",
+                      "on-primary-fixed-variant": "#1a4a70",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#7a5513",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#ebeef4",
+                      "tertiary-container": "#966d2a",
+                      "on-primary-fixed": "#001d34",
+                      "on-secondary-fixed": "#341100",
+                      "on-surface": "#181c21",
+                      "surface-variant": "#e0e2e9",
+                      "on-secondary-fixed-variant": "#73350e",
+                      "primary": "#335f87",
+                      "inverse-on-surface": "#eef1f7",
+                      "primary-fixed": "#cfe5ff",
+                      "secondary-container": "#fda374",
+                      "tertiary-fixed-dim": "#f1be73",
+                      "on-background": "#181c21",
+                      "on-error": "#ffffff",
+                      "secondary": "#914c24",
+                      "outline": "#72777f",
+                      "outline-variant": "#c2c7cf",
+                      "tertiary-fixed": "#ffddb0",
+                      "surface-dim": "#d7dae0",
+                      "primary-fixed-dim": "#a0caf8",
+                      "background": "#f7f9ff",
+                      "secondary-fixed-dim": "#ffb691",
+                      "on-primary": "#ffffff",
+                      "on-secondary-container": "#763710",
+                      "inverse-surface": "#2d3136",
+                      "on-tertiary-fixed-variant": "#614000",
+                      "error-container": "#ffdad6",
+                      "on-error-container": "#93000a",
+                      "surface": "#f7f9ff",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#ffdbcb",
+                      "on-surface-variant": "#42474e",
+                      "on-tertiary-container": "#fffbff",
+                      "inverse-primary": "#a0caf8",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-container": "#fdfcff",
+                      "surface-container-high": "#e5e8ef"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding": "20px",
+                      "unit": "4px",
+                      "gutter": "16px",
+                      "max-width": "480px",
+                      "stack-lg": "32px",
+                      "stack-md": "16px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Be Vietnam Pro"
+                      ],
+                      "label-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Be Vietnam Pro"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "26px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "38px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F9FAFB;
+            color: #181c21;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .amen-pop {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .card-press {
+            transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+        }
+        .card-press:active {
+            transform: scale(0.98);
+            box-shadow: 0px 2px 8px rgba(93, 135, 177, 0.04);
+        }
+        
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen">
+<div class="w-full max-w-[480px] bg-background relative flex flex-col min-h-screen pb-[80px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding h-16 bg-surface dark:bg-on-surface shadow-[0px_4px_12px_rgba(93,135,177,0.08)] max-w-[480px] mx-auto left-1/2 -translate-x-1/2">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed" data-icon="church">church</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">The Bridge</h1>
+</div>
+<button class="font-label-md text-label-md font-semibold text-primary dark:text-primary-fixed hover:bg-surface-container-low transition-colors px-3 py-2 rounded-lg scale-95 active:scale-90 transition-transform">
+                Login
+            </button>
+</header>
+<!-- Main Content Area -->
+<main class="pt-[80px] px-container-padding flex-1">
+<!-- Sub Navigation & Header -->
+<div class="mb-stack-lg">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile mb-4">나눔</h2>
+<!-- Sub Tabs -->
+<div class="flex space-x-2 border-b border-surface-variant overflow-x-auto">
+<button class="px-4 py-2 border-b-2 border-primary text-primary font-label-md text-label-md whitespace-nowrap">기도제목</button>
+<button class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant font-body-md text-body-md whitespace-nowrap">찬양/말씀</button>
+<button class="px-4 py-2 border-b-2 border-transparent text-on-surface-variant font-body-md text-body-md whitespace-nowrap">행사사진</button>
+</div>
+</div>
+<!-- Filter/Search -->
+<div class="mb-stack-md flex gap-2">
+<div class="relative flex-1">
+<i class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-outline" data-lucide="search"></i>
+<input class="w-full bg-[#F3F4F6] text-body-sm font-body-sm rounded-full py-2 pl-9 pr-4 focus:outline-none focus:ring-1 focus:ring-primary border-none transition-all" placeholder="검색" type="text">
+</div>
+<button class="bg-[#F3F4F6] px-4 py-2 rounded-full font-body-sm text-body-sm text-on-surface flex items-center gap-1">
+<i class="w-4 h-4" data-lucide="filter"></i>
+                    필터
+                </button>
+</div>
+<!-- Prayer Feed -->
+<div class="flex flex-col gap-stack-md pb-[100px]">
+<!-- Card 1 -->
+<article class="bg-white rounded-2xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] card-press">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small, circular avatar portrait of an elegant older Korean woman with a warm smile, set against a soft, bright white background. The lighting is soft and flattering, creating a gentle, welcoming mood consistent with a friendly community app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9FYteamybc48Yg6STwHhsY1ClTWo2M8nXgnd2DNN1RSRU-PS0p9rQhYQYOeT4NNGnr3_Qzs9GMoHlPdXfLQa9D9vS7Fk4yura-0uepuJkQdCVgwEmYp8bxeDtze3L6iJXqZTxBQT2z1NcteezxstV2n-0eAQ46nN1dCXdOMYOa4pupP0mPFu4S2R0egb3e3RL_ThN648wrK8-vREjhMJadHbmZZyBG0EzgjlKD0fbhsa0lMDOAeA">
+</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">김민지 성도</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span>2시간 전</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>소망 라브리</span>
+</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-primary-fixed/30 text-primary font-label-md text-[12px] rounded-full">[기도 중]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-4 leading-relaxed">
+                        저희 어머니 수술이 이번 주 금요일입니다. 무사히 잘 마치고 회복하실 수 있도록 기도 부탁드립니다. 🙏
+                    </p>
+<div class="flex items-center gap-4 border-t border-surface-variant pt-3">
+<button class="amen-btn flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<i class="w-5 h-5 text-secondary-container" data-lucide="heart"></i>
+<span class="font-label-md text-label-md">아멘 24</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<i class="w-5 h-5" data-lucide="message-circle"></i>
+<span class="font-label-md text-label-md">댓글 5</span>
+</button>
+</div>
+<div class="mt-3 bg-surface-container-low rounded-lg p-3">
+<p class="font-body-sm text-body-sm text-on-surface-variant"><span class="font-semibold text-on-surface">이목사:</span> 함께 기도하겠습니다. 평안하시길 바랍니다.</p>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-white rounded-2xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] card-press">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small, circular avatar portrait of a middle-aged Korean man in a neat, casual shirt, set against a soft, bright white background. The lighting is clean and modern, evoking a professional yet approachable community member." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX32PHbAMWCGcb8ivINn3G1c9kWpDG4-3HcMQ0RJiwCULccucEX8F0CwvQMiugU1iK_wJBwu5Oyp4IXpr-gRvUjqszYQ9PIVzxFmXy5uGMxZx2RlOu4HZyqSA2fbuZtDJONzHEx7eHeS7GmKWAA2q_eEfSgBn8cgk5EdSWqArP2Q-omk0Eqi3TljvHouwFHl6CC7OUrKSS1BcGHtvsawxKsPn45pmUNrcxZYLXiPZYaj1mVHJRUz4">
+</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">이준호 집사</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">어제</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-primary-fixed/30 text-primary font-label-md text-[12px] rounded-full">[기도 중]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-4 leading-relaxed">
+                        직장 이직 문제로 고민이 많습니다. 하나님의 인도하심을 구할 수 있도록 함께 기도해주세요.
+                    </p>
+<div class="flex items-center gap-4 border-t border-surface-variant pt-3">
+<button class="amen-btn flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<i class="w-5 h-5" data-lucide="heart"></i>
+<span class="font-label-md text-label-md">아멘 12</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<i class="w-5 h-5" data-lucide="message-circle"></i>
+<span class="font-label-md text-label-md">댓글 2</span>
+</button>
+</div>
+</article>
+<!-- Card 3 (Private) -->
+<article class="bg-white rounded-2xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] card-press border border-surface-variant border-dashed">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<i class="w-5 h-5 text-outline" data-lucide="user"></i>
+</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                                    박지훈 성도
+                                    <i class="w-3 h-3 text-outline" data-lucide="lock"></i>
+</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2일 전</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-primary-fixed/30 text-primary font-label-md text-[12px] rounded-full">[기도 중]</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant/30 mb-4 flex items-start gap-2">
+<i class="w-4 h-4 text-secondary mt-0.5 shrink-0" data-lucide="shield-alert"></i>
+<p class="font-body-md text-body-md text-on-surface italic text-opacity-80">
+                             개인적인 가정의 평화를 위해 기도가 필요합니다.
+                         </p>
+</div>
+<div class="flex items-center gap-4 border-t border-surface-variant pt-3">
+<button class="amen-btn flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<i class="w-5 h-5" data-lucide="heart"></i>
+<span class="font-label-md text-label-md">아멘 8</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<i class="w-5 h-5" data-lucide="message-circle"></i>
+<span class="font-label-md text-label-md">댓글 0</span>
+</button>
+</div>
+</article>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-[88px] right-[max(20px,calc(50%-220px))] w-14 h-14 bg-primary text-on-primary rounded-full shadow-[0px_8px_24px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-40">
+<i class="w-6 h-6" data-lucide="pen-line"></i>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface dark:bg-inverse-surface max-w-[480px] mx-auto left-1/2 -translate-x-1/2 rounded-t-xl shadow-[0px_-4px_12px_rgba(93,135,177,0.08)] border-t border-outline-variant/30 hidden md:hidden flex">
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px] mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-label-md text-[10px] mt-1">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="volunteer_activism">volunteer_activism</span>
+<span class="font-label-md text-[10px] mt-1">Sharing</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px] mt-1">My Page</span>
+</a>
+</nav>
+<!-- Desktop fallback nav simulation since it's a mobile layout forced -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface max-w-[480px] mx-auto left-1/2 -translate-x-1/2 rounded-t-xl shadow-[0px_-4px_12px_rgba(93,135,177,0.08)] md:flex">
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px] mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-label-md text-[10px] mt-1">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="volunteer_activism">volunteer_activism</span>
+<span class="font-label-md text-[10px] mt-1 text-center">Sharing</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant scale-95 active:scale-90 transition-transform hover:bg-surface-container-high transition-all p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px] mt-1 text-center">My Page</span>
+</a>
+</nav>
+</div>
+<script>
+        lucide.createIcons();
+        
+        // Micro-interaction for Amen buttons
+        document.querySelectorAll('.amen-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                const text = this.querySelector('span');
+                
+                // Toggle active state styling
+                if (icon.classList.contains('text-secondary-container')) {
+                    icon.classList.remove('text-secondary-container', 'fill-current');
+                    icon.classList.add('text-on-surface-variant');
+                    // parse count down
+                    let count = parseInt(text.innerText.replace('아멘 ', ''));
+                    text.innerText = `아멘 ${count - 1}`;
+                } else {
+                    icon.classList.add('text-secondary-container', 'fill-current');
+                    icon.classList.remove('text-on-surface-variant');
+                    // Add pop animation
+                    icon.classList.remove('amen-pop');
+                    void icon.offsetWidth; // trigger reflow
+                    icon.classList.add('amen-pop');
+                    // parse count up
+                    let count = parseInt(text.innerText.replace('아멘 ', ''));
+                    text.innerText = `아멘 ${count + 1}`;
+                }
+            });
+        });
+    </script>
+</body></html>

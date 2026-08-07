@@ -1,0 +1,498 @@
+<!DOCTYPE html><html class="h-full" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>The Bridge - Guest Landing &amp; Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#ffddb0",
+                      "on-surface": "#181c21",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "background": "#f7f9ff",
+                      "inverse-primary": "#a0caf8",
+                      "secondary": "#914c24",
+                      "on-primary-fixed-variant": "#1a4a70",
+                      "surface-dim": "#d7dae0",
+                      "secondary-fixed-dim": "#ffb691",
+                      "on-surface-variant": "#42474e",
+                      "primary": "#335f87",
+                      "primary-container": "#4e78a1",
+                      "on-tertiary-fixed": "#291800",
+                      "on-error": "#ffffff",
+                      "on-tertiary-container": "#fffbff",
+                      "surface-tint": "#366289",
+                      "primary-fixed": "#cfe5ff",
+                      "secondary-container": "#fda374",
+                      "surface-container-high": "#e5e8ef",
+                      "inverse-surface": "#2d3136",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#73350e",
+                      "on-secondary-fixed": "#341100",
+                      "surface-bright": "#f7f9ff",
+                      "outline": "#72777f",
+                      "inverse-on-surface": "#eef1f7",
+                      "outline-variant": "#c2c7cf",
+                      "surface": "#f7f9ff",
+                      "on-secondary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#e0e2e9",
+                      "tertiary": "#7a5513",
+                      "primary-fixed-dim": "#a0caf8",
+                      "surface-container-highest": "#e0e2e9",
+                      "on-tertiary-fixed-variant": "#614000",
+                      "surface-container-low": "#f1f4fa",
+                      "on-primary-container": "#fdfcff",
+                      "on-primary-fixed": "#001d34",
+                      "secondary-fixed": "#ffdbcb",
+                      "surface-container": "#ebeef4",
+                      "error-container": "#ffdad6",
+                      "on-secondary-container": "#763710",
+                      "tertiary-fixed-dim": "#f1be73",
+                      "on-tertiary": "#ffffff",
+                      "on-background": "#181c21",
+                      "tertiary-container": "#966d2a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "max-width": "480px",
+                      "gutter": "16px",
+                      "stack-lg": "32px",
+                      "container-padding": "20px",
+                      "stack-sm": "8px",
+                      "unit": "4px",
+                      "stack-md": "16px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Be Vietnam Pro"
+                      ],
+                      "body-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "label-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "38px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "26px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #f7f9ff;
+            color: #181c21;
+        }
+        
+        .safe-area-pt {
+            padding-top: max(16px, env(safe-area-inset-top));
+        }
+        .safe-area-pb {
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+        
+        /* Smooth transitions */
+        .page-enter {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .page-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .page-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .page-exit-active {
+            opacity: 0;
+            transform: scale(0.96);
+            transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+        }
+
+        /* Bottom Sheet Slide Up */
+        .bottom-sheet-up {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .bottom-sheet-up.active {
+            transform: translateY(0);
+        }
+        
+        .overlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Custom scrollbar for mobile feel */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="antialiased flex justify-center h-full overflow-hidden bg-surface-variant">
+<!-- Mobile Container -->
+<div class="w-full max-w-max-width h-full bg-background flex flex-col relative overflow-hidden shadow-2xl">
+<!-- ======================= -->
+<!-- STATE 1: GUEST HOME     -->
+<!-- ======================= -->
+<div class="absolute inset-0 flex flex-col overflow-y-auto w-full h-full bg-background page-enter-active z-10" id="state-guest-home">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-40 flex justify-between items-center px-container-padding h-16 bg-surface shadow-[0px_4px_12px_rgba(93,135,177,0.08)] safe-area-pt max-w-max-width mx-auto left-1/2 -translate-x-1/2">
+<div class="flex items-center gap-2">
+<img alt="The Bridge Logo" class="w-8 h-8 rounded-full object-cover shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnqmIDHGG6k9GOhfrjG51ePet6JFmO1yGYZHoyQt6hiVVS4uR0pR4AzDKNTJqEn8n0RCnZnxjq89Uvd-kV8wNI7wyWcPzcn0Gd1RHkV2oycq6_Qfmbp70B-MtioYeUNrGaTWDp_fe31sZTXN8025lqzzGGNCx1x4NylZc664vNTJ1Po61zyQzOwm08O-9AmG-MGpAjBr-eynLwnt9MZz_UCP4xCDjbsetuwNp2X2QU5Mj1qZ0kIAY">
+<span class="font-headline-md text-headline-md font-bold text-primary">The Bridge</span>
+</div>
+<button class="text-primary font-bold font-label-md text-label-md px-4 py-2 rounded-full hover:bg-surface-container-low transition-colors scale-95 active:scale-90 transition-transform flex items-center gap-1" onclick="toggleSheet('login-sheet')">
+                    로그인
+                    <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">login</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 pt-24 pb-safe-area-pb px-container-padding flex flex-col gap-stack-lg">
+<!-- Hero Section -->
+<section class="flex flex-col items-center text-center gap-stack-sm mt-4">
+<div class="w-full h-48 rounded-3xl overflow-hidden mb-2 relative shadow-[0px_4px_12px_rgba(93,135,177,0.08)] bg-white p-2">
+<img class="w-full h-full object-cover rounded-2xl" data-alt="A warm, inviting digital illustration of a diverse community gathering outside a modern church building. The scene is bathed in soft, golden hour sunlight, creating a bright and modern light-mode aesthetic. The color palette features soft blues, warm oranges, and inviting whites, with gentle curves and approachable figures. The mood is welcoming, joyful, and serene." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6DrEZ3GnX-BKYtmvXc5DdCBRmdXFYcQmrZyA5if_9wFs1kNFaokwktwLjzNAQXVWE0ZFjUAMatEf7KaSYRrRHel96O5lfj-UN1Zj7d4Tni7i9-IDKNjbqgfn3mvuQ-QuG0Spw02tZR3haLUoV8U7H-VTWDsFYs5fu9_lVU0jhzYF1v_Q9IAq5Bo4mOxYhjBe0M-dd1t17mlyJ0gcprUdxoGzznlxQlovpg3SWXhS25n02f0xlbCY">
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">더브릿지 교회에 오신 것을 환영합니다</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px]">믿음, 소망, 사랑의 공동체에 함께하세요. 당신을 기다리고 있습니다.</p>
+</section>
+<!-- Info Cards Bento Grid -->
+<section class="grid grid-cols-2 gap-stack-sm">
+<!-- Service Times -->
+<div class="col-span-2 bg-surface-container-lowest rounded-[24px] p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] border border-surface-variant/50">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">schedule</span>
+<h2 class="font-label-md text-label-md text-on-surface">Service Times</h2>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center py-2 border-b border-surface-variant/50">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Sunday Worship</span>
+<span class="font-label-md text-label-md text-primary">10:00 AM</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-variant/50">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Youth Ministry</span>
+<span class="font-label-md text-label-md text-primary">12:30 PM</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Wednesday Prayer</span>
+<span class="font-label-md text-label-md text-primary">7:30 PM</span>
+</div>
+</div>
+</div>
+<!-- Bulletin Snippet -->
+<div class="col-span-1 bg-primary-container/10 rounded-[24px] p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">feed</span>
+<h2 class="font-label-md text-label-md text-primary">Bulletin</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-3">This week's updates, upcoming events, and prayer requests.</p>
+</div>
+<button class="mt-4 font-label-md text-label-md text-primary hover:bg-primary/5 px-3 py-2 rounded-full self-start transition-colors scale-95 active:scale-90 flex items-center gap-1">
+                            View All <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<!-- Location / Map -->
+<div class="col-span-1 bg-surface-container-lowest rounded-[24px] p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex flex-col overflow-hidden relative group">
+<div class="absolute inset-0 z-0 opacity-50 bg-cover bg-center" data-alt="A stylized, minimalist map illustration of Seoul, South Korea. The map uses a light mode aesthetic with soft whites, very pale blues, and subtle gray lines for roads. A prominent, warm orange map marker pin points to a central location. The design is clean, approachable, and integrates perfectly with a modern UI layout." data-location="Seoul" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCnQUlwc7ORNjIBna9efHdT6fON9LUY2qt_U55mfMcjpj7RgqzzVkICyR4Jb0KxSMB-v4Al-bXHHqsOEqQ47bvwORMN9bTdbugnOI3O6ks_3D_fp7chOJXRR6gOGxlcgJXgdCXmVAtIv9o__nOog0j_FSnqdwY9i7sPpFUtjVPeavS4MgfqQQaSKHmfzlYw7-ZutQpIq9ahpKIbSaI3t_4kQduGXz0RqgkZfk8lGcRlLmqZg8pUYk4')"></div>
+<div class="relative z-10 flex flex-col h-full justify-between">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<h2 class="font-label-md text-label-md text-on-surface bg-white/80 px-2 py-0.5 rounded backdrop-blur-sm">Find Us</h2>
+</div>
+<div class="bg-white/90 p-2 rounded-lg backdrop-blur-sm mt-auto shadow-sm">
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">123 Bridge Ave, Seoul</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Support Button -->
+<button class="w-full bg-[#fae100] text-[#3c1e1e] font-label-md text-label-md py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] hover:bg-[#f0d800] transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined">chat_bubble</span>
+                    KakaoTalk Support
+                </button>
+<div class="h-8"></div> <!-- spacer -->
+</main>
+</div>
+<!-- ======================= -->
+<!-- STATE 2: LOGIN OVERLAY  -->
+<!-- ======================= -->
+<!-- Overlay Backdrop -->
+<div class="overlay fixed inset-0 bg-on-surface/40 z-[60] max-w-max-width mx-auto backdrop-blur-[2px]" id="overlay-backdrop" onclick="closeSheet('login-sheet')"></div>
+<!-- Bottom Sheet -->
+<div class="bottom-sheet-up fixed bottom-0 left-0 w-full z-[70] bg-surface-container-lowest rounded-t-3xl shadow-[0px_-8px_24px_rgba(0,0,0,0.1)] px-container-padding pb-safe-area-pb pt-4 flex flex-col max-w-max-width mx-auto left-1/2 -translate-x-1/2 min-h-[50vh]" id="login-sheet">
+<!-- Handle -->
+<div class="w-12 h-1.5 bg-outline-variant rounded-full mx-auto mb-6"></div>
+<div class="flex-1 flex flex-col">
+<div class="text-center mb-8">
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold mb-2">반가워요!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">로그인하여 교회 소식을 확인하세요.</p>
+</div>
+<div class="flex flex-col gap-4 mt-auto mb-8">
+<button class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-label-md text-label-md py-4 rounded-xl flex items-center justify-center gap-3 shadow-sm hover:bg-surface-container-low transition-colors scale-[0.98] active:scale-95" onclick="switchState('state-signup')">
+<img alt="Google" class="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8tYq4lj4WyI-W_qPSaOqwwrtUXDCXpxNUHx3xKBJAZdr6XkfaLOfN9dYT5p8r0Bz2lfhvI6n6SKpZn-Y57GgfniHdW9mfcfzL1NsFKBUb6hFLf_RTwylRbVWdCpDKQMdSVKW7g-dEjdKseXprDWCMyrZ-1f4ExJllJgP7n_cfWwETKVeBlbdfpUMctGzJjXU4p-v4NMhPT_HQ3hipNcwJaahCXaO6KaPdF_Rr62I-8VPEljC4hL4">
+                        구글로 계속하기
+                    </button>
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-xl flex items-center justify-center gap-3 shadow-[0px_4px_12px_rgba(93,135,177,0.2)] hover:bg-surface-tint transition-colors scale-[0.98] active:scale-95" onclick="switchState('state-signup')">
+<span class="material-symbols-outlined">mail</span>
+                        이메일로 로그인
+                    </button>
+</div>
+<p class="text-center font-body-sm text-body-sm text-on-surface-variant mt-4">
+                    처음이신가요? <span class="text-primary font-bold cursor-pointer" onclick="switchState('state-signup')">회원가입 신청하기</span>
+</p>
+</div>
+</div>
+<!-- ======================= -->
+<!-- STATE 3: SIGNUP FORM    -->
+<!-- ======================= -->
+<div class="absolute inset-0 flex flex-col overflow-y-auto w-full h-full bg-background z-20 hidden" id="state-signup">
+<header class="sticky top-0 w-full z-40 flex items-center px-container-padding h-16 bg-surface/90 backdrop-blur-md safe-area-pt">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-low text-on-surface" onclick="switchState('state-guest-home')">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-surface ml-2">Complete Profile</h1>
+</header>
+<main class="flex-1 px-container-padding pb-safe-area-pb py-6 flex flex-col gap-stack-md">
+<div class="mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Just a few details</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Help us personalize your experience in The Bridge.</p>
+</div>
+<form class="flex flex-col gap-5" onsubmit="event.preventDefault(); switchState('state-pending');">
+<!-- Name Field -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Full Name</label>
+<input class="w-full bg-surface-container-high border-0 rounded-xl px-4 py-3.5 font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="Enter your name" required="" type="text">
+</div>
+<!-- Phone Field -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Phone Number</label>
+<input class="w-full bg-surface-container-high border-0 rounded-xl px-4 py-3.5 font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="010-0000-0000" required="" type="tel">
+</div>
+<!-- Title Dropdown -->
+<div class="flex flex-col gap-1.5 relative">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Church Title</label>
+<select class="w-full bg-surface-container-high border-0 rounded-xl px-4 py-3.5 font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all appearance-none">
+<option value="member">Member</option>
+<option value="deacon">Deacon</option>
+<option value="elder">Elder</option>
+<option value="pastor">Pastor</option>
+<option value="guest">Guest / Newcomer</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-[38px] text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<!-- Labry Dropdown -->
+<div class="flex flex-col gap-1.5 relative">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Select Labry (Group)</label>
+<select class="w-full bg-surface-container-high border-0 rounded-xl px-4 py-3.5 font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all appearance-none">
+<option disabled="" selected="" value="">Choose your group</option>
+<option value="youth">Youth Group</option>
+<option value="young_adults">Young Adults</option>
+<option value="mens">Men's Ministry</option>
+<option value="womens">Women's Ministry</option>
+<option value="none">Not Sure Yet</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-[38px] text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<div class="mt-8">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0px_4px_12px_rgba(93,135,177,0.2)] hover:bg-surface-tint transition-colors scale-[0.98] active:scale-95" type="submit">
+                            Submit Application
+                        </button>
+</div>
+</form>
+</main>
+</div>
+<!-- ======================= -->
+<!-- STATE 4: PENDING APPROVAL-->
+<!-- ======================= -->
+<div class="absolute inset-0 flex flex-col overflow-y-auto w-full h-full bg-background z-30 hidden" id="state-pending">
+<main class="flex-1 flex flex-col items-center justify-center px-container-padding text-center pb-24">
+<div class="w-48 h-48 mb-8 relative">
+<!-- Subtle pulsing background glow -->
+<div class="absolute inset-0 bg-secondary-container/30 rounded-full animate-ping opacity-75"></div>
+<div class="absolute inset-0 bg-secondary-container/50 rounded-full"></div>
+<span class="material-symbols-outlined text-[80px] text-secondary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">hourglass_top</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold mb-4">Awaiting Approval</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[300px] mb-12">
+                    Your account is currently being reviewed by our administrative team. We'll notify you once it's active.
+                </p>
+<div class="flex flex-col gap-4 w-full">
+<button class="w-full bg-surface-container-high text-on-surface font-label-md text-label-md py-4 rounded-xl flex items-center justify-center gap-2 shadow-sm hover:bg-surface-container-highest transition-colors scale-[0.98] active:scale-95">
+<span class="material-symbols-outlined">refresh</span>
+                        Check Status
+                    </button>
+<button class="w-full bg-transparent border border-outline-variant text-on-surface font-label-md text-label-md py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors scale-[0.98] active:scale-95" onclick="switchState('state-guest-home')">
+                        Return to Home
+                    </button>
+</div>
+</main>
+</div>
+<!-- ======================= -->
+<!-- DEV MENU (BOTTOM CORNER)-->
+<!-- ======================= -->
+<div class="fixed bottom-4 right-4 z-[100] group">
+<button class="bg-inverse-surface text-inverse-on-surface p-2 rounded-full shadow-xl opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm">developer_mode</span>
+</button>
+<div class="absolute bottom-12 right-0 bg-surface-container-highest rounded-lg shadow-xl p-2 hidden group-hover:flex flex-col gap-1 w-32 border border-outline-variant/30">
+<div class="text-[10px] font-bold text-on-surface-variant px-2 py-1 uppercase tracking-wider">States</div>
+<button class="text-left px-2 py-1.5 text-xs rounded hover:bg-surface-variant text-on-surface" onclick="switchState('state-guest-home')">1. Guest Home</button>
+<button class="text-left px-2 py-1.5 text-xs rounded hover:bg-surface-variant text-on-surface" onclick="toggleSheet('login-sheet')">2. Login Sheet</button>
+<button class="text-left px-2 py-1.5 text-xs rounded hover:bg-surface-variant text-on-surface" onclick="switchState('state-signup')">3. Sign Up</button>
+<button class="text-left px-2 py-1.5 text-xs rounded hover:bg-surface-variant text-on-surface" onclick="switchState('state-pending')">4. Pending</button>
+</div>
+</div>
+</div>
+<!-- State Management Script -->
+<script>
+        // Bottom Sheet Logic
+        function toggleSheet(sheetId) {
+            const sheet = document.getElementById(sheetId);
+            const backdrop = document.getElementById('overlay-backdrop');
+            
+            if (sheet.classList.contains('active')) {
+                closeSheet(sheetId);
+            } else {
+                sheet.classList.add('active');
+                backdrop.classList.add('active');
+            }
+        }
+
+        function closeSheet(sheetId) {
+            const sheet = document.getElementById(sheetId);
+            const backdrop = document.getElementById('overlay-backdrop');
+            
+            sheet.classList.remove('active');
+            backdrop.classList.remove('active');
+        }
+
+        // Full Screen State Logic
+        function switchState(targetStateId) {
+            // Close any open sheets first
+            closeSheet('login-sheet');
+
+            const states = ['state-guest-home', 'state-signup', 'state-pending'];
+            
+            states.forEach(id => {
+                const el = document.getElementById(id);
+                if (id === targetStateId) {
+                    // Slight delay to allow sheet to close if transitioning from it
+                    setTimeout(() => {
+                        el.classList.remove('hidden');
+                        el.classList.add('page-enter');
+                        // Force reflow
+                        void el.offsetWidth;
+                        el.classList.remove('page-enter');
+                        el.classList.add('page-enter-active');
+                    }, 150);
+                } else {
+                    if (!el.classList.contains('hidden')) {
+                        el.classList.add('page-exit-active');
+                        setTimeout(() => {
+                            el.classList.add('hidden');
+                            el.classList.remove('page-exit-active', 'page-enter-active');
+                        }, 300);
+                    }
+                }
+            });
+        }
+    </script>
+</body></html>

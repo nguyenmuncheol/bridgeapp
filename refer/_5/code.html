@@ -1,0 +1,284 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>라브리 출석 입력 - The Bridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline": "#72777f",
+                      "surface-bright": "#f7f9ff",
+                      "primary": "#335f87",
+                      "inverse-on-surface": "#eef1f7",
+                      "on-surface": "#181c21",
+                      "on-secondary-container": "#763710",
+                      "on-primary-fixed": "#001d34",
+                      "primary-fixed": "#cfe5ff",
+                      "on-primary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed": "#341100",
+                      "secondary": "#914c24",
+                      "inverse-primary": "#a0caf8",
+                      "on-secondary-fixed-variant": "#73350e",
+                      "tertiary-fixed-dim": "#f1be73",
+                      "background": "#f7f9ff",
+                      "primary-container": "#4e78a1",
+                      "on-background": "#181c21",
+                      "on-tertiary-fixed": "#291800",
+                      "on-primary-container": "#fdfcff",
+                      "primary-fixed-dim": "#a0caf8",
+                      "on-tertiary": "#ffffff",
+                      "outline-variant": "#c2c7cf",
+                      "inverse-surface": "#2d3136",
+                      "error": "#ba1a1a",
+                      "on-primary-fixed-variant": "#1a4a70",
+                      "tertiary": "#7a5513",
+                      "error-container": "#ffdad6",
+                      "surface-container": "#ebeef4",
+                      "on-tertiary-fixed-variant": "#614000",
+                      "surface-tint": "#366289",
+                      "surface-container-highest": "#e0e2e9",
+                      "surface-container-high": "#e5e8ef",
+                      "surface": "#f7f9ff",
+                      "surface-dim": "#d7dae0",
+                      "surface-container-low": "#f1f4fa",
+                      "tertiary-fixed": "#ffddb0",
+                      "on-surface-variant": "#42474e",
+                      "on-error": "#ffffff",
+                      "tertiary-container": "#966d2a",
+                      "secondary-container": "#fda374",
+                      "surface-variant": "#e0e2e9",
+                      "secondary-fixed": "#ffdbcb",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed-dim": "#ffb691",
+                      "on-tertiary-container": "#fffbff",
+                      "on-secondary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "2xl": "1rem",
+                      "3xl": "1.5rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding": "20px",
+                      "stack-sm": "8px",
+                      "stack-lg": "32px",
+                      "stack-md": "16px",
+                      "unit": "4px",
+                      "max-width": "480px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "body-md": ["Be Vietnam Pro"],
+                      "body-lg": ["Be Vietnam Pro"],
+                      "body-sm": ["Be Vietnam Pro"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "headline-sm": ["Plus Jakarta Sans"],
+                      "label-md": ["Be Vietnam Pro"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { background-color: #e0e2e9; } /* Darker background outside max-width to frame it on desktop */
+        .member-card { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .member-card:active { transform: scale(0.98); }
+        .toggle-btn { transition: all 0.3s ease; }
+        .note-input-container { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; max-height: 0; opacity: 0; }
+        .note-input-container.open { max-height: 100px; opacity: 1; margin-top: 12px; }
+        
+        /* Hide scrollbar for cleaner look */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+    </style>
+</head>
+<body class="antialiased flex justify-center text-on-background">
+<!-- Mobile Container -->
+<main class="w-full max-w-max-width bg-background min-h-screen relative flex flex-col shadow-2xl overflow-x-hidden">
+<!-- TopAppBar Shared Component -->
+<header class="docked full-width top-0 sticky z-40 bg-surface dark:bg-surface-dim flat no shadows scale-95 duration-200 ease-in-out flex justify-between items-center px-container-padding h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="A close up portrait photo of a young professional smiling softly in a brightly lit modern interior space with soft daylight. The image has a warm, inviting tone with soft blues and neutral background colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIHLq94xoKSM8Vr-jJ5BsS6zPVW_mogbUgolqjNi9RENm5X0T8phbHs5PL2AEPy7CLqDUBY4wYXwVjJH1g2K1fgkCDfJ3fGp3GiPriZRzl6gU4uCwsho0zmQody6oIRkcOXai2T2GJbQkNIAnDtyuONWHjDpw95PFAu7_eY5JTRLr9fFuYWPRauS08bdgkU2R3zlbcjccz3-JvLnDy2TZpuhpC48j3b6WkdhLhnXyrktUmrlQvRFM">
+</div>
+</div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim absolute left-1/2 transform -translate-x-1/2">
+                The Bridge
+            </h1>
+<button aria-label="notifications" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 px-container-padding pt-stack-md pb-[180px] overflow-y-auto">
+<!-- Page Header -->
+<div class="mb-stack-lg animate-fade-in-up">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-stack-sm">라브리 주일출석 입력</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">오늘의 출석 현황을 체크하고 제출해주세요.</p>
+</div>
+<!-- Member List -->
+<div class="flex flex-col gap-stack-md">
+<!-- Member Card 1 -->
+<div class="member-card bg-surface-container-lowest rounded-3xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex flex-col">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary-container flex-shrink-0">
+<img alt="Member photo" class="w-full h-full object-cover" data-alt="A warm, brightly lit portrait of a young korean woman smiling, outdoors in a park setting. Soft, natural lighting creates a welcoming, serene mood typical of a friendly community app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7wG-lALu4MpydzHh6huWLYotVNC13Hh6EvVO3WmEFmBDbmNRHGPukBdiWnL5Szh-oVq0aGNff7li4Iidn2F-rN-B9qTNvk-2Fc5bJEoSnWUUyK9OjkB4vv8Vd2a-dOp-hna43jR1VCu06XCgFCogEaY0P0lBb7U7Q231MrCXxBjNJx558w6cbnE3ybS6rHTA9iNsvdaB9NZfNB03e_ydZ2OEYP6tll0b3BSDp6Thid7eOull-5DQ">
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">김민지</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">라브리원</p>
+</div>
+</div>
+<button class="note-toggle text-outline hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-low" onclick="toggleNote(this)">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</button>
+</div>
+<div class="mt-4 flex bg-surface-container rounded-xl p-1 relative z-10 w-full">
+<button class="toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center bg-primary text-on-primary shadow-sm" onclick="setAttendance(this, 'present')">출석</button>
+<button class="toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center text-on-surface-variant" onclick="setAttendance(this, 'absent')">결석</button>
+</div>
+<div class="note-input-container">
+<input class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 font-body-sm text-body-sm text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all placeholder-outline" placeholder="결석 사유나 비고를 입력해주세요." type="text">
+</div>
+</div>
+<!-- Member Card 2 (Absent state preview) -->
+<div class="member-card bg-surface-container-lowest rounded-3xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex flex-col">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center flex-shrink-0">
+<span class="font-headline-sm text-headline-sm text-on-surface-variant">이</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">이준호</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">라브리원</p>
+</div>
+</div>
+<button class="note-toggle text-primary transition-colors p-2 rounded-full hover:bg-surface-container-low" onclick="toggleNote(this)">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</button>
+</div>
+<div class="mt-4 flex bg-surface-container rounded-xl p-1 relative z-10 w-full">
+<button class="toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center text-on-surface-variant" onclick="setAttendance(this, 'present')">출석</button>
+<button class="toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center bg-surface-variant text-on-surface shadow-sm" onclick="setAttendance(this, 'absent')">결석</button>
+</div>
+<div class="note-input-container open">
+<input class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 font-body-sm text-body-sm text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all placeholder-outline" placeholder="결석 사유나 비고를 입력해주세요." type="text" value="개인 사정 (출장)">
+</div>
+</div>
+<!-- Member Card 3 -->
+<div class="member-card bg-surface-container-lowest rounded-3xl p-4 shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex flex-col">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary-container flex-shrink-0">
+<img alt="Member photo" class="w-full h-full object-cover" data-alt="A bright, cheerful portrait of a young korean man in casual clothing, smiling gently in a well-lit indoor cafe environment. The aesthetic is clean, modern, and aligned with a calm, human-centric design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChRG0GomWHwdMN4ddIOT1PRTjTTva-k4rT5U_kyMZBG0FCLzpQiHIKqfx5OK7KuHxA78Q-SwvlKGJkpcYE5vPpvmq43_7id4d6q5glFaJiuAycDbw36VKWFspyitjMbkSsxhWBWvD7mOWiElRfK4mKMkwQP4xOzirtQGPZt1ko8taR7RicX2_VCplVbhdrcu7ROhjzdOBtoOqd9IIAS0KTgF_57pDHubHhI0iAA-F9lEsk8H0PCJo">
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">박지훈</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">라브리원</p>
+</div>
+</div>
+<button class="note-toggle text-outline hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-low" onclick="toggleNote(this)">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</button>
+</div>
+<div class="mt-4 flex bg-surface-container rounded-xl p-1 relative z-10 w-full">
+<button class="toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center bg-primary text-on-primary shadow-sm" onclick="setAttendance(this, 'present')">출석</button>
+<button class="toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center text-on-surface-variant" onclick="setAttendance(this, 'absent')">결석</button>
+</div>
+<div class="note-input-container">
+<input class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 font-body-sm text-body-sm text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all placeholder-outline" placeholder="결석 사유나 비고를 입력해주세요." type="text">
+</div>
+</div>
+</div>
+</div>
+<!-- Fixed Submit Action Area -->
+<div class="fixed bottom-[88px] left-0 right-0 w-full max-w-max-width mx-auto px-container-padding z-40 bg-gradient-to-t from-background via-background to-transparent pt-8 pb-4 pointer-events-none">
+<button class="w-full h-14 bg-primary text-on-primary rounded-2xl font-headline-sm text-headline-sm shadow-[0px_8px_24px_rgba(0,0,0,0.1)] transition-transform active:scale-95 pointer-events-auto flex items-center justify-center gap-2">
+                출석현황 제출
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+<!-- BottomNavBar Shared Component -->
+<nav class="fixed bottom-0 left-0 right-0 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container-lowest dark:bg-inverse-surface w-full max-w-max-width mx-auto z-50 rounded-t-xl shadow-[0px_-4px_12px_rgba(93,135,177,0.08)]">
+<!-- Inactive: Home -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-xl transition-colors">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</button>
+<!-- Active: Lavri (Index 1) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1.5 scale-98 transition-transform duration-150">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-md text-label-md">Lavri</span>
+</button>
+<!-- Inactive: Sharing -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-xl transition-colors">
+<span class="material-symbols-outlined mb-1">diversity_1</span>
+<span class="font-label-md text-label-md">Sharing</span>
+</button>
+<!-- Inactive: My Page -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-xl transition-colors">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-label-md">My Page</span>
+</button>
+</nav>
+</main>
+<script>
+        // Micro-interaction logic for toggles and notes
+        function setAttendance(button, status) {
+            const container = button.parentElement;
+            const buttons = container.querySelectorAll('button');
+            
+            // Reset both buttons
+            buttons[0].className = "toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center text-on-surface-variant";
+            buttons[1].className = "toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center text-on-surface-variant";
+            
+            // Set active state
+            if(status === 'present') {
+                buttons[0].className = "toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center bg-primary text-on-primary shadow-sm";
+            } else {
+                buttons[1].className = "toggle-btn flex-1 py-2 rounded-lg font-label-md text-label-md text-center bg-surface-variant text-on-surface shadow-sm";
+            }
+        }
+
+        function toggleNote(button) {
+            const card = button.closest('.member-card');
+            const noteContainer = card.querySelector('.note-input-container');
+            
+            if (noteContainer.classList.contains('open')) {
+                noteContainer.classList.remove('open');
+                button.classList.remove('text-primary');
+                button.classList.add('text-outline');
+            } else {
+                noteContainer.classList.add('open');
+                button.classList.add('text-primary');
+                button.classList.remove('text-outline');
+                // Optional: focus input when opened
+                setTimeout(() => {
+                    noteContainer.querySelector('input').focus();
+                }, 100);
+            }
+        }
+    </script>
+</body></html>

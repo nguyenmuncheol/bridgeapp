@@ -1,0 +1,295 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>The Bridge - 찬양/묵상</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#181c21",
+                      "outline-variant": "#c2c7cf",
+                      "error": "#ba1a1a",
+                      "inverse-surface": "#2d3136",
+                      "surface-dim": "#d7dae0",
+                      "on-tertiary-fixed-variant": "#614000",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-container": "#fffbff",
+                      "on-primary-fixed-variant": "#1a4a70",
+                      "surface-tint": "#366289",
+                      "secondary-fixed-dim": "#ffb691",
+                      "primary": "#335f87",
+                      "primary-fixed": "#cfe5ff",
+                      "on-tertiary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-container-high": "#e5e8ef",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#eef1f7",
+                      "tertiary-fixed-dim": "#f1be73",
+                      "secondary-container": "#fda374",
+                      "on-tertiary-fixed": "#291800",
+                      "primary-container": "#4e78a1",
+                      "surface-container": "#ebeef4",
+                      "tertiary": "#7a5513",
+                      "surface-bright": "#f7f9ff",
+                      "surface-container-low": "#f1f4fa",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-fixed": "#341100",
+                      "tertiary-fixed": "#ffddb0",
+                      "surface": "#f7f9ff",
+                      "on-secondary-fixed-variant": "#73350e",
+                      "on-background": "#181c21",
+                      "primary-fixed-dim": "#a0caf8",
+                      "secondary-fixed": "#ffdbcb",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#fdfcff",
+                      "on-surface-variant": "#42474e",
+                      "outline": "#72777f",
+                      "inverse-primary": "#a0caf8",
+                      "secondary": "#914c24",
+                      "background": "#f7f9ff",
+                      "tertiary-container": "#966d2a",
+                      "surface-variant": "#e0e2e9",
+                      "on-primary": "#ffffff",
+                      "surface-container-highest": "#e0e2e9",
+                      "on-secondary-container": "#763710",
+                      "on-primary-fixed": "#001d34"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "container-padding": "20px",
+                      "gutter": "16px",
+                      "unit": "4px",
+                      "stack-lg": "32px",
+                      "max-width": "480px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "body-lg": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Be Vietnam Pro"
+                      ],
+                      "body-md": [
+                              "Be Vietnam Pro"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "26px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "38px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #f7f9ff;
+            -webkit-font-smoothing: antialiased;
+        }
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background-color: #f7f9ff;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="text-on-surface font-body-md">
+<div class="app-container flex flex-col">
+<!-- Top Navigation (Contextual, Back button) -->
+<header class="flex justify-between items-center px-container-padding h-16 w-full max-w-max-width mx-auto bg-surface sticky top-0 z-40">
+<button class="text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-full p-2 scale-95 duration-200 ease-in-out">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-semibold text-on-surface">찬양/묵상</h1>
+<div class="w-10"></div> <!-- Spacer for center alignment -->
+</header>
+<!-- Main Content Scroll Area -->
+<main class="flex-grow overflow-y-auto pb-24">
+<!-- Hero Section -->
+<div class="relative w-full aspect-video bg-surface-container-highest overflow-hidden">
+<img alt="A beautiful, calming acoustic guitar leaning against a sunlit window, capturing a warm, modern aesthetic with soft blue and warm orange accents. The lighting is inviting and peaceful, suitable for a church app meditation hero image." class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AP1WRLtYfFnCQPWa2FWcrDjDtClz8L_0Z7QAPYmQufV5awzPkZowiAXgZoS4N0f7Oqv6umbdAmz-ImM6Jqm648CQDbaLdaEbPL6CRpD3maEsW1GkQDkEU78zxgMnewQuGM8SX10AaWNhtHMGlIqxbTkpU_4CylOmvWYy5FGUPve4vCIhe9HSaXtiEvQ6OCNUtV_haUchCEuXk58uugRkW8zfI05YxaqCkT3GYcUwKjNkbg4eLjPLd_xGyL_Y">
+<div class="absolute inset-0 bg-black/20 flex items-center justify-center">
+<button class="bg-primary/90 text-white rounded-full p-4 shadow-lg backdrop-blur-sm transform transition hover:scale-105 active:scale-95">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="absolute top-4 left-4 bg-primary-container text-on-primary-container font-label-md text-label-md px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">videocam</span> 찬양
+            </div>
+</div>
+<!-- Post Details -->
+<div class="px-container-padding pt-stack-md pb-stack-lg bg-surface-container-lowest">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-stack-sm">
+                은혜 (Grace) - 어쿠스틱 버전
+            </h2>
+<!-- Author Info -->
+<div class="flex items-center gap-3 mb-stack-md py-stack-sm border-b border-surface-variant">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A small, friendly profile picture of a young male musician with a warm smile, soft lighting, modern church aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkPuoxQJkxLq1OSxlRPgFYmS4ewb2DOqJZGQ2iVchxQUhylPWaCAimsdaHDYUI344l1y_gO5NAn24mILdCPNTIsAzJGZTuMziGiyf65IGgKKss2mv_LBj2nMyfjRKmbgEQOg94HBLDUSDt23ioR1R4kIxcCW65KIT7fwwFsKZvUuIyV_31LJWsIbT96peMC98gVwe7xTRgg2a9jnmgpCGEWXuJBgFUZjYyNgYfiitEOvjo1Opw09s">
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">The Bridge Worship</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2023년 10월 25일</p>
+</div>
+</div>
+<!-- Body Text -->
+<div class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed space-y-4">
+<p>
+                    오늘도 주님의 은혜를 찬양합니다. 어쿠스틱 기타 선율에 맞춰 조용히 묵상하는 시간을 가져보세요.
+                </p>
+<p>
+                    우리가 살아가는 모든 순간이 주님의 은혜임을 고백합니다. 바쁘고 지친 일상 속에서도 잠시 멈추어, 그분의 사랑과 평안을 느끼는 하루가 되기를 소망합니다.
+                </p>
+<p>
+                    "나의 나 된 것은 다 하나님의 은혜라" (고전 15:10)
+                </p>
+</div>
+<!-- Interaction Bar -->
+<div class="flex items-center gap-4 mt-stack-lg pt-stack-md border-t border-surface-variant">
+<button class="flex items-center gap-2 text-primary bg-primary-fixed/30 hover:bg-primary-fixed/50 px-4 py-2 rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="font-label-md text-label-md">아멘 128</span>
+</button>
+<button class="flex items-center gap-2 text-on-surface-variant hover:bg-surface-container-high px-4 py-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">share</span>
+<span class="font-label-md text-label-md">공유</span>
+</button>
+</div>
+</div>
+<!-- Comments Section -->
+<div class="mt-stack-md px-container-padding">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-stack-md">댓글 (3)</h3>
+<div class="space-y-stack-md mb-stack-lg">
+<!-- Comment 1 -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex-shrink-0 flex items-center justify-center text-on-secondary-container font-label-md text-label-md">
+                        김
+                    </div>
+<div class="bg-surface-container-lowest p-3 rounded-2xl rounded-tl-none shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex-grow">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label-md text-label-md text-on-surface">김성도</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-xs">2시간 전</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">정말 은혜로운 찬양입니다. 마음이 평안해지네요. 아멘.</p>
+</div>
+</div>
+<!-- Comment 2 -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-container flex-shrink-0 flex items-center justify-center text-on-tertiary-container font-label-md text-label-md">
+                        이
+                    </div>
+<div class="bg-surface-container-lowest p-3 rounded-2xl rounded-tl-none shadow-[0px_4px_12px_rgba(93,135,177,0.08)] flex-grow">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label-md text-label-md text-on-surface">이청년</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-xs">5시간 전</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">출근길에 듣는데 힘이 납니다! 감사합니다.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Comment Input (Fixed) -->
+<div class="fixed bottom-0 w-full max-w-max-width mx-auto bg-surface-container-lowest p-container-padding shadow-[0px_-4px_12px_rgba(93,135,177,0.08)] z-50 rounded-t-2xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shadow-sm flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A generic user avatar placeholder, modern soft styling, light gray background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuATfV_nb1I6q722g_XT3kZTnDT-a6SL4RMf_vcc-OmmMMywmw4WnlPUVTktBRQyEca6eJjrENjUPgNgxibDAXW4gmIro8Q_OvU-3B3zsWkd6QKpjh8uepYmAoGmnueIs0LyNvj3wZn5aEx-PA55QtoMT5mqKZ0QT-v2nk84XgzyoxS1CP1g7SZvBC66KkBup439heYga_brCQReCMGF4AHeYrshcVneN1cudXam9t3IrYl8tAl69F0">
+</div>
+<div class="relative flex-grow">
+<input class="w-full bg-surface-container-low border-none rounded-full py-3 pl-4 pr-12 font-body-sm text-body-sm text-on-surface focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="댓글을 입력하세요..." type="text">
+<button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary-fixed/30 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-lg">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

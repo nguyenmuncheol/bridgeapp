@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Page - The Bridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#ffb691",
+                      "surface-variant": "#e0e2e9",
+                      "on-primary-fixed-variant": "#1a4a70",
+                      "on-secondary-fixed": "#341100",
+                      "on-error": "#ffffff",
+                      "primary": "#335f87",
+                      "on-primary-fixed": "#001d34",
+                      "inverse-on-surface": "#eef1f7",
+                      "surface-tint": "#366289",
+                      "on-tertiary": "#ffffff",
+                      "primary-container": "#4e78a1",
+                      "surface": "#f7f9ff",
+                      "on-background": "#181c21",
+                      "inverse-surface": "#2d3136",
+                      "primary-fixed": "#cfe5ff",
+                      "tertiary-container": "#966d2a",
+                      "on-secondary-fixed-variant": "#73350e",
+                      "secondary-container": "#fda374",
+                      "surface-dim": "#d7dae0",
+                      "surface-bright": "#f7f9ff",
+                      "background": "#f7f9ff",
+                      "on-surface": "#181c21",
+                      "outline-variant": "#c2c7cf",
+                      "outline": "#72777f",
+                      "surface-container-high": "#e5e8ef",
+                      "surface-container-highest": "#e0e2e9",
+                      "on-primary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface-variant": "#42474e",
+                      "on-error-container": "#93000a",
+                      "inverse-primary": "#a0caf8",
+                      "on-secondary-container": "#763710",
+                      "surface-container-low": "#f1f4fa",
+                      "secondary-fixed": "#ffdbcb",
+                      "on-tertiary-fixed-variant": "#614000",
+                      "error": "#ba1a1a",
+                      "secondary": "#914c24",
+                      "tertiary": "#7a5513",
+                      "on-tertiary-container": "#fffbff",
+                      "primary-fixed-dim": "#a0caf8",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-fixed": "#291800",
+                      "error-container": "#ffdad6",
+                      "surface-container": "#ebeef4",
+                      "tertiary-fixed": "#ffddb0",
+                      "on-primary-container": "#fdfcff",
+                      "tertiary-fixed-dim": "#f1be73"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "max-width": "480px",
+                      "gutter": "16px",
+                      "unit": "4px",
+                      "stack-sm": "8px",
+                      "container-padding": "20px",
+                      "stack-md": "16px",
+                      "stack-lg": "32px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Be Vietnam Pro"
+                      ],
+                      "body-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Be Vietnam Pro"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "26px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "38px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F9FAFB;
+        }
+        .main-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #F7F9FF;
+            position: relative;
+            padding-bottom: 80px; /* Space for bottom nav */
+        }
+        .ambient-shadow {
+            box-shadow: 0px 4px 12px rgba(93, 135, 177, 0.08);
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased">
+<div class="main-container shadow-sm border-x border-surface-dim">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim transition-all duration-200 active:scale-95 flex justify-between items-center px-gutter h-14 max-w-max-width mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="church">church</span>
+</div>
+<div class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim">
+                The Bridge
+            </div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-[72px] px-container-padding flex flex-col gap-stack-lg">
+<!-- Profile Section -->
+<section class="bg-surface-container-lowest rounded-[24px] p-stack-md ambient-shadow flex flex-col items-center text-center gap-stack-sm transform transition hover:scale-[0.99]">
+<div class="w-24 h-24 rounded-full overflow-hidden border-4 border-surface-container-low mb-2">
+<img alt="Profile Picture" class="w-full h-full object-cover" data-alt="A softly lit, warm and inviting portrait of a middle-aged Asian man smiling gently. He is dressed neatly in a casual collared shirt. The background is a slightly blurred, bright, modern church setting with natural light pouring in, maintaining a serene and peaceful mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUk5dCcaWSBVp8cxcReQcgjzXOaZSqaYN5MAuZDb_EBX27sJQRuG_a-iuSabMt33QRgycMMCuq2kcGmHfiI0EA7zelAcHIbiG9oaS2RpKfsVkpwEEMvEj0js0v0BnKc6rRB9GaNbZrF60Z-tzWJO8QbRiPHCD0Qzm6kLVcN8uaOcGQTrseJ6psBKNJzst7RYVFNpToteWPna3OTZLRGKm0rSUY7cobbH60VGXRXVHunjCzu8XTQYc"/>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">김성도 성도님</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">사랑의 교회 • 청년부</p>
+<button class="mt-2 px-6 py-2 rounded-full border border-primary-container text-primary-container font-label-md text-label-md hover:bg-surface-container-low transition-colors duration-200">
+                    프로필 수정
+                </button>
+</section>
+<!-- Faith Activity Summary -->
+<section class="flex flex-col gap-stack-md">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">신앙 활동 (Faith Activity)</h3>
+<div class="grid grid-cols-2 gap-stack-md">
+<!-- Stat Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-stack-md ambient-shadow flex flex-col gap-2">
+<div class="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">출석 횟수</span>
+<span class="font-headline-md text-headline-md text-primary">48<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">회</span></span>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-stack-md ambient-shadow flex flex-col gap-2">
+<div class="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="volunteer_activism">volunteer_activism</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">나의 기도제목</span>
+<span class="font-headline-md text-headline-md text-secondary">12<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">건</span></span>
+</div>
+</div>
+<!-- Stat Card 3 (Full width span) -->
+<div class="col-span-2 bg-surface-container-lowest rounded-xl p-stack-md ambient-shadow flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/10 flex items-center justify-center text-tertiary-container">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">내가 나눈 글</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="font-headline-md text-headline-md text-tertiary-container">24</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-stack-md ambient-shadow flex flex-col gap-2">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/10 flex items-center justify-center text-tertiary-container">
+<span class="material-symbols-outlined" data-icon="confirmation_number">confirmation_number</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">식사 쿠폰</span>
+<span class="font-headline-md text-headline-md text-tertiary-container">5<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">장 남음</span></span>
+</div>
+</div></div>
+</section>
+<!-- Settings & Nav List -->
+<section class="bg-surface-container-lowest rounded-xl ambient-shadow overflow-hidden mb-stack-lg">
+<div class="flex flex-col divide-y divide-surface-dim">
+<button class="flex items-center justify-between p-stack-md hover:bg-surface-container-low transition-colors duration-200">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications_active">notifications_active</span>
+<span class="font-body-md text-body-md text-on-surface">알림 설정</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-stack-md hover:bg-surface-container-low transition-colors duration-200">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="policy">policy</span>
+<span class="font-body-md text-body-md text-on-surface">약관 및 정책</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-stack-md hover:bg-surface-container-low transition-colors duration-200">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="support_agent">support_agent</span>
+<span class="font-body-md text-body-md text-on-surface">고객지원</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-stack-md hover:bg-surface-container-low transition-colors duration-200 text-error">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-body-md text-body-md">로그아웃</span>
+</div>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 w-full flex justify-around items-center py-2 px-4 max-w-max-width mx-auto bg-surface dark:bg-surface-dim shadow-[0px_-4px_12px_rgba(93,135,177,0.08)] rounded-t-xl z-50">
+<!-- Home (Inactive) -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-colors transition-transform duration-200 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Home</span>
+</div>
+<!-- Lavri (Inactive) -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-colors transition-transform duration-200 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Lavri</span>
+</div>
+<!-- Sharing (Inactive) -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-colors transition-transform duration-200 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="volunteer_activism">volunteer_activism</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Sharing</span>
+</div>
+<!-- My Page (Active) -->
+<div class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 hover:bg-surface-container-high transition-colors transition-transform duration-200 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">My Page</span>
+</div>
+</nav>
+</div>
+</body></html>

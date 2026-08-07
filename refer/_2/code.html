@@ -1,0 +1,257 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>The Bridge - 나눔</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed-dim": "#f1be73",
+                        "primary-fixed-dim": "#a0caf8",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#42474e",
+                        "surface-tint": "#366289",
+                        "inverse-primary": "#a0caf8",
+                        "primary": "#335f87",
+                        "outline": "#72777f",
+                        "on-primary-fixed-variant": "#1a4a70",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-high": "#e5e8ef",
+                        "tertiary-container": "#966d2a",
+                        "primary-fixed": "#cfe5ff",
+                        "surface-dim": "#d7dae0",
+                        "surface-container": "#ebeef4",
+                        "on-surface": "#181c21",
+                        "tertiary": "#7a5513",
+                        "on-primary-container": "#fdfcff",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eef1f7",
+                        "background": "#f7f9ff",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdbcb",
+                        "surface-bright": "#f7f9ff",
+                        "surface": "#f7f9ff",
+                        "secondary-fixed-dim": "#ffb691",
+                        "secondary-container": "#fda374",
+                        "on-primary-fixed": "#001d34",
+                        "secondary": "#914c24",
+                        "surface-container-highest": "#e0e2e9",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-container": "#763710",
+                        "inverse-surface": "#2d3136",
+                        "on-tertiary-fixed": "#291800",
+                        "tertiary-fixed": "#ffddb0",
+                        "surface-container-low": "#f1f4fa",
+                        "outline-variant": "#c2c7cf",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e0e2e9",
+                        "primary-container": "#4e78a1",
+                        "on-tertiary-fixed-variant": "#614000",
+                        "on-secondary-fixed-variant": "#73350e",
+                        "on-secondary-fixed": "#341100",
+                        "on-background": "#181c21",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "stack-md": "16px",
+                        "max-width": "480px",
+                        "stack-sm": "8px",
+                        "unit": "4px",
+                        "container-padding": "20px",
+                        "stack-lg": "32px",
+                        "gutter": "16px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Be Vietnam Pro"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Be Vietnam Pro"],
+                        "body-md": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"]
+                    },
+                    fontSize: {
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #f7f9ff;
+            color: #181c21;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #f7f9ff;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding-bottom: 90px; /* space for bottom nav */
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 12px rgba(93, 135, 177, 0.08);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for horizontal lists */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface">
+<div class="app-container flex flex-col">
+<!-- TopAppBar (from JSON) -->
+<header class="docked full-width top-0 sticky z-40 bg-surface dark:bg-surface-dim flat no shadows flex justify-between items-center px-container-padding h-16 w-full max-w-max-width mx-auto">
+<div class="flex items-center">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small, soft, welcoming user profile photo featuring a diverse young adult with a warm smile, set against a light pastel blue background. The aesthetic is clean, modern, and friendly, reflecting a community-focused lifestyle app in light mode." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVlaKCLpitYvTfkF46a6i9uBEVXj96dtbIXOhJ_r1WQt_z4rD7zQJDlmrOUwqWkietQlIOX709iF6FSZV3jru18d5QKr6uMQyCUZPIy8IPUhITFKzJNiiY0VdP3029rd9QhjdqEdlZFbyFd6CTX7jSs_MkL-J_erttRagu2Qya-Mg_SZilBTc-v1zNto87tMYZ5iphcM7zTiXzpq-SWtXvrlPeZAUt3MZhDVWn1ObyIYJM0zsbe9U">
+</div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">나눔</h1>
+<button class="hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors p-2 rounded-full scale-95 duration-200 ease-in-out text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 px-container-padding py-stack-md flex flex-col gap-stack-lg">
+<!-- Tabs -->
+<div class="flex space-x-2 w-full">
+<button class="flex-1 py-2 px-4 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md transition-colors hover:bg-surface-container-high">기도제목</button>
+<button class="flex-1 py-2 px-4 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md shadow-sm transition-colors">찬양/묵상</button>
+<button class="flex-1 py-2 px-4 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md transition-colors hover:bg-surface-container-high">행사사진</button>
+</div>
+<!-- Search -->
+<div class="relative w-full soft-shadow rounded-xl bg-surface-container-lowest">
+<span class="material-symbols-outlined absolute left-3 top-3 text-outline" data-icon="search">search</span>
+<input class="w-full h-12 pl-10 pr-4 rounded-xl bg-surface-container-lowest border-none focus:ring-2 focus:ring-primary text-body-md text-on-surface placeholder-outline-variant font-body-md transition-all" placeholder="찬양이나 말씀을 검색해보세요" type="text">
+</div>
+<!-- Today's Word Hero -->
+<!-- Praise Video Grid -->
+<section class="flex flex-col gap-stack-sm mb-8">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">찬양/묵상</h2>
+<div class="grid grid-cols-2 gap-gutter">
+<!-- Video Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow overflow-hidden flex flex-col transition-transform hover:scale-[0.98]">
+<div class="relative h-28 w-full bg-surface-container-low" data-alt="A vibrant and emotionally resonant still frame of a contemporary acoustic worship band performing in a softly lit, modern church environment. Soft blue and warm amber stage lights create a calm, inviting atmosphere. The image is framed as a video thumbnail with space for a play button overlay." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB0AcJDvfjKEvLbFTQPcEsJQkJ5iXzLpnhqE2ezlZflIiQUB_vLza4imLArhaXaDSoCpVFe0LiJN4U2ka7ACo72RP-ImFUWnQ1nDiKXIEaBJFGBEkcRiph4W57Dn2Aqk-yqg2nwyJ3BIrXr9jk9qdrDt0C2HdFaJAtZeGvS_HZgP_8P7nDX-JORrCBmB7FqD9iqp2S8LaDuSJYYSMRRajfexndd_RTtnbLa0uT6uyX3HwGIsiYWkvI')">
+<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+<span class="material-symbols-outlined text-white text-3xl opacity-80" data-icon="play_circle" data-weight="fill">play_circle</span>
+</div>
+<div class="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-[10px] px-1.5 py-0.5 rounded">4:25</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h3 class="font-label-md text-label-md text-on-surface line-clamp-2 leading-tight">은혜 (Grace) - 어쿠스틱 버전</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">손경민</p>
+</div>
+</div>
+<!-- Video Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow overflow-hidden flex flex-col transition-transform hover:scale-[0.98]">
+<div class="relative h-28 w-full bg-surface-container-low" data-alt="A close-up shot of hands playing an acoustic guitar during a worship session, capturing the tactile, human element of music. The background is softly blurred with bokeh from string lights, conveying warmth, intimacy, and spiritual devotion in a modern humanist style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBNTaf8hP015BOX3ISmprSOR2TVTn7g42mVZLzgdqwDpKC_vDZfQ51sbtmYtfxwUN98f6QPA00mogH0X0Xo9088wjdvftxQPuO2xIBFqb65iyiyLKiRus82luGYEaAtflS8bEyn0JsDiP9TjCitfscxnya3fuA8253KP5pK-VSbrEKLccB5WgonnE4ORKqNqrPi2LgoLSGfrbZ9ZiELp9bhN5p7dhP-ISUMccrYPwUgJggO-DLPPUk')">
+<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+<span class="material-symbols-outlined text-white text-3xl opacity-80" data-icon="play_circle" data-weight="fill">play_circle</span>
+</div>
+<div class="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-[10px] px-1.5 py-0.5 rounded">5:12</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h3 class="font-label-md text-label-md text-on-surface line-clamp-2 leading-tight">주품에 (Still)</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">Hillsong</p>
+</div>
+</div>
+<!-- Video Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow overflow-hidden flex flex-col transition-transform hover:scale-[0.98]">
+<div class="relative h-28 w-full bg-surface-container-low" data-alt="An expansive, wide-angle shot of a diverse congregation raising their hands in worship, seen from behind the silhouette of a worship leader. The lighting is bright and uplifting, with soft blue and white tones dominating the modern sanctuary space." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCsnt4hOpMRm3ZQlAUCDwyaZmQVZn8Ti3gHfFqaTrdiSbMFid4Cv7Xbv9ZxGAE0Z9lSfFAukYIL6SCHOfdZ6BjI8jU3PBT-1It0ZUAdSrt0JGAkClu6xRcD_X5S2FGAFFdpHISyz7Ts9fj_9EE1pmcLExz0bRg0P2GuX0O9aLJCQcPRWozd1U72mK0gTCk-k0Xy629q9HRi2N7pik6IPvjpSig87I1leD0NISspsuHoucwTMOETvzU')">
+<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+<span class="material-symbols-outlined text-white text-3xl opacity-80" data-icon="play_circle" data-weight="fill">play_circle</span>
+</div>
+<div class="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-[10px] px-1.5 py-0.5 rounded">6:03</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h3 class="font-label-md text-label-md text-on-surface line-clamp-2 leading-tight">나는 예배자입니다</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">어노인팅</p>
+</div>
+</div>
+<!-- Video Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow overflow-hidden flex flex-col transition-transform hover:scale-[0.98]">
+<div class="relative h-28 w-full bg-surface-container-low" data-alt="A visually calming, minimalist graphic featuring soft watercolor splashes in pastel blue and peach, with faint, elegant musical notes floating across the composition. It serves as an artistic placeholder for a lyric video, fitting the app's serene aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAr972Oe5XszlJJGUNs38r2ri45bgwp4Rtqi6s93VSDDJ3dn6nAMCjhVoo7GGgJkV2Rpti4cn2sYRKzFPSmyBFEFaDOtkvXNQDn_wL7s-hE7U_7KFHV3gXA_fpzq_EQCExFnWQQMZrKtmmarkmYNDxX977kcaxMD3iXssijm77ZZ-nu71mWqVoTVnfp3JqtlIM1NZscZuUFtEOKjdGO2NlpRXQ3milfOT6pccKtgrKS_WUb4v7LrwU')">
+<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+<span class="material-symbols-outlined text-white text-3xl opacity-80" data-icon="play_circle" data-weight="fill">play_circle</span>
+</div>
+<div class="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-[10px] px-1.5 py-0.5 rounded">3:45</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h3 class="font-label-md text-label-md text-on-surface line-clamp-2 leading-tight">나의 안에 거하라</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">류수영</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl soft-shadow overflow-hidden flex flex-col transition-transform hover:scale-[0.98]"><div class="relative h-28 w-full bg-surface-container-low flex items-center justify-center"><img alt="Church Logo Placeholder" class="w-12 h-12 opacity-20" src="https://lh3.googleusercontent.com/aida/AP1WRLtYfFnCQPWa2FWcrDjDtClz8L_0Z7QAPYmQufV5awzPkZowiAXgZoS4N0f7Oqv6umbdAmz-ImM6Jqm648CQDbaLdaEbPL6CRpD3maEsW1GkQDkEU78zxgMnewQuGM8SX10AaWNhtHMGlIqxbTkpU_4CylOmvWYy5FGUPve4vCIhe9HSaXtiEvQ6OCNUtV_haUchCEuXk58uugRkW8zfI05YxaqCkT3GYcUwKjNkbg4eLjPLd_xGyL_Y"></div><div class="p-3 flex flex-col gap-1"><h3 class="font-label-md text-label-md text-on-surface line-clamp-2 leading-tight">오늘의 묵상: 시편 23편</h3><p class="font-body-sm text-body-sm text-on-surface-variant text-xs">The Bridge</p></div></div></div>
+</section>
+</main>
+<!-- Floating Action Button (FAB) -->
+<!-- Placed above bottom nav -->
+<div class="fixed bottom-24 right-4 max-w-[480px] w-full mx-auto pointer-events-none">
+<div class="absolute right-4 bottom-0 pointer-events-auto">
+<button class="w-14 h-14 bg-primary text-on-primary rounded-2xl soft-shadow flex items-center justify-center hover:bg-primary-container transition-colors transform hover:scale-95 active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar (from JSON) -->
+<nav class="fixed bottom-0 left-0 right-0 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container-lowest dark:bg-inverse-surface w-full max-w-max-width mx-auto shadow-[0px_-4px_12px_rgba(93,135,177,0.08)] rounded-t-xl z-50">
+<!-- Home -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors rounded-2xl group">
+<span class="material-symbols-outlined group-active:scale-95 transition-transform duration-150" data-icon="home">home</span>
+<span class="font-label-md text-label-md text-[10px] mt-1">Home</span>
+</button>
+<!-- Lavri -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors rounded-2xl group">
+<span class="material-symbols-outlined group-active:scale-95 transition-transform duration-150" data-icon="groups">groups</span>
+<span class="font-label-md text-label-md text-[10px] mt-1">Lavri</span>
+</button>
+<!-- Sharing (Active) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined group-active:scale-95 transition-transform duration-150" data-icon="diversity_1" data-weight="fill">diversity_1</span>
+<span class="font-label-md text-label-md text-[10px] mt-1">Sharing</span>
+</button>
+<!-- My Page -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-4 py-1.5 hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors rounded-2xl group">
+<span class="material-symbols-outlined group-active:scale-95 transition-transform duration-150" data-icon="person">person</span>
+<span class="font-label-md text-label-md text-[10px] mt-1">My Page</span>
+</button>
+</nav>
+</div>
+</body></html>
