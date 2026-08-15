@@ -81,47 +81,50 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
           {/* 이름 */}
           <div>
-            <label className="block text-gray-600 font-semibold mb-1">
+            <label className="block text-gray-700 font-bold mb-1">
               이름 <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="홍길동"
-              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+              placeholder="예: 홍길동"
+              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
+            <p className="text-[10px] text-gray-500 mt-1">💡 교인 명부 확인을 위해 실명을 입력해 주세요.</p>
           </div>
 
           {/* 연락처 */}
           <div>
-            <label className="block text-gray-600 font-semibold mb-1">
-              연락처 <span className="text-rose-500">*</span>
+            <label className="block text-gray-700 font-bold mb-1">
+              전화번호 <span className="text-rose-500">*</span>
             </label>
             <input
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              placeholder="037-123-4567"
-              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+              placeholder="예: 037-123-4567 또는 010-1234-5678"
+              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
+            <p className="text-[10px] text-gray-500 mt-1">💡 핸드폰 번호를 입력해 주세요.</p>
           </div>
 
           {/* 거주지 주소 */}
           <div>
-            <label className="block text-gray-600 font-semibold mb-1">
+            <label className="block text-gray-700 font-bold mb-1">
               거주지 주소 <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={address}
               onChange={e => setAddress(e.target.value)}
-              placeholder="경남 A동 1023호"
-              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+              placeholder="예: 경남 A동 1023호"
+              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
+            <p className="text-[10px] text-gray-500 mt-1">💡 아파트+동+호수를 입력해 주세요.</p>
           </div>
 
           {/* 생년월일 (연도 | 월 | 일 드롭다운) */}
@@ -175,7 +178,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               취소 (나중에 신청)
             </button>
             <p className="text-[10px] text-gray-400 text-center">
-              가입 후 관리자 승인 완료 시 모든 메뉴를 이용하실 수 있습니다.
+              가입승인 완료 후 이용하실 수 있습니다.
             </p>
           </div>
         </form>

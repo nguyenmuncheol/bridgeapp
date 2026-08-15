@@ -20,8 +20,7 @@ export default function AuthPending({ onGoogleLogin, onKakaoLogin, onRefreshStat
         <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm max-w-xs w-full space-y-1.5">
           <h2 className="font-bold text-sm text-gray-900">가입 승인 대기 중</h2>
           <p className="text-xs text-gray-500 leading-relaxed">
-            교회 관리자의 가입 승인을 기다리고 있습니다.<br />
-            승인되면 모든 메뉴를 이용하실 수 있습니다.
+            교회 관리자의 가입승인 후 이용하실 수 있습니다.
           </p>
         </div>
         <button
@@ -42,8 +41,8 @@ export default function AuthPending({ onGoogleLogin, onKakaoLogin, onRefreshStat
         <div className="text-4xl">⛪</div>
         <h2 className="font-black text-lg text-[#335f87]">더브릿지교회</h2>
         <p className="text-xs text-gray-500">
-          소셜 계정으로 간편하게 로그인/가입하세요.<br />
-          가입 후 관리자 승인이 완료되면 모든 기능을 이용하실 수 있습니다.
+          카카오/구글 계정으로 간편하게 로그인/가입하세요.<br />
+          관리자의 가입 승인 후 이용하실 수 있습니다.
         </p>
       </div>
 
@@ -79,8 +78,8 @@ export default function AuthPending({ onGoogleLogin, onKakaoLogin, onRefreshStat
       </div>
 
       <p className="text-[10px] text-gray-400 text-center max-w-xs leading-relaxed">
-        로그인 시 이름, 이메일 정보를 가져오며,<br />
-        추가 정보(연락처, 주소, 생일)는 가입 과정에서 입력합니다.
+        로그인 시 식별을 위한 이름/이메일 등 프로필 정보를 가져오며,<br />
+        추가 정보(전화번호/주소/생일)는 직접 입력해주세요
       </p>
     </div>
   )

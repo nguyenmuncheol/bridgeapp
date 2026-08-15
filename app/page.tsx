@@ -253,51 +253,59 @@ export default function Home() {
               <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest} />
             )}
 
-            {/* 우리소식 탭 */}
-            {currentTab === 'news' && (
-              <NewsTab currentUser={currentUser} allUsers={users} />
-            )}
-
-            {/* 나눔 탭 */}
-            {currentTab === 'sharing' && (
-              <SharingTab currentUser={currentUser} allUsers={users} />
-            )}
-
-            {/* 신청 탭 */}
-            {currentTab === 'request' && (
-              <RequestTab currentUser={currentUser} allUsers={users} />
-            )}
-
-            {/* 마이페이지 탭 */}
-            {currentTab === 'mypage' && (
-              isGuest ? (
-                <div className="bg-white rounded-3xl p-6 text-center space-y-4 border border-blue-50 shadow-2xs">
-                  <div className="text-4xl">👋</div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-sm text-gray-900">로그인이 필요합니다</h3>
-                    <p className="text-xs text-gray-500">교인 전용 서비스 이용을 위해 로그인해 주세요.</p>
-                  </div>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="w-full py-3 bg-[#335f87] text-white font-bold text-xs rounded-xl shadow-xs"
-                  >
-                    로그인 / 가입하기
-                  </button>
+            {/* 비회원(isGuest)일 경우: 홈 외 다른 모든 탭 접근 시 로그인 안내 카드 표시 */}
+            {currentTab !== 'home' && isGuest ? (
+              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
+                <div className="text-4xl">🔒</div>
+                <div className="space-y-1.5">
+                  <h3 className="font-bold text-sm text-gray-900">로그인이 필요한 서비스입니다</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    교우 소식, 나눔, 주일 식사 신청 및 마이페이지는<br />
+                    더브릿지교회 등록 교인 전용 서비스입니다.
+                  </p>
                 </div>
-              ) : currentUser.role === 'PENDING' ? (
-                <AuthPending
-                  currentRole={currentUser.role}
-                  onRefreshStatus={() => alert('승인 상태를 재확인하였습니다.')}
-                  onGoogleLogin={handleGoogleLogin}
-                  onKakaoLogin={handleKakaoLogin}
-                />
-              ) : (
-                <MyPageTab
-                  currentUser={currentUser}
-                  allUsers={users}
-                  onNavigateAdmin={() => setIsAdminViewMode(true)}
-                />
-              )
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                >
+                  로그인 / 교인 등록 신청하기
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* 우리소식 탭 */}
+                {currentTab === 'news' && (
+                  <NewsTab currentUser={currentUser} allUsers={users} />
+                )}
+
+                {/* 나눔 탭 */}
+                {currentTab === 'sharing' && (
+                  <SharingTab currentUser={currentUser} allUsers={users} />
+                )}
+
+                {/* 신청 탭 */}
+                {currentTab === 'request' && (
+                  <RequestTab currentUser={currentUser} allUsers={users} />
+                )}
+
+                {/* 마이페이지 탭 */}
+                {currentTab === 'mypage' && (
+                  currentUser.role === 'PENDING' ? (
+                    <AuthPending
+                      currentRole={currentUser.role}
+                      onRefreshStatus={() => alert('승인 상태를 재확인하였습니다.')}
+                      onGoogleLogin={handleGoogleLogin}
+                      onKakaoLogin={handleKakaoLogin}
+                    />
+                  ) : (
+                    <MyPageTab
+                      currentUser={currentUser}
+                      allUsers={users}
+                      onNavigateAdmin={() => setIsAdminViewMode(true)}
+                    />
+                  )
+                )}
+              </>
             )}
           </>
         )}

@@ -16,8 +16,8 @@ interface HomeTabProps {
 
 const CHURCH_INFO = {
   vision: '"진리를 알지니 진리가 너희를 자유롭게 하리라" (요한복음 8:32)',
-  intro: '더브릿지(The Bridge)는 베트남 하노이에서 함께 예배하며 말씀 안에서 자라가는 작은 교회 공동체입니다.',
-  address: '하노이 미딩 송다 A동 (Keangnam 인근)',
+  intro: '더브릿지 교회는 하노이에서 함께 예배하며 말씀 안에서 자라가는 교회 공동체입니다.',
+  address: '하노이 미딩 골든펠리스 지하1층 달팽이카페(K-Mart안쪽)',
 }
 
 export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps) {
@@ -172,8 +172,8 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
               <Church size={20} className="text-blue-200" />
               <span className="text-xs font-bold text-blue-200 tracking-widest uppercase">The Bridge Church</span>
             </div>
-            <h1 className="text-lg font-black leading-snug">더브릿지 교회에<br />오신 것을 환영합니다</h1>
-            <p className="text-xs text-blue-100 leading-relaxed italic">{CHURCH_INFO.vision}</p>
+            <h1 className="text-lg font-black leading-snug">더브릿지 교회에 오신 것을 환영합니다</h1>
+            <p className="text-xs text-blue-100 leading-relaxed italic whitespace-pre-line">{CHURCH_INFO.vision}</p>
           </div>
         ) : (
           <div className="bg-gradient-to-br from-[#335f87] via-[#2c5378] to-[#1d3a54] text-white p-5 space-y-2">
@@ -193,18 +193,38 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
         {/* 비로그인 전용: 교회 소개 + 주소 카드 */}
         {isGuest && (
           <div className="p-4 space-y-3">
-            <p className="text-xs text-gray-600 leading-relaxed">{CHURCH_INFO.intro}</p>
-            <div className="flex justify-between items-center bg-[#f7f9ff] p-3 rounded-xl border border-blue-50">
-              <span className="text-xs font-bold text-gray-800">📍 {CHURCH_INFO.address}</span>
-              <div className="flex gap-1.5">
-                <a href="https://maps.google.com/?q=My+Dinh+Song+Da+Hanoi" target="_blank" rel="noopener noreferrer"
-                  className="px-2.5 py-1 bg-white border border-gray-200 text-gray-700 text-[11px] font-bold rounded-lg hover:bg-gray-50">지도</a>
-                <a href="https://open.kakao.com" target="_blank" rel="noopener noreferrer"
-                  className="px-2.5 py-1 bg-[#fee500] text-[#191919] text-[11px] font-bold rounded-lg">💬 카톡</a>
+            <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{CHURCH_INFO.intro}</p>
+            
+            {/* 3번 요청사항: 주소 텍스트 아래에 지도/카톡 버튼을 별도 가로줄로 분리 배치 */}
+            <div className="bg-[#f7f9ff] p-3.5 rounded-xl border border-blue-50 space-y-2.5">
+              <div className="flex items-start gap-1.5">
+                <span className="text-sm shrink-0">📍</span>
+                <span className="text-xs font-bold text-gray-800 leading-relaxed whitespace-pre-line">
+                  {CHURCH_INFO.address}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-blue-100/60">
+                <a
+                  href="https://maps.app.goo.gl/QmPUonpPZnpMxyum7"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 shadow-2xs transition-all"
+                >
+                  🗺️ 지도 보기
+                </a>
+                <a
+                  href="https://open.kakao.com/o/sZaUR1Ii"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2 bg-[#fee500] hover:bg-[#fada0a] text-[#191919] text-xs font-bold rounded-lg flex items-center justify-center gap-1 shadow-2xs transition-all"
+                >
+                  💬 카톡 오픈채팅
+                </a>
               </div>
             </div>
+
             <button onClick={() => setShowChurchGuideModal(true)}
-              className="w-full py-2.5 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5">
+              className="w-full py-2.5 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all">
               <Info size={14} /> 교회 안내 보기 <ChevronRight size={14} />
             </button>
           </div>

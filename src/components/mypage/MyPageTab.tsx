@@ -308,34 +308,34 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin 
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">이름 <span className="text-rose-500">*</span></label>
+                <label className="text-[10px] text-gray-500 font-bold">이름 (실명) <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  placeholder="홍길동"
-                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  placeholder="예: 홍길동"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500"
                   required
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">연락처</label>
+                <label className="text-[10px] text-gray-500 font-bold">연락처 (전화번호)</label>
                 <input
                   type="tel"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
-                  placeholder="037-123-4567"
-                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  placeholder="예: 037-123-4567 또는 010-1234-5678"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">거주지 주소</label>
+                <label className="text-[10px] text-gray-500 font-bold">거주지 주소 (아파트/동호수)</label>
                 <input
                   type="text"
                   value={editAddress}
                   onChange={e => setEditAddress(e.target.value)}
-                  placeholder="경남 A동 1023호"
-                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  placeholder="예: 경남 A동 1023호 / 미딩 골든펠리스"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500"
                 />
               </div>
               <div>
