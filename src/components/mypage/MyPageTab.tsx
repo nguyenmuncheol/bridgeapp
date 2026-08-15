@@ -79,10 +79,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin 
 
   const computedFamilyName = currentUser.familyGroupId
     ? `${sortedFamilyMembers.map(m => m.name).join(' · ')} 가정`
-    : `${currentUser.name} 성도`
+    : `${currentUser.name}님`
 
   const couponAccount = couponAccounts[familyId] || { familyGroupId: familyId, balance: 0, familyName: computedFamilyName }
-  const displayFamilyName = computedFamilyName || couponAccount.familyName || `${currentUser.name} 성도`
+  const displayFamilyName = computedFamilyName || couponAccount.familyName || `${currentUser.name}님`
   const [toastMsg, setToastMsg] = useState('')
 
   // Supabase DB에서 내 기도제목 및 쿠폰 로드

@@ -168,7 +168,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
         {spouse && (
           <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
             <Users size={14} className="text-emerald-600 shrink-0" />
-            <span>배우자 <strong>[{spouse.name}]</strong> 성도님과 식사 신청이 연동됩니다.</span>
+            <span>배우자 <strong>[{getUserDisplayName(spouse)}]</strong>과 식사 신청이 연동됩니다.</span>
           </div>
         )}
 

@@ -110,7 +110,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       address: member.address || '',
       birthday: member.birthday || '',
       role: member.role,
-      duty: member.duty || '성도',
+      duty: member.duty || '',
       labriId: member.labriId || '',
       familyGroupId: member.familyGroupId || '',
       familyInfo: member.familyInfo || '',
@@ -225,7 +225,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
     }
 
     setEditingMember(null)
-    showToast(`✅ ${editMemberData.name} 성도 정보가 수정되었습니다.`)
+    showToast(`✅ ${editMemberData.name}님의 정보가 수정되었습니다.`)
   }
 
   // ── 식사 집계 (DB 실시간 연동) ──
@@ -455,7 +455,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
     loadAttendanceStats()
     setEditingAttendanceUser(null)
-    showToast(`✅ ${user.name} 성도의 ${dateStr} 출석 정보가 수정되었습니다.`)
+    showToast(`✅ ${getUserDisplayName(user)}의 ${dateStr} 출석 정보가 수정되었습니다.`)
   }
 
   const handleDownloadCSV = () => {
@@ -620,7 +620,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
               <div key={pending.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-sm text-gray-900">{pending.name} 성도</h3>
+                    <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(pending)}</h3>
                     <p className="text-xs text-gray-400">{pending.phone} | 주소: {pending.address || '미입력'}</p>
                   </div>
                   <span className="text-[10px] bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded-full">승인 대기</span>
@@ -728,7 +728,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
               Object.entries(groupMembers).forEach(([fid, memberList]) => {
                 if (fid.startsWith('fam_single_')) {
-                  familyMap[fid] = `${memberList[0].name} 성도`
+                  familyMap[fid] = `${memberList[0].name}님 가정`
                 } else {
                   // 호칭 순서(조부 -> 조모 -> 부 -> 모 -> 자녀)로 정렬
                   const sorted = [...memberList].sort((a, b) => {
@@ -1141,7 +1141,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-sm text-gray-900">
-                  ✏️ {editingAttendanceUser.user.name} 성도 출석 수정
+                  ✏️ {getUserDisplayName(editingAttendanceUser.user)} 출석 수정
                 </h3>
                 <p className="text-[11px] text-gray-400 mt-0.5">
                   주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.labriId || '라브리 미정'})

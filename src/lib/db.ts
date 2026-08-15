@@ -15,7 +15,7 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     address: d.address || '',
     role: (d.role || 'PENDING') as Role,
     labriId: d.labri_id,
-    duty: d.duty || '성도',
+    duty: d.duty || '',
     familyGroupId: d.family_group_id,
     familyRole: d.family_role,
     familyInfo: d.family_info,

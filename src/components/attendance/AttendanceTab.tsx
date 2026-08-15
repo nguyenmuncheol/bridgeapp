@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Calendar, CheckCircle2, Phone, Search, MapPin, Users, ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react'
-import { UserProfile } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { getMostRecentSunday, getRecentMonths } from '../../lib/dateUtils'
 import { dbFetchAttendanceRecords, dbSaveAttendanceRecords } from '../../lib/db'
 
@@ -185,7 +185,7 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
 
           {/* 내 출석 기록 */}
           <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
-            <h3 className="font-bold text-xs text-gray-900">{currentUser.name} 성도의 주일 출석 기록</h3>
+            <h3 className="font-bold text-xs text-gray-900">{getUserDisplayName(currentUser)}의 주일 출석 기록</h3>
             <div className="grid grid-cols-2 gap-2">
               {monthFilteredRecords.length > 0 ? (
                 monthFilteredRecords.map(rec => (

@@ -75,7 +75,7 @@ export default function Home() {
         address: data.address || '',
         role: (data.role || 'PENDING') as Role,
         labriId: data.labri_id,
-        duty: data.duty || '성도',
+        duty: data.duty || '',
         familyGroupId: data.family_group_id,
         familyRole: data.family_role,
         familyInfo: data.family_info,
