@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare } from 'lucide-react'
-import { UserProfile, INITIAL_PRAYERS, INITIAL_MEAL_COUPONS, getUserDisplayName } from '../../lib/mockData'
+import { UserProfile, INITIAL_PRAYERS, getUserDisplayName, PostItem, MealCouponAccount } from '../../lib/mockData'
+import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons } from '../../lib/db'
+import { uploadImageToStorage } from '../../lib/storage'
 
 interface MyPageTabProps {
   currentUser: UserProfile
@@ -12,43 +14,96 @@ interface MyPageTabProps {
 export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabProps) {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editPhone, setEditPhone] = useState(currentUser.phone)
+
+  // 프로필 수정 상태
+  const [editName, setEditName] = useState(currentUser.name)
+  const [editPhone, setEditPhone] = useState(currentUser.phone || '')
   const [editAddress, setEditAddress] = useState(currentUser.address || '')
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl || '')
+
+  // 생일 파싱 (YYYY-MM-DD 또는 MM-DD)
+  const currentYear = new Date().getFullYear()
+  const parseBirthday = (bStr?: string) => {
+    if (!bStr) return { year: '1980', month: '01', day: '01' }
+    const parts = bStr.split('-')
+    if (parts.length === 3) {
+      return { year: parts[0], month: parts[1].padStart(2, '0'), day: parts[2].padStart(2, '0') }
+    } else if (parts.length === 2) {
+      return { year: '1980', month: parts[0].padStart(2, '0'), day: parts[1].padStart(2, '0') }
+    }
+    return { year: '1980', month: '01', day: '01' }
+  }
+
+  const initialBday = parseBirthday(currentUser.birthday)
+  const [editBirthYear, setEditBirthYear] = useState(initialBday.year)
+  const [editBirthMonth, setEditBirthMonth] = useState(initialBday.month)
+  const [editBirthDay, setEditBirthDay] = useState(initialBday.day)
+
+  const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => String(currentYear - i))
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+  const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'))
+
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 기도제목 상세 모달
-  const [selectedPrayer, setSelectedPrayer] = useState<(typeof INITIAL_PRAYERS)[0] | null>(null)
-  const [prayers, setPrayers] = useState(INITIAL_PRAYERS)
-  const [commentInput, setCommentInput] = useState('')
+  const [selectedPrayer, setSelectedPrayer] = useState<PostItem | null>(null)
+  const [prayers, setPrayers] = useState<PostItem[]>([])
 
-  // 쿠폰 (현황만 표시)
+  // 쿠폰 (DB에서만 로드, 초기값 빈 객체)
   const familyId = currentUser.familyGroupId || `fam_single_${currentUser.id}`
-  const couponAccount = INITIAL_MEAL_COUPONS[familyId] || { balance: 0, familyName: `${currentUser.name} 성도` }
+  const [couponAccounts, setCouponAccounts] = useState<Record<string, MealCouponAccount>>({})
+  const couponAccount = couponAccounts[familyId] || { familyGroupId: familyId, balance: 0, familyName: `${currentUser.name} 성도` }
   const [toastMsg, setToastMsg] = useState('')
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Supabase DB에서 내 기도제목 및 쿠폰 로드
+  useEffect(() => {
+    dbFetchPosts('PRAYER').then(dbPrayers => {
+      if (dbPrayers && dbPrayers.length > 0) {
+        setPrayers(dbPrayers)
+      }
+    })
+
+    dbFetchMealCoupons().then(dbCoupons => {
+      if (dbCoupons && Object.keys(dbCoupons).length > 0) {
+        setCouponAccounts(dbCoupons)
+      }
+    })
+  }, [])
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 1500)
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setAvatarPreview(ev.target?.result as string)
-    reader.readAsDataURL(file)
+    showToast('⏳ 프로필 사진 업로드 중...')
+    const uploadedUrl = await uploadImageToStorage(file, 'avatars')
+    setAvatarPreview(uploadedUrl)
+    showToast('✅ 프로필 사진이 업로드되었습니다!')
   }
 
-  const handleToggleCompleted = (prayerId: string) => {
-    setPrayers(prev => prev.map(p => p.id === prayerId ? { ...p, isCompleted: !p.isCompleted } : p))
-    if (selectedPrayer) setSelectedPrayer(prev => prev ? { ...prev, isCompleted: !prev.isCompleted } : null)
+  const handleToggleCompleted = async (prayerId: string) => {
+    const target = prayers.find(p => p.id === prayerId)
+    if (!target) return
+    const newCompleted = !target.isCompleted
+    setPrayers(prev => prev.map(p => p.id === prayerId ? { ...p, isCompleted: newCompleted } : p))
+    if (selectedPrayer) setSelectedPrayer(prev => prev ? { ...prev, isCompleted: newCompleted } : null)
+    await dbUpdatePost(prayerId, { isCompleted: newCompleted })
   }
 
-  const handleAddComment = () => {
-    if (!commentInput.trim() || !selectedPrayer) return
-    const updated = {
-      ...selectedPrayer,
-      comments: [...(selectedPrayer.comments || []), { id: `c_${Date.now()}`, authorName: currentUser.name, content: commentInput.trim(), createdAt: '방금 전' }]
-    }
-    setSelectedPrayer(updated)
-    setPrayers(prev => prev.map(p => p.id === updated.id ? updated : p))
-    setCommentInput('')
+  const handleSaveProfile = async () => {
+    const birthdayStr = `${editBirthYear}-${editBirthMonth}-${editBirthDay}`
+    await dbUpdateProfile(currentUser.id, {
+      name: editName.trim() || currentUser.name,
+      phone: editPhone.trim(),
+      address: editAddress.trim(),
+      birthday: birthdayStr,
+      avatarUrl: avatarPreview
+    })
+    setShowEditModal(false)
+    showToast('✅ 프로필 정보가 수정되었습니다!')
   }
 
   const myPrayers = prayers.filter(p => p.authorId === currentUser.id)
@@ -136,7 +191,6 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
       )}
 
       {/* ── 주일식사 쿠폰 ── */}
-
       <section className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-5 shadow-sm space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -148,7 +202,6 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
           </div>
           <span className="text-2xl font-black">{couponAccount.balance}장</span>
         </div>
-        
       </section>
 
       {/* ── 내 기도제목 모아보기 ── */}
@@ -213,17 +266,72 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
               <div>
+                <label className="text-[10px] text-gray-400 font-bold">이름 <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="홍길동"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  required
+                />
+              </div>
+              <div>
                 <label className="text-[10px] text-gray-400 font-bold">연락처</label>
-                <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none" />
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  placeholder="037-123-4567"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 font-bold">거주지 주소</label>
-                <input type="text" value={editAddress} onChange={e => setEditAddress(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none" />
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={e => setEditAddress(e.target.value)}
+                  placeholder="경남 A동 1023호"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold">생년월일</label>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  <select
+                    value={editBirthYear}
+                    onChange={e => setEditBirthYear(e.target.value)}
+                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
+                  >
+                    {years.map(y => (
+                      <option key={y} value={y}>{y}년</option>
+                    ))}
+                  </select>
+                  <select
+                    value={editBirthMonth}
+                    onChange={e => setEditBirthMonth(e.target.value)}
+                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
+                  >
+                    {months.map(m => (
+                      <option key={m} value={m}>{parseInt(m, 10)}월</option>
+                    ))}
+                  </select>
+                  <select
+                    value={editBirthDay}
+                    onChange={e => setEditBirthDay(e.target.value)}
+                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
+                  >
+                    {days.map(d => (
+                      <option key={d} value={d}>{parseInt(d, 10)}일</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={() => { setShowEditModal(false); setToastMsg('프로필 정보가 수정되었습니다!'); setTimeout(() => setToastMsg(''), 2000) }} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+              <button onClick={handleSaveProfile} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
             </div>
           </div>
         </div>

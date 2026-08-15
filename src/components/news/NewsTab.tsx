@@ -1,8 +1,21 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Phone, MapPin, CheckSquare, Users, Search, Plus, Heart, MessageSquare, Edit2, Trash2 } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem } from '../../lib/mockData'
+import {
+  dbFetchPosts,
+  dbCreatePost,
+  dbUpdatePost,
+  dbDeletePost,
+  dbAddComment,
+  dbFetchChurchEvents,
+  dbCreateChurchEvent,
+  dbUpdateChurchEvent,
+  dbDeleteChurchEvent,
+  dbFetchAttendanceRecords,
+  dbSaveAttendanceRecords
+} from '../../lib/db'
 
 interface NewsTabProps {
   currentUser: UserProfile
@@ -17,7 +30,6 @@ interface ChurchEvent {
   type: EventType
 }
 
-// 교우 소식 더미 데이터
 const INITIAL_MEMBER_NEWS: PostItem[] = [
   {
     id: 'mn1',
@@ -31,17 +43,6 @@ const INITIAL_MEMBER_NEWS: PostItem[] = [
     comments: [
       { id: 'mc1', authorName: '김목사 목사님', content: '축하드립니다! 주님의 축복과 평안이 충만하기를 기도합니다.', createdAt: '2026-08-05' }
     ]
-  },
-  {
-    id: 'mn2',
-    authorId: 'u1',
-    authorName: '김목사 목사님',
-    title: '✈️ 최리더 집사님 한국 출장 일정 공유',
-    content: '최리더 집사님이 8월 10일부터 15일까지 한국 출장을 다녀오십니다. 안전한 이동과 사역을 위해 함께 기도해주세요.',
-    category: 'NOTICE',
-    createdAt: '2026-08-06',
-    likes: 8,
-    comments: []
   }
 ]
 
@@ -54,22 +55,22 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   const isLeaderOrAdmin = currentUser.role === 'LEADER' || currentUser.role === 'ADMIN'
 
   // ── 교우소식 상태 ──
-  const [memberNewsList, setMemberNewsList] = useState<PostItem[]>(INITIAL_MEMBER_NEWS)
+  const [memberNewsList, setMemberNewsList] = useState<PostItem[]>([])
   const [showAddNewsModal, setShowAddNewsModal] = useState(false)
   const [newNewsTitle, setNewNewsTitle] = useState('')
   const [newNewsContent, setNewNewsContent] = useState('')
   const [newsComments, setNewsComments] = useState<Record<string, string>>({})
+  const [editingNews, setEditingNews] = useState<PostItem | null>(null)
+  const [editNewsTitle, setEditNewsTitle] = useState('')
+  const [editNewsContent, setEditNewsContent] = useState('')
 
   // ── 달력 상태 ──
   const today = new Date()
   const [calYear, setCalYear] = useState(today.getFullYear())
   const [calMonth, setCalMonth] = useState(today.getMonth())
 
-  // ── 일정 편집 (기존 텍스트 직접 수정 지원) ──
-  const [customEvents, setCustomEvents] = useState<ChurchEvent[]>([
-    { id: 'ce1', date: '2026-08-20', title: '라브리 모임', type: 'special' },
-    { id: 'ce2', date: '2026-08-31', title: '세례식', type: 'special' },
-  ])
+  // ── 일정 편집 ──
+  const [customEvents, setCustomEvents] = useState<ChurchEvent[]>([])
   const [calEditModal, setCalEditModal] = useState<{ day: number; dateStr: string } | null>(null)
   const [editEventTitle, setEditEventTitle] = useState('')
   const [editEventType, setEditEventType] = useState<EventType>('special')
@@ -84,6 +85,55 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   const [checkSelections, setCheckSelections] = useState<Record<string, 'ATTEND' | 'ABSENT'>>({})
   const [checkNotes, setCheckNotes] = useState<Record<string, string>>({})
   const [checkSubmitted, setCheckSubmitted] = useState(false)
+  const [hasSubmittedAttendance, setHasSubmittedAttendance] = useState(false)
+
+  // 가장 최근 지난 주일 날짜 계산 (오늘이 일요일이면 오늘, 월~토요일이면 직전 일요일)
+  const targetSundayDateStr = useMemo(() => {
+    const d = new Date()
+    const dayOfWeek = d.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+    const daysToLastSunday = dayOfWeek === 0 ? 0 : dayOfWeek
+    const lastSun = new Date(d)
+    lastSun.setDate(d.getDate() - daysToLastSunday)
+    return `${lastSun.getFullYear()}-${String(lastSun.getMonth() + 1).padStart(2, '0')}-${String(lastSun.getDate()).padStart(2, '0')}`
+  }, [])
+
+  const targetSundayShortLabel = useMemo(() => {
+    const parts = targetSundayDateStr.split('-')
+    return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`
+  }, [targetSundayDateStr])
+
+  // DB에서 출석체크 데이터 로드
+  const loadAttendanceRecords = async () => {
+    const records = await dbFetchAttendanceRecords(targetSundayDateStr)
+    if (records && records.length > 0) {
+      const selections: Record<string, 'ATTEND' | 'ABSENT'> = {}
+      const notes: Record<string, string> = {}
+      records.forEach((r: any) => {
+        selections[r.user_id] = r.status as 'ATTEND' | 'ABSENT'
+        if (r.note) notes[r.user_id] = r.note
+      })
+      setCheckSelections(selections)
+      setCheckNotes(notes)
+      setHasSubmittedAttendance(true)
+    }
+  }
+
+  // DB에서 교우소식 및 교회일정, 출석 로드
+  useEffect(() => {
+    dbFetchPosts('MEMBER_NEWS').then(dbNews => {
+      if (dbNews && dbNews.length > 0) {
+        setMemberNewsList(dbNews)
+      }
+    })
+
+    dbFetchChurchEvents().then(dbEvs => {
+      if (dbEvs && dbEvs.length > 0) {
+        setCustomEvents(dbEvs)
+      }
+    })
+
+    loadAttendanceRecords()
+  }, [targetSundayDateStr])
 
   const members = allUsers.filter(u => u.role !== 'PENDING')
   const myLabriMembers = members.filter(u => u.labriId === currentUser.labriId && currentUser.labriId)
@@ -120,10 +170,10 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     return result
   }
 
-  // 生日 매칭
+  // 생일 매칭 (YYYY-MM-DD 또는 MM-DD 형식 모두 호환)
   const getBirthdaysForDate = (day: number): string[] => {
     const mmdd = `${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return members.filter(u => u.birthday === mmdd).map(u => u.name)
+    return members.filter(u => u.birthday && u.birthday.endsWith(mmdd)).map(u => u.name)
   }
 
   // 달력 날짜 클릭 모달
@@ -136,15 +186,17 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     setEditingEventId(null)
   }
 
-  const handleSaveEvent = () => {
+  const handleSaveEvent = async () => {
     if (!editEventTitle.trim() || !calEditModal) return
     if (editingEventId) {
-      // 기존 일정 수정
+      // 기존 일정 수정 (DB)
+      await dbUpdateChurchEvent(editingEventId, editEventTitle.trim())
       setCustomEvents(prev => prev.map(e => e.id === editingEventId ? { ...e, title: editEventTitle.trim() } : e))
     } else {
-      // 신규 일정 등록
+      // 신규 일정 등록 (DB)
+      const res = await dbCreateChurchEvent(calEditModal.dateStr, editEventTitle.trim(), editEventType)
       const newEv: ChurchEvent = {
-        id: `ev_${Date.now()}`,
+        id: res.data?.id || `ev_${Date.now()}`,
         date: calEditModal.dateStr,
         title: editEventTitle.trim(),
         type: editEventType,
@@ -155,34 +207,42 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     setEditingEventId(null)
   }
 
-  const handleDeleteEvent = (evId: string) => {
+  const handleDeleteEvent = async (evId: string) => {
+    await dbDeleteChurchEvent(evId)
     setCustomEvents(prev => prev.filter(e => e.id !== evId))
   }
 
-  // 교우소식 축하/좋아요 1인 1회
-  const handleNewsLike = (newsId: string) => {
-    setMemberNewsList(prev => prev.map(n => {
-      if (n.id !== newsId) return n
-      const likedUsers = n.likedUserIds || []
-      const isLiked = likedUsers.includes(currentUser.id)
-      return {
-        ...n,
-        likes: isLiked ? Math.max(0, n.likes - 1) : n.likes + 1,
-        likedUserIds: isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
-      }
-    }))
+  // 교우소식 축하/좋아요 1인 1회 (DB 동기화)
+  const handleNewsLike = async (newsId: string) => {
+    const target = memberNewsList.find(n => n.id === newsId)
+    if (!target) return
+    const likedUsers = target.likedUserIds || []
+    const isLiked = likedUsers.includes(currentUser.id)
+    const newLikes = isLiked ? Math.max(0, target.likes - 1) : target.likes + 1
+    const newLikedUsers = isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
+
+    setMemberNewsList(prev => prev.map(n => n.id === newsId ? { ...n, likes: newLikes, likedUserIds: newLikedUsers } : n))
+    await dbUpdatePost(newsId, { likes: newLikes, likedUserIds: newLikedUsers })
   }
 
-  // 교우소식 작성
-  const handleCreateNews = () => {
+  // 교우소식 작성 (DB 동기화)
+  const handleCreateNews = async () => {
     if (!newNewsTitle.trim() || !newNewsContent.trim()) return
-    const newItem: PostItem = {
-      id: `mn_${Date.now()}`,
+    const postData: Partial<PostItem> = {
       authorId: currentUser.id,
       authorName: getUserDisplayName(currentUser),
       title: newNewsTitle.trim(),
       content: newNewsContent.trim(),
-      category: 'NOTICE',
+      category: 'MEMBER_NEWS',
+    }
+    const res = await dbCreatePost(postData)
+    const newItem: PostItem = {
+      id: res.data?.id || `mn_${Date.now()}`,
+      authorId: currentUser.id,
+      authorName: getUserDisplayName(currentUser),
+      title: newNewsTitle.trim(),
+      content: newNewsContent.trim(),
+      category: 'MEMBER_NEWS',
       createdAt: new Date().toISOString().slice(0, 10),
       likes: 0,
       comments: []
@@ -193,15 +253,37 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     setShowAddNewsModal(false)
   }
 
-  // 교우소식 댓글 등록
-  const handleAddNewsComment = (newsId: string) => {
+  // 교우소식 댓글 등록 (DB 동기화)
+  const handleAddNewsComment = async (newsId: string) => {
     const text = newsComments[newsId]?.trim()
     if (!text) return
+    await dbAddComment(newsId, currentUser.id, getUserDisplayName(currentUser), text)
     setMemberNewsList(prev => prev.map(n => n.id === newsId ? {
       ...n,
       comments: [...(n.comments || []), { id: `c_${Date.now()}`, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
     } : n))
     setNewsComments(prev => ({ ...prev, [newsId]: '' }))
+  }
+
+  // 교우소식 수정 저장
+  const handleSaveNewsEdit = async () => {
+    if (!editingNews) return
+    await dbUpdatePost(editingNews.id, {
+      title: editNewsTitle.trim(),
+      content: editNewsContent.trim()
+    })
+    setMemberNewsList(prev => prev.map(n => n.id === editingNews.id
+      ? { ...n, title: editNewsTitle.trim(), content: editNewsContent.trim() }
+      : n
+    ))
+    setEditingNews(null)
+  }
+
+  // 교우소식 삭제
+  const handleDeleteNews = async (newsId: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return
+    await dbDeletePost(newsId)
+    setMemberNewsList(prev => prev.filter(n => n.id !== newsId))
   }
 
   // 주소록 필터
@@ -211,8 +293,20 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
       : (showAllLabri ? members : (myLabriMembers.length > 0 ? myLabriMembers : members))
   }, [members, myLabriMembers, showAllLabri, searchQuery])
 
-  const handleSubmitAttendance = () => {
+  // 출석체크 제출 (DB 동기화)
+  const handleSubmitAttendance = async () => {
+    const records = targetMembers.map(m => ({
+      userId: m.id,
+      dateStr: targetSundayDateStr,
+      labriId: m.labriId || '미정',
+      status: (checkSelections[m.id] || 'ATTEND') as 'ATTEND' | 'ABSENT',
+      note: checkNotes[m.id] || '',
+      recordedBy: currentUser.id
+    }))
+
+    await dbSaveAttendanceRecords(records)
     setCheckSubmitted(true)
+    setHasSubmittedAttendance(true)
     setTimeout(() => {
       setCheckSubmitted(false)
       setShowAttendanceModal(false)
@@ -227,6 +321,41 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     return `${sun.getMonth() + 1}월${sun.getDate()}일(일)`
   })()
 
+  // 실시간 아바타 렌더러 헬퍼
+  const renderAvatar = (authorId: string, authorName: string, size = 'w-6 h-6 text-[10px]') => {
+    const user = allUsers.find(u => u.id === authorId || u.name === authorName)
+    return (
+      <div className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
+        {user?.avatarUrl ? (
+          <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          (authorName || '성').slice(0, 1)
+        )}
+      </div>
+    )
+  }
+
+  // ── 이달의 생일 성도 필터 (10번) ──
+  const monthBirthdays = useMemo(() => {
+    const targetMonth = String(calMonth + 1).padStart(2, '0')
+    return members
+      .filter(u => {
+        if (!u.birthday) return false
+        const parts = u.birthday.split('-')
+        const m = parts.length === 3 ? parts[1] : parts[0]
+        return m === targetMonth
+      })
+      .sort((a, b) => {
+        const getDay = (bStr?: string) => {
+          if (!bStr) return 99
+          const p = bStr.split('-')
+          return parseInt(p.length === 3 ? p[2] : p[1], 10) || 99
+        }
+        return getDay(a.birthday) - getDay(b.birthday)
+      })
+  }, [members, calMonth])
+
+  // ── 1. 교우소식 (기도제목 형태 카드) ──
   return (
     <div className="space-y-5 pb-6">
       {/* 상단 헤더 + 출석체크 버튼 */}
@@ -234,13 +363,16 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
         <h2 className="font-black text-gray-900 text-base">우리소식</h2>
         {isLeaderOrAdmin && (
           <button
-            onClick={() => setShowAttendanceModal(true)}
-            className={`px-3 py-1.5 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all ${
-              checkSubmitted ? 'bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600 animate-pulse'
+            onClick={() => {
+              loadAttendanceRecords()
+              setShowAttendanceModal(true)
+            }}
+            className={`px-2.5 py-1.5 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition-all ${
+              hasSubmittedAttendance ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-500 hover:bg-rose-600 animate-pulse'
             }`}
           >
-            <CheckSquare size={14} />
-            {checkSubmitted ? `✅ ${nextSundayLabel} 출석체크 완료` : `🚨 ${nextSundayLabel} 출석체크`}
+            <CheckSquare size={13} />
+            {hasSubmittedAttendance ? `✅ ${targetSundayShortLabel} 출첵완료` : `🚨 ${targetSundayShortLabel} 출첵하기`}
           </button>
         )}
       </div>
@@ -261,11 +393,11 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
         >📖 주소록</button>
       </div>
 
-      {/* ── 1. 교우소식 (기도제목 형태 카드) ── */}
+      {/* ── 1. 교우소식 ── */}
       {subTab === 'memberNews' && (
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-500 font-semibold">더브릿지 교우들의 경조사 및 기쁜 소식</span>
+            <span className="text-xs text-gray-500 font-semibold">더브릿지 가족 News</span>
             <button
               onClick={() => setShowAddNewsModal(true)}
               className="px-2.5 py-1 bg-[#335f87] text-white text-[11px] font-bold rounded-lg hover:bg-[#2b5072] flex items-center gap-1"
@@ -275,8 +407,35 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
           {memberNewsList.map(item => (
             <div key={item.id} className="bg-white rounded-2xl border border-blue-50 p-4 shadow-2xs space-y-3">
               <div className="flex justify-between items-start">
-                <span className="font-bold text-xs text-gray-900">{item.authorName}</span>
-                <span className="text-[10px] text-gray-400">{item.createdAt}</span>
+                <div className="flex items-center gap-2">
+                  {renderAvatar(item.authorId, item.authorName, 'w-6 h-6 text-[10px]')}
+                  <span className="font-bold text-xs text-gray-900">{item.authorName}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-gray-400">{item.createdAt}</span>
+                  {(item.authorId === currentUser.id || isLeaderOrAdmin) && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingNews(item)
+                          setEditNewsTitle(item.title)
+                          setEditNewsContent(item.content)
+                        }}
+                        className="p-1 text-gray-400 hover:text-blue-600 rounded"
+                        title="수정"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNews(item.id)}
+                        className="p-1 text-gray-400 hover:text-rose-500 rounded"
+                        title="삭제"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="space-y-1">
                 <h3 className="font-bold text-sm text-gray-900 leading-snug">{item.title}</h3>
@@ -301,8 +460,11 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
                 <div className="bg-gray-50 p-2.5 rounded-xl space-y-1.5 text-xs">
                   {item.comments.map(c => (
                     <div key={c.id} className="flex justify-between items-start text-[11px]">
-                      <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
-                      <span className="text-gray-600 flex-1 ml-1.5">{c.content}</span>
+                      <div className="flex items-center gap-1.5 flex-1">
+                        {renderAvatar('', c.authorName, 'w-4 h-4 text-[8px]')}
+                        <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
+                        <span className="text-gray-600 ml-1">{c.content}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -323,7 +485,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
         </div>
       )}
 
-      {/* ── 2. 교회일정 달력 (주일예배 자동생성, 주중예배 삭제) ── */}
+      {/* ── 2. 교회일정 달력 ── */}
       {subTab === 'schedule' && (
         <div className="space-y-3">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
@@ -374,6 +536,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
             </div>
           </div>
 
+          {/* 이달 일정 리스트 */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2">
             <h3 className="font-bold text-xs text-gray-900">이달 교회 일정</h3>
             <div className="space-y-1.5">
@@ -387,12 +550,49 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
               ))}
             </div>
 
-            {/* 범례: 주중예배 삭제 ➔ 주일예배, 특별일정, 생일 3가지 노출 */}
+            {/* 9번 항목: 주일예배 범례 텍스트 수정 */}
             <div className="flex gap-3 pt-2 text-[10px] text-gray-500 border-t border-gray-100">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" />주일예배 (일요일 자동배치)</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" />주일예배</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />특별일정</span>
               <span className="flex items-center gap-1">🎂 생일</span>
             </div>
+          </div>
+
+          {/* ── 10번 항목: 이달의 생일자 리스트 ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+                <span>🎂</span> {calMonth + 1}월 생일 성도
+              </h3>
+              <span className="text-[10px] bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full">
+                총 {monthBirthdays.length}명
+              </span>
+            </div>
+
+            {monthBirthdays.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {monthBirthdays.map(m => {
+                  const parts = (m.birthday || '').split('-')
+                  const dayStr = parts.length === 3 ? `${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일` : `${parseInt(parts[0], 10)}월 ${parseInt(parts[1], 10)}일`
+                  return (
+                    <div key={m.id} className="p-2.5 bg-pink-50/40 border border-pink-100 rounded-xl flex items-center gap-2.5">
+                      {renderAvatar(m.id, m.name, 'w-8 h-8 text-xs')}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-xs text-gray-900 truncate">{m.name}</span>
+                          <span className="text-[10px] text-gray-400 shrink-0">{m.duty}</span>
+                        </div>
+                        <p className="text-[10px] font-bold text-pink-600 mt-0.5">🎉 {dayStr}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 text-center py-4 bg-gray-50 rounded-xl">
+                {calMonth + 1}월에는 등록된 생일 성도가 없습니다.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -537,13 +737,43 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
         </div>
       )}
 
+      {/* ── 교우소식 수정 모달 ── */}
+      {editingNews && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-sm text-gray-900">✏️ 교우소식 수정</h3>
+              <button onClick={() => setEditingNews(null)} className="text-gray-400 font-bold">✕</button>
+            </div>
+            <input
+              type="text"
+              value={editNewsTitle}
+              onChange={e => setEditNewsTitle(e.target.value)}
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+              placeholder="제목"
+            />
+            <textarea
+              rows={4}
+              value={editNewsContent}
+              onChange={e => setEditNewsContent(e.target.value)}
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+              placeholder="내용"
+            />
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setEditingNews(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+              <button onClick={handleSaveNewsEdit} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 출석체크 모달 (화면 중앙 정중앙 팝업 배치 + 제출 버튼) ── */}
       {showAttendanceModal && isLeaderOrAdmin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-[#335f87] text-white">
               <div>
-                <h3 className="font-black text-sm">✏️ {nextSundayLabel} 주일 출석체크</h3>
+                <h3 className="font-black text-sm">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
                 <p className="text-[10px] text-blue-200 mt-0.5">출석: {attendedCount}/{targetMembers.length}명</p>
               </div>
               <button onClick={() => setShowAttendanceModal(false)} className="p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
@@ -625,7 +855,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
                   onClick={handleSubmitAttendance}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
                 >
-                  <CheckSquare size={16} /> ✅ 출석체크 최종 제출하기 ({attendedCount}명 출석)
+                  <CheckSquare size={16} /> {hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기'} ({attendedCount}명 출석)
                 </button>
               )}
             </div>

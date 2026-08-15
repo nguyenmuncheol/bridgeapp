@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
 import { INITIAL_BULLETIN, INITIAL_NOTICES, UserProfile, PostItem, getUserDisplayName } from '../../lib/mockData'
 import { getUpcomingSundays } from '../../lib/dateUtils'
+import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbDeletePost } from '../../lib/db'
+import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 
 interface HomeTabProps {
@@ -45,54 +47,95 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 공지 상태
-  const [notices, setNotices] = useState<PostItem[]>(INITIAL_NOTICES)
+  const [notices, setNotices] = useState<PostItem[]>([])
   const [showNoticeCreateModal, setShowNoticeCreateModal] = useState(false)
   const [selectedNoticeModal, setSelectedNoticeModal] = useState<PostItem | null>(null)
   const [newNoticeTitle, setNewNoticeTitle] = useState('')
   const [newNoticeContent, setNewNoticeContent] = useState('')
+
+  // Supabase DB 주보 및 공지사항 로드
+  useEffect(() => {
+    dbFetchLatestBulletin().then(dbBul => {
+      if (dbBul) {
+        setBulletin({
+          date: dbBul.date,
+          title: dbBul.title,
+          preacher: dbBul.preacher,
+          passage: dbBul.passage,
+          summary: dbBul.summary,
+          imageUrls: dbBul.imageUrls
+        })
+        setEditBulletinDate(dbBul.date)
+        setEditBulletinTitle(dbBul.title)
+        setEditBulletinPassage(dbBul.passage)
+        setEditBulletinPreacher(dbBul.preacher)
+        setEditBulletinSummary(dbBul.summary)
+        setEditBulletinImages(dbBul.imageUrls)
+      }
+    })
+
+    dbFetchPosts('NOTICE').then(dbNotices => {
+      if (dbNotices && dbNotices.length > 0) {
+        setNotices(dbNotices)
+      }
+    })
+  }, [])
 
   const showToast = (msg: string, duration = 1000) => {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), duration)
   }
 
-  // 주보 이미지 파일 선택 (2~4장)
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 주보 이미지 파일 선택 (2~4장) - Supabase Storage 자동 업로드
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
-    const urls = Array.from(files).slice(0, 4).map(f => URL.createObjectURL(f))
-    setEditBulletinImages(urls)
+    showToast('⏳ 주보 이미지 업로드 중...', 2000)
+    const selectedFiles = Array.from(files).slice(0, 4)
+    const uploadedUrls = await uploadMultipleImagesToStorage(selectedFiles, 'bulletins')
+    setEditBulletinImages(uploadedUrls)
+    showToast('✅ 주보 이미지가 성공적으로 업로드되었습니다!')
   }
 
-  const handleSaveBulletin = () => {
-    setBulletin(prev => ({
-      ...prev,
+  const handleSaveBulletin = async () => {
+    const newBul = {
       date: editBulletinDate,
       title: editBulletinTitle,
       passage: editBulletinPassage,
       preacher: editBulletinPreacher,
       summary: editBulletinSummary,
       imageUrls: editBulletinImages,
-    }))
+    }
+    await dbUpsertBulletin(newBul)
+    setBulletin(newBul)
     setActiveBulletinImgIdx(0)
     setShowBulletinEditModal(false)
     showToast('✅ 주보 내용 및 이미지가 저장되었습니다!')
   }
 
-  const handleDeleteNotice = (noticeId: string) => {
+  const handleDeleteNotice = async (noticeId: string) => {
+    await dbDeletePost(noticeId)
     setNotices(prev => prev.filter(n => n.id !== noticeId))
     setSelectedNoticeModal(null)
     showToast('공지가 삭제되었습니다.')
   }
 
-  const handleCreateNotice = () => {
+  const handleCreateNotice = async () => {
     if (!newNoticeTitle.trim() || !newNoticeContent.trim()) return
-    const newNotice: PostItem = {
-      id: `n_${Date.now()}`,
+    const newNoticeData: Partial<PostItem> = {
       authorId: currentUser.id,
-      authorName: currentUser.name,
-      title: newNoticeTitle,
-      content: newNoticeContent,
+      authorName: getUserDisplayName(currentUser),
+      title: newNoticeTitle.trim(),
+      content: newNoticeContent.trim(),
+      category: 'NOTICE',
+    }
+    const res = await dbCreatePost(newNoticeData)
+    const newNotice: PostItem = {
+      id: res.data?.id || `n_${Date.now()}`,
+      authorId: currentUser.id,
+      authorName: getUserDisplayName(currentUser),
+      title: newNoticeTitle.trim(),
+      content: newNoticeContent.trim(),
       category: 'NOTICE',
       createdAt: new Date().toISOString().slice(0, 10),
       likes: 0,
@@ -106,7 +149,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
 
   // 헌금계좌 숫자만 복사 + 1초 소멸 토스트
   const handleCopyAccount = () => {
-    navigator.clipboard.writeText('110123456789')
+    navigator.clipboard.writeText('100100299503')
     setCopied(true)
     showToast('📋 계좌번호가 복사되었습니다!')
     setTimeout(() => setCopied(false), 1000)
@@ -136,13 +179,13 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           <div className="bg-gradient-to-br from-[#335f87] via-[#2c5378] to-[#1d3a54] text-white p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Church size={18} className="text-blue-200" />
-              <span className="text-[11px] font-bold text-blue-200 tracking-wider">더브릿지 교우 공동체</span>
+              <span className="text-[11px] font-bold text-blue-200 tracking-wider">더브릿지 공동체</span>
             </div>
             <h1 className="text-base font-black leading-snug">
               {getUserDisplayName(currentUser)} 환영합니다! 🙏
             </h1>
             <p className="text-xs text-blue-100 leading-relaxed">
-              오늘도 주님의 평안과 은혜가 성도님의 가정 가운데 충만하시길 기도합니다.
+              오늘도 주님의 평안과 은혜가 가득하시길 기도합니다.
             </p>
           </div>
         )}
@@ -259,7 +302,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <h2 className="font-bold text-gray-900 text-sm">온라인 헌금 안내</h2>
           </div>
           <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl">
-            <span className="font-mono text-xs font-bold text-gray-800">110-123-456789 (신한)</span>
+            <span className="font-mono text-xs font-bold text-gray-800">우리은행 100-100-299503(예금주:임혜영)</span>
             <button onClick={handleCopyAccount}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${copied ? 'bg-emerald-600 text-white' : 'bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20'}`}>
               {copied ? <Check size={12} /> : <Copy size={12} />}

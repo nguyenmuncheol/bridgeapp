@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import BottomNav from '../src/components/BottomNav'
 import HomeTab from '../src/components/home/HomeTab'
 import NewsTab from '../src/components/news/NewsTab'
@@ -9,17 +9,142 @@ import RequestTab from '../src/components/request/RequestTab'
 import MyPageTab from '../src/components/mypage/MyPageTab'
 import AdminDashboard from '../src/components/admin/AdminDashboard'
 import AuthPending from '../src/components/auth/AuthPending'
+import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
 import { INITIAL_USERS, UserProfile, Role, getUserDisplayName } from '../src/lib/mockData'
-import { LogIn } from 'lucide-react'
+import { supabase } from '../src/lib/supabase'
+import { dbFetchProfiles, dbApproveUser, dbRejectUser } from '../src/lib/db'
+import { LogIn, LogOut } from 'lucide-react'
 
 export default function Home() {
   const [currentTab, setCurrentTab] = useState('home')
   const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS)
 
-  // 현재 사용자 로그인 ID (기본: u1 김목사 - ADMIN / 'guest'는 비로그인)
-  const [currentUserId, setCurrentUserId] = useState<string>('u1')
+  // 현재 사용자 로그인 ID ('guest'는 비로그인)
+  const [currentUserId, setCurrentUserId] = useState<string>('guest')
   const [isAdminViewMode, setIsAdminViewMode] = useState<boolean>(false)
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false)
+  const [supabaseUser, setSupabaseUser] = useState<any>(null)
+  const [showProfileSetup, setShowProfileSetup] = useState<boolean>(false)
+  const [oauthName, setOauthName] = useState<string>('')
+  const [oauthEmail, setOauthEmail] = useState<string>('')
+
+  // Supabase 세션 및 전체 profiles 동기화
+  useEffect(() => {
+    // 1. 전체 프로필 DB에서 불러오기
+    dbFetchProfiles().then(dbUsers => {
+      if (dbUsers && dbUsers.length > 0) {
+        setUsers(dbUsers)
+      }
+    })
+
+    // 2. 현재 로그인 세션 감지
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setSupabaseUser(session.user)
+        const uMeta = session.user.user_metadata || {}
+        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || '성도'
+        fetchProfile(session.user.id, session.user.email || '', name)
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setSupabaseUser(session.user)
+        const uMeta = session.user.user_metadata || {}
+        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || '성도'
+        fetchProfile(session.user.id, session.user.email || '', name)
+      } else {
+        setSupabaseUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Supabase profiles 조회 → 신규면 추가정보 입력 모달 표시
+  const fetchProfile = async (id: string, email: string, name: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
+    if (data) {
+      const spUser: UserProfile = {
+        id: data.id,
+        name: data.name || name,
+        email: data.email || email,
+        phone: data.phone || '',
+        address: data.address || '',
+        role: (data.role || 'PENDING') as Role,
+        labriId: data.labri_id,
+        duty: data.duty || '성도',
+        familyGroupId: data.family_group_id,
+        familyRole: data.family_role,
+        familyInfo: data.family_info,
+        birthday: data.birthday,
+        avatarUrl: data.avatar_url,
+        createdAt: data.created_at || new Date().toISOString().slice(0, 10),
+      }
+      setUsers(prev => {
+        const exists = prev.some(u => u.id === spUser.id)
+        return exists ? prev.map(u => u.id === spUser.id ? spUser : u) : [spUser, ...prev]
+      })
+      setCurrentUserId(spUser.id)
+      setShowAuthModal(false)
+      // 연락처 미입력 = 처음 가입한 신규 성도 → 추가정보 입력 모달
+      if (!data.phone) {
+        setOauthName(data.name || name)
+        setOauthEmail(data.email || email)
+        setShowProfileSetup(true)
+      }
+    }
+  }
+
+  // OAuth 가입 후 추가정보 저장 (Supabase profiles 업데이트)
+  const handleProfileSetupSubmit = async (info: { name: string; phone: string; address: string; birthday: string }) => {
+    if (!supabaseUser) return
+    await supabase.from('profiles').update({
+      name: info.name,
+      phone: info.phone,
+      address: info.address,
+      birthday: info.birthday,
+    }).eq('id', supabaseUser.id)
+    setShowProfileSetup(false)
+    // 로컬 상태에도 반영
+    setUsers(prev => prev.map(u => u.id === supabaseUser.id
+      ? { ...u, name: info.name, phone: info.phone, address: info.address, birthday: info.birthday }
+      : u
+    ))
+  }
+
+  // 구글 로그인 실행
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) alert(`구글 로그인 에러: ${error.message}`)
+  }
+
+  // 카카오 로그인 실행 (이메일 권한 요구 없이 닉네임/프로필만 요청)
+  const handleKakaoLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'profile_nickname,profile_image',
+        queryParams: {
+          scope: 'profile_nickname,profile_image',
+        },
+      },
+    })
+    if (error) alert(`카카오 로그인 에러: ${error.message}`)
+  }
+
+  // 로그아웃
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setSupabaseUser(null)
+    setCurrentUserId('guest')
+  }
 
   // 탭 전환: 관리자 대시보드 모드 자동 해제
   const handleSetCurrentTab = (tab: string) => {
@@ -39,32 +164,17 @@ export default function Home() {
     createdAt: ''
   }
 
-  // 가입 신청 처리
-  const handleRegisterSubmit = (name: string, phone: string, address: string) => {
-    const newUser: UserProfile = {
-      id: `u_${Date.now()}`,
-      name,
-      email: `${name}@gmail.com`,
-      phone,
-      address,
-      role: 'PENDING',
-      duty: '성도',
-      createdAt: '2026-08-06'
-    }
-    setUsers(prev => [...prev, newUser])
-    setCurrentUserId(newUser.id)
-    setShowAuthModal(false)
-    alert('가입 신청이 완료되었습니다! 관리자의 승인을 기다려주세요.')
-  }
 
   // 관리자 - 가입 승인 처리
-  const handleApproveUser = (userId: string, labriId: string, role: Role, familyInfo: string) => {
+  const handleApproveUser = async (userId: string, labriId: string, role: Role, duty: string = '성도', familyInfo: string = '', familyGroupId: string = '') => {
+    await dbApproveUser(userId, labriId, role, duty, familyInfo, familyGroupId || undefined)
     setUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, role, labriId, familyInfo } : u
+      u.id === userId ? { ...u, role, labriId, duty, familyInfo, familyGroupId: familyGroupId || u.familyGroupId } : u
     ))
   }
 
-  const handleRejectUser = (userId: string) => {
+  const handleRejectUser = async (userId: string) => {
+    await dbRejectUser(userId)
     setUsers(prev => prev.filter(u => u.id !== userId))
   }
 
@@ -101,45 +211,43 @@ export default function Home() {
   )
 
   return (
-    <div className="bg-[#f7f9ff] min-h-screen pb-20 max-w-[480px] mx-auto relative border-x border-gray-200/60 shadow-xl font-sans">
-      {/* 🛠️ 테스트 시뮬레이터 */}
-      <header className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs sticky top-0 z-50 border-b border-slate-800">
-        <div className="flex items-center gap-1.5 font-bold">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-slate-200">계정 시뮬레이터:</span>
-        </div>
-        <select
-          value={currentUserId}
-          onChange={(e) => {
-            setCurrentUserId(e.target.value)
-            setIsAdminViewMode(false)
-          }}
-          className="bg-slate-800 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-slate-700 text-[11px] focus:outline-none"
-        >
-          <option value="guest">🌐 비로그인 (첫 방문자)</option>
-          {users.map(u => (
-            <option key={u.id} value={u.id}>
-              {u.name} ({u.role}{u.labriId ? ` - ${u.labriId}` : ''})
-            </option>
-          ))}
-        </select>
-      </header>
-
+    <div className="bg-[#f7f9ff] min-h-screen pb-20 w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
       {/* 브랜드 헤더 */}
-      <div className="bg-white/80 backdrop-blur-md px-5 py-3 border-b border-gray-100 flex items-center justify-between sticky top-[37px] z-40">
+      <div className="bg-white/85 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
         <h1 className="text-xl font-black text-[#335f87] tracking-tight">The Bridge</h1>
 
         {isGuest ? (
           <button
             onClick={() => setShowAuthModal(true)}
-            className="px-3 py-1.5 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1"
+            className="px-3.5 py-1.5 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1 transition-all active:scale-95"
           >
             <LogIn size={13} /> 로그인 / 가입
           </button>
         ) : (
-          <span className="text-[11px] bg-blue-50 text-[#335f87] font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs">
-            {getUserDisplayName(currentUser)}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setCurrentTab('mypage'); setIsAdminViewMode(false) }}
+              className="flex items-center gap-1.5 bg-blue-50 text-[#335f87] font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
+              title="내 정보 보기"
+            >
+              <span className="w-5 h-5 rounded-full bg-[#335f87] text-white flex items-center justify-center text-[9px] font-bold shrink-0 overflow-hidden">
+                {currentUser.avatarUrl
+                  ? <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : currentUser.name.slice(0, 1)
+                }
+              </span>
+              <span className="text-[11px]">{getUserDisplayName(currentUser)}</span>
+            </button>
+            {supabaseUser && (
+              <button
+                onClick={handleLogout}
+                className="p-1.5 text-gray-400 hover:text-rose-500 rounded-lg text-xs transition-colors"
+                title="로그아웃"
+              >
+                <LogOut size={14} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -179,7 +287,7 @@ export default function Home() {
                   msg="더브릿지 교우들이 마음을 모아 기도하고 묵상을 나눔하는 공간입니다. 가입 승인 후 함께하실 수 있습니다."
                 />
               ) : (
-                <SharingTab currentUser={currentUser} />
+                <SharingTab currentUser={currentUser} allUsers={users} />
               )
             )}
 
@@ -200,8 +308,9 @@ export default function Home() {
               isGuestOrPending ? (
                 <AuthPending
                   currentRole={currentUser.role}
-                  onRegisterSubmit={handleRegisterSubmit}
                   onRefreshStatus={() => alert('승인 상태를 재확인하였습니다.')}
+                  onGoogleLogin={handleGoogleLogin}
+                  onKakaoLogin={handleKakaoLogin}
                 />
               ) : (
                 <MyPageTab
@@ -220,17 +329,31 @@ export default function Home() {
           <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative">
             <button
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-3 right-3 text-gray-400 font-bold text-xs px-2"
+              className="absolute top-4 right-4 text-gray-400 font-bold"
             >
-              ✕ 닫기
+              ✕
             </button>
             <AuthPending
-              currentRole={currentUser.role}
-              onRegisterSubmit={handleRegisterSubmit}
-              onRefreshStatus={() => alert('승인 상태를 재확인하였습니다.')}
+              currentRole={isGuest ? 'MEMBER' : currentUser.role}
+              onRefreshStatus={() => setShowAuthModal(false)}
+              onGoogleLogin={handleGoogleLogin}
+              onKakaoLogin={handleKakaoLogin}
             />
           </div>
         </div>
+      )}
+
+      {/* OAuth 가입 후 추가정보 입력 모달 */}
+      {showProfileSetup && (
+        <ProfileSetupModal
+          initialName={oauthName}
+          initialEmail={oauthEmail}
+          onSubmit={handleProfileSetupSubmit}
+          onCancel={() => {
+            handleLogout()
+            setShowProfileSetup(false)
+          }}
+        />
       )}
 
       {/* 하단 네비게이션 바 */}

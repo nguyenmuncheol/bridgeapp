@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Utensils, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
-import { UserProfile } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked } from '../../lib/dateUtils'
+import { dbFetchMealRegistrations, dbSaveMealRegistration, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
 
 interface RequestTabProps {
   currentUser: UserProfile
@@ -29,9 +30,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
 
   const [familyMealStore, setFamilyMealStore] = useState<Record<string, Record<number, {
     submitted: boolean; attending: boolean; adultCount: number; childCount: number; updatedBy: string
-  }>>>({
-    fam_kim: { 0: { submitted: true, attending: true, adultCount: 2, childCount: 1, updatedBy: '이사모' } }
-  })
+  }>>>({})
 
   const currentMealData = familyMealStore[familyId]?.[selectedWeek] || {
     submitted: false, attending: true, adultCount: 1, childCount: 0, updatedBy: ''
@@ -47,16 +46,73 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
     setTimeout(() => setToastMsg(''), 1000)
   }
 
+  // ── 행사 신청 (제목 + 내용 + URL 3필드) ──
+  const [eventFormUrl, setEventFormUrl] = useState('')
+  const [eventFormTitle, setEventFormTitle] = useState('')
+  const [eventFormContent, setEventFormContent] = useState('')
+  const [showEventEditModal, setShowEventEditModal] = useState(false)
+  const [editUrl, setEditUrl] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editContent, setEditContent] = useState('')
+
+  // Supabase DB에서 식사 신청 및 행사 신청 로드
+  useEffect(() => {
+    // 1. 식사 신청 로드
+    dbFetchMealRegistrations().then(regs => {
+      if (regs && regs.length > 0) {
+        const newStore: Record<string, Record<number, any>> = {}
+        regs.forEach(r => {
+          const wIdx = upcomingSundays.findIndex(s => s.dateStr === r.date_str)
+          if (wIdx !== -1) {
+            if (!newStore[r.family_group_id]) newStore[r.family_group_id] = {}
+            newStore[r.family_group_id][wIdx] = {
+              submitted: true,
+              attending: r.attending,
+              adultCount: r.adult_count,
+              childCount: r.child_count,
+              updatedBy: r.registered_by_user_name
+            }
+          }
+        })
+        setFamilyMealStore(prev => ({ ...prev, ...newStore }))
+      }
+    })
+
+    // 2. 행사 신청 로드
+    dbFetchLatestEventForm().then(ef => {
+      if (ef) {
+        setEventFormTitle(ef.title)
+        setEventFormContent(ef.content)
+        setEventFormUrl(ef.url)
+        setEditTitle(ef.title)
+        setEditContent(ef.content)
+        setEditUrl(ef.url)
+      }
+    })
+  }, [upcomingSundays])
+
   const handleSelectWeek = (idx: number) => {
     setSelectedWeek(idx)
     const d = familyMealStore[familyId]?.[idx]
-    setTempAttending(d?.attending ?? true)
-    setTempAdult(d?.adultCount ?? 1)
-    setTempChild(d?.childCount ?? 0)
+    // 저장된 데이터가 있으면 그 값으로 복원, 없으면 기본값
+    setTempAttending(d ? d.attending : true)
+    setTempAdult(d ? d.adultCount : 1)
+    setTempChild(d ? d.childCount : 0)
   }
 
-  const handleSaveMeal = () => {
+  const handleSaveMeal = async () => {
     if (isLocked) return
+    const targetSunday = upcomingSundays[selectedWeek]?.dateStr || ''
+    await dbSaveMealRegistration({
+      familyGroupId: familyId,
+      dateStr: targetSunday,
+      registeredByUserId: currentUser.id,
+      registeredByUserName: getUserDisplayName(currentUser),
+      attending: tempAttending,
+      adultCount: tempAttending ? tempAdult : 0,
+      childCount: tempAttending ? tempChild : 0
+    })
+
     setFamilyMealStore(prev => ({
       ...prev,
       [familyId]: {
@@ -66,23 +122,19 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           attending: tempAttending,
           adultCount: tempAttending ? tempAdult : 0,
           childCount: tempAttending ? tempChild : 0,
-          updatedBy: currentUser.name,
+          updatedBy: getUserDisplayName(currentUser),
         }
       }
     }))
     showToast(currentMealData.submitted ? '✅ 식사 신청이 수정되었습니다!' : '✅ 식사 신청이 완료되었습니다!')
   }
 
-  // ── 행사 신청 (제목 + 내용 + URL 3필드) ──
-  const [eventFormUrl, setEventFormUrl] = useState('')
-  const [eventFormTitle, setEventFormTitle] = useState('')
-  const [eventFormContent, setEventFormContent] = useState('') // 신설 "내용" 필드
-  const [showEventEditModal, setShowEventEditModal] = useState(false)
-  const [editUrl, setEditUrl] = useState('')
-  const [editTitle, setEditTitle] = useState('')
-  const [editContent, setEditContent] = useState('')
-
-  const handleSaveEventForm = () => {
+  const handleSaveEventForm = async () => {
+    await dbUpsertEventForm({
+      title: editTitle.trim(),
+      content: editContent.trim(),
+      url: editUrl.trim()
+    })
     setEventFormUrl(editUrl.trim())
     setEventFormTitle(editTitle.trim())
     setEventFormContent(editContent.trim())

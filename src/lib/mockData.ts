@@ -68,7 +68,7 @@ export interface PostItem {
   labriId?: string
   title: string
   content: string
-  category: 'PRAYER' | 'PRAISE' | 'PHOTO' | 'NOTICE' | 'LABRI'
+  category: 'PRAYER' | 'PRAISE' | 'PHOTO' | 'NOTICE' | 'LABRI' | 'MEMBER_NEWS'
   createdAt: string
   likes: number
   likedUserIds?: string[]

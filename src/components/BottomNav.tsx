@@ -18,7 +18,7 @@ const NAV_ITEMS = [
 export default function BottomNav({ currentTab, setCurrentTab }: BottomNavProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-lg">
-      <div className="max-w-lg mx-auto flex items-stretch">
+      <div className="w-full max-w-lg md:max-w-xl mx-auto flex items-stretch">
         {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
           const isActive = currentTab === id
           return (
