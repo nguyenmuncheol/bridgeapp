@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Utensils, BarChart3, CheckCircle, XCircle, ArrowLeft, Download, Ticket, Plus, Minus, Search, Edit2, Save, X } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, MealCouponAccount } from '../../lib/mockData'
 import { getUpcomingSundays, getRecentMonths } from '../../lib/dateUtils'
-import { dbFetchMealCoupons, dbUpdateMealCoupon, dbMergeCouponsIntoFamily, dbFetchAttendanceRecords, dbUpdateProfile, dbFetchMealRegistrations } from '../../lib/db'
+import { dbFetchMealCoupons, dbUpdateMealCoupon, dbMergeCouponsIntoFamily, dbFetchAttendanceRecords, dbSaveAttendanceRecords, dbUpdateProfile, dbFetchMealRegistrations } from '../../lib/db'
+import { supabase } from '../../lib/supabase'
 
 const FAMILY_ROLE_ORDER: Record<string, number> = {
   '조부': 1,
@@ -19,6 +20,7 @@ const FAMILY_ROLE_ORDER: Record<string, number> = {
 }
 
 interface AdminDashboardProps {
+  currentUser?: UserProfile
   allUsers: UserProfile[]
   onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) => void
   onRejectUser: (userId: string) => void
@@ -26,8 +28,11 @@ interface AdminDashboardProps {
   onBack: () => void
 }
 
-export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack }: AdminDashboardProps) {
-  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members'>('meals')
+export default function AdminDashboard({ currentUser, allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack }: AdminDashboardProps) {
+  const isLeader = currentUser?.role === 'LEADER'
+  const isCouponManager = currentUser?.role === 'COUPON'
+  const defaultTab = isCouponManager ? 'coupons' : 'meals'
+  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members'>(defaultTab)
 
   // ── 성도관리 탭 상태 ──
   const approvedMembers = allUsers.filter(u => u.role !== 'PENDING')
@@ -346,7 +351,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
   const [statsMonth, setStatsMonth] = useState(recentMonths[recentMonths.length - 1].value)
   const [dbAttendanceData, setDbAttendanceData] = useState<Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]>>({})
 
-  useEffect(() => {
+  const loadAttendanceStats = useCallback(() => {
     dbFetchAttendanceRecords().then(records => {
       if (records && records.length > 0) {
         const grouped: Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]> = {}
@@ -359,9 +364,15 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
           })
         })
         setDbAttendanceData(grouped)
+      } else {
+        setDbAttendanceData({})
       }
     })
   }, [])
+
+  useEffect(() => {
+    loadAttendanceStats()
+  }, [adminTab, loadAttendanceStats])
 
   const combinedMonthData = useMemo(() => {
     const filteredDb: Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]> = {}
@@ -382,10 +393,12 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
 
   const attendanceRows = useMemo(() => {
     const data = combinedMonthData[selectedStatsDate] || []
-    return allUsers.filter(u => u.role !== 'PENDING').map(u => {
-      const rec = data.find(r => r.userId === u.id)
-      return { user: u, status: rec?.status || null, note: rec?.note || '' }
-    })
+    return allUsers
+      .filter(u => u.role !== 'PENDING' && u.role !== 'COUPON')
+      .map(u => {
+        const rec = data.find(r => r.userId === u.id)
+        return { user: u, status: rec?.status || null, note: rec?.note || '' }
+      })
   }, [combinedMonthData, selectedStatsDate, allUsers])
 
   // 라브리별 통계 (합계 행 포함)
@@ -402,6 +415,43 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
     const totalTotal = rows.reduce((s, r) => s + r.total, 0)
     return { rows, totalAttend, totalTotal }
   }, [attendanceRows])
+
+  // ── 개별 출석 수정 모달 상태 및 저장 핸들러 ──
+  const [editingAttendanceUser, setEditingAttendanceUser] = useState<{
+    user: UserProfile
+    dateStr: string
+    status: 'ATTEND' | 'ABSENT' | 'NONE'
+    note: string
+  } | null>(null)
+
+  const handleSaveIndividualAttendance = async () => {
+    if (!editingAttendanceUser) return
+
+    const { user, dateStr, status, note } = editingAttendanceUser
+
+    if (status === 'NONE') {
+      // 출석 기록 삭제 (미기록 처리)
+      await supabase
+        .from('attendance_records')
+        .delete()
+        .eq('date_str', dateStr)
+        .eq('user_id', user.id)
+    } else {
+      // 출석/결석 기록 저장 (덮어쓰기)
+      await dbSaveAttendanceRecords([{
+        userId: user.id,
+        dateStr: dateStr,
+        labriId: user.labriId || '미정',
+        status: status,
+        note: status === 'ABSENT' ? note : '',
+        recordedBy: currentUser?.name || '관리자'
+      }])
+    }
+
+    loadAttendanceStats()
+    setEditingAttendanceUser(null)
+    showToast(`✅ ${user.name} 성도의 ${dateStr} 출석 정보가 수정되었습니다.`)
+  }
 
   const handleDownloadCSV = () => {
     const monthData = combinedMonthData
@@ -438,29 +488,37 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
             <ArrowLeft size={16} />
           </button>
           <div>
-            <h1 className="font-bold text-base">🛠️ 관리자 대시보드</h1>
-            <p className="text-[11px] text-slate-400">더브릿지교회 운영 관리 모드</p>
+            <h1 className="font-bold text-base">
+              {isCouponManager ? '🎟️ 쿠폰 관리 대시보드' : isLeader ? '📊 리더 대시보드' : '🛠️ 관리자 대시보드'}
+            </h1>
+            <p className="text-[11px] text-slate-400">
+              {isCouponManager ? '식사 쿠폰 전용 관리' : isLeader ? '식사 집계 및 출석 통계' : '더브릿지교회 운영 관리 모드'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* 탭 메뉴 — "출석 & CSV" → "출석" 으로 변경 */}
+      {/* 탭 메뉴 (권한별 동적 필터링: LEADER는 식사/출석만, COUPON은 쿠폰만, ADMIN은 전체) */}
       <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold overflow-x-auto">
         {[
-          { id: 'meals', label: '🍱 식사' },
-          { id: 'approval', label: `👥 승인${pendingUsers.length > 0 ? ` (${pendingUsers.length})` : ''}` },
-          { id: 'members', label: '📋 성도관리' },
-          { id: 'coupons', label: '🎟️ 쿠폰' },
-          { id: 'stats', label: '📊 출석' },
-        ].map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setAdminTab(id as typeof adminTab)}
-            className={`flex-1 py-2 px-1.5 rounded-lg shrink-0 transition-all ${
-              adminTab === id ? 'bg-slate-900 text-white font-bold' : 'text-gray-500'
-            }`}
-          >{label}</button>
-        ))}
+          { id: 'meals', label: '🍱 식사', show: !isCouponManager },
+          { id: 'approval', label: `👥 승인${pendingUsers.length > 0 ? ` (${pendingUsers.length})` : ''}`, show: !isLeader && !isCouponManager },
+          { id: 'members', label: '📋 성도관리', show: !isLeader && !isCouponManager },
+          { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader },
+          { id: 'stats', label: '📊 출석', show: !isCouponManager },
+        ]
+          .filter(t => t.show)
+          .map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setAdminTab(id as typeof adminTab)}
+              className={`flex-1 py-2 px-1.5 rounded-lg shrink-0 transition-all ${
+                adminTab === id ? 'bg-slate-900 text-white font-bold' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
       </div>
 
       {/* ── 식사 집계 탭 (4주 예상 항상 노출, 토글 제거) ── */}
@@ -578,7 +636,8 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                       <select value={selectedRoles[pending.id] || 'MEMBER'} onChange={(e) => setSelectedRoles({ ...selectedRoles, [pending.id]: e.target.value as Role })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
                         <option value="MEMBER">일반 성도</option>
                         <option value="LEADER">라브리 리더</option>
-                        <option value="ADMIN">관리자</option>
+                        <option value="COUPON">쿠폰 관리자</option>
+                        <option value="ADMIN">총괄 관리자</option>
                       </select>
                     </div>
                   </div>
@@ -849,7 +908,8 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                   <select value={editMemberData.role} onChange={e => setEditMemberData(p => ({ ...p, role: e.target.value as Role }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                     <option value="MEMBER">일반 성도</option>
                     <option value="LEADER">라브리 리더</option>
-                    <option value="ADMIN">관리자</option>
+                    <option value="COUPON">쿠폰 관리자</option>
+                    <option value="ADMIN">총괄 관리자</option>
                   </select>
                 </div>
                 <div>
@@ -1027,11 +1087,12 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                   <th className="p-2">소속</th>
                   <th className="p-2 text-center">출석여부</th>
                   <th className="p-2">결석사유</th>
+                  <th className="p-2 text-right">수정</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-gray-700">
                 {attendanceRows.map(({ user, status, note }) => (
-                  <tr key={user.id}>
+                  <tr key={user.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="p-2 font-bold text-gray-800">{user.name} {user.duty}</td>
                     <td className="p-2 text-gray-500">{user.labriId || '라브리 미정'}</td>
                     <td className="p-2 text-center">
@@ -1044,10 +1105,123 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                       )}
                     </td>
                     <td className="p-2 text-gray-500">{note || '-'}</td>
+                    <td className="p-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingAttendanceUser({
+                            user,
+                            dateStr: selectedStatsDate,
+                            status: (status as 'ATTEND' | 'ABSENT') || 'NONE',
+                            note: note || ''
+                          })
+                        }}
+                        disabled={!selectedStatsDate}
+                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ml-auto"
+                      >
+                        <Edit2 size={11} /> </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── 개별 출석 정보 수정 모달 ── */}
+      {editingAttendanceUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-gray-900">
+                  ✏️ {editingAttendanceUser.user.name} 성도 출석 수정
+                </h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.labriId || '라브리 미정'})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingAttendanceUser(null)}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 font-bold"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* 출석 상태 선택 (출석 / 결석 / 미기록) */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-gray-400 font-bold">출석 상태 선택</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'ATTEND', label: '✅ 출석', bg: 'bg-emerald-600 text-white' },
+                  { id: 'ABSENT', label: '❌ 결석', bg: 'bg-rose-600 text-white' },
+                  { id: 'NONE', label: '⏳ 미기록', bg: 'bg-slate-700 text-white' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setEditingAttendanceUser(prev => prev ? { ...prev, status: opt.id as any } : null)}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                      editingAttendanceUser.status === opt.id
+                        ? `${opt.bg} border-transparent shadow-xs scale-102`
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 결석일 때만 사유 입력 */}
+            {editingAttendanceUser.status === 'ABSENT' && (
+              <div className="space-y-2 pt-1 border-t border-gray-100">
+                <label className="text-[10px] text-gray-400 font-bold">결석 사유 (추천 태그 선택 또는 직접 입력)</label>
+                <div className="flex gap-1 flex-wrap text-[10px]">
+                  {['출장', '여행', '병가', '개인사정', '가족행사'].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setEditingAttendanceUser(prev => prev ? { ...prev, note: tag } : null)}
+                      className={`px-2 py-1 rounded-md border transition-all ${
+                        editingAttendanceUser.note === tag
+                          ? 'bg-rose-100 border-rose-300 text-rose-800 font-bold'
+                          : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="결석 사유를 직접 입력하세요..."
+                  value={editingAttendanceUser.note}
+                  onChange={e => setEditingAttendanceUser(prev => prev ? { ...prev, note: e.target.value } : null)}
+                  className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setEditingAttendanceUser(null)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-200"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveIndividualAttendance}
+                className="flex-1 py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl hover:bg-[#2b5072] shadow-xs"
+              >
+                출석 정보 저장
+              </button>
+            </div>
           </div>
         </div>
       )}

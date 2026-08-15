@@ -245,7 +245,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                   <span className="text-[10px] font-bold text-[#335f87] bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
                   <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{notice.title}</h3>
                 </div>
-                <p className="text-[11px] text-gray-400 line-clamp-1">{notice.content}</p>
+                <p className="text-[11px] text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
               </div>
               <span className="text-[10px] text-gray-400 font-mono shrink-0">{notice.createdAt}</span>
             </div>
@@ -285,7 +285,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <span className="text-[11px] text-[#335f87] bg-blue-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
           </div>
           <p className="text-xs text-amber-800 font-semibold">{bulletin.passage}</p>
-          <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed pt-1 border-t border-gray-200/50">{bulletin.summary}</p>
+          <p className="text-xs text-gray-600 leading-relaxed pt-1 border-t border-gray-200/50 whitespace-pre-wrap">{bulletin.summary}</p>
         </div>
 
         <button onClick={() => { setActiveBulletinImgIdx(0); setShowBulletinModal(true) }}
@@ -499,7 +499,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                 </button>
               )}
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-700 leading-relaxed border border-gray-100">
+            <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-700 leading-relaxed border border-gray-100 whitespace-pre-wrap">
               {selectedNoticeModal.content}
             </div>
             <button onClick={() => setSelectedNoticeModal(null)}

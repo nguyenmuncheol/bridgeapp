@@ -86,6 +86,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   const [checkNotes, setCheckNotes] = useState<Record<string, string>>({})
   const [checkSubmitted, setCheckSubmitted] = useState(false)
   const [hasSubmittedAttendance, setHasSubmittedAttendance] = useState(false)
+  const [adminLabriFilter, setAdminLabriFilter] = useState<string>('라브리1')
 
   // 가장 최근 지난 주일 날짜 계산 (오늘이 일요일이면 오늘, 월~토요일이면 직전 일요일)
   const targetSundayDateStr = useMemo(() => {
@@ -135,10 +136,13 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     loadAttendanceRecords()
   }, [targetSundayDateStr])
 
-  const members = allUsers.filter(u => u.role !== 'PENDING')
+  // 주소록 및 출석체크: 승인대기자 및 쿠폰 관리자(COUPON) 제외
+  const members = allUsers.filter(u => u.role !== 'PENDING' && u.role !== 'COUPON')
   const myLabriMembers = members.filter(u => u.labriId === currentUser.labriId && currentUser.labriId)
   const targetMembers = isLeaderOrAdmin
-    ? (currentUser.role === 'ADMIN' ? members : myLabriMembers)
+    ? (currentUser.role === 'ADMIN'
+        ? (adminLabriFilter === '미정' ? members.filter(u => !u.labriId || u.labriId === '미정') : members.filter(u => u.labriId === adminLabriFilter))
+        : myLabriMembers)
     : []
   const attendedCount = Object.values(checkSelections).filter(v => v === 'ATTEND').length
 
@@ -780,6 +784,34 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
             </div>
 
             <div className="overflow-y-auto flex-1 p-4 space-y-3">
+              {/* 관리자: 라브리 선택 탭 */}
+              {currentUser.role === 'ADMIN' && (
+                <div className="bg-slate-100 p-1.5 rounded-xl space-y-1">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[10px] font-bold text-slate-600">🏛️ 라브리 선택</span>
+                    <span className="text-[9px] font-bold text-[#335f87] bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                      {adminLabriFilter === '미정' ? '미정/새가족' : adminLabriFilter} ({targetMembers.length}명)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {['라브리1', '라브리2', '라브리3', '미정'].map(labri => (
+                      <button
+                        key={labri}
+                        type="button"
+                        onClick={() => setAdminLabriFilter(labri)}
+                        className={`py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                          adminLabriFilter === labri
+                            ? 'bg-[#335f87] text-white shadow-xs'
+                            : 'bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {labri === '미정' ? '미정/새가족' : labri}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between bg-amber-50 border border-amber-100 p-2.5 rounded-xl text-xs">
                 <span className="text-amber-900 font-medium">💡 전원 출석 클릭 후 결석자만 수정하세요</span>
                 <button

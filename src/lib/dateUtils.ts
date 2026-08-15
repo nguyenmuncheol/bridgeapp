@@ -48,6 +48,24 @@ export function getUpcomingSundays(count = 4): SundayEntry[] {
   return sundays
 }
 
+// 오늘 기준 가장 최근(오늘 포함 과거) 일요일 구하기 (offsetWeeks: 0=최근, -1=1주 전, -2=2주 전...)
+export function getMostRecentSunday(offsetWeeks = 0): SundayEntry {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const day = today.getDay() // 0: Sun, 1: Mon, ...
+
+  // 오늘이 일요일이면 오늘, 아니면 직전 일요일
+  const recentSunday = new Date(today)
+  recentSunday.setDate(today.getDate() - day)
+
+  // 과거 주차 이동 (미래는 0으로 제한)
+  const safeOffset = Math.min(0, offsetWeeks)
+  recentSunday.setDate(recentSunday.getDate() + safeOffset * 7)
+  recentSunday.setHours(0, 0, 0, 0)
+
+  return buildSundayEntry(recentSunday)
+}
+
 // 특정 주일(일요일)의 식사 신청 마감 여부 체크 (해당 일요일 직전 토요일 14:00 마감)
 export function isMealRegistrationLocked(sundayDateObj: Date): { isLocked: boolean; remainingText: string } {
   const now = new Date()

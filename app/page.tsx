@@ -239,6 +239,7 @@ export default function Home() {
       <main className="p-4">
         {isAdminViewMode ? (
           <AdminDashboard
+            currentUser={currentUser}
             allUsers={users}
             onApproveUser={handleApproveUser}
             onRejectUser={handleRejectUser}

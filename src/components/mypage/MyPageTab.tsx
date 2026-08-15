@@ -203,18 +203,28 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin 
         </div>
       </section>
 
-      {/* ── 관리자 전용: 관리자 대시보드 진입 버튼 ── */}
-      {currentUser.role === 'ADMIN' && (
+      {/* ── 관리자/리더/쿠폰관리자: 대시보드 진입 버튼 ── */}
+      {(currentUser.role === 'ADMIN' || currentUser.role === 'LEADER' || currentUser.role === 'COUPON') && (
         <section>
           <button
             onClick={onNavigateAdmin}
             className="w-full bg-gradient-to-r from-[#1d3a54] to-[#335f87] text-white rounded-2xl p-4 shadow-sm flex items-center justify-between group hover:from-[#162d42] hover:to-[#2b5072] transition-all"
           >
             <div className="flex items-center gap-3">
-              <span className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg">🛠️</span>
+              <span className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg">
+                {currentUser.role === 'COUPON' ? '🎟️' : '🛠️'}
+              </span>
               <div className="text-left">
-                <p className="font-bold text-sm">관리자 대시보드</p>
-                <p className="text-[11px] text-blue-200 mt-0.5">출석 · 식수 · 가입승인 · 쿠폰 관리</p>
+                <p className="font-bold text-sm">
+                  {currentUser.role === 'ADMIN' ? '관리자 대시보드' : currentUser.role === 'LEADER' ? '리더 대시보드' : '쿠폰 관리 대시보드'}
+                </p>
+                <p className="text-[11px] text-blue-200 mt-0.5">
+                  {currentUser.role === 'ADMIN'
+                    ? '출석 · 식수 · 가입승인 · 쿠폰 관리'
+                    : currentUser.role === 'LEADER'
+                    ? '주일 식사 집계 · 라브리 출석 통계'
+                    : '주일 식사 쿠폰 발급 및 차감 전용 관리'}
+                </p>
               </div>
             </div>
             <Shield size={18} className="text-blue-200 group-hover:translate-x-0.5 transition-transform" />
