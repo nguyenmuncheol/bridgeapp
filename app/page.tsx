@@ -44,7 +44,7 @@ export default function Home() {
       if (session?.user) {
         setSupabaseUser(session.user)
         const uMeta = session.user.user_metadata || {}
-        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || '성도'
+        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
         fetchProfile(session.user.id, session.user.email || '', name)
       }
     })
@@ -53,7 +53,7 @@ export default function Home() {
       if (session?.user) {
         setSupabaseUser(session.user)
         const uMeta = session.user.user_metadata || {}
-        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || '성도'
+        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
         fetchProfile(session.user.id, session.user.email || '', name)
       } else {
         setSupabaseUser(null)
@@ -65,36 +65,58 @@ export default function Home() {
 
   // Supabase profiles 조회 → 신규면 추가정보 입력 모달 표시
   const fetchProfile = async (id: string, email: string, name: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
-    if (data) {
-      const spUser: UserProfile = {
-        id: data.id,
-        name: data.name || name,
-        email: data.email || email,
-        phone: data.phone || '',
-        address: data.address || '',
-        role: (data.role || 'PENDING') as Role,
-        labriId: data.labri_id,
-        duty: data.duty || '',
-        familyGroupId: data.family_group_id,
-        familyRole: data.family_role,
-        familyInfo: data.family_info,
-        birthday: data.birthday,
-        avatarUrl: data.avatar_url,
-        createdAt: data.created_at || new Date().toISOString().slice(0, 10),
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle()
+      
+      let profileData = data
+      // 1. profiles 레코드가 없는 완전 신규 가입자 -> 기본 레코드 자동 생성
+      if (!profileData) {
+        const newProfile = {
+          id,
+          name: name || '신규 교인',
+          email: email || '',
+          phone: '',
+          address: '',
+          role: 'PENDING',
+          duty: '',
+          created_at: new Date().toISOString()
+        }
+        await supabase.from('profiles').insert(newProfile)
+        profileData = newProfile
       }
+
+      const spUser: UserProfile = {
+        id: profileData.id,
+        name: profileData.name || name || '신규 교인',
+        email: profileData.email || email || '',
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        role: (profileData.role || 'PENDING') as Role,
+        labriId: profileData.labri_id,
+        duty: profileData.duty || '',
+        familyGroupId: profileData.family_group_id,
+        familyRole: profileData.family_role,
+        familyInfo: profileData.family_info,
+        birthday: profileData.birthday,
+        avatarUrl: profileData.avatar_url,
+        createdAt: profileData.created_at ? profileData.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      }
+
       setUsers(prev => {
         const exists = prev.some(u => u.id === spUser.id)
         return exists ? prev.map(u => u.id === spUser.id ? spUser : u) : [spUser, ...prev]
       })
       setCurrentUserId(spUser.id)
       setShowAuthModal(false)
-      // 연락처 미입력 = 처음 가입한 신규 성도 → 추가정보 입력 모달
-      if (!data.phone) {
-        setOauthName(data.name || name)
-        setOauthEmail(data.email || email)
+
+      // 연락처 미입력 = 추가정보를 아직 입력하지 않은 신규 성도 → 세부정보 입력 모달 강제 팝업
+      if (!profileData.phone) {
+        setOauthName(profileData.name || name || '')
+        setOauthEmail(profileData.email || email || '')
         setShowProfileSetup(true)
       }
+    } catch (err) {
+      console.error('fetchProfile error:', err)
     }
   }
 
@@ -108,7 +130,7 @@ export default function Home() {
       birthday: info.birthday,
     }).eq('id', supabaseUser.id)
     setShowProfileSetup(false)
-    // 로컬 상태에도 반영
+    // 로컬 상태에도 즉시 반영
     setUsers(prev => prev.map(u => u.id === supabaseUser.id
       ? { ...u, name: info.name, phone: info.phone, address: info.address, birthday: info.birthday }
       : u
@@ -164,10 +186,11 @@ export default function Home() {
     email: '',
     phone: '',
     role: 'PENDING' as Role,
-    duty: '방문자',
+    duty: '',
     createdAt: ''
   }
 
+  const isPending = !isGuest && currentUser.role === 'PENDING'
 
   // 관리자 - 가입 승인 처리
   const handleApproveUser = async (
@@ -256,17 +279,18 @@ export default function Home() {
           />
         ) : (
           <>
-            {/* 홈 탭 */}
+            {/* 1. 홈 탭 (누구나 열람 가능) */}
             {currentTab === 'home' && (
               <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest} />
             )}
 
-            {/* 비회원(isGuest)일 경우: 홈 외 다른 모든 탭 접근 시 로그인 안내 카드 표시 */}
-            {currentTab !== 'home' && isGuest ? (
+            {/* 2. 비회원(isGuest) 접근 차단 카드 */}
+            {currentTab !== 'home' && isGuest && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
                 <div className="text-4xl">🔒</div>
                 <div className="space-y-1.5">
                   <h3 className="font-bold text-sm text-gray-900">로그인이 필요한 서비스입니다</h3>
+                  <p className="text-xs text-gray-500">교회 소식과 나눔은 로그인 후 이용하실 수 있습니다.</p>
                 </div>
                 <button
                   onClick={() => setShowAuthModal(true)}
@@ -275,7 +299,41 @@ export default function Home() {
                   로그인 / 회원가입 신청하기
                 </button>
               </div>
-            ) : (
+            )}
+
+            {/* 3. 가입 승인 대기자(isPending) 접근 차단 및 대기 안내 카드 */}
+            {currentTab !== 'home' && isPending && (
+              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-amber-100 shadow-2xs mt-2 animate-fade-in">
+                <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-3xl mx-auto animate-pulse">
+                  ⏳
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="font-bold text-base text-gray-900">가입 승인 대기 중입니다</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    교회 관리자의 가입 승인 완료 후<br />소식, 나눔, 신청 기능을 이용하실 수 있습니다.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    dbFetchProfiles().then(dbUsers => {
+                      if (dbUsers && dbUsers.length > 0) setUsers(dbUsers)
+                      if (supabaseUser) {
+                        const uMeta = supabaseUser.user_metadata || {}
+                        const name = uMeta.full_name || uMeta.name || ''
+                        fetchProfile(supabaseUser.id, supabaseUser.email || '', name)
+                      }
+                    })
+                    alert('승인 상태를 새로고침했습니다.')
+                  }}
+                  className="w-full py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl hover:bg-[#2b5072] transition-all"
+                >
+                  승인 상태 새로고침
+                </button>
+              </div>
+            )}
+
+            {/* 4. 정회원 이상 승인 완료자만 접근 가능한 탭들 */}
+            {currentTab !== 'home' && !isGuest && !isPending && (
               <>
                 {/* 우리소식 탭 */}
                 {currentTab === 'news' && (
@@ -294,20 +352,11 @@ export default function Home() {
 
                 {/* 마이페이지 탭 */}
                 {currentTab === 'mypage' && (
-                  currentUser.role === 'PENDING' ? (
-                    <AuthPending
-                      currentRole={currentUser.role}
-                      onRefreshStatus={() => alert('승인 상태를 재확인하였습니다.')}
-                      onGoogleLogin={handleGoogleLogin}
-                      onKakaoLogin={handleKakaoLogin}
-                    />
-                  ) : (
-                    <MyPageTab
-                      currentUser={currentUser}
-                      allUsers={users}
-                      onNavigateAdmin={() => setIsAdminViewMode(true)}
-                    />
-                  )
+                  <MyPageTab
+                    currentUser={currentUser}
+                    allUsers={users}
+                    onNavigateAdmin={() => setIsAdminViewMode(true)}
+                  />
                 )}
               </>
             )}

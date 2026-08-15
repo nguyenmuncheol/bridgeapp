@@ -18,10 +18,11 @@ export interface UserProfile {
 }
 
 // 사용자 호칭 생성 헬퍼 함수
-// - 직분이 있으면: "이름 직분님" (예: 홍길동 목사님, 김영희 성도님)
-// - 직분이 없거나 미정이면: "이름님" (예: 홍길동님)
+// - 가입 대기자(PENDING) 또는 직분이 미정인 경우: "이름님" (예: 홍길동님)
+// - 정회원 이상이고 직분이 있는 경우: "이름 직분님" (예: 홍길동 목사님, 김영희 집사님)
 export function getUserDisplayName(user: UserProfile, suffix = '님'): string {
   if (!user || user.id === 'guest') return '방문자님'
+  if (user.role === 'PENDING') return `${user.name}${suffix}`
   const duty = user.duty?.trim()
   if (duty) {
     return `${user.name} ${duty}${suffix}`
