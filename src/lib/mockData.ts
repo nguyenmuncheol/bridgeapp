@@ -10,7 +10,7 @@ export interface UserProfile {
   labriId?: string // '1라브리', '2라브리', '3라브리' 또는 undefined
   duty: string // 성도, 집사, 권사, 장로, 목사 등
   familyGroupId?: string // 가정을 묶는 그룹 ID (예: 'family_kim', 'family_lee')
-  familyRole?: 'HUSBAND' | 'WIFE' | 'CHILD' | 'SINGLE'
+  familyRole?: string // '부', '모', '자녀1', '자녀2', '조부', '조모', '자녀', '기타'
   familyInfo?: string // '아내: 홍길순, 자녀: 김철수'
   birthday?: string // '08-15' (MM-DD)
   avatarUrl?: string
@@ -98,7 +98,7 @@ export const INITIAL_USERS: UserProfile[] = [
     phone: '+84 90 123 4567',
     address: '하노이 미딩 송다 A동 1001호',
     role: 'ADMIN',
-    labriId: '1라브리',
+    labriId: '라브리1',
     duty: '목사',
     familyGroupId: 'fam_kim',
     familyRole: 'HUSBAND',
@@ -114,7 +114,7 @@ export const INITIAL_USERS: UserProfile[] = [
     phone: '+84 90 123 4568',
     address: '하노이 미딩 송다 A동 1001호',
     role: 'MEMBER',
-    labriId: '1라브리',
+    labriId: '라브리1',
     duty: '사모',
     familyGroupId: 'fam_kim',
     familyRole: 'WIFE',
@@ -130,7 +130,7 @@ export const INITIAL_USERS: UserProfile[] = [
     phone: '+84 90 234 5678',
     address: '하노이 미딩 테라홈 502호',
     role: 'LEADER',
-    labriId: '1라브리',
+    labriId: '라브리1',
     duty: '집사',
     familyGroupId: 'fam_lee',
     familyRole: 'HUSBAND',
@@ -146,7 +146,7 @@ export const INITIAL_USERS: UserProfile[] = [
     phone: '+84 90 345 6789',
     address: '하노이 경남 아파트 1204호',
     role: 'MEMBER',
-    labriId: '1라브리',
+    labriId: '라브리1',
     duty: '성도',
     familyGroupId: 'fam_park',
     familyRole: 'HUSBAND',
@@ -161,7 +161,7 @@ export const INITIAL_USERS: UserProfile[] = [
     phone: '+84 90 456 7890',
     address: '하노이 골드마크 시티 301호',
     role: 'LEADER',
-    labriId: '2라브리',
+    labriId: '라브리2',
     duty: '집사',
     familyGroupId: 'fam_choi',
     familyRole: 'SINGLE',
@@ -174,7 +174,7 @@ export const INITIAL_USERS: UserProfile[] = [
     phone: '+84 90 567 8901',
     address: '하노이 인도차이나 804호',
     role: 'MEMBER',
-    labriId: '2라브리',
+    labriId: '라브리2',
     duty: '성도',
     createdAt: '2026-03-01'
   },

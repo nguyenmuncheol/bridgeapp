@@ -4,11 +4,23 @@ import { useState, useMemo, useEffect } from 'react'
 import { Utensils, BarChart3, CheckCircle, XCircle, ArrowLeft, Download, Ticket, Plus, Minus, Search, Edit2, Save, X } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, MealCouponAccount } from '../../lib/mockData'
 import { getUpcomingSundays, getRecentMonths } from '../../lib/dateUtils'
-import { dbFetchMealCoupons, dbUpdateMealCoupon, dbFetchAttendanceRecords, dbUpdateProfile, dbFetchMealRegistrations } from '../../lib/db'
+import { dbFetchMealCoupons, dbUpdateMealCoupon, dbMergeCouponsIntoFamily, dbFetchAttendanceRecords, dbUpdateProfile, dbFetchMealRegistrations } from '../../lib/db'
+
+const FAMILY_ROLE_ORDER: Record<string, number> = {
+  '조부': 1,
+  '조모': 2,
+  '부': 3,
+  '모': 4,
+  '자녀1': 5,
+  '자녀2': 6,
+  '자녀3': 7,
+  '자녀': 8,
+  '기타': 9,
+}
 
 interface AdminDashboardProps {
   allUsers: UserProfile[]
-  onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string) => void
+  onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) => void
   onRejectUser: (userId: string) => void
   onUpdateUsers?: React.Dispatch<React.SetStateAction<UserProfile[]>>
   onBack: () => void
@@ -24,8 +36,57 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
   const [editLinkedMemberId, setEditLinkedMemberId] = useState<string>('')
   const [editMemberData, setEditMemberData] = useState<{
     name: string; phone: string; address: string; birthday: string;
-    role: Role; duty: string; labriId: string; familyGroupId: string; familyInfo: string
-  }>({ name: '', phone: '', address: '', birthday: '', role: 'MEMBER', duty: '성도', labriId: '', familyGroupId: '', familyInfo: '' })
+    role: Role; duty: string; labriId: string; familyGroupId: string; familyInfo: string; familyRole: string
+  }>({ name: '', phone: '', address: '', birthday: '', role: 'MEMBER', duty: '성도', labriId: '', familyGroupId: '', familyInfo: '', familyRole: '' })
+
+  // 가족 그룹별로 묶어서 옵션 목록 생성 (가정 단위 / 단독 단위)
+  const getFamilyGroupOptions = (excludeUserId?: string) => {
+    const candidates = approvedMembers.filter(m => m.id !== excludeUserId)
+    const groupMap: Record<string, UserProfile[]> = {}
+    const singles: UserProfile[] = []
+
+    candidates.forEach(m => {
+      if (m.familyGroupId) {
+        if (!groupMap[m.familyGroupId]) groupMap[m.familyGroupId] = []
+        groupMap[m.familyGroupId].push(m)
+      } else {
+        singles.push(m)
+      }
+    })
+
+    const options: { key: string; label: string; isGroup: boolean }[] = []
+
+    // 1. 이미 묶여있는 가족 그룹들
+    Object.entries(groupMap).forEach(([fid, members]) => {
+      const sorted = [...members].sort((a, b) => {
+        const orderA = FAMILY_ROLE_ORDER[a.familyRole || ''] || 10
+        const orderB = FAMILY_ROLE_ORDER[b.familyRole || ''] || 10
+        return orderA - orderB
+      })
+      const nameList = sorted.map(m => m.name).join(' · ')
+      // 그룹 내 첫 번째 사람을 대표 key로 사용
+      options.push({
+        key: sorted[0].id,
+        label: `👨‍👩‍👧 [가족] ${nameList} 가정 (${members.length}명)`,
+        isGroup: true
+      })
+    })
+
+    // 2. 아직 단독인 성도들
+    singles.forEach(m => {
+      options.push({
+        key: m.id,
+        label: `👤 [개인] ${m.name} ${m.duty} (${m.labriId || '미정'})`,
+        isGroup: false
+      })
+    })
+
+    return options.sort((a, b) => {
+      if (a.isGroup && !b.isGroup) return -1
+      if (!a.isGroup && b.isGroup) return 1
+      return a.label.localeCompare(b.label)
+    })
+  }
 
   const filteredMembers = memberSearch
     ? approvedMembers.filter(m => m.name.includes(memberSearch) || m.phone.includes(memberSearch) || (m.email && m.email.includes(memberSearch)))
@@ -47,7 +108,8 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
       duty: member.duty || '성도',
       labriId: member.labriId || '',
       familyGroupId: member.familyGroupId || '',
-      familyInfo: member.familyInfo || ''
+      familyInfo: member.familyInfo || '',
+      familyRole: member.familyRole || ''
     })
   }
 
@@ -70,13 +132,30 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
         duty: editMemberData.duty,
         labriId: editMemberData.labriId || undefined,
         familyGroupId: resolvedFid,
-        familyInfo: editMemberData.familyInfo
+        familyInfo: editMemberData.familyInfo,
+        familyRole: editMemberData.familyRole
       })
 
       // 상대방도 같은 familyGroupId로 업데이트
       if (targetMember && targetMember.familyGroupId !== resolvedFid) {
         await dbUpdateProfile(targetMember.id, { familyGroupId: resolvedFid })
       }
+
+      // 가족 구성원 ID 수집 후 개인 쿠폰 → 가족 쿠폰 병합
+      // (이미 가족 그룹이 있는 경우 전체 구성원, 신규 그룹이면 두 성도)
+      const familyMemberIds = allUsers
+        .filter(u => u.familyGroupId === resolvedFid || u.id === editingMember.id || u.id === editLinkedMemberId)
+        .map(u => u.id)
+      const newFamilyName = (() => {
+        const members = allUsers.filter(u =>
+          u.familyGroupId === resolvedFid || u.id === editingMember.id || u.id === editLinkedMemberId
+        )
+        const sorted = [...members].sort((a, b) =>
+          (FAMILY_ROLE_ORDER[a.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.familyRole || ''] || 10)
+        )
+        return sorted.length > 1 ? `${sorted.map(m => m.name).join(' · ')} 가정` : `${sorted[0]?.name || editMemberData.name} 가정`
+      })()
+      await dbMergeCouponsIntoFamily(familyMemberIds, resolvedFid, newFamilyName)
 
       // 로컬 상태 동기화
       onUpdateUsers?.(prev => prev.map(u => {
@@ -91,7 +170,8 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
             duty: editMemberData.duty,
             labriId: editMemberData.labriId || undefined,
             familyGroupId: resolvedFid || undefined,
-            familyInfo: editMemberData.familyInfo
+            familyInfo: editMemberData.familyInfo,
+            familyRole: editMemberData.familyRole
           }
         }
         if (u.id === editLinkedMemberId) {
@@ -110,7 +190,8 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
         duty: editMemberData.duty,
         labriId: editMemberData.labriId || undefined,
         familyGroupId: '',
-        familyInfo: editMemberData.familyInfo
+        familyInfo: editMemberData.familyInfo,
+        familyRole: editMemberData.familyRole
       })
 
       onUpdateUsers?.(prev => prev.map(u => {
@@ -125,7 +206,8 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
             duty: editMemberData.duty,
             labriId: editMemberData.labriId || undefined,
             familyGroupId: undefined,
-            familyInfo: editMemberData.familyInfo
+            familyInfo: editMemberData.familyInfo,
+            familyRole: editMemberData.familyRole
           }
         }
         return u
@@ -138,7 +220,6 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
 
   // ── 식사 집계 (DB 실시간 연동) ──
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
-  const [mealViewMode, setMealViewMode] = useState<'summary' | 'individual'>('summary')
   const [forecastWeek, setForecastWeek] = useState(0)
   const [dbMealRegistrations, setDbMealRegistrations] = useState<any[]>([])
 
@@ -189,6 +270,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
   const [selectedRoles, setSelectedRoles] = useState<Record<string, Role>>({})
   const [dutyInputs, setDutyInputs] = useState<Record<string, string>>({})
   const [selectedFamilyMember, setSelectedFamilyMember] = useState<Record<string, string>>({})
+  const [selectedFamilyRole, setSelectedFamilyRole] = useState<Record<string, string>>({})
   const pendingUsers = allUsers.filter(u => u.role === 'PENDING')
 
   const handleApprove = async (userId: string) => {
@@ -196,6 +278,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
     const assignedRole = selectedRoles[userId] || 'MEMBER'
     const assignedDuty = dutyInputs[userId] || '성도'
     const familyInfo = familyInputs[userId] || ''
+    const assignedFamilyRole = selectedFamilyRole[userId] || '부'
     
     // 자동 가족 그룹 ID 결정 (드롭다운에서 선택된 성도 기준)
     const targetMemberId = selectedFamilyMember[userId]
@@ -213,7 +296,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
       }
     }
 
-    onApproveUser(userId, assignedLabri, assignedRole, assignedDuty, familyInfo, resolvedFamilyGroupId || undefined)
+    onApproveUser(userId, assignedLabri, assignedRole, assignedDuty, familyInfo, resolvedFamilyGroupId || undefined, assignedFamilyRole)
     showToast(`✅ 가입 승인 완료 (${assignedLabri} · ${assignedDuty} · ${assignedRole})`)
   }
 
@@ -383,17 +466,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
       {/* ── 식사 집계 탭 (4주 예상 항상 노출, 토글 제거) ── */}
       {adminTab === 'meals' && (
         <div className="space-y-4">
-          {/* 뷰 모드 토글 */}
-          <div className="flex bg-white p-2 rounded-xl border border-gray-100 text-xs gap-1">
-            <button
-              onClick={() => setMealViewMode('summary')}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold ${mealViewMode === 'summary' ? 'bg-slate-900 text-white' : 'text-gray-500'}`}
-            >요약 보기</button>
-            <button
-              onClick={() => setMealViewMode('individual')}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold ${mealViewMode === 'individual' ? 'bg-slate-900 text-white' : 'text-gray-500'}`}
-            >신청자별 보기</button>
-          </div>
+
 
             {/* 향후 4주 식수 예상 — 항상 노출 (토글 없음) */}
           <div className="p-4 bg-amber-500/10 border border-amber-200 rounded-2xl space-y-2 text-xs">
@@ -512,25 +585,39 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                   <div>
                     <label className="text-[10px] text-gray-400 font-semibold">직분</label>
                     <select value={dutyInputs[pending.id] || '성도'} onChange={(e) => setDutyInputs({ ...dutyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      {['성도', '청년', '서리집사', '집사', '권사', '장로', '선생님', '목사', '전도사', '사모'].map(d => (
+                      {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (드롭다운)</label>
-                    <select
-                      value={selectedFamilyMember[pending.id] || ''}
-                      onChange={(e) => setSelectedFamilyMember({ ...selectedFamilyMember, [pending.id]: e.target.value })}
-                      className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-800 focus:outline-none"
-                    >
-                      <option value="">선택 안함 (단독 세대)</option>
-                      {approvedMembers.map(member => (
-                        <option key={member.id} value={member.id}>
-                          {member.name} {member.duty} ({member.labriId || '미정'}) 와(과) 한 가족으로 연결
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
+                      <select
+                        value={selectedFamilyMember[pending.id] || ''}
+                        onChange={(e) => setSelectedFamilyMember({ ...selectedFamilyMember, [pending.id]: e.target.value })}
+                        className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                      >
+                        <option value="">선택 안함 (단독 세대)</option>
+                        {getFamilyGroupOptions().map(opt => (
+                          <option key={opt.key} value={opt.key}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-semibold">가족 내 호칭/역할</label>
+                      <select
+                        value={selectedFamilyRole[pending.id] || '부'}
+                        onChange={(e) => setSelectedFamilyRole({ ...selectedFamilyRole, [pending.id]: e.target.value })}
+                        className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                      >
+                        {['부', '모', '자녀1', '자녀2', '자녀3', '조부', '조모', '자녀', '기타'].map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="text-[10px] text-gray-400 font-semibold">가족 현황 메모</label>
@@ -564,22 +651,30 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
           <p className="text-[10px] text-gray-400">승인된 가정별 쿠폰 잔액을 관리합니다. +/- 버튼으로 발급/차감하세요.</p>
           <div className="space-y-2">
             {(() => {
-              // DB 쿠폰 계정 + allUsers 가정 그룹을 병합하여 전체 표시
+              // DB 쿠폰 계정 + allUsers 가정 그룹을 병합하여 전체 표시 (조부/조모/부/모/자녀 순 정렬)
               const approvedUsers = allUsers.filter(u => u.role !== 'PENDING')
               const familyMap: Record<string, string> = {}
-              const groupMembers: Record<string, string[]> = {}
+              const groupMembers: Record<string, UserProfile[]> = {}
 
               approvedUsers.forEach(u => {
                 const fid = u.familyGroupId || `fam_single_${u.id}`
                 if (!groupMembers[fid]) groupMembers[fid] = []
-                groupMembers[fid].push(u.name)
+                groupMembers[fid].push(u)
               })
 
-              Object.entries(groupMembers).forEach(([fid, names]) => {
+              Object.entries(groupMembers).forEach(([fid, memberList]) => {
                 if (fid.startsWith('fam_single_')) {
-                  familyMap[fid] = `${names[0]} 성도`
+                  familyMap[fid] = `${memberList[0].name} 성도`
                 } else {
-                  familyMap[fid] = names.length > 1 ? `${names.join(' · ')} 가정` : `${names[0]} 가정`
+                  // 호칭 순서(조부 -> 조모 -> 부 -> 모 -> 자녀)로 정렬
+                  const sorted = [...memberList].sort((a, b) => {
+                    const orderA = FAMILY_ROLE_ORDER[a.familyRole || ''] || 10
+                    const orderB = FAMILY_ROLE_ORDER[b.familyRole || ''] || 10
+                    return orderA - orderB
+                  })
+                  // 괄호 없이 순수 이름만 조합하여 표시: "홍길동 · 김영희 · 홍은혜 가정"
+                  const nameStr = sorted.map(m => m.name).join(' · ')
+                  familyMap[fid] = sorted.length > 1 ? `${nameStr} 가정` : `${nameStr} 가정`
                 }
               })
 
@@ -760,7 +855,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                 <div>
                   <label className="text-[10px] text-gray-400 font-semibold">직분</label>
                   <select value={editMemberData.duty} onChange={e => setEditMemberData(p => ({ ...p, duty: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
-                    {['성도', '청년', '서리집사', '집사', '권사', '장로', '선생님', '목사', '전도사', '사모'].map(d => (
+                    {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
@@ -796,26 +891,38 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                 <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]" placeholder="1990-08-15" />
               </div>
 
-              {/* 가족 연결 (자동 그룹 연결) */}
-              <div>
-                <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (드롭다운)</label>
-                <select
-                  value={editLinkedMemberId}
-                  onChange={e => setEditLinkedMemberId(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
-                >
-                  <option value="">단독 (가족 연결 없음)</option>
-                  {approvedMembers
-                    .filter(m => m.id !== editingMember.id)
-                    .map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} {m.duty} ({m.labriId || '미정'}) 와(과) 한 가족으로 연결
+              {/* 가족 연결 및 호칭 */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
+                  <select
+                    value={editLinkedMemberId}
+                    onChange={e => setEditLinkedMemberId(e.target.value)}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                  >
+                    <option value="">단독 (가족 없음)</option>
+                    {getFamilyGroupOptions(editingMember.id).map(opt => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label}
                       </option>
-                    ))
-                  }
-                </select>
-                <p className="text-[10px] text-gray-400 mt-1">가족으로 묶으면 식사 신청과 식사 쿠폰이 하나로 연동됩니다.</p>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 font-semibold">가족 내 호칭/역할</label>
+                  <select
+                    value={editMemberData.familyRole || ''}
+                    onChange={e => setEditMemberData(p => ({ ...p, familyRole: e.target.value }))}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                  >
+                    <option value="">선택 안함</option>
+                    {['부', '모', '자녀1', '자녀2', '자녀3', '조부', '조모', '자녀', '기타'].map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+              <p className="text-[10px] text-gray-400">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
 
               {/* 가족 현황 메모 */}
               <div>

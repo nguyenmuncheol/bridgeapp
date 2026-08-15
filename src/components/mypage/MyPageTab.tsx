@@ -6,12 +6,25 @@ import { UserProfile, INITIAL_PRAYERS, getUserDisplayName, PostItem, MealCouponA
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons } from '../../lib/db'
 import { uploadImageToStorage } from '../../lib/storage'
 
+const FAMILY_ROLE_ORDER: Record<string, number> = {
+  '조부': 1,
+  '조모': 2,
+  '부': 3,
+  '모': 4,
+  '자녀1': 5,
+  '자녀2': 6,
+  '자녀3': 7,
+  '자녀': 8,
+  '기타': 9,
+}
+
 interface MyPageTabProps {
   currentUser: UserProfile
+  allUsers?: UserProfile[]
   onNavigateAdmin: () => void
 }
 
-export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabProps) {
+export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin }: MyPageTabProps) {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
 
@@ -52,7 +65,24 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
   // 쿠폰 (DB에서만 로드, 초기값 빈 객체)
   const familyId = currentUser.familyGroupId || `fam_single_${currentUser.id}`
   const [couponAccounts, setCouponAccounts] = useState<Record<string, MealCouponAccount>>({})
-  const couponAccount = couponAccounts[familyId] || { familyGroupId: familyId, balance: 0, familyName: `${currentUser.name} 성도` }
+
+  // 실시간 가족 구성원 기반 가정 명칭 계산 (조부/조모/부/모/자녀 순 정렬)
+  const familyMembers = (currentUser.familyGroupId && allUsers.length > 0)
+    ? allUsers.filter(u => u.familyGroupId === currentUser.familyGroupId && u.role !== 'PENDING')
+    : [currentUser]
+
+  const sortedFamilyMembers = [...familyMembers].sort((a, b) => {
+    const orderA = FAMILY_ROLE_ORDER[a.familyRole || ''] || 10
+    const orderB = FAMILY_ROLE_ORDER[b.familyRole || ''] || 10
+    return orderA - orderB
+  })
+
+  const computedFamilyName = currentUser.familyGroupId
+    ? `${sortedFamilyMembers.map(m => m.name).join(' · ')} 가정`
+    : `${currentUser.name} 성도`
+
+  const couponAccount = couponAccounts[familyId] || { familyGroupId: familyId, balance: 0, familyName: computedFamilyName }
+  const displayFamilyName = computedFamilyName || couponAccount.familyName || `${currentUser.name} 성도`
   const [toastMsg, setToastMsg] = useState('')
 
   // Supabase DB에서 내 기도제목 및 쿠폰 로드
@@ -159,15 +189,17 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
               <p className="font-bold text-gray-800 text-[11px] mt-0.5">{editAddress || '주소 미입력'}</p>
             </div>
           </div>
-          <div className="bg-amber-50/60 p-2.5 rounded-xl flex items-start gap-2 text-amber-900">
-            <span className="text-sm mt-0.5">👨‍👩‍👧‍👦</span>
-            <div>
-              <span className="text-amber-700 text-[10px] font-bold">가족</span>
-              <p className="font-bold text-[11px] mt-0.5">
-                {currentUser.familyInfo || ''}
-              </p>
+          {currentUser.familyInfo && (
+            <div className="bg-amber-50/60 p-2.5 rounded-xl flex items-start gap-2 text-amber-900">
+              <span className="text-sm mt-0.5">👨‍👩‍👧‍👦</span>
+              <div>
+                <span className="text-amber-700 text-[10px] font-bold">가족</span>
+                <p className="font-bold text-[11px] mt-0.5">
+                  {currentUser.familyInfo}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -197,7 +229,7 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
             <Ticket size={20} className="text-amber-100" />
             <div>
               <h3 className="font-bold text-sm">주일식사 쿠폰</h3>
-              <p className="text-[11px] text-amber-100">{couponAccount.familyName}</p>
+              <p className="text-[11px] text-amber-100 font-semibold">{displayFamilyName}</p>
             </div>
           </div>
           <span className="text-2xl font-black">{couponAccount.balance}장</span>

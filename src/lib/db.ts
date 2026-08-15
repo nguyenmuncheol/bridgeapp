@@ -34,6 +34,7 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   labriId: string
   duty: string
   familyInfo: string
+  familyRole: string
   role: Role
   familyGroupId: string
 }>) {
@@ -46,19 +47,21 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   if (updates.labriId !== undefined) payload.labri_id = updates.labriId
   if (updates.duty !== undefined) payload.duty = updates.duty
   if (updates.familyInfo !== undefined) payload.family_info = updates.familyInfo
+  if (updates.familyRole !== undefined) payload.family_role = updates.familyRole || null
   if (updates.role !== undefined) payload.role = updates.role
   if (updates.familyGroupId !== undefined) payload.family_group_id = updates.familyGroupId ? updates.familyGroupId : null
 
   return await supabase.from('profiles').update(payload).eq('id', userId)
 }
 
-export async function dbApproveUser(userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string) {
+export async function dbApproveUser(userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) {
   const payload: any = {
     role,
     labri_id: labriId,
     duty,
     family_info: familyInfo,
-    family_group_id: familyGroupId ? familyGroupId : null
+    family_group_id: familyGroupId ? familyGroupId : null,
+    family_role: familyRole || null
   }
   return await supabase.from('profiles').update(payload).eq('id', userId)
 }
@@ -384,6 +387,79 @@ export async function dbUpdateMealCoupon(familyGroupId: string, familyName: stri
     if (histError) console.warn('dbUpdateMealCoupon histError:', histError.message)
   }
   return newBalance
+}
+
+/**
+ * 가족 연결 시 각 성도의 개인 쿠폰(fam_single_xxx)을
+ * 새 가족 그룹 쿠폰(newFamilyGroupId)으로 합산·병합하고
+ * 기존 개인 레코드는 삭제합니다.
+ *
+ * @param memberIds        병합 대상 성도 ID 배열 (모든 가족 구성원)
+ * @param newFamilyGroupId 새 가족 그룹 ID
+ * @param newFamilyName    새 가족 명칭
+ */
+export async function dbMergeCouponsIntoFamily(
+  memberIds: string[],
+  newFamilyGroupId: string,
+  newFamilyName: string
+) {
+  // 1. 각 성도의 개인 쿠폰 키 목록 (fam_single_xxx)
+  const singleKeys = memberIds.map(id => `fam_single_${id}`)
+
+  // 2. 개인 쿠폰 레코드 조회
+  const { data: singleRows } = await supabase
+    .from('meal_coupons')
+    .select('family_group_id, balance')
+    .in('family_group_id', singleKeys)
+
+  const singleTotal = (singleRows || []).reduce((sum, r) => sum + (r.balance ?? 0), 0)
+
+  if (singleTotal > 0) {
+    // 3. 현재 가족 그룹 쿠폰 잔액 조회
+    const { data: famRows } = await supabase
+      .from('meal_coupons')
+      .select('balance')
+      .eq('family_group_id', newFamilyGroupId)
+
+    const famExists = famRows && famRows.length > 0
+    const famBalance = famExists ? (famRows[0].balance ?? 0) : 0
+    const mergedBalance = famBalance + singleTotal
+
+    // 4. 가족 그룹 쿠폰 upsert (잔액 합산)
+    if (famExists) {
+      await supabase.from('meal_coupons').update({
+        balance: mergedBalance,
+        family_name: newFamilyName,
+        updated_at: new Date().toISOString()
+      }).eq('family_group_id', newFamilyGroupId)
+    } else {
+      await supabase.from('meal_coupons').insert({
+        family_group_id: newFamilyGroupId,
+        family_name: newFamilyName,
+        balance: mergedBalance,
+        updated_at: new Date().toISOString()
+      })
+    }
+
+    // 5. 병합 이력 기록
+    await supabase.from('meal_coupon_history').insert({
+      family_group_id: newFamilyGroupId,
+      type: 'GRANT',
+      amount: singleTotal,
+      note: `개인 쿠폰 가정 통합 (${singleTotal}장)`
+    })
+
+    // 6. 기존 개인 쿠폰 레코드 히스토리를 가족 ID로 이전 후 레코드 삭제
+    await supabase
+      .from('meal_coupon_history')
+      .update({ family_group_id: newFamilyGroupId })
+      .in('family_group_id', singleKeys)
+
+    await supabase
+      .from('meal_coupons')
+      .delete()
+      .in('family_group_id', singleKeys)
+  }
 }
 
 // ==========================================

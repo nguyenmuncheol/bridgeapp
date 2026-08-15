@@ -139,11 +139,13 @@ export default function Home() {
     if (error) alert(`카카오 로그인 에러: ${error.message}`)
   }
 
-  // 로그아웃
+  // 로그아웃 (홈 탭으로 즉시 복귀)
   const handleLogout = async () => {
     await supabase.auth.signOut()
     setSupabaseUser(null)
     setCurrentUserId('guest')
+    setCurrentTab('home')
+    setIsAdminViewMode(false)
   }
 
   // 탭 전환: 관리자 대시보드 모드 자동 해제
@@ -166,10 +168,18 @@ export default function Home() {
 
 
   // 관리자 - 가입 승인 처리
-  const handleApproveUser = async (userId: string, labriId: string, role: Role, duty: string = '성도', familyInfo: string = '', familyGroupId: string = '') => {
-    await dbApproveUser(userId, labriId, role, duty, familyInfo, familyGroupId || undefined)
+  const handleApproveUser = async (
+    userId: string,
+    labriId: string,
+    role: Role,
+    duty: string = '성도',
+    familyInfo: string = '',
+    familyGroupId: string = '',
+    familyRole: string = ''
+  ) => {
+    await dbApproveUser(userId, labriId, role, duty, familyInfo, familyGroupId || undefined, familyRole || undefined)
     setUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, role, labriId, duty, familyInfo, familyGroupId: familyGroupId || u.familyGroupId } : u
+      u.id === userId ? { ...u, role, labriId, duty, familyInfo, familyRole, familyGroupId: familyGroupId || u.familyGroupId } : u
     ))
   }
 
@@ -178,43 +188,17 @@ export default function Home() {
     setUsers(prev => prev.filter(u => u.id !== userId))
   }
 
-  const isGuestOrPending = isGuest || currentUser.role === 'PENDING'
-
-  // 탭 잠금 처리 (공통 래퍼 - Warm Welcome UI)
-  const LockedTab = ({ title, msg }: { title: string; msg: string }) => (
-    <div className="space-y-4 my-2">
-      <div className="bg-gradient-to-br from-white to-[#f7f9ff] rounded-2xl p-6 text-center space-y-3.5 border border-blue-100 shadow-sm relative overflow-hidden">
-        <div className="w-12 h-12 bg-blue-50 text-[#335f87] rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-          🤝
-        </div>
-        <div className="space-y-1">
-          <h3 className="font-bold text-sm text-gray-900">{title}</h3>
-          <p className="text-xs text-gray-600 leading-relaxed max-w-xs mx-auto">
-            {msg}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAuthModal(true)}
-          className="px-5 py-2.5 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95"
-        >
-          더브릿지 교인 가입 / 로그인하기
-        </button>
-      </div>
-
-      {/* 블러 프리뷰 힌트 카드 */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 opacity-60 pointer-events-none select-none blur-[1px] space-y-2">
-        <div className="h-3 bg-gray-200 rounded-full w-2/3" />
-        <div className="h-3 bg-gray-100 rounded-full w-full" />
-        <div className="h-3 bg-gray-100 rounded-full w-4/5" />
-      </div>
-    </div>
-  )
-
   return (
     <div className="bg-[#f7f9ff] min-h-screen pb-20 w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
       {/* 브랜드 헤더 */}
       <div className="bg-white/85 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
-        <h1 className="text-xl font-black text-[#335f87] tracking-tight">The Bridge</h1>
+        <h1
+          onClick={() => { setCurrentTab('home'); setIsAdminViewMode(false) }}
+          className="text-xl font-black text-[#335f87] tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
+          title="홈으로 이동"
+        >
+          The Bridge
+        </h1>
 
         {isGuest ? (
           <button
@@ -270,43 +254,36 @@ export default function Home() {
 
             {/* 우리소식 탭 */}
             {currentTab === 'news' && (
-              isGuestOrPending ? (
-                <LockedTab
-                  title="우리소식"
-                  msg="교회 일정과 주소록은 등록된 성도만 이용할 수 있습니다."
-                />
-              ) : (
-                <NewsTab currentUser={currentUser} allUsers={users} />
-              )
+              <NewsTab currentUser={currentUser} allUsers={users} />
             )}
 
             {/* 나눔 탭 */}
             {currentTab === 'sharing' && (
-              isGuestOrPending ? (
-                <LockedTab
-                  title="성도 기도제목 및 묵상 나눔"
-                  msg="더브릿지 교우들이 마음을 모아 기도하고 묵상을 나눔하는 공간입니다. 가입 승인 후 함께하실 수 있습니다."
-                />
-              ) : (
-                <SharingTab currentUser={currentUser} allUsers={users} />
-              )
+              <SharingTab currentUser={currentUser} allUsers={users} />
             )}
 
             {/* 신청 탭 */}
             {currentTab === 'request' && (
-              isGuestOrPending ? (
-                <LockedTab
-                  title="식사 및 행사 신청"
-                  msg="주일 식사 신청과 교회 행사 신청은 등록된 성도만 이용할 수 있습니다."
-                />
-              ) : (
-                <RequestTab currentUser={currentUser} allUsers={users} />
-              )
+              <RequestTab currentUser={currentUser} allUsers={users} />
             )}
 
             {/* 마이페이지 탭 */}
             {currentTab === 'mypage' && (
-              isGuestOrPending ? (
+              isGuest ? (
+                <div className="bg-white rounded-3xl p-6 text-center space-y-4 border border-blue-50 shadow-2xs">
+                  <div className="text-4xl">👋</div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm text-gray-900">로그인이 필요합니다</h3>
+                    <p className="text-xs text-gray-500">교인 전용 서비스 이용을 위해 로그인해 주세요.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="w-full py-3 bg-[#335f87] text-white font-bold text-xs rounded-xl shadow-xs"
+                  >
+                    로그인 / 가입하기
+                  </button>
+                </div>
+              ) : currentUser.role === 'PENDING' ? (
                 <AuthPending
                   currentRole={currentUser.role}
                   onRefreshStatus={() => alert('승인 상태를 재확인하였습니다.')}
@@ -316,6 +293,7 @@ export default function Home() {
               ) : (
                 <MyPageTab
                   currentUser={currentUser}
+                  allUsers={users}
                   onNavigateAdmin={() => setIsAdminViewMode(true)}
                 />
               )

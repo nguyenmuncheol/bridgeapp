@@ -21,12 +21,12 @@ const MOCK_MY_ATTENDANCE: Record<string, 'ATTEND' | 'ABSENT' | null> = {
 
 // Mock 전체 출석 기록 (라브리원)
 const MOCK_FULL_ATTENDANCE: { userId: string; userName: string; labriId: string; dateStr: string; status: 'ATTEND' | 'ABSENT'; note?: string }[] = [
-  { userId: 'u1', userName: '김목사', labriId: '1라브리', dateStr: '2026-08-02', status: 'ATTEND' },
-  { userId: 'u1_wife', userName: '이사모', labriId: '1라브리', dateStr: '2026-08-02', status: 'ATTEND' },
-  { userId: 'u2', userName: '이리더', labriId: '1라브리', dateStr: '2026-08-02', status: 'ATTEND' },
-  { userId: 'u3', userName: '박성도', labriId: '1라브리', dateStr: '2026-08-02', status: 'ABSENT', note: '해외 출장' },
-  { userId: 'u4', userName: '최리더', labriId: '2라브리', dateStr: '2026-08-02', status: 'ATTEND' },
-  { userId: 'u5', userName: '정성도', labriId: '2라브리', dateStr: '2026-08-02', status: 'ABSENT', note: '병가' },
+  { userId: 'u1', userName: '김목사', labriId: '라브리1', dateStr: '2026-08-02', status: 'ATTEND' },
+  { userId: 'u1_wife', userName: '이사모', labriId: '라브리1', dateStr: '2026-08-02', status: 'ATTEND' },
+  { userId: 'u2', userName: '이리더', labriId: '라브리1', dateStr: '2026-08-02', status: 'ATTEND' },
+  { userId: 'u3', userName: '박성도', labriId: '라브리1', dateStr: '2026-08-02', status: 'ABSENT', note: '해외 출장' },
+  { userId: 'u4', userName: '최리더', labriId: '라브리2', dateStr: '2026-08-02', status: 'ATTEND' },
+  { userId: 'u5', userName: '정성도', labriId: '라브리3', dateStr: '2026-08-02', status: 'ABSENT', note: '병가' },
 ]
 
 const SUNDAY_DATES = ['2026-08-09', '2026-08-02', '2026-07-27', '2026-07-20']
@@ -42,7 +42,7 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
 
   // ── 출석체크 (리더/관리자) ──
   const [checkDate, setCheckDate] = useState('2026-08-09')
-  const [checkLabri, setCheckLabri] = useState(currentUser.labriId || '1라브리')
+  const [checkLabri, setCheckLabri] = useState(currentUser.labriId || '라브리1')
   const [selections, setSelections] = useState<Record<string, 'ATTEND' | 'ABSENT' | null>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -175,9 +175,9 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
                 <label className="text-[10px] text-gray-500 font-bold">라브리 선택</label>
                 <select value={checkLabri} onChange={e => { setCheckLabri(e.target.value); setSelections({}) }}
                   className="w-full text-xs bg-slate-900 text-amber-300 border border-slate-700 p-2 rounded-lg font-bold">
-                  <option value="1라브리">1라브리</option>
-                  <option value="2라브리">2라브리</option>
-                  <option value="3라브리">3라브리</option>
+                  <option value="라브리1">라브리1</option>
+                  <option value="라브리2">라브리2</option>
+                  <option value="라브리3">라브리3</option>
                   <option value="미정">라브리 미정/새가족</option>
                 </select>
               </div>
