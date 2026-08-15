@@ -10,16 +10,18 @@ interface AdminDashboardProps {
   allUsers: UserProfile[]
   onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string) => void
   onRejectUser: (userId: string) => void
+  onUpdateUsers?: React.Dispatch<React.SetStateAction<UserProfile[]>>
   onBack: () => void
 }
 
-export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, onBack }: AdminDashboardProps) {
+export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack }: AdminDashboardProps) {
   const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members'>('meals')
 
   // ── 성도관리 탭 상태 ──
   const approvedMembers = allUsers.filter(u => u.role !== 'PENDING')
   const [memberSearch, setMemberSearch] = useState('')
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null)
+  const [editLinkedMemberId, setEditLinkedMemberId] = useState<string>('')
   const [editMemberData, setEditMemberData] = useState<{
     name: string; phone: string; address: string; birthday: string;
     role: Role; duty: string; labriId: string; familyGroupId: string; familyInfo: string
@@ -31,6 +33,11 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
 
   const handleStartEditMember = (member: UserProfile) => {
     setEditingMember(member)
+    // 현재 같은 가족 그룹으로 묶인 다른 성도 찾기
+    const linkedUser = member.familyGroupId
+      ? allUsers.find(u => u.id !== member.id && u.familyGroupId === member.familyGroupId)
+      : null
+    setEditLinkedMemberId(linkedUser ? linkedUser.id : '')
     setEditMemberData({
       name: member.name,
       phone: member.phone,
@@ -46,17 +53,85 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
 
   const handleSaveMemberEdit = async () => {
     if (!editingMember) return
-    await dbUpdateProfile(editingMember.id, {
-      name: editMemberData.name,
-      phone: editMemberData.phone,
-      address: editMemberData.address,
-      birthday: editMemberData.birthday,
-      role: editMemberData.role,
-      duty: editMemberData.duty,
-      labriId: editMemberData.labriId || undefined,
-      familyGroupId: editMemberData.familyGroupId || undefined,
-      familyInfo: editMemberData.familyInfo
-    })
+
+    let resolvedFid: string | null = null
+
+    if (editLinkedMemberId) {
+      const targetMember = allUsers.find(u => u.id === editLinkedMemberId)
+      resolvedFid = targetMember?.familyGroupId || editingMember.familyGroupId || `fam_${Date.now().toString(36)}`
+      
+      // 본인 업데이트
+      await dbUpdateProfile(editingMember.id, {
+        name: editMemberData.name,
+        phone: editMemberData.phone,
+        address: editMemberData.address,
+        birthday: editMemberData.birthday,
+        role: editMemberData.role,
+        duty: editMemberData.duty,
+        labriId: editMemberData.labriId || undefined,
+        familyGroupId: resolvedFid,
+        familyInfo: editMemberData.familyInfo
+      })
+
+      // 상대방도 같은 familyGroupId로 업데이트
+      if (targetMember && targetMember.familyGroupId !== resolvedFid) {
+        await dbUpdateProfile(targetMember.id, { familyGroupId: resolvedFid })
+      }
+
+      // 로컬 상태 동기화
+      onUpdateUsers?.(prev => prev.map(u => {
+        if (u.id === editingMember.id) {
+          return {
+            ...u,
+            name: editMemberData.name,
+            phone: editMemberData.phone,
+            address: editMemberData.address,
+            birthday: editMemberData.birthday,
+            role: editMemberData.role,
+            duty: editMemberData.duty,
+            labriId: editMemberData.labriId || undefined,
+            familyGroupId: resolvedFid || undefined,
+            familyInfo: editMemberData.familyInfo
+          }
+        }
+        if (u.id === editLinkedMemberId) {
+          return { ...u, familyGroupId: resolvedFid || undefined }
+        }
+        return u
+      }))
+    } else {
+      // 단독 세대로 해제
+      await dbUpdateProfile(editingMember.id, {
+        name: editMemberData.name,
+        phone: editMemberData.phone,
+        address: editMemberData.address,
+        birthday: editMemberData.birthday,
+        role: editMemberData.role,
+        duty: editMemberData.duty,
+        labriId: editMemberData.labriId || undefined,
+        familyGroupId: '',
+        familyInfo: editMemberData.familyInfo
+      })
+
+      onUpdateUsers?.(prev => prev.map(u => {
+        if (u.id === editingMember.id) {
+          return {
+            ...u,
+            name: editMemberData.name,
+            phone: editMemberData.phone,
+            address: editMemberData.address,
+            birthday: editMemberData.birthday,
+            role: editMemberData.role,
+            duty: editMemberData.duty,
+            labriId: editMemberData.labriId || undefined,
+            familyGroupId: undefined,
+            familyInfo: editMemberData.familyInfo
+          }
+        }
+        return u
+      }))
+    }
+
     setEditingMember(null)
     showToast(`✅ ${editMemberData.name} 성도 정보가 수정되었습니다.`)
   }
@@ -113,7 +188,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
   const [selectedLabris, setSelectedLabris] = useState<Record<string, string>>({})
   const [selectedRoles, setSelectedRoles] = useState<Record<string, Role>>({})
   const [dutyInputs, setDutyInputs] = useState<Record<string, string>>({})
-  const [familyLinks, setFamilyLinks] = useState<Record<string, string[]>>({})
+  const [selectedFamilyMember, setSelectedFamilyMember] = useState<Record<string, string>>({})
   const pendingUsers = allUsers.filter(u => u.role === 'PENDING')
 
   const handleApprove = async (userId: string) => {
@@ -122,22 +197,19 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
     const assignedDuty = dutyInputs[userId] || '성도'
     const familyInfo = familyInputs[userId] || ''
     
-    // 자동 가족 그룹 ID 결정 (연결된 가족이 있으면 기존 그룹 사용 또는 자동 생성)
-    const linkedIds = familyLinks[userId] || []
+    // 자동 가족 그룹 ID 결정 (드롭다운에서 선택된 성도 기준)
+    const targetMemberId = selectedFamilyMember[userId]
     let resolvedFamilyGroupId = ''
 
-    if (linkedIds.length > 0) {
-      // 연결된 성도들 중 이미 familyGroupId가 있는 사람이 있는지 확인
-      const existingLinked = allUsers.find(u => linkedIds.includes(u.id) && u.familyGroupId)
-      if (existingLinked && existingLinked.familyGroupId) {
-        resolvedFamilyGroupId = existingLinked.familyGroupId
+    if (targetMemberId) {
+      const targetMember = allUsers.find(u => u.id === targetMemberId)
+      if (targetMember && targetMember.familyGroupId) {
+        resolvedFamilyGroupId = targetMember.familyGroupId
       } else {
-        // 둘 다 없으면 새로 생성 (fam_시간기반)
+        // 상대방도 아직 familyGroupId가 없으면 새로 생성하여 둘 다에게 부여
         resolvedFamilyGroupId = `fam_${Date.now().toString(36)}`
-        // 연결된 성도들에게도 새 familyGroupId를 즉시 DB에 부여
-        for (const lid of linkedIds) {
-          await dbUpdateProfile(lid, { familyGroupId: resolvedFamilyGroupId })
-        }
+        await dbUpdateProfile(targetMemberId, { familyGroupId: resolvedFamilyGroupId })
+        onUpdateUsers?.(prev => prev.map(u => u.id === targetMemberId ? { ...u, familyGroupId: resolvedFamilyGroupId } : u))
       }
     }
 
@@ -446,21 +518,19 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-semibold">배우자/가족 연결</label>
-                    <div className="mt-1 max-h-28 overflow-y-auto space-y-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      {allUsers.filter(u => u.role !== 'PENDING' && u.id !== pending.id).map(member => {
-                        const isChecked = (familyLinks[pending.id] || []).includes(member.id)
-                        return (
-                          <label key={member.id} className="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-100 rounded px-1">
-                            <input type="checkbox" checked={isChecked} onChange={() => {
-                              const current = familyLinks[pending.id] || []
-                              setFamilyLinks({ ...familyLinks, [pending.id]: isChecked ? current.filter(id => id !== member.id) : [...current, member.id] })
-                            }} className="w-3.5 h-3.5 accent-[#335f87]" />
-                            <span className="text-[11px] text-gray-700">{member.name} {member.duty} <span className="text-gray-400">({member.labriId || '미정'})</span></span>
-                          </label>
-                        )
-                      })}
-                    </div>
+                    <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (드롭다운)</label>
+                    <select
+                      value={selectedFamilyMember[pending.id] || ''}
+                      onChange={(e) => setSelectedFamilyMember({ ...selectedFamilyMember, [pending.id]: e.target.value })}
+                      className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                    >
+                      <option value="">선택 안함 (단독 세대)</option>
+                      {approvedMembers.map(member => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} {member.duty} ({member.labriId || '미정'}) 와(과) 한 가족으로 연결
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-[10px] text-gray-400 font-semibold">가족 현황 메모</label>
@@ -497,19 +567,32 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
               // DB 쿠폰 계정 + allUsers 가정 그룹을 병합하여 전체 표시
               const approvedUsers = allUsers.filter(u => u.role !== 'PENDING')
               const familyMap: Record<string, string> = {}
+              const groupMembers: Record<string, string[]> = {}
+
               approvedUsers.forEach(u => {
                 const fid = u.familyGroupId || `fam_single_${u.id}`
-                if (!familyMap[fid]) {
-                  familyMap[fid] = u.familyGroupId ? `${u.name} 가정` : `${u.name} 성도`
+                if (!groupMembers[fid]) groupMembers[fid] = []
+                groupMembers[fid].push(u.name)
+              })
+
+              Object.entries(groupMembers).forEach(([fid, names]) => {
+                if (fid.startsWith('fam_single_')) {
+                  familyMap[fid] = `${names[0]} 성도`
+                } else {
+                  familyMap[fid] = names.length > 1 ? `${names.join(' · ')} 가정` : `${names[0]} 가정`
                 }
               })
 
               const mergedAccounts: Record<string, MealCouponAccount> = {}
               // DB에 있는 쿠폰 계정 먼저
               Object.entries(couponAccounts).forEach(([fid, acc]) => {
-                mergedAccounts[fid] = acc
+                // 이름이 familyMap에 정의되어 있으면 최신 가족 구성원 명칭 우선 적용
+                mergedAccounts[fid] = {
+                  ...acc,
+                  familyName: familyMap[fid] || acc.familyName || fid
+                }
               })
-              // DB에 없는 가정 추가 (잔액 0)
+              // DB에 아직 발급 이력이 없는 가정 추가 (잔액 0)
               Object.entries(familyMap).forEach(([fid, fname]) => {
                 if (!mergedAccounts[fid]) {
                   mergedAccounts[fid] = { familyGroupId: fid, familyName: fname, balance: 0, history: [] }
@@ -543,7 +626,7 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
                   <div key={acc.familyGroupId} className="p-3 bg-gray-50 rounded-xl flex items-center justify-between text-xs hover:bg-gray-100/70 transition-all">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-gray-800">{acc.familyName.replace(' 가정', '')}</h4>
+                        <h4 className="font-bold text-gray-800">{acc.familyName}</h4>
                         {lastHist && (
                           <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-semibold">
                             {lastHist.type === 'GRANT' ? '발급' : '차감'} {lastHist.dateStr.slice(5)}
@@ -715,29 +798,23 @@ export default function AdminDashboard({ allUsers, onApproveUser, onRejectUser, 
 
               {/* 가족 연결 (자동 그룹 연결) */}
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결</label>
+                <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (드롭다운)</label>
                 <select
-                  value={editMemberData.familyGroupId || ''}
-                  onChange={e => {
-                    const val = e.target.value
-                    setEditMemberData(p => ({ ...p, familyGroupId: val }))
-                  }}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+                  value={editLinkedMemberId}
+                  onChange={e => setEditLinkedMemberId(e.target.value)}
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
                 >
                   <option value="">단독 (가족 연결 없음)</option>
                   {approvedMembers
                     .filter(m => m.id !== editingMember.id)
-                    .map(m => {
-                      const famId = m.familyGroupId || `fam_${m.id.slice(0, 8)}`
-                      return (
-                        <option key={m.id} value={famId}>
-                          {m.name} {m.duty} ({m.labriId || '미정'}) 와(과) 한 가족으로 묶기
-                        </option>
-                      )
-                    })
+                    .map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} {m.duty} ({m.labriId || '미정'}) 와(과) 한 가족으로 연결
+                      </option>
+                    ))
                   }
                 </select>
-                <p className="text-[10px] text-gray-400 mt-1">가족으로 묶으면 식사 신청과 식사 쿠폰이 함께 연동됩니다.</p>
+                <p className="text-[10px] text-gray-400 mt-1">가족으로 묶으면 식사 신청과 식사 쿠폰이 하나로 연동됩니다.</p>
               </div>
 
               {/* 가족 현황 메모 */}

@@ -47,7 +47,7 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   if (updates.duty !== undefined) payload.duty = updates.duty
   if (updates.familyInfo !== undefined) payload.family_info = updates.familyInfo
   if (updates.role !== undefined) payload.role = updates.role
-  if (updates.familyGroupId !== undefined) payload.family_group_id = updates.familyGroupId
+  if (updates.familyGroupId !== undefined) payload.family_group_id = updates.familyGroupId ? updates.familyGroupId : null
 
   return await supabase.from('profiles').update(payload).eq('id', userId)
 }
@@ -57,10 +57,8 @@ export async function dbApproveUser(userId: string, labriId: string, role: Role,
     role,
     labri_id: labriId,
     duty,
-    family_info: familyInfo
-  }
-  if (familyGroupId) {
-    payload.family_group_id = familyGroupId
+    family_info: familyInfo,
+    family_group_id: familyGroupId ? familyGroupId : null
   }
   return await supabase.from('profiles').update(payload).eq('id', userId)
 }

@@ -162,9 +162,9 @@ export default function MyPageTab({ currentUser, onNavigateAdmin }: MyPageTabPro
           <div className="bg-amber-50/60 p-2.5 rounded-xl flex items-start gap-2 text-amber-900">
             <span className="text-sm mt-0.5">👨‍👩‍👧‍👦</span>
             <div>
-              <span className="text-amber-700 text-[10px] font-bold">가족 연결 현황</span>
+              <span className="text-amber-700 text-[10px] font-bold">가족</span>
               <p className="font-bold text-[11px] mt-0.5">
-                {currentUser.familyInfo || '독립 가구 (등록된 가족 연결 정보 없음)'}
+                {currentUser.familyInfo || ''}
               </p>
             </div>
           </div>

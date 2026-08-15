@@ -258,6 +258,7 @@ export default function Home() {
             allUsers={users}
             onApproveUser={handleApproveUser}
             onRejectUser={handleRejectUser}
+            onUpdateUsers={setUsers}
             onBack={() => setIsAdminViewMode(false)}
           />
         ) : (
