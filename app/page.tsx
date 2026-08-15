@@ -10,14 +10,15 @@ import MyPageTab from '../src/components/mypage/MyPageTab'
 import AdminDashboard from '../src/components/admin/AdminDashboard'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
-import { INITIAL_USERS, UserProfile, Role, getUserDisplayName } from '../src/lib/mockData'
+import { UserProfile, Role, getUserDisplayName } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
 import { dbFetchProfiles, dbApproveUser, dbRejectUser } from '../src/lib/db'
 import { LogIn, LogOut } from 'lucide-react'
 
 export default function Home() {
   const [currentTab, setCurrentTab] = useState('home')
-  const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS)
+  const [users, setUsers] = useState<UserProfile[]>([])  // 더미 데이터 제거
+  const [isLoading, setIsLoading] = useState(true)        // DB 로드 완료 전 로딩
 
   // 현재 사용자 로그인 ID ('guest'는 비로그인)
   const [currentUserId, setCurrentUserId] = useState<string>('guest')
@@ -35,7 +36,8 @@ export default function Home() {
       if (dbUsers && dbUsers.length > 0) {
         setUsers(dbUsers)
       }
-    })
+      setIsLoading(false)  // 로드 완료 (성공 여부 무관하게)
+    }).catch(() => setIsLoading(false))
 
     // 2. 현재 로그인 세션 감지
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -237,7 +239,13 @@ export default function Home() {
 
       {/* 메인 콘텐츠 */}
       <main className="p-4">
-        {isAdminViewMode ? (
+        {isLoading ? (
+          // DB 로드 전 로딩 스피너 (더미 데이터 노출 방지)
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+            <div className="w-10 h-10 border-4 border-[#335f87]/20 border-t-[#335f87] rounded-full animate-spin" />
+            <p className="text-xs text-gray-400 font-medium">The Bridge 로딩 중...</p>
+          </div>
+        ) : isAdminViewMode ? (
           <AdminDashboard
             currentUser={currentUser}
             allUsers={users}
@@ -259,16 +267,12 @@ export default function Home() {
                 <div className="text-4xl">🔒</div>
                 <div className="space-y-1.5">
                   <h3 className="font-bold text-sm text-gray-900">로그인이 필요한 서비스입니다</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    교우 소식, 나눔, 주일 식사 신청 및 마이페이지는<br />
-                    더브릿지교회 등록 교인 전용 서비스입니다.
-                  </p>
                 </div>
                 <button
                   onClick={() => setShowAuthModal(true)}
                   className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all"
                 >
-                  로그인 / 교인 등록 신청하기
+                  로그인 / 회원가입 신청하기
                 </button>
               </div>
             ) : (

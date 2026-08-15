@@ -160,7 +160,12 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
         )
         return sorted.length > 1 ? `${sorted.map(m => m.name).join(' · ')} 가정` : `${sorted[0]?.name || editMemberData.name} 가정`
       })()
-      await dbMergeCouponsIntoFamily(familyMemberIds, resolvedFid, newFamilyName)
+      try {
+        await dbMergeCouponsIntoFamily(familyMemberIds, resolvedFid, newFamilyName)
+      } catch (err: any) {
+        console.error('쿠폰 병합 실패:', err)
+        alert(`가족 연결은 완료되었으나, 개인 쿠폰 통합 중 오류가 발생했습니다: ${err?.message || err}`)
+      }
 
       // 로컬 상태 동기화
       onUpdateUsers?.(prev => prev.map(u => {

@@ -30,22 +30,6 @@ interface ChurchEvent {
   type: EventType
 }
 
-const INITIAL_MEMBER_NEWS: PostItem[] = [
-  {
-    id: 'mn1',
-    authorId: 'u2',
-    authorName: '이리더 집사님',
-    title: '🎉 박성도 성도님 가정 득남 소식입니다!',
-    content: '하나님의 은혜 가운데 박성도 성도님 가정에 건강한 사내아이가 태어났습니다. 온 성도가 기쁨으로 축복해주시기 바랍니다.',
-    category: 'NOTICE',
-    createdAt: '2026-08-05',
-    likes: 12,
-    comments: [
-      { id: 'mc1', authorName: '김목사 목사님', content: '축하드립니다! 주님의 축복과 평안이 충만하기를 기도합니다.', createdAt: '2026-08-05' }
-    ]
-  }
-]
-
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '개인사정', '가족방문']
 
 export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
@@ -80,6 +64,13 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   const [showAllLabri, setShowAllLabri] = useState(false)
   const [expandedMember, setExpandedMember] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // ── 에러/토스트 ──
+  const [toastMsg, setToastMsg] = useState('')
+  const showToast = (msg: string, isErr = false) => {
+    setToastMsg((isErr ? '⚠️ ' : '') + msg)
+    setTimeout(() => setToastMsg(''), 2500)
+  }
 
   // ── 출석체크 ──
   const [checkSelections, setCheckSelections] = useState<Record<string, 'ATTEND' | 'ABSENT'>>({})
@@ -225,8 +216,16 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     const newLikes = isLiked ? Math.max(0, target.likes - 1) : target.likes + 1
     const newLikedUsers = isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
 
+    // 낙관적 UI 업데이트
     setMemberNewsList(prev => prev.map(n => n.id === newsId ? { ...n, likes: newLikes, likedUserIds: newLikedUsers } : n))
-    await dbUpdatePost(newsId, { likes: newLikes, likedUserIds: newLikedUsers })
+    try {
+      const { error } = await dbUpdatePost(newsId, { likes: newLikes, likedUserIds: newLikedUsers })
+      if (error) throw error
+    } catch {
+      // 실패 시 롤백
+      setMemberNewsList(prev => prev.map(n => n.id === newsId ? { ...n, likes: target.likes, likedUserIds: likedUsers } : n))
+      showToast('축하 처리 중 오류가 발생했습니다.', true)
+    }
   }
 
   // 교우소식 작성 (DB 동기화)
@@ -261,12 +260,24 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   const handleAddNewsComment = async (newsId: string) => {
     const text = newsComments[newsId]?.trim()
     if (!text) return
-    await dbAddComment(newsId, currentUser.id, getUserDisplayName(currentUser), text)
+    // 낙관적 UI: 먼저 화면에 추가
+    const tempId = `c_${Date.now()}`
     setMemberNewsList(prev => prev.map(n => n.id === newsId ? {
       ...n,
-      comments: [...(n.comments || []), { id: `c_${Date.now()}`, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
+      comments: [...(n.comments || []), { id: tempId, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
     } : n))
     setNewsComments(prev => ({ ...prev, [newsId]: '' }))
+    try {
+      const { error } = await dbAddComment(newsId, currentUser.id, getUserDisplayName(currentUser), text)
+      if (error) throw error
+    } catch {
+      // 실패 시 댓글 롤백
+      setMemberNewsList(prev => prev.map(n => n.id === newsId ? {
+        ...n,
+        comments: (n.comments || []).filter(c => c.id !== tempId)
+      } : n))
+      showToast('댓글 등록 중 오류가 발생했습니다.', true)
+    }
   }
 
   // 교우소식 수정 저장
@@ -317,14 +328,6 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     }, 1200)
   }
 
-  const nextSundayLabel = (() => {
-    const d = new Date()
-    const diff = 7 - d.getDay()
-    const sun = new Date(d)
-    sun.setDate(d.getDate() + (d.getDay() === 0 ? 0 : diff))
-    return `${sun.getMonth() + 1}월${sun.getDate()}일(일)`
-  })()
-
   // 실시간 아바타 렌더러 헬퍼
   const renderAvatar = (authorId: string, authorName: string, size = 'w-6 h-6 text-[10px]') => {
     const user = allUsers.find(u => u.id === authorId || u.name === authorName)
@@ -361,7 +364,14 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
 
   // ── 1. 교우소식 (기도제목 형태 카드) ──
   return (
-    <div className="space-y-5 pb-6">
+    <div className="space-y-5 pb-6 relative">
+      {/* 토스트 메시지 */}
+      {toastMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
+          {toastMsg}
+        </div>
+      )}
+
       {/* 상단 헤더 + 출석체크 버튼 */}
       <div className="flex items-center justify-between">
         <h2 className="font-black text-gray-900 text-base">우리소식</h2>

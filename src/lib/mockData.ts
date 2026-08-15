@@ -17,11 +17,16 @@ export interface UserProfile {
   createdAt: string
 }
 
-// 사용자 호칭 생성 헬퍼 함수 — 항상 "이름 직분님" 형태 (예: 김목사 목사님, 박성도 성도님)
+// 사용자 호칭 생성 헬퍼 함수
+// - 직분이 있으면: "이름 직분님" (예: 홍길동 목사님, 김영희 성도님)
+// - 직분이 없거나 미정이면: "이름님" (예: 홍길동님)
 export function getUserDisplayName(user: UserProfile, suffix = '님'): string {
   if (!user || user.id === 'guest') return '방문자님'
-  const dutyText = user.duty || '성도'
-  return `${user.name} ${dutyText}${suffix}`
+  const duty = user.duty?.trim()
+  if (duty) {
+    return `${user.name} ${duty}${suffix}`
+  }
+  return `${user.name}${suffix}`
 }
 
 export interface MealRegistration {

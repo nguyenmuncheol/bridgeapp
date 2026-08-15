@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
-import { INITIAL_BULLETIN, INITIAL_NOTICES, UserProfile, PostItem, getUserDisplayName } from '../../lib/mockData'
+import { INITIAL_BULLETIN, UserProfile, PostItem, getUserDisplayName } from '../../lib/mockData'
 import { getUpcomingSundays } from '../../lib/dateUtils'
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbDeletePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
@@ -17,7 +17,7 @@ interface HomeTabProps {
 const CHURCH_INFO = {
   vision: '"진리를 알지니 진리가 너희를 자유롭게 하리라" (요한복음 8:32)',
   intro: '더브릿지 교회는 하노이에서 함께 예배하며 말씀 안에서 자라가는 교회 공동체입니다.',
-  address: '하노이 미딩 골든펠리스 지하1층 달팽이카페(K-Mart안쪽)',
+  address: '미딩 골든펠리스 지하1층 달팽이카페(K-Mart안쪽)',
 }
 
 export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps) {

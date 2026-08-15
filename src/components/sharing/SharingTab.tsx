@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Heart, Lock, Play, Plus, Filter, Trash2, Pin, CheckCircle2, X, ExternalLink, Edit2 } from 'lucide-react'
-import { PostItem, UserProfile, INITIAL_PRAYERS, INITIAL_PRAISES, INITIAL_PHOTOS, getUserDisplayName } from '../../lib/mockData'
+import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { dbFetchPosts, dbCreatePost, dbUpdatePost, dbDeletePost, dbAddComment } from '../../lib/db'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 
@@ -56,6 +56,13 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
 
   // ── 행사사진 ──
   const [photos, setPhotos] = useState<PostItem[]>([])
+
+  // ── 에러/토스트 상태 ──
+  const [toastMsg, setToastMsg] = useState('')
+  const showToast = (msg: string, isErr = false) => {
+    setToastMsg((isErr ? '⚠️ ' : '') + msg)
+    setTimeout(() => setToastMsg(''), 2500)
+  }
   const [selectedTag, setSelectedTag] = useState('전체')
   const [activePhotoModal, setActivePhotoModal] = useState<PostItem | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<PostItem | null>(null)
@@ -127,8 +134,16 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
     const newLikes = isLiked ? Math.max(0, target.likes - 1) : target.likes + 1
     const newLikedUsers = isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
 
+    // 낙관적 UI 업데이트
     setPrayers(prev => sortPrayers(prev.map(p => p.id === id ? { ...p, likes: newLikes, likedUserIds: newLikedUsers } : p)))
-    await dbUpdatePost(id, { likes: newLikes, likedUserIds: newLikedUsers })
+    try {
+      const { error } = await dbUpdatePost(id, { likes: newLikes, likedUserIds: newLikedUsers })
+      if (error) throw error
+    } catch {
+      // 실패 시 원래 상태로 롤백
+      setPrayers(prev => sortPrayers(prev.map(p => p.id === id ? { ...p, likes: target.likes, likedUserIds: likedUsers } : p)))
+      showToast('아멘 처리 중 오류가 발생했습니다.', true)
+    }
   }
 
   const handlePin = async (id: string) => {
@@ -143,12 +158,24 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
   const handleAddComment = async (prayerId: string) => {
     const text = prayerComments[prayerId]?.trim()
     if (!text) return
-    await dbAddComment(prayerId, currentUser.id, getUserDisplayName(currentUser), text)
+    // 낙관적 UI: 먼저 화면에 추가
+    const tempId = `c_${Date.now()}`
     setPrayers(prev => prev.map(p => p.id === prayerId ? {
       ...p,
-      comments: [...(p.comments || []), { id: `c_${Date.now()}`, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
+      comments: [...(p.comments || []), { id: tempId, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
     } : p))
     setPrayerComments(p => ({ ...p, [prayerId]: '' }))
+    try {
+      const { error } = await dbAddComment(prayerId, currentUser.id, getUserDisplayName(currentUser), text)
+      if (error) throw error
+    } catch {
+      // 실패 시 추가된 댓글 롤백
+      setPrayers(prev => prev.map(p => p.id === prayerId ? {
+        ...p,
+        comments: (p.comments || []).filter(c => c.id !== tempId)
+      } : p))
+      showToast('댓글 등록 중 오류가 발생했습니다.', true)
+    }
   }
 
   const handleDeletePost = async (id: string, type: 'prayer' | 'photo' | 'praise') => {
@@ -221,11 +248,22 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
     const newLikes = isLiked ? Math.max(0, target.likes - 1) : target.likes + 1
     const newLikedUsers = isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
 
+    // 낙관적 UI 업데이트
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, likes: newLikes, likedUserIds: newLikedUsers } : p))
     if (activePhotoModal?.id === id) {
       setActivePhotoModal(prev => prev ? { ...prev, likes: newLikes, likedUserIds: newLikedUsers } : null)
     }
-    await dbUpdatePost(id, { likes: newLikes, likedUserIds: newLikedUsers })
+    try {
+      const { error } = await dbUpdatePost(id, { likes: newLikes, likedUserIds: newLikedUsers })
+      if (error) throw error
+    } catch {
+      // 실패 시 롤백
+      setPhotos(prev => prev.map(p => p.id === id ? { ...p, likes: target.likes, likedUserIds: likedUsers } : p))
+      if (activePhotoModal?.id === id) {
+        setActivePhotoModal(prev => prev ? { ...prev, likes: target.likes, likedUserIds: likedUsers } : null)
+      }
+      showToast('좋아요 처리 중 오류가 발생했습니다.', true)
+    }
   }
 
   // ── 새 게시물 작성 (진행률 및 압축 지원) ──
@@ -325,7 +363,13 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
   const filteredPhotos = selectedTag === '전체' ? photos : photos.filter(p => p.tags?.includes(selectedTag))
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 relative">
+      {/* 토스트 메시지 */}
+      {toastMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
+          {toastMsg}
+        </div>
+      )}
       {/* 서브탭 */}
       <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold">
         <button onClick={() => setSubTab('prayer')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'prayer' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🙏 기도제목</button>

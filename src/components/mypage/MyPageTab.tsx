@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare } from 'lucide-react'
-import { UserProfile, INITIAL_PRAYERS, getUserDisplayName, PostItem, MealCouponAccount } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount } from '../../lib/mockData'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons } from '../../lib/db'
 import { uploadImageToStorage } from '../../lib/storage'
 

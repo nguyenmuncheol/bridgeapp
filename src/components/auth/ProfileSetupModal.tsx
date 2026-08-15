@@ -34,27 +34,28 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'))
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기/뒤로가기 X 버튼 */}
         <button
           onClick={onCancel}
-          className="absolute top-4 right-4 text-white/80 hover:text-white font-bold p-1 rounded-lg hover:bg-white/10 transition-all z-10"
+          className="absolute top-3.5 right-4 text-white/80 hover:text-white font-bold p-1.5 rounded-lg hover:bg-white/10 transition-all z-10"
           title="취소하고 뒤로가기"
         >
           ✕
         </button>
 
-        {/* 헤더 */}
-        <div className="bg-[#335f87] text-white px-6 py-5 text-center space-y-1 relative">
-          <div className="text-3xl">🙌</div>
+        {/* 헤더 (상단 고정) */}
+        <div className="bg-[#335f87] text-white px-6 py-4 text-center space-y-1 relative shrink-0">
+          <div className="text-2xl">🙌</div>
           <h2 className="font-black text-base">환영합니다!</h2>
           <p className="text-[11px] text-blue-200 leading-relaxed">
             더브릿지교회 앱 사용을 위해<br />추가 정보를 입력해 주세요.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-3 text-xs">
+        {/* 폼 영역 (내부 독립 스크롤) */}
+        <form onSubmit={handleSubmit} className="p-5 pb-8 space-y-3.5 text-xs overflow-y-auto flex-1 overscroll-contain">
           {/* 소셜 계정 연동 정보 (구글/카카오) */}
           <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-center gap-2">
             {initialEmail ? (
@@ -92,7 +93,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
-            <p className="text-[10px] text-gray-500 mt-1">💡 교인 명부 확인을 위해 실명을 입력해 주세요.</p>
+            <p className="text-[10px] text-gray-500 mt-1">💡 교인 확인을 위해 실명을 입력해 주세요.</p>
           </div>
 
           {/* 연락처 */}
@@ -108,7 +109,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
-            <p className="text-[10px] text-gray-500 mt-1">💡 핸드폰 번호를 입력해 주세요.</p>
+            <p className="text-[10px] text-gray-500 mt-1">💡 핸드폰 번호 숫자만 입력해 주세요.</p>
           </div>
 
           {/* 거주지 주소 */}
@@ -124,7 +125,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
-            <p className="text-[10px] text-gray-500 mt-1">💡 아파트+동+호수를 입력해 주세요.</p>
+            <p className="text-[10px] text-gray-500 mt-1">💡 현재 거주하시는 아파트+동+호수를 입력해 주세요.</p>
           </div>
 
           {/* 생년월일 (연도 | 월 | 일 드롭다운) */}

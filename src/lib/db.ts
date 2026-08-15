@@ -403,72 +403,88 @@ export async function dbMergeCouponsIntoFamily(
   newFamilyGroupId: string,
   newFamilyName: string
 ) {
-  // 1. 각 성도의 개인 쿠폰 키 목록 (fam_single_xxx)
-  const singleKeys = memberIds.map(id => `fam_single_${id}`)
+  try {
+    // 1. 각 성도의 개인 쿠폰 키 목록 (fam_single_xxx)
+    const singleKeys = memberIds.map(id => `fam_single_${id}`)
 
-  // 2. 개인 쿠폰 레코드 조회
-  const { data: singleRows } = await supabase
-    .from('meal_coupons')
-    .select('family_group_id, balance')
-    .in('family_group_id', singleKeys)
-
-  const singleTotal = (singleRows || []).reduce((sum, r) => sum + (r.balance ?? 0), 0)
-
-  if (singleTotal > 0) {
-    // 3. 현재 가족 그룹 쿠폰 잔액 조회
-    const { data: famRows } = await supabase
+    // 2. 개인 쿠폰 레코드 조회
+    const { data: singleRows, error: selectError } = await supabase
       .from('meal_coupons')
-      .select('balance')
-      .eq('family_group_id', newFamilyGroupId)
+      .select('family_group_id, balance')
+      .in('family_group_id', singleKeys)
 
-    const famExists = famRows && famRows.length > 0
-    const famBalance = famExists ? (famRows[0].balance ?? 0) : 0
-    const mergedBalance = famBalance + singleTotal
+    if (selectError) throw new Error(`개인 쿠폰 조회 실패: ${selectError.message}`)
 
-    // 4. 가족 그룹 쿠폰 upsert (잔액 합산)
-    if (famExists) {
-      await supabase.from('meal_coupons').update({
-        balance: mergedBalance,
-        family_name: newFamilyName,
-        updated_at: new Date().toISOString()
-      }).eq('family_group_id', newFamilyGroupId)
-    } else {
-      await supabase.from('meal_coupons').insert({
+    const singleTotal = (singleRows || []).reduce((sum, r) => sum + (r.balance ?? 0), 0)
+
+    if (singleTotal > 0) {
+      // 3. 현재 가족 그룹 쿠폰 잔액 조회
+      const { data: famRows, error: famError } = await supabase
+        .from('meal_coupons')
+        .select('balance')
+        .eq('family_group_id', newFamilyGroupId)
+
+      if (famError) throw new Error(`가족 쿠폰 조회 실패: ${famError.message}`)
+
+      const famExists = famRows && famRows.length > 0
+      const famBalance = famExists ? (famRows[0].balance ?? 0) : 0
+      const mergedBalance = famBalance + singleTotal
+
+      // 4. 가족 그룹 쿠폰 upsert (잔액 합산)
+      if (famExists) {
+        const { error: updateError } = await supabase.from('meal_coupons').update({
+          balance: mergedBalance,
+          family_name: newFamilyName,
+          updated_at: new Date().toISOString()
+        }).eq('family_group_id', newFamilyGroupId)
+        if (updateError) throw new Error(`가족 쿠폰 업데이트 실패: ${updateError.message}`)
+      } else {
+        const { error: insertError } = await supabase.from('meal_coupons').insert({
+          family_group_id: newFamilyGroupId,
+          family_name: newFamilyName,
+          balance: mergedBalance,
+          updated_at: new Date().toISOString()
+        })
+        if (insertError) throw new Error(`가족 쿠폰 생성 실패: ${insertError.message}`)
+      }
+
+      // 5. 병합 이력 기록
+      await supabase.from('meal_coupon_history').insert({
         family_group_id: newFamilyGroupId,
-        family_name: newFamilyName,
-        balance: mergedBalance,
-        updated_at: new Date().toISOString()
+        type: 'GRANT',
+        amount: singleTotal,
+        note: `개인 쿠폰 가정 통합 (${singleTotal}장)`
       })
+
+      // 6. 기존 개인 쿠폰 레코드 히스토리를 가족 ID로 이전 후 레코드 삭제
+      await supabase
+        .from('meal_coupon_history')
+        .update({ family_group_id: newFamilyGroupId })
+        .in('family_group_id', singleKeys)
+
+      const { error: deleteError } = await supabase
+        .from('meal_coupons')
+        .delete()
+        .in('family_group_id', singleKeys)
+
+      if (deleteError) throw new Error(`기존 개인 쿠폰 삭제 실패: ${deleteError.message}`)
     }
-
-    // 5. 병합 이력 기록
-    await supabase.from('meal_coupon_history').insert({
-      family_group_id: newFamilyGroupId,
-      type: 'GRANT',
-      amount: singleTotal,
-      note: `개인 쿠폰 가정 통합 (${singleTotal}장)`
-    })
-
-    // 6. 기존 개인 쿠폰 레코드 히스토리를 가족 ID로 이전 후 레코드 삭제
-    await supabase
-      .from('meal_coupon_history')
-      .update({ family_group_id: newFamilyGroupId })
-      .in('family_group_id', singleKeys)
-
-    await supabase
-      .from('meal_coupons')
-      .delete()
-      .in('family_group_id', singleKeys)
+  } catch (err) {
+    console.error('[dbMergeCouponsIntoFamily] 쿠폰 병합 오류:', err)
+    throw err // 호출부(관리자 대시보드)에서 alert 하도록 re-throw
   }
 }
 
 // ==========================================
 // 8. 출석체크 (attendance_records)
 // ==========================================
-export async function dbFetchAttendanceRecords(dateStr?: string) {
+export async function dbFetchAttendanceRecords(dateStr?: string, userId?: string) {
   let query = supabase.from('attendance_records').select('*')
   if (dateStr) {
     query = query.eq('date_str', dateStr)
+  }
+  if (userId) {
+    query = query.eq('user_id', userId)
   }
   const { data, error } = await query
   if (error || !data) return []

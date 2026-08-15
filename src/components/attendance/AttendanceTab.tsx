@@ -19,7 +19,7 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string) => {
     setToastMsg(msg)
-    setTimeout(() => setToastMsg(''), 2000)
+    setTimeout(() => setToastMsg(''), 2500)
   }
 
   // ── 1. 본인 출석 확인 (DB 연동) ──
@@ -28,17 +28,14 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
   const [myAttendanceRecords, setMyAttendanceRecords] = useState<{ dateStr: string; status: 'ATTEND' | 'ABSENT'; note?: string }[]>([])
 
   const loadMyAttendance = useCallback(async () => {
-    const allRecords = await dbFetchAttendanceRecords()
-    if (allRecords && allRecords.length > 0) {
-      const myRecs = allRecords
-        .filter((r: any) => r.user_id === currentUser.id)
-        .map((r: any) => ({
-          dateStr: r.date_str,
-          status: r.status as 'ATTEND' | 'ABSENT',
-          note: r.note || ''
-        }))
-      setMyAttendanceRecords(myRecs)
-    }
+    // DB 단에서 본인 ID로 필터링 — 전체 레코드 로드 방지
+    const myRecords = await dbFetchAttendanceRecords(undefined, currentUser.id)
+    const mapped = myRecords.map((r: any) => ({
+      dateStr: r.date_str,
+      status: r.status as 'ATTEND' | 'ABSENT',
+      note: r.note || ''
+    }))
+    setMyAttendanceRecords(mapped)
   }, [currentUser.id])
 
   useEffect(() => {
