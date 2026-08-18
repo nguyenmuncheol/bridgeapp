@@ -136,6 +136,8 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
         : myLabriMembers)
     : []
   const attendedCount = Object.values(checkSelections).filter(v => v === 'ATTEND').length
+  // 전원 명시적으로 출석/결석을 표시해야만 제출 가능 (미처리 인원이 자동으로 '출석' 처리되는 것을 방지)
+  const allMembersChecked = targetMembers.length > 0 && targetMembers.every(m => !!checkSelections[m.id])
 
   // ── 달력 날짜 계산 ──
   const firstDay = new Date(calYear, calMonth, 1).getDay()
@@ -185,11 +187,19 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
     if (!editEventTitle.trim() || !calEditModal) return
     if (editingEventId) {
       // 기존 일정 수정 (DB)
-      await dbUpdateChurchEvent(editingEventId, editEventTitle.trim())
+      const { error } = await dbUpdateChurchEvent(editingEventId, editEventTitle.trim())
+      if (error) {
+        showToast('일정 저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
+        return
+      }
       setCustomEvents(prev => prev.map(e => e.id === editingEventId ? { ...e, title: editEventTitle.trim() } : e))
     } else {
       // 신규 일정 등록 (DB)
       const res = await dbCreateChurchEvent(calEditModal.dateStr, editEventTitle.trim(), editEventType)
+      if (res.error) {
+        showToast('일정 등록 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
+        return
+      }
       const newEv: ChurchEvent = {
         id: res.data?.id || `ev_${Date.now()}`,
         date: calEditModal.dateStr,
@@ -203,7 +213,12 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   }
 
   const handleDeleteEvent = async (evId: string) => {
-    await dbDeleteChurchEvent(evId)
+    if (!confirm('이 일정을 삭제하시겠습니까?')) return
+    const { error } = await dbDeleteChurchEvent(evId)
+    if (error) {
+      showToast('일정 삭제 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
+      return
+    }
     setCustomEvents(prev => prev.filter(e => e.id !== evId))
   }
 
@@ -283,10 +298,14 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
   // 교우소식 수정 저장
   const handleSaveNewsEdit = async () => {
     if (!editingNews) return
-    await dbUpdatePost(editingNews.id, {
+    const { error } = await dbUpdatePost(editingNews.id, {
       title: editNewsTitle.trim(),
       content: editNewsContent.trim()
     })
+    if (error) {
+      showToast('저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
+      return
+    }
     setMemberNewsList(prev => prev.map(n => n.id === editingNews.id
       ? { ...n, title: editNewsTitle.trim(), content: editNewsContent.trim() }
       : n
@@ -310,16 +329,26 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
 
   // 출석체크 제출 (DB 동기화)
   const handleSubmitAttendance = async () => {
+    // 안전장치: 전원이 명시적으로 출석/결석 표시되지 않았다면 제출하지 않음
+    // (버튼도 비활성화되지만, 방어적으로 한 번 더 확인)
+    if (!allMembersChecked) {
+      showToast('아직 출석/결석을 표시하지 않은 성도가 있습니다.', true)
+      return
+    }
     const records = targetMembers.map(m => ({
       userId: m.id,
       dateStr: targetSundayDateStr,
       labriId: m.labriId || '미정',
-      status: (checkSelections[m.id] || 'ATTEND') as 'ATTEND' | 'ABSENT',
+      status: checkSelections[m.id] as 'ATTEND' | 'ABSENT',
       note: checkNotes[m.id] || '',
       recordedBy: currentUser.id
     }))
 
-    await dbSaveAttendanceRecords(records)
+    const { error } = await dbSaveAttendanceRecords(records)
+    if (error) {
+      showToast('출석체크 저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
+      return
+    }
     setCheckSubmitted(true)
     setHasSubmittedAttendance(true)
     setTimeout(() => {
@@ -490,7 +519,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
                   value={newsComments[item.id] || ''}
                   onChange={e => setNewsComments({ ...newsComments, [item.id]: e.target.value })}
                   onKeyDown={e => e.key === 'Enter' && handleAddNewsComment(item.id)}
-                  className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none"
+                  className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
                 />
                 <button onClick={() => handleAddNewsComment(item.id)} className="px-3 py-1 bg-[#335f87] text-white text-xs font-bold rounded-lg">등록</button>
               </div>
@@ -621,7 +650,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
               placeholder="성도 이름으로 검색..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs"
+              className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs text-gray-900 font-medium"
             />
             {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
           </div>
@@ -666,7 +695,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
 
       {/* ── 일정 텍스트 직접 수정/추가 모달 (관리자/리더) ── */}
       {calEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">📅 {calEditModal.dateStr} 일정 편집</h3>
@@ -707,7 +736,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
                 placeholder="일정 이름 입력 (예: 주일 예배 + 세례식)"
                 value={editEventTitle}
                 onChange={e => setEditEventTitle(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
               />
               <div className="flex gap-2">
                 {editingEventId && (
@@ -726,7 +755,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
 
       {/* ── 교우소식 작성 모달 ── */}
       {showAddNewsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <h3 className="font-bold text-sm text-gray-900">📣 교우소식 작성</h3>
             <input
@@ -734,14 +763,14 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
               placeholder="소식 제목 (예: 박성도 성도님 득남 축하)"
               value={newNewsTitle}
               onChange={e => setNewNewsTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
             />
             <textarea
               rows={4}
               placeholder="상세 내용을 작성해 주세요..."
               value={newNewsContent}
               onChange={e => setNewNewsContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
             />
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowAddNewsModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
@@ -753,7 +782,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
 
       {/* ── 교우소식 수정 모달 ── */}
       {editingNews && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 교우소식 수정</h3>
@@ -763,14 +792,14 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
               type="text"
               value={editNewsTitle}
               onChange={e => setEditNewsTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
               placeholder="제목"
             />
             <textarea
               rows={4}
               value={editNewsContent}
               onChange={e => setEditNewsContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
               placeholder="내용"
             />
             <div className="flex gap-2 pt-1">
@@ -783,7 +812,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
 
       {/* ── 출석체크 모달 (화면 중앙 정중앙 팝업 배치 + 제출 버튼) ── */}
       {showAttendanceModal && isLeaderOrAdmin && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-[#335f87] text-white">
               <div>
@@ -877,7 +906,7 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
                           placeholder="결석 사유 직접 입력 (선택사항)..."
                           value={checkNotes[member.id] || ''}
                           onChange={e => setCheckNotes(p => ({ ...p, [member.id]: e.target.value }))}
-                          className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none"
+                          className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none text-gray-900 font-medium"
                         />
                       </div>
                     )}
@@ -895,9 +924,11 @@ export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
               ) : (
                 <button
                   onClick={handleSubmitAttendance}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+                  disabled={!allMembersChecked}
+                  title={!allMembersChecked ? '전원 출석/결석 표시 후 제출할 수 있습니다.' : undefined}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
                 >
-                  <CheckSquare size={16} /> {hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기'} ({attendedCount}명 출석)
+                  <CheckSquare size={16} /> {!allMembersChecked ? `전원 표시 필요 (${targetMembers.filter(m => !checkSelections[m.id]).length}명 남음)` : (hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기')} ({attendedCount}명 출석)
                 </button>
               )}
             </div>

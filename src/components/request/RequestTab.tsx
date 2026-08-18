@@ -290,7 +290,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
 
       {/* 관리자: 행사 등록/수정 모달 (제목 + 내용 + URL 3필드) */}
       {showEventEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-gray-900">📋 행사 신청 관리 (관리자)</h3>
@@ -304,7 +304,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   placeholder="예: 2026 여름 수련회"
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
               </div>
               <div>
@@ -314,7 +314,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   placeholder="행사 일시, 장소, 신청 방법 등 안내 내용을 입력하세요..."
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium"
                 />
               </div>
               <div>
@@ -324,7 +324,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   placeholder="https://forms.google.com/..."
                   value={editUrl}
                   onChange={e => setEditUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
                 <p className="text-[10px] text-gray-400 mt-1">URL 미입력 시 "담당자에게 직접 신청" 안내 표시</p>
               </div>

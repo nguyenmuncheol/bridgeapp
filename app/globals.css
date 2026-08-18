@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── 텍스트 입력창 & 플레이스홀더 가독성 대폭 향상 ── */
+input, textarea, select {
+  color: #111827 !important; /* 진한 검정-차콜 */
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #4b5563 !important; /* 흐리지 않은 진한 쿨그레이 */
+  -webkit-text-fill-color: #4b5563 !important;
+  opacity: 1 !important;
+  font-weight: 400 !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* 라벨 가독성 보강 */
+label {
+  color: #374151 !important;
+  font-weight: 600 !important;
+}

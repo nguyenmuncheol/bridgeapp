@@ -15,6 +15,23 @@ function getYouTubeVideoId(url?: string): string | null {
   return (match && match[2].length === 11) ? match[2] : null
 }
 
+// 🔒 "유튜브 URL" 입력값이 실제로 youtube.com / youtu.be 도메인인지 검증
+// (검증 없이 저장하면 다른 성도가 "유튜브 링크"로 오인하고 임의 사이트로 클릭할 위험이 있음)
+function isValidYouTubeUrl(url: string): boolean {
+  const trimmed = url.trim()
+  if (!trimmed) return true // 빈 값(선택사항)은 통과
+  try {
+    const u = new URL(trimmed)
+    const host = u.hostname.toLowerCase().replace(/^www\./, '')
+    return (
+      (u.protocol === 'http:' || u.protocol === 'https:') &&
+      ['youtube.com', 'youtu.be', 'm.youtube.com', 'music.youtube.com'].includes(host)
+    )
+  } catch {
+    return false
+  }
+}
+
 interface SharingTabProps {
   currentUser: UserProfile
   allUsers?: UserProfile[]
@@ -23,6 +40,9 @@ interface SharingTabProps {
 export default function SharingTab({ currentUser, allUsers = [] }: SharingTabProps) {
   const [subTab, setSubTab] = useState<'prayer' | 'photo' | 'praise'>('prayer')
   const isAdmin = currentUser.role === 'ADMIN'
+  // 🔒 비밀글(기도제목) 열람 권한: 작성자 본인 / 목회자(관리자) / 리더만 실제 내용을 볼 수 있습니다.
+  const canViewSecretPrayer = (prayer: PostItem) =>
+    !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
 
   // 실시간 아바타 렌더러 헬퍼
   const renderAvatar = (authorId: string, authorName: string, size = 'w-6 h-6 text-[10px]') => {
@@ -296,6 +316,10 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
       setPrayers(prev => sortPrayers([np, ...prev]))
     } else if (subTab === 'praise') {
       if (!newContent.trim()) return
+      if (!isValidYouTubeUrl(youtubeUrl)) {
+        showToast('유효한 유튜브(youtube.com / youtu.be) 링크가 아닙니다.', true)
+        return
+      }
       const res = await dbCreatePost({
         authorId: currentUser.id,
         authorName: getUserDisplayName(currentUser),
@@ -418,44 +442,52 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
                   )}
                 </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-sm leading-snug text-gray-900">{prayer.title}</h3>
-                <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{prayer.content}</p>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
-                <span className="text-[11px] text-gray-400">{prayer.createdAt}</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleAmen(prayer.id)} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg flex items-center gap-1">
-                    <Heart size={12} className="fill-amber-500 text-amber-500" /> 아멘 ({prayer.likes})
-                  </button>
-                  {prayer.isCompleted && <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 size={10} /> 응답 완료</span>}
-                </div>
-              </div>
-              {prayer.comments && prayer.comments.length > 0 && (
-                <div className="bg-gray-50 p-2.5 rounded-xl space-y-1.5 text-xs">
-                  {prayer.comments.map(c => (
-                    <div key={c.id} className="flex justify-between items-start text-[11px]">
-                      <div className="flex items-center gap-1.5 flex-1">
-                        {renderAvatar('', c.authorName, 'w-4 h-4 text-[8px]')}
-                        <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
-                        <span className="text-gray-600 ml-1">{c.content}</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400 shrink-0 ml-1">{c.createdAt}</span>
+              {canViewSecretPrayer(prayer) ? (
+                <>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm leading-snug text-gray-900">{prayer.title}</h3>
+                    <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{prayer.content}</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
+                    <span className="text-[11px] text-gray-400">{prayer.createdAt}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleAmen(prayer.id)} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg flex items-center gap-1">
+                        <Heart size={12} className="fill-amber-500 text-amber-500" /> 아멘 ({prayer.likes})
+                      </button>
+                      {prayer.isCompleted && <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 size={10} /> 응답 완료</span>}
                     </div>
-                  ))}
+                  </div>
+                  {prayer.comments && prayer.comments.length > 0 && (
+                    <div className="bg-gray-50 p-2.5 rounded-xl space-y-1.5 text-xs">
+                      {prayer.comments.map(c => (
+                        <div key={c.id} className="flex justify-between items-start text-[11px]">
+                          <div className="flex items-center gap-1.5 flex-1">
+                            {renderAvatar('', c.authorName, 'w-4 h-4 text-[8px]')}
+                            <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
+                            <span className="text-gray-600 ml-1">{c.content}</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 shrink-0 ml-1">{c.createdAt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-1.5 pt-1">
+                    <input
+                      type="text"
+                      placeholder="함께 기도하는 마음(댓글)을 나누세요..."
+                      value={prayerComments[prayer.id] || ''}
+                      onChange={e => setPrayerComments({ ...prayerComments, [prayer.id]: e.target.value })}
+                      onKeyDown={e => e.key === 'Enter' && handleAddComment(prayer.id)}
+                      className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
+                    />
+                    <button onClick={() => handleAddComment(prayer.id)} className="px-3 py-1 bg-[#335f87] text-white text-xs font-bold rounded-lg">등록</button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 py-3 px-1 text-gray-400 text-xs bg-gray-50/70 rounded-xl justify-center">
+                  <Lock size={13} /> 비밀글입니다. 작성자 본인과 목회자/리더만 열람할 수 있습니다.
                 </div>
               )}
-              <div className="flex gap-1.5 pt-1">
-                <input
-                  type="text"
-                  placeholder="함께 기도하는 마음(댓글)을 나누세요..."
-                  value={prayerComments[prayer.id] || ''}
-                  onChange={e => setPrayerComments({ ...prayerComments, [prayer.id]: e.target.value })}
-                  onKeyDown={e => e.key === 'Enter' && handleAddComment(prayer.id)}
-                  className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none"
-                />
-                <button onClick={() => handleAddComment(prayer.id)} className="px-3 py-1 bg-[#335f87] text-white text-xs font-bold rounded-lg">등록</button>
-              </div>
             </div>
           ))}
         </div>
@@ -584,7 +616,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
 
       {/* ── 기도제목 수정 모달 ── */}
       {editingPrayer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 기도제목 수정</h3>
@@ -594,14 +626,14 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
               type="text"
               value={editPrayerTitle}
               onChange={e => setEditPrayerTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
               placeholder="기도제목"
             />
             <textarea
               rows={4}
               value={editPrayerContent}
               onChange={e => setEditPrayerContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
               placeholder="내용"
             />
             <label className="flex items-center gap-2 text-xs text-gray-600 font-medium">
@@ -656,7 +688,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
                 type="text"
                 value={editPhotoTitle}
                 onChange={e => setEditPhotoTitle(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
                 placeholder="제목"
               />
             </div>
@@ -666,7 +698,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
                 rows={3}
                 value={editPhotoContent}
                 onChange={e => setEditPhotoContent(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
                 placeholder="사진 설명이나 나눔 내용을 적어주세요..."
               />
             </div>
@@ -676,7 +708,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
                 type="text"
                 value={editPhotoTag}
                 onChange={e => setEditPhotoTag(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
                 placeholder="예: 부활절, 수련회"
               />
             </div>
@@ -690,7 +722,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
 
       {/* ── 찬양/묵상 상세 모달 (수정 & 삭제 버튼 포함) ── */}
       {selectedPraise && !editingPraise && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[85vh] overflow-y-auto">
             <div className="p-5 space-y-3">
               <div className="flex justify-between items-start">
@@ -762,7 +794,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
 
       {/* ── 찬양/묵상 수정 모달 ── */}
       {editingPraise && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 찬양/묵상 수정</h3>
@@ -772,14 +804,14 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
               type="text"
               value={editPraiseTitle}
               onChange={e => setEditPraiseTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
               placeholder="제목"
             />
             <textarea
               rows={4}
               value={editPraiseContent}
               onChange={e => setEditPraiseContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
               placeholder="내용"
             />
             <div className="flex gap-2 pt-1">
@@ -813,7 +845,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
 
       {/* ── 작성 모달 (사진 업로드 진행률 및 압축 안내) ── */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto">
             <h3 className="font-bold text-sm text-gray-900">
               {subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
@@ -823,17 +855,17 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
               placeholder={subTab === 'photo' ? '행사/사진 제목 입력' : '제목 입력'}
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
             />
             <textarea
               rows={3}
               placeholder={subTab === 'photo' ? '사진에 대한 이야기나 설명을 적어주세요...' : '상세 내용 입력'}
               value={newContent}
               onChange={e => setNewContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none"
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
             />
             {subTab === 'prayer' && <label className="flex items-center gap-2 text-xs text-gray-600 font-medium"><input type="checkbox" checked={isSecret} onChange={e => setIsSecret(e.target.checked)} /> 비밀글로 등록 (목회자/리더만 열람)</label>}
-            {subTab === 'praise' && <input type="text" placeholder="유튜브 URL (선택사항)" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none" />}
+            {subTab === 'praise' && <input type="text" placeholder="유튜브 URL (선택사항)" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium" />}
             {subTab === 'photo' && (
               <div className="space-y-2 text-xs">
                 <div>
@@ -893,7 +925,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
                     placeholder="예: 크리스마스, 라브리, 유아부, 수련회"
                     value={customTag}
                     onChange={e => setCustomTag(e.target.value)}
-                    className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none"
+                    className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
                   />
                   <p className="text-[10px] text-gray-400 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
                 </div>
@@ -985,7 +1017,7 @@ function PhotoDetailModal({
   const canManage = photo.authorId === currentUser.id || isAdmin
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-[11px] px-3 py-1.5 rounded-full z-10 font-semibold">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">

@@ -81,7 +81,7 @@ export default function LoginPage() {
                 placeholder="홍길동"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-gray-900 font-medium"
                 required
               />
             </div>
@@ -94,7 +94,7 @@ export default function LoginPage() {
               placeholder="example@church.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-gray-900 font-medium"
               required
             />
           </div>
@@ -106,7 +106,7 @@ export default function LoginPage() {
               placeholder="6자리 이상 입력"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-gray-900 font-medium"
               required
             />
           </div>

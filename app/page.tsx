@@ -30,33 +30,42 @@ export default function Home() {
   const [oauthEmail, setOauthEmail] = useState<string>('')
 
   // Supabase 세션 및 전체 profiles 동기화
+  // 🔒 개인정보 보호: 전화번호/주소/생일/가족정보가 담긴 성도 전체 명단(dbFetchProfiles)은
+  // 로그인이 확인된 사용자에게만 불러옵니다. 비로그인 방문자에게는 절대 로드하지 않습니다.
   useEffect(() => {
-    // 1. 전체 프로필 DB에서 불러오기
-    dbFetchProfiles().then(dbUsers => {
-      if (dbUsers && dbUsers.length > 0) {
-        setUsers(dbUsers)
-      }
-      setIsLoading(false)  // 로드 완료 (성공 여부 무관하게)
-    }).catch(() => setIsLoading(false))
+    const loadFullRoster = () => {
+      dbFetchProfiles().then(dbUsers => {
+        if (dbUsers && dbUsers.length > 0) {
+          setUsers(dbUsers)
+        }
+      }).catch(() => {})
+    }
 
-    // 2. 현재 로그인 세션 감지
+    // 1. 현재 로그인 세션 감지 (최초 1회)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setSupabaseUser(session.user)
         const uMeta = session.user.user_metadata || {}
         const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
-        fetchProfile(session.user.id, session.user.email || '', name)
+        loadFullRoster()
+        fetchProfile(session.user.id, session.user.email || '', name).finally(() => setIsLoading(false))
+      } else {
+        // 비로그인 방문자: 성도 개인정보 명단을 불러오지 않고 바로 로딩 종료
+        setIsLoading(false)
       }
     })
 
+    // 2. 로그인/로그아웃 상태 변화 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setSupabaseUser(session.user)
         const uMeta = session.user.user_metadata || {}
         const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
+        loadFullRoster()
         fetchProfile(session.user.id, session.user.email || '', name)
       } else {
         setSupabaseUser(null)
+        setUsers([]) // 로그아웃 시 메모리에 남아있던 성도 개인정보 명단 제거
       }
     })
 
@@ -366,8 +375,8 @@ export default function Home() {
 
       {/* 회원가입 / 로그인 모달 */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowAuthModal(false)}
               className="absolute top-4 right-4 text-gray-400 font-bold"

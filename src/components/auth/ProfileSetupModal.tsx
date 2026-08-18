@@ -34,7 +34,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'))
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기/뒤로가기 X 버튼 */}
         <button

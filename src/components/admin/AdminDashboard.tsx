@@ -128,7 +128,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       resolvedFid = targetMember?.familyGroupId || editingMember.familyGroupId || `fam_${Date.now().toString(36)}`
       
       // 본인 업데이트
-      await dbUpdateProfile(editingMember.id, {
+      const { error: selfUpdateError } = await dbUpdateProfile(editingMember.id, {
         name: editMemberData.name,
         phone: editMemberData.phone,
         address: editMemberData.address,
@@ -140,10 +140,17 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
         familyInfo: editMemberData.familyInfo,
         familyRole: editMemberData.familyRole
       })
+      if (selfUpdateError) {
+        alert(`저장 중 오류가 발생했습니다: ${selfUpdateError.message}\n다시 시도해 주세요.`)
+        return
+      }
 
       // 상대방도 같은 familyGroupId로 업데이트
       if (targetMember && targetMember.familyGroupId !== resolvedFid) {
-        await dbUpdateProfile(targetMember.id, { familyGroupId: resolvedFid })
+        const { error: linkedUpdateError } = await dbUpdateProfile(targetMember.id, { familyGroupId: resolvedFid })
+        if (linkedUpdateError) {
+          alert(`가족 연결 대상(${targetMember.name})의 정보 저장 중 오류가 발생했습니다: ${linkedUpdateError.message}`)
+        }
       }
 
       // 가족 구성원 ID 수집 후 개인 쿠폰 → 가족 쿠폰 병합
@@ -191,7 +198,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       }))
     } else {
       // 단독 세대로 해제
-      await dbUpdateProfile(editingMember.id, {
+      const { error: soloUpdateError } = await dbUpdateProfile(editingMember.id, {
         name: editMemberData.name,
         phone: editMemberData.phone,
         address: editMemberData.address,
@@ -203,6 +210,10 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
         familyInfo: editMemberData.familyInfo,
         familyRole: editMemberData.familyRole
       })
+      if (soloUpdateError) {
+        alert(`저장 중 오류가 발생했습니다: ${soloUpdateError.message}\n다시 시도해 주세요.`)
+        return
+      }
 
       onUpdateUsers?.(prev => prev.map(u => {
         if (u.id === editingMember.id) {
@@ -300,9 +311,14 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
         resolvedFamilyGroupId = targetMember.familyGroupId
       } else {
         // 상대방도 아직 familyGroupId가 없으면 새로 생성하여 둘 다에게 부여
-        resolvedFamilyGroupId = `fam_${Date.now().toString(36)}`
-        await dbUpdateProfile(targetMemberId, { familyGroupId: resolvedFamilyGroupId })
-        onUpdateUsers?.(prev => prev.map(u => u.id === targetMemberId ? { ...u, familyGroupId: resolvedFamilyGroupId } : u))
+        const newFamilyGroupId = `fam_${Date.now().toString(36)}`
+        const { error: familyLinkError } = await dbUpdateProfile(targetMemberId, { familyGroupId: newFamilyGroupId })
+        if (familyLinkError) {
+          alert(`가족 연결 저장 중 오류가 발생했습니다: ${familyLinkError.message}\n가족 연결 없이 승인만 계속 진행합니다.`)
+        } else {
+          resolvedFamilyGroupId = newFamilyGroupId
+          onUpdateUsers?.(prev => prev.map(u => u.id === targetMemberId ? { ...u, familyGroupId: resolvedFamilyGroupId } : u))
+        }
       }
     }
 
@@ -458,6 +474,16 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
     showToast(`✅ ${getUserDisplayName(user)}의 ${dateStr} 출석 정보가 수정되었습니다.`)
   }
 
+  // 🔒 CSV 필드 이스케이프: 쉼표/따옴표/줄바꿈이 포함된 값을 안전하게 감싸고,
+  // 이름/비고 등 사용자 입력값이 '=', '+', '-', '@'로 시작해도 엑셀에서 수식으로
+  // 실행되지 않도록(CSV 인젝션 방지) 앞에 작은따옴표를 붙여 문자열로 고정합니다.
+  const csvField = (value: string | number | undefined | null): string => {
+    let s = String(value ?? '')
+    if (/^[=+\-@]/.test(s)) s = `'${s}`
+    if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`
+    return s
+  }
+
   const handleDownloadCSV = () => {
     const monthData = combinedMonthData
     let csv = '날짜,성도명,소속라브리,출석여부,결석사유\n'
@@ -465,7 +491,14 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       records.forEach((rec: { userId: string; status: string; note: string }) => {
         const u = allUsers.find(u => u.id === rec.userId)
         if (u) {
-          csv += `${date},${u.name} ${u.duty},${u.labriId || '라브리 미정'},${rec.status === 'ATTEND' ? '출석' : '결석'},${rec.note || ''}\n`
+          const row = [
+            date,
+            `${u.name} ${u.duty}`,
+            u.labriId || '라브리 미정',
+            rec.status === 'ATTEND' ? '출석' : '결석',
+            rec.note || ''
+          ].map(csvField)
+          csv += row.join(',') + '\n'
         }
       })
     })
@@ -685,7 +718,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
                   </div>
                   <div>
                     <label className="text-[10px] text-gray-400 font-semibold">가족 현황 메모</label>
-                    <input type="text" placeholder="예: 배우자: 홍길순, 자녀: 홍길동" value={familyInputs[pending.id] || ''} onChange={(e) => setFamilyInputs({ ...familyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none" />
+                    <input type="text" placeholder="예: 배우자: 홍길순, 자녀: 홍길동" value={familyInputs[pending.id] || ''} onChange={(e) => setFamilyInputs({ ...familyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium" />
                   </div>
                 </div>
                 <div className="flex gap-2 pt-1">
@@ -837,7 +870,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
               placeholder="이름, 전화번호, 이메일로 검색..."
               value={memberSearch}
               onChange={e => setMemberSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs"
+              className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs text-gray-900 font-medium"
             />
             {memberSearch && <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
           </div>
@@ -886,7 +919,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
       {/* ── 성도 편집 모달 ── */}
       {editingMember && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* 헤더 */}
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
@@ -903,7 +936,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
               {/* 이름 */}
               <div>
                 <label className="text-[10px] text-gray-400 font-semibold">이름</label>
-                <input type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]" />
+                <input type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
 
               {/* 등급 + 직분 */}
@@ -941,19 +974,19 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
               {/* 연락처 */}
               <div>
                 <label className="text-[10px] text-gray-400 font-semibold">연락처</label>
-                <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]" placeholder="037-123-4567" />
+                <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="037-123-4567" />
               </div>
 
               {/* 주소 */}
               <div>
                 <label className="text-[10px] text-gray-400 font-semibold">주소</label>
-                <input type="text" value={editMemberData.address} onChange={e => setEditMemberData(p => ({ ...p, address: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]" placeholder="경남 A동 1023호" />
+                <input type="text" value={editMemberData.address} onChange={e => setEditMemberData(p => ({ ...p, address: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="경남 A동 1023호" />
               </div>
 
               {/* 생년월일 */}
               <div>
                 <label className="text-[10px] text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
-                <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]" placeholder="1990-08-15" />
+                <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="1990-08-15" />
               </div>
 
               {/* 가족 연결 및 호칭 */}
@@ -992,7 +1025,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
               {/* 가족 현황 메모 */}
               <div>
                 <label className="text-[10px] text-gray-400 font-semibold">가족 현황 메모</label>
-                <input type="text" value={editMemberData.familyInfo} onChange={e => setEditMemberData(p => ({ ...p, familyInfo: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]" placeholder="배우자: 홍길순, 자녀: 홍길동" />
+                <input type="text" value={editMemberData.familyInfo} onChange={e => setEditMemberData(p => ({ ...p, familyInfo: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="배우자: 홍길순, 자녀: 홍길동" />
               </div>
 
               {/* 버튼 */}
@@ -1136,7 +1169,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
       {/* ── 개별 출석 정보 수정 모달 ── */}
       {editingAttendanceUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
@@ -1206,7 +1239,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
                   placeholder="결석 사유를 직접 입력하세요..."
                   value={editingAttendanceUser.note}
                   onChange={e => setEditingAttendanceUser(prev => prev ? { ...prev, note: e.target.value } : null)}
-                  className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
               </div>
             )}
@@ -1233,7 +1266,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
       {/* ── 쿠폰구매 QR 모달 ── */}
       {showQrModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
               <div>

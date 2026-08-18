@@ -291,7 +291,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin 
 
       {/* ── 프로필 수정 모달 ── */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
               <h3 className="font-bold text-sm text-gray-900">✏️ 내 정보 & 프로필 수정</h3>
@@ -381,7 +381,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin 
 
       {/* ── 내 기도제목 상세 모달 ── */}
       {selectedPrayer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-2">
               <div>

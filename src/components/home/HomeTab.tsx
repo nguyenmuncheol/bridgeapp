@@ -336,7 +336,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
 
       {/* ─── 주보 전체보기 모달 (다중 이미지 슬라이드) ─── */}
       {showBulletinModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-3">
               <div>
@@ -386,7 +386,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
 
       {/* ─── 관리자 주보 편집 모달 (날짜 픽커 + 파일 업로드 2~4장) ─── */}
       {showBulletinEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-sm text-gray-900">✏️ 주보 수정 (관리자)</h3>
 
@@ -448,25 +448,25 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                 <label className="text-[10px] text-gray-400 font-bold">설교 제목</label>
                 <input type="text" value={editBulletinTitle}
                   onChange={e => setEditBulletinTitle(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87]" />
+                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 font-bold">성경 구절</label>
                 <input type="text" value={editBulletinPassage}
                   onChange={e => setEditBulletinPassage(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87]" />
+                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 font-bold">설교자</label>
                 <input type="text" value={editBulletinPreacher}
                   onChange={e => setEditBulletinPreacher(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87]" />
+                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 font-bold">설교 요약</label>
                 <textarea rows={3} value={editBulletinSummary}
                   onChange={e => setEditBulletinSummary(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none" />
+                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium" />
               </div>
             </div>
 
@@ -482,16 +482,16 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
 
       {/* ─── 공지 작성 모달 ─── */}
       {showNoticeCreateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <h3 className="font-bold text-sm text-gray-900">📣 신규 공지 작성 (관리자)</h3>
             <div className="space-y-2 text-xs">
               <input type="text" placeholder="공지 제목 입력" value={newNoticeTitle}
                 onChange={e => setNewNoticeTitle(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none" />
+                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium" />
               <textarea rows={4} placeholder="공지 상세 내용 입력..." value={newNoticeContent}
                 onChange={e => setNewNoticeContent(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none" />
+                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium" />
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowNoticeCreateModal(false)}
@@ -505,7 +505,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
 
       {/* ─── 공지 상세 모달 (관리자: 삭제 버튼 포함) ─── */}
       {selectedNoticeModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex justify-between items-start">
               <div>
