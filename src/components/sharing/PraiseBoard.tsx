@@ -14,6 +14,8 @@ interface PraiseBoardProps {
   praises: PostItem[]
   setPraises: Dispatch<SetStateAction<PostItem[]>>
   isLoading: boolean
+  // 다른 게시판들과 동일하게 "오류가 있었나" 여부만 받습니다.
+  // (unknown 으로 두면 화면에 그대로 그리려다 빌드가 실패합니다)
   error?: unknown
 }
 
@@ -59,7 +61,9 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   return (
     <div className="space-y-4">
-      {error && (
+      {/* error 는 어떤 형태로든 올 수 있으므로(unknown) 반드시 참/거짓으로 바꿔서 씁니다.
+          그냥 {error && ...} 로 쓰면 error 자체를 화면에 그리려는 코드가 되어 빌드가 실패합니다. */}
+      {!!error && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
           <p className="text-xs font-bold text-amber-800">목록을 불러오지 못했습니다</p>
           <p className="text-[11px] text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다른 탭에 갔다가 돌아와 주세요.</p>

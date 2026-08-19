@@ -54,33 +54,40 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
   // ② 화면의 값을 읽어 계산 후 통째로 덮어써서, 여러 명이 동시에 누르면 유실됐습니다.
   //    → 서버에서 처리(dbTogglePostLike)하고, 안 되면 기존 방식으로 대체합니다.
   const handleAmen = useCallback(async (id: string) => {
-    let snapshot: { likes: number; likedUserIds: string[] } | null = null
-    let optimistic: { likes: number; likedUserIds: string[] } | null = null
+    // ⚠️ 아래 두 값은 바로 밑 setPrayers(...) 안쪽(콜백)에서 채워집니다.
+    //    그냥 `let x = null` 로 두면 TypeScript는 "콜백 안의 대입"을 추적하지 못해
+    //    계속 null 이라고 단정해버리고, 나중에 x.likes 를 쓰는 순간 빌드가 실패합니다.
+    //    (Vercel 배포가 여기서 깨졌습니다 — 로컬 개발서버는 타입 검사를 건너뛰어 안 보였습니다)
+    //    → 객체 한 칸에 담아두면 TypeScript가 함부로 단정하지 않아 안전합니다.
+    type LikeState = { likes: number; likedUserIds: string[] }
+    const captured: { before: LikeState | null; guessed: LikeState | null } = { before: null, guessed: null }
 
     setPrayers(prev => prev.map(p => {
       if (p.id !== id) return p
       const likedUsers = p.likedUserIds || []
-      snapshot = { likes: p.likes, likedUserIds: likedUsers }
+      captured.before = { likes: p.likes, likedUserIds: likedUsers }
       const isLiked = likedUsers.includes(currentUser.id)
       const newLikes = isLiked ? Math.max(0, p.likes - 1) : p.likes + 1
       const newLikedUsers = isLiked
         ? likedUsers.filter(uid => uid !== currentUser.id)
         : [...likedUsers, currentUser.id]
-      optimistic = { likes: newLikes, likedUserIds: newLikedUsers }
+      captured.guessed = { likes: newLikes, likedUserIds: newLikedUsers }
       return { ...p, likes: newLikes, likedUserIds: newLikedUsers }
     }))
 
-    if (!snapshot) return
+    const before = captured.before
+    const guessed = captured.guessed
+    if (!before) return
 
-    const res = await dbTogglePostLike(id, currentUser.id, snapshot)
+    const res = await dbTogglePostLike(id, currentUser.id, before)
     if (res.error) {
       // 실패 시 되돌리기
-      setPrayers(prev => prev.map(p => p.id === id ? { ...p, likes: snapshot!.likes, likedUserIds: snapshot!.likedUserIds } : p))
+      setPrayers(prev => prev.map(p => p.id === id ? { ...p, likes: before.likes, likedUserIds: before.likedUserIds } : p))
       showToast('아멘 처리 중 오류가 발생했습니다.', true)
       return
     }
     // 서버가 알려준 최종 값으로 맞춥니다(다른 사람이 동시에 눌렀을 수 있으므로)
-    if (res.likes !== optimistic?.likes || res.likedUserIds.length !== optimistic?.likedUserIds.length) {
+    if (res.likes !== guessed?.likes || res.likedUserIds.length !== guessed?.likedUserIds.length) {
       setPrayers(prev => prev.map(p => p.id === id ? { ...p, likes: res.likes, likedUserIds: res.likedUserIds } : p))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
