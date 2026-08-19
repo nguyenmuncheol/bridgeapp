@@ -6,7 +6,7 @@ import { PostItem, UserProfile } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 import ImageSlider from '../ImageSlider'
-import { toDownloadUrl, saveImage } from '../../lib/download'
+import { saveImage, openImageViewer } from '../../lib/download'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -367,9 +367,14 @@ function PhotoDetailModal({
   // → download.ts 의 saveImage() 로 처리합니다. (Supabase의 ?download= 신호 + 휴대폰 공유 시트)
   const [isSavingAll, setIsSavingAll] = useState(false)
 
+  // 🐛 과거 버그: 파일명이 항상 bridge_photo_1.jpg 라서, 다른 글의 사진을 받으면
+  //    먼저 받은 사진과 이름이 겹쳐 (1) 이 붙거나 덮어써졌습니다.
+  // → 글마다 다른 짧은 번호를 넣어 겹치지 않게 합니다.
+  const fileNameFor = (n: number) => `bridge_${String(photo.id).replace(/-/g, '').slice(0, 8)}_${n}.jpg`
+
   const handleDownloadSingle = async () => {
     setToastMsg('📷 저장 중...')
-    const ok = await saveImage(images[imgIdx], `bridge_photo_${imgIdx + 1}.jpg`)
+    const ok = await saveImage(images[imgIdx], fileNameFor(imgIdx + 1))
     setToastMsg(ok ? '📷 사진을 저장했습니다' : '⚠️ 저장하지 못했습니다')
     setTimeout(() => setToastMsg(''), 2200)
   }
@@ -381,7 +386,7 @@ function PhotoDetailModal({
     for (let i = 0; i < images.length; i++) {
       setToastMsg(`📦 ${i + 1}/${images.length}장 저장 중...`)
       // 실제로 저장이 시작된 것만 셉니다 — "저장했습니다"가 거짓말이 되지 않도록.
-      if (await saveImage(images[i], `bridge_photo_${i + 1}.jpg`)) saved++
+      if (await saveImage(images[i], fileNameFor(i + 1))) saved++
       // 연속으로 너무 빨리 저장하면 브라우저가 뒤쪽을 막습니다.
       if (i < images.length - 1) await new Promise(r => setTimeout(r, 900))
     }
@@ -449,7 +454,9 @@ function PhotoDetailModal({
           images={images}
           index={imgIdx}
           onIndexChange={setImgIdx}
-          onImageClick={() => window.open(toDownloadUrl(images[imgIdx], ''), '_blank', 'noopener,noreferrer')}
+          // 🐛 과거 문제: 사진을 누르면 곧바로 다운로드가 시작됐습니다(주보와 동작이 달랐습니다).
+          //    → 주보처럼 "크게 보기"만 하고, 그 화면에서 다시 누르면 닫힙니다.
+          onImageClick={() => openImageViewer(images[imgIdx])}
           alt={photo.title}
         />
         {images.length > 1 && (

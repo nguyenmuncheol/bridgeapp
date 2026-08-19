@@ -284,21 +284,22 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           </div>
 
           {tempAttending && (
-            <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-2 text-xs">
+            <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-1.5 text-xs">
               {[{ label: '성인', val: tempAdult, set: setTempAdult, min: 1 }, { label: '어린이', val: tempChild, set: setTempChild, min: 0 }].map(({ label, val, set, min }) => (
-                <div key={label} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-gray-100">
-                  <span className="text-gray-600 font-bold">{label}</span>
-                  {/* 버튼 크기: 원래 20px로 너무 작아 오조작이 잦았습니다.
-                      44px로 키웠더니 이번엔 휴대폰 화면에서 과하게 커 보여서 28px로 조정했습니다.
-                      (좌우 여백을 함께 줘서 실제로 누를 수 있는 영역은 그대로 넉넉합니다) */}
-                  <div className="flex items-center gap-2">
+                // 🐛 화면 깨짐: 좁은 휴대폰에서 한 칸에 "어린이" + 버튼 3개가 다 안 들어가
+                //    글자가 아래로 밀리거나 줄바꿈됐습니다. 여백·간격을 줄이고
+                //    글자는 줄바꿈되지 않도록 고정했습니다.
+                <div key={label} className="flex items-center justify-between gap-1 bg-white px-2 py-1.5 rounded-lg border border-gray-100">
+                  <span className="text-gray-600 font-bold whitespace-nowrap shrink-0">{label}</span>
+                  {/* 버튼 크기: 원래 20px로 너무 작아 오조작이 잦았고, 44px는 휴대폰에서 과했습니다 → 28px */}
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       disabled={isLocked}
                       onClick={() => set(Math.max(min, val - 1))}
                       aria-label={`${label} 인원 줄이기`}
                       className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >−</button>
-                    <span className="font-bold text-[#335f87] w-7 text-center text-sm">{val}</span>
+                    <span className="font-bold text-[#335f87] w-6 text-center text-sm tabular-nums">{val}</span>
                     <button
                       disabled={isLocked}
                       onClick={() => set(val + 1)}

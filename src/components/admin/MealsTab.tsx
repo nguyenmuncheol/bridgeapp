@@ -17,8 +17,8 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
   const [forecastWeek, setForecastWeek] = useState(0)
   const [dbMealRegistrations, setDbMealRegistrations] = useState<any[]>([])
-  // 미응답 가정 목록은 길어질 수 있어 접었다 폈다 합니다.
-  const [showPending, setShowPending] = useState(true)
+  // 미응답 가정 목록은 길어질 수 있어 기본은 접어 둡니다(숫자는 접힌 상태에서도 보입니다).
+  const [showPending, setShowPending] = useState(false)
 
   // 신청 탭과 캐시를 공유해 반복 조회하지 않음
   const { data: mealRegistrations } = useCachedQuery('mealRegistrations', () => dbFetchMealRegistrations())
@@ -259,7 +259,9 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
           <h3 className="font-bold text-xs text-gray-900">
             {upcomingSundays[forecastWeek]?.shortLabelStr} 식사 신청자 목록
           </h3>
-          <span className="text-[10px] bg-blue-50 text-[#335f87] font-bold px-2 py-0.5 rounded-full">총 {currentWeekStat.total}명</span>
+          <span className="text-[10px] bg-blue-50 text-[#335f87] font-bold px-2 py-0.5 rounded-full">
+            성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명
+          </span>
         </div>
         {currentWeekStat.rows.length > 0 ? (
           <table className="w-full text-xs text-left">

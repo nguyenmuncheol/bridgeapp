@@ -53,42 +53,38 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
   //    → useCallback으로 함수 정체성을 고정합니다.
   // ② 화면의 값을 읽어 계산 후 통째로 덮어써서, 여러 명이 동시에 누르면 유실됐습니다.
   //    → 서버에서 처리(dbTogglePostLike)하고, 안 되면 기존 방식으로 대체합니다.
-  const handleAmen = useCallback(async (id: string) => {
-    // ⚠️ 아래 두 값은 바로 밑 setPrayers(...) 안쪽(콜백)에서 채워집니다.
-    //    그냥 `let x = null` 로 두면 TypeScript는 "콜백 안의 대입"을 추적하지 못해
-    //    계속 null 이라고 단정해버리고, 나중에 x.likes 를 쓰는 순간 빌드가 실패합니다.
-    //    (Vercel 배포가 여기서 깨졌습니다 — 로컬 개발서버는 타입 검사를 건너뛰어 안 보였습니다)
-    //    → 객체 한 칸에 담아두면 TypeScript가 함부로 단정하지 않아 안전합니다.
-    type LikeState = { likes: number; likedUserIds: string[] }
-    const captured: { before: LikeState | null; guessed: LikeState | null } = { before: null, guessed: null }
+  // 🐛 저장이 안 되던 진짜 원인 (행사사진은 되는데 여기만 안 되던 이유):
+  //    예전 코드는 "지금 몇 개인지"를 setState 콜백 **안에서** 꺼내 쓰려 했습니다.
+  //    그런데 React는 그 콜백을 즉시 실행해준다고 보장하지 않습니다(나중에 실행될 수 있음).
+  //    그래서 바로 다음 줄에서 값을 읽으면 대개 비어 있었고, `if (!before) return` 에 걸려
+  //    **서버로 저장 요청을 아예 보내지 않고 끝났습니다.** 화면만 바뀌니 된 것처럼 보였습니다.
+  //    (행사사진은 목록에서 직접 값을 읽어 써서 이 문제가 없었습니다)
+  // → 카드가 이미 들고 있는 현재 값을 그대로 넘겨받아 씁니다. 추측이 필요 없습니다.
+  const handleAmen = useCallback(async (
+    id: string,
+    current: { likes: number; likedUserIds: string[] }
+  ) => {
+    const before = { likes: current.likes, likedUserIds: current.likedUserIds || [] }
+    const isLiked = before.likedUserIds.includes(currentUser.id)
+    const guessedLikes = isLiked ? Math.max(0, before.likes - 1) : before.likes + 1
+    const guessedUsers = isLiked
+      ? before.likedUserIds.filter(uid => uid !== currentUser.id)
+      : [...before.likedUserIds, currentUser.id]
 
-    setPrayers(prev => prev.map(p => {
-      if (p.id !== id) return p
-      const likedUsers = p.likedUserIds || []
-      captured.before = { likes: p.likes, likedUserIds: likedUsers }
-      const isLiked = likedUsers.includes(currentUser.id)
-      const newLikes = isLiked ? Math.max(0, p.likes - 1) : p.likes + 1
-      const newLikedUsers = isLiked
-        ? likedUsers.filter(uid => uid !== currentUser.id)
-        : [...likedUsers, currentUser.id]
-      captured.guessed = { likes: newLikes, likedUserIds: newLikedUsers }
-      return { ...p, likes: newLikes, likedUserIds: newLikedUsers }
-    }))
+    const apply = (likes: number, ids: string[]) =>
+      setPrayers(prev => prev.map(p => (p.id === id ? { ...p, likes, likedUserIds: ids } : p)))
 
-    const before = captured.before
-    const guessed = captured.guessed
-    if (!before) return
+    apply(guessedLikes, guessedUsers)   // 먼저 화면에 반영 (빠른 반응)
 
     const res = await dbTogglePostLike(id, currentUser.id, before)
     if (res.error) {
-      // 실패 시 되돌리기
-      setPrayers(prev => prev.map(p => p.id === id ? { ...p, likes: before.likes, likedUserIds: before.likedUserIds } : p))
-      showToast('아멘 처리 중 오류가 발생했습니다.', true)
+      apply(before.likes, before.likedUserIds)   // 실패하면 되돌립니다
+      showToast('아멘이 저장되지 않았습니다. 잠시 후 다시 눌러 주세요.', true)
       return
     }
     // 서버가 알려준 최종 값으로 맞춥니다(다른 사람이 동시에 눌렀을 수 있으므로)
-    if (res.likes !== guessed?.likes || res.likedUserIds.length !== guessed?.likedUserIds.length) {
-      setPrayers(prev => prev.map(p => p.id === id ? { ...p, likes: res.likes, likedUserIds: res.likedUserIds } : p))
+    if (res.likes !== guessedLikes || res.likedUserIds.length !== guessedUsers.length) {
+      apply(res.likes, res.likedUserIds)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, setPrayers])

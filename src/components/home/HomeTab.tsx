@@ -9,6 +9,7 @@ import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
+import { openImageViewer } from '../../lib/download'
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -431,12 +432,12 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                   images={bulletin.imageUrls}
                   index={activeBulletinImgIdx}
                   onIndexChange={setActiveBulletinImgIdx}
-                  onImageClick={() => window.open(bulletin.imageUrls[activeBulletinImgIdx], '_blank', 'noopener,noreferrer')}
+                  onImageClick={() => openImageViewer(bulletin.imageUrls[activeBulletinImgIdx])}
                   alt="주보"
                   maxHeightClass="max-h-[360px]"
                   bgClass="bg-gray-50"
                 />
-                <p className="text-[11px] text-center text-gray-400">사진을 탭하면 원본 크기로 크게 볼 수 있습니다</p>
+                <p className="text-[11px] text-center text-gray-400">사진을 탭하면 크게 볼 수 있고, 다시 탭하면 닫힙니다</p>
                 {bulletin.imageUrls.length > 1 && (
                   <div className="flex justify-center gap-1.5">
                     {bulletin.imageUrls.map((_, idx) => (

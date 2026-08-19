@@ -17,7 +17,8 @@ interface NewsTabProps {
 // 각 서브탭은 별도 컴포넌트(MemberNewsBoard/ScheduleCalendar/AddressBook)로 분리되어 있으며,
 // 탭 전환 시 상태(작성 중인 글, 펼친 항목 등)가 유지되도록 언마운트 대신 CSS로 숨김 처리합니다.
 export default function NewsTab({ currentUser, allUsers }: NewsTabProps) {
-  const [subTab, setSubTab] = useState<'memberNews' | 'schedule' | 'members'>('memberNews')
+  // 우리소식을 열면 교회일정이 먼저 보이게 합니다(가장 자주 확인하는 화면).
+  const [subTab, setSubTab] = useState<'memberNews' | 'schedule' | 'members'>('schedule')
   const isLeaderOrAdmin = currentUser.role === 'LEADER' || currentUser.role === 'ADMIN'
 
   // 주소록/일정용 대상: 승인대기자·쿠폰관리자 제외 + 미가입 자녀 등 가상 항목 포함 (생일 달력에도 사용)

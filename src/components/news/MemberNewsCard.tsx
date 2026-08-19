@@ -11,7 +11,7 @@ interface MemberNewsCardProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
   isLeaderOrAdmin: boolean
-  onLike: (id: string) => void
+  onLike: (id: string, current: { likes: number; likedUserIds: string[] }) => void
   onEdit: (item: PostItem) => void
   onDelete: (id: string) => void
   onAddComment: (id: string, text: string) => void
@@ -50,7 +50,7 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLi
       </div>
       <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
         <button
-          onClick={() => onLike(item.id)}
+          onClick={() => onLike(item.id, { likes: item.likes, likedUserIds: item.likedUserIds || [] })}
           className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 ${
             (item.likedUserIds || []).includes(currentUser.id)
               ? 'bg-rose-100 text-rose-700'

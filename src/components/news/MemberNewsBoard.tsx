@@ -45,30 +45,38 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
   // 교우소식 축하/좋아요 1인 1회 (DB 동기화)
   // useCallback으로 감싸야 자식(MemberNewsCard)의 React.memo가 실제로 동작합니다.
   // (매 렌더마다 새 함수를 넘기면 memo가 무력화되어 목록 전체가 다시 그려집니다)
-  const handleNewsLike = useCallback(async (newsId: string) => {
-    let snapshot: { likes: number; likedUserIds: string[] } | null = null
+  // 🐛 저장이 안 되던 진짜 원인 (행사사진은 되는데 여기만 안 되던 이유):
+  //    예전 코드는 "지금 몇 개인지"를 setState 콜백 **안에서** 꺼내 쓰려 했습니다.
+  //    그런데 React는 그 콜백을 즉시 실행해준다고 보장하지 않습니다(나중에 실행될 수 있음).
+  //    그래서 바로 다음 줄에서 값을 읽으면 대개 비어 있었고, `if (!before) return` 에 걸려
+  //    **서버로 저장 요청을 아예 보내지 않고 끝났습니다.** 화면만 바뀌니 된 것처럼 보였습니다.
+  //    (행사사진은 목록에서 직접 값을 읽어 써서 이 문제가 없었습니다)
+  // → 카드가 이미 들고 있는 현재 값을 그대로 넘겨받아 씁니다. 추측이 필요 없습니다.
+  const handleNewsLike = useCallback(async (
+    newsId: string,
+    current: { likes: number; likedUserIds: string[] }
+  ) => {
+    const before = { likes: current.likes, likedUserIds: current.likedUserIds || [] }
+    const isLiked = before.likedUserIds.includes(currentUser.id)
+    const guessedLikes = isLiked ? Math.max(0, before.likes - 1) : before.likes + 1
+    const guessedUsers = isLiked
+      ? before.likedUserIds.filter(uid => uid !== currentUser.id)
+      : [...before.likedUserIds, currentUser.id]
 
-    setMemberNewsList(prev => prev.map(n => {
-      if (n.id !== newsId) return n
-      const likedUsers = n.likedUserIds || []
-      snapshot = { likes: n.likes, likedUserIds: likedUsers }
-      const isLiked = likedUsers.includes(currentUser.id)
-      return {
-        ...n,
-        likes: isLiked ? Math.max(0, n.likes - 1) : n.likes + 1,
-        likedUserIds: isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
-      }
-    }))
+    const apply = (likes: number, ids: string[]) =>
+      setMemberNewsList(prev => prev.map(n => (n.id === newsId ? { ...n, likes, likedUserIds: ids } : n)))
 
-    if (!snapshot) return
+    apply(guessedLikes, guessedUsers)
 
-    const res = await dbTogglePostLike(newsId, currentUser.id, snapshot)
+    const res = await dbTogglePostLike(newsId, currentUser.id, before)
     if (res.error) {
-      setMemberNewsList(prev => prev.map(n => n.id === newsId ? { ...n, likes: snapshot!.likes, likedUserIds: snapshot!.likedUserIds } : n))
-      showToast('축하 처리 중 오류가 발생했습니다.', true)
+      apply(before.likes, before.likedUserIds)
+      showToast('축하/응원이 저장되지 않았습니다. 잠시 후 다시 눌러 주세요.', true)
       return
     }
-    setMemberNewsList(prev => prev.map(n => n.id === newsId ? { ...n, likes: res.likes, likedUserIds: res.likedUserIds } : n))
+    if (res.likes !== guessedLikes || res.likedUserIds.length !== guessedUsers.length) {
+      apply(res.likes, res.likedUserIds)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, setMemberNewsList])
 

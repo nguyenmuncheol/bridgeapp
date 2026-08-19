@@ -204,6 +204,17 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         </div>
       )}
 
+      {/* 선택한 그룹에 몇 명이 있는지 바로 보여줍니다 (자녀 포함) */}
+      {displayedMembers.length > 0 && (
+        <p className="text-[11px] text-gray-400 font-medium px-1">
+          {searchQuery.trim() ? '검색 결과' : addressFilter === '전체' ? '전체' : addressFilter} 총 {displayedMembers.length}명
+          {(() => {
+            const kids = displayedMembers.filter(m => m.isDependent).length
+            return kids > 0 ? ` (성도 ${displayedMembers.length - kids}명 · 자녀 ${kids}명)` : ''
+          })()}
+        </p>
+      )}
+
       <div className="space-y-2">
         {displayedMembers.length === 0 && (
           <div className="py-8 text-center text-xs text-gray-400">

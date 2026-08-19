@@ -79,3 +79,58 @@ export async function saveImage(url: string, fileName: string): Promise<boolean>
     return false
   }
 }
+
+
+/**
+ * 사진을 새 탭에서 크게 보여줍니다. **탭 안에서 사진을 누르면 그 탭이 닫힙니다.**
+ *
+ * 왜 이렇게 만들었나:
+ * 예전에는 사진 주소를 그대로 새 탭에 열었습니다. 그러면 브라우저가 만든 기본 화면이라
+ * 우리가 아무것도 제어할 수 없어서, 돌아오려면 탭을 직접 닫아야 했습니다(어르신에게 불편).
+ * → 우리가 만든 아주 단순한 화면(검은 배경 + 사진 한 장)을 새 탭에 띄우고,
+ *   사진을 누르면 스스로 닫히게 했습니다.
+ *
+ * 인라인 스크립트는 쓰지 않고(보안 정책에 막힐 수 있음) 부모 창에서 직접 클릭을 연결합니다.
+ * 팝업이 차단되면 예전처럼 사진 주소를 그대로 엽니다.
+ */
+export function openImageViewer(url: string): void {
+  if (!url) return
+  let w: Window | null = null
+  try {
+    w = window.open('', '_blank')
+  } catch {
+    w = null
+  }
+
+  if (!w || !w.document) {
+    // 팝업 차단 등 → 원래 방식대로 사진 주소를 그대로 엽니다.
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  try {
+    w.document.write(
+      '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">' +
+      '<title>사진 크게 보기</title><style>' +
+      'html,body{margin:0;height:100%;background:#111;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}' +
+      'img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-out}' +
+      '.hint{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);' +
+      'color:#fff;font:600 12px -apple-system,system-ui,sans-serif;padding:7px 14px;border-radius:999px}' +
+      '</style></head><body><div class="hint">손가락으로 확대할 수 있어요 · 사진을 누르면 닫힙니다</div></body></html>'
+    )
+    w.document.close()
+
+    const img = w.document.createElement('img')
+    img.src = url
+    img.alt = '사진'
+    w.document.body.appendChild(img)
+
+    const closeSelf = () => { try { w?.close() } catch { /* 이미 닫혔으면 무시 */ } }
+    img.addEventListener('click', closeSelf)
+    w.document.body.addEventListener('click', closeSelf)
+  } catch {
+    // 새 탭에 그리지 못하면 사진 주소로 대체합니다.
+    try { w.location.href = url } catch { /* 무시 */ }
+  }
+}

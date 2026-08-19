@@ -10,7 +10,7 @@ interface PrayerCardProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
   isAdmin: boolean
-  onAmen: (id: string) => void
+  onAmen: (id: string, current: { likes: number; likedUserIds: string[] }) => void
   onPin: (id: string) => void
   onEdit: (prayer: PostItem) => void
   onDelete: (id: string) => void
@@ -76,7 +76,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
           <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
             <span className="text-[11px] text-gray-400">{prayer.createdAt}</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => onAmen(prayer.id)} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg flex items-center gap-1">
+              <button onClick={() => onAmen(prayer.id, { likes: prayer.likes, likedUserIds: prayer.likedUserIds || [] })} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg flex items-center gap-1">
                 <Heart size={12} className="fill-amber-500 text-amber-500" /> 아멘 ({prayer.likes})
               </button>
               {prayer.isCompleted && <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 size={10} /> 응답 완료</span>}
