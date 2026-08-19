@@ -14,8 +14,9 @@ const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => 
   { key: '라브리1', label: '라브리1', match: m => m.labriId === '라브리1' },
   { key: '라브리2', label: '라브리2', match: m => m.labriId === '라브리2' },
   { key: '라브리3', label: '라브리3', match: m => m.labriId === '라브리3' },
-  { key: '자녀', label: '자녀', match: m => !!m.isDependent },
-  { key: '미정', label: '❤️', match: m => !m.isDependent && (!m.labriId || m.labriId === '미정') },
+  // 계정이 없는 자녀 + 커서 직접 가입한 자녀를 함께 보여줍니다.
+  { key: '자녀', label: '자녀', match: m => !!m.isDependent || m.familyRole === '자녀' },
+  { key: '미정', label: '❤️', match: m => !m.isDependent && m.familyRole !== '자녀' && (!m.labriId || m.labriId === '미정') },
 ]
 
 // 라브리/미정 필터에서 "관리자 or 라브리리더 부부 최상단 고정" 규칙이 적용되는 필터 키 목록
@@ -32,12 +33,22 @@ const ageOf = (m: UserProfile): number => {
 // 목사님 가정 자녀 두 명이 부모와 10줄 떨어져 나오는 식이었습니다.
 // → 아래 childrenOf / flattenWithChildren 로 자녀를 부모 바로 아래에 붙입니다.
 
+/**
+ * "자녀로 볼 사람"인지 판단합니다.
+ * ① 계정이 없는 자녀(가상 항목)
+ * ② **자녀가 커서 직접 가입한 경우** — 실제 계정이지만 가족에서의 역할이 '자녀'
+ *    (이 경우도 부모 아래에 붙여야 가정이 흩어지지 않습니다)
+ */
+function isChildLike(m: UserProfile): boolean {
+  return !!m.isDependent || m.familyRole === '자녀'
+}
+
 /** 이 가정(들)에 속한 자녀를 나이 많은 순으로 꺼냅니다. 이미 배치된 자녀는 건너뜁니다. */
 function childrenOf(members: UserProfile[], scope: UserProfile[], claimed: Set<string>): UserProfile[] {
   const gids = new Set(members.map(m => m.familyGroupId).filter(Boolean) as string[])
   if (gids.size === 0) return []
   const kids = scope.filter(c =>
-    c.isDependent && c.familyGroupId && gids.has(c.familyGroupId) && !claimed.has(c.id)
+    isChildLike(c) && c.familyGroupId && gids.has(c.familyGroupId) && !claimed.has(c.id)
   )
   kids.forEach(k => claimed.add(k.id))
   return [...kids].sort((a, b) => {
@@ -63,7 +74,7 @@ function groupCouplesInScope(scope: UserProfile[]): { members: UserProfile[]; so
   const paired = new Set<string>()
   const units: { members: UserProfile[]; sortAge: number }[] = []
 
-  scope.filter(m => !m.isDependent).forEach(m => {
+  scope.filter(m => !isChildLike(m)).forEach(m => {
     if (paired.has(m.id)) return
     const isSpouseRole = m.familyRole === '부' || m.familyRole === '모'
     const spouse = isSpouseRole && m.familyGroupId
@@ -136,7 +147,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       const rest = filtered.filter(m => !pinnedIds.has(m.id) && !claimed.has(m.id))
       const restSorted = flattenWithChildren(sortUnitsByAge(groupCouplesInScope(rest)), rest, claimed)
       // 부모를 이 화면에서 못 찾은 자녀는 맨 뒤에 나이순으로 둡니다.
-      const orphanKids = rest.filter(m => m.isDependent && !claimed.has(m.id))
+      const orphanKids = rest.filter(m => isChildLike(m) && !claimed.has(m.id))
         .sort((a, b) => (ageOf(b) - ageOf(a)) || a.name.localeCompare(b.name, 'ko'))
       return [...pinnedBlock, ...restSorted, ...orphanKids]
     }
@@ -166,7 +177,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       const pinnedWithKids = [...pinnedBlock, ...childrenOf(pinnedBlock, filtered, claimed)]
       const rest = filtered.filter(m => !pinnedIds.has(m.id) && !claimed.has(m.id))
       const restSorted = flattenWithChildren(sortUnitsByAge(groupCouplesInScope(rest)), rest, claimed)
-      const orphanKids = rest.filter(m => m.isDependent && !claimed.has(m.id))
+      const orphanKids = rest.filter(m => isChildLike(m) && !claimed.has(m.id))
         .sort((a, b) => (ageOf(b) - ageOf(a)) || a.name.localeCompare(b.name, 'ko'))
       return [...pinnedWithKids, ...restSorted, ...orphanKids]
     }
@@ -204,13 +215,18 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         </div>
       )}
 
-      {/* 선택한 그룹에 몇 명이 있는지 바로 보여줍니다 (자녀 포함) */}
+      {/* 선택한 그룹에 몇 명이 있는지 바로 보여줍니다 */}
       {displayedMembers.length > 0 && (
         <p className="text-[11px] text-gray-400 font-medium px-1">
-          {searchQuery.trim() ? '검색 결과' : addressFilter === '전체' ? '전체' : addressFilter} 총 {displayedMembers.length}명
           {(() => {
-            const kids = displayedMembers.filter(m => m.isDependent).length
-            return kids > 0 ? ` (성도 ${displayedMembers.length - kids}명 · 자녀 ${kids}명)` : ''
+            const total = displayedMembers.length
+            // 자녀 탭은 성도 수를 따로 보여줄 이유가 없어 "자녀 총 N명"만 표시합니다.
+            if (addressFilter === '자녀' && !searchQuery.trim()) return `자녀 총 ${total}명`
+            const scope = searchQuery.trim() ? '검색 결과' : addressFilter === '전체' ? '전체' : addressFilter
+            const kids = displayedMembers.filter(m => isChildLike(m)).length
+            return kids > 0
+              ? `${scope} 총 ${total}명 (성도 ${total - kids}명 · 자녀 ${kids}명)`
+              : `${scope} 총 ${total}명`
           })()}
         </p>
       )}
@@ -228,7 +244,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
           <div
             key={member.id}
             className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
-              member.isDependent ? 'ml-5 border-gray-100/70 bg-gray-50/40' : 'border-gray-100'
+              isChildLike(member) ? 'ml-5 border-gray-100/70 bg-gray-50/40' : 'border-gray-100'
             }`}
           >
             <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">

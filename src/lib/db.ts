@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { UserProfile, PostItem, Role, MealCouponAccount } from './mockData'
+import { UserProfile, PostItem, Role, MealCouponAccount, NotificationItem } from './mockData'
 import { invalidateCache } from './dataCache'
 import { toLocalDateStr, bulletinDateToSortable } from './dateUtils'
 
@@ -726,6 +726,54 @@ export async function dbDeleteComment(commentId: string) {
   if (!data || data.length === 0) return { error: new Error('삭제 권한이 없습니다.') }
   invalidateCache('posts:')
   return { error: null }
+}
+
+// ==========================================
+// 앱 안 알림함 (notifications)
+// ==========================================
+// 알림을 "만드는" 것은 앱이 아니라 서버(트리거/함수)입니다.
+// 남의 이름으로 가짜 알림을 만들 수 없게 하려고 일부러 그렇게 했습니다.
+// 앱은 내 알림을 **읽고 / 읽음 표시하고 / 지우는** 것만 합니다.
+
+export async function dbFetchNotifications(userId: string, limit = 30): Promise<NotificationItem[]> {
+  if (!userId || userId === 'guest') return []
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  throwIfFetchFailed(error, '알림')
+  if (!data) return []
+  return data.map((n: any) => ({
+    id: n.id,
+    type: n.type,
+    title: n.title || '',
+    body: n.body || '',
+    actorName: n.actor_name || '',
+    postId: n.post_id || undefined,
+    postCategory: n.post_category || undefined,
+    isRead: !!n.is_read,
+    createdAt: String(n.created_at || ''),
+  }))
+}
+
+/** 안 읽은 알림을 모두 읽음으로 표시 */
+export async function dbMarkAllNotificationsRead(userId: string) {
+  if (!userId || userId === 'guest') return { error: null }
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+  if (!error) invalidateCache('notifications')
+  return { error }
+}
+
+export async function dbDeleteNotification(id: string) {
+  const { error } = await supabase.from('notifications').delete().eq('id', id)
+  if (!error) invalidateCache('notifications')
+  return { error }
 }
 
 export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAccount>> {

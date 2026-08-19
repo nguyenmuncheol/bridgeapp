@@ -10,12 +10,13 @@ import MyPageTab from '../src/components/mypage/MyPageTab'
 import AdminDashboard from '../src/components/admin/AdminDashboard'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
-import { UserProfile, Role, getUserDisplayName, isApprovedMember } from '../src/lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember, NotificationItem } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
-import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole } from '../src/lib/db'
+import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications } from '../src/lib/db'
+import NotificationPanel from '../src/components/NotificationPanel'
 import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
-import { LogIn, LogOut } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 
 export default function Home() {
   // 🐛 과거 불편: 어느 탭에 있는지가 화면 기억에만 있고 주소창에는 없어서,
@@ -48,6 +49,9 @@ export default function Home() {
   const [authError, setAuthError] = useState<string>('')
   // 대기 중에 관리자가 승인하면 화면이 저절로 바뀌는데, 왜 바뀌었는지 알 수 있도록 띄우는 축하 안내
   const [justApproved, setJustApproved] = useState(false)
+  // ── 앱 안 알림함 ── (헤더의 내 이름 버튼에서 열립니다)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [showNotifications, setShowNotifications] = useState(false)
 
   // 로그아웃/세션만료 시 완전한 비로그인 상태로 되돌립니다.
   const resetToGuest = () => {
@@ -282,6 +286,34 @@ export default function Home() {
   const isPending = !isGuest && currentUser.role === 'PENDING'
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
 
+  // ── 안 읽은 알림 개수 확인 ──
+  // 폰이 울리는 푸시가 아니라 앱 안 알림이므로, 앱을 보고 있을 때만 가볍게 확인합니다.
+  // (승인 대기·거절 상태에서는 알림이 올 일이 없어 건너뜁니다)
+  useEffect(() => {
+    if (isGuest || isPending || isRejected) return
+    let stopped = false
+
+    const check = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      dbFetchNotifications(currentUserId)
+        .then(list => { if (!stopped) setNotifications(list) })
+        .catch(() => { /* 일시적 오류는 다음 차례에 다시 시도 */ })
+    }
+
+    const timer = setInterval(check, 60_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    check()
+
+    return () => {
+      stopped = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [isGuest, isPending, isRejected, currentUserId])
+
+  const unreadCount = notifications.filter(n => !n.isRead).length
+
   // ── 주소창(#해시)과 현재 탭 맞추기 ──
   useEffect(() => {
     // ① 처음 들어올 때 주소에 적힌 탭으로 이동
@@ -388,10 +420,13 @@ export default function Home() {
           </button>
         ) : (
           <div className="flex items-center gap-2">
+            {/* 내 이름 버튼 = 알림함. 안 읽은 알림이 있으면 빨간 숫자가 붙습니다.
+                (내 정보 보기·로그아웃은 알림함 아래쪽으로 옮겼습니다) */}
             <button
-              onClick={() => handleSetCurrentTab('mypage')}
-              className="flex items-center gap-1.5 bg-blue-50 text-[#335f87] font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
-              title="내 정보 보기"
+              onClick={() => setShowNotifications(v => !v)}
+              className="relative flex items-center gap-1.5 bg-blue-50 text-[#335f87] font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
+              title="알림 · 내 정보"
+              aria-label={unreadCount > 0 ? `알림 ${unreadCount}건` : '알림'}
             >
               <span className="w-5 h-5 rounded-full bg-[#335f87] text-white flex items-center justify-center text-[9px] font-bold shrink-0 overflow-hidden">
                 {currentUser.avatarUrl
@@ -400,16 +435,12 @@ export default function Home() {
                 }
               </span>
               <span className="text-[11px]">{getUserDisplayName(currentUser)}</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
-            {supabaseUser && (
-              <button
-                onClick={handleLogout}
-                className="p-3 -m-1 text-gray-400 hover:text-rose-500 rounded-lg text-xs transition-colors"
-                title="로그아웃"
-              >
-                <LogOut size={14} />
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -613,6 +644,20 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* 알림함 (헤더의 내 이름 버튼에서 열림) */}
+      {showNotifications && !isGuest && (
+        <NotificationPanel
+          currentUser={currentUser}
+          items={notifications}
+          setItems={setNotifications}
+          onClose={() => setShowNotifications(false)}
+          onNavigate={handleSetCurrentTab}
+          onGoMyPage={() => handleSetCurrentTab('mypage')}
+          onLogout={handleLogout}
+          canLogout={!!supabaseUser}
+        />
+      )}
 
       {/* 회원가입 / 로그인 모달 */}
       {showAuthModal && (

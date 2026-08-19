@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Edit2, X } from 'lucide-react'
-import { UserProfile, getUserDisplayName, isApprovedMember } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
@@ -348,7 +348,7 @@ export default function StatsTab({
                   <td className="p-2 text-center">
                     {status ? (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {status === 'ABSENT' ? `❌ ${absenceStreak}주` : '✅ 출석'}
+                        {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅ 출석'}
                       </span>
                     ) : (
                       <span className="text-gray-300 text-[10px]">미기록</span>

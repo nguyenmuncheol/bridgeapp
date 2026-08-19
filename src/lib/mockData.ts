@@ -79,6 +79,17 @@ export function simplifyStoredName(stored?: string | null, suffix = '님'): stri
   return `${bare || '성도'}${suffix}`
 }
 
+/**
+ * 연속 결석 주수를 화면에 표시할 문자열로 바꿉니다.
+ * 9주까지는 숫자로, 그보다 오래되면 '장기'로 표시합니다.
+ * (12주·37주처럼 큰 숫자는 칸을 밀어내기만 하고, 정작 필요한 정보는
+ *  "오래 안 나오셨다"는 사실 하나뿐이라 이렇게 정했습니다)
+ */
+export function formatAbsenceStreak(weeks: number): string {
+  if (!weeks || weeks <= 0) return ''
+  return weeks > 9 ? '장기' : `${weeks}주`
+}
+
 export interface MealRegistration {
   id: string
   dateStr: string // e.g. '2026-08-09'
@@ -90,6 +101,19 @@ export interface MealRegistration {
   adultCount: number
   childCount: number
   updatedAt: string
+}
+
+/** 앱 안 알림함 항목 (폰이 울리는 푸시가 아니라, 🔔 눌러서 확인하는 방식) */
+export interface NotificationItem {
+  id: string
+  type: 'COMMENT' | 'LIKE' | 'NOTICE'
+  title: string
+  body: string
+  actorName: string
+  postId?: string
+  postCategory?: string
+  isRead: boolean
+  createdAt: string
 }
 
 export interface MealCouponAccount {

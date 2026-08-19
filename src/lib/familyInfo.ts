@@ -162,11 +162,27 @@ export function buildParentLabel(owner: UserProfile, linkedMembers: UserProfile[
 export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
   const seen = new Set<string>()
   const out: UserProfile[] = []
+
+  // 🐛 자녀가 커서 직접 가입하면 **주소록에 두 번** 나옵니다.
+  //    (① 부모가 적어둔 가족 메모 속 자녀  ② 새로 만든 본인 계정)
+  // → 같은 가정에 같은 이름의 실제 계정이 있으면, 메모 쪽 자녀는 만들지 않습니다.
+  //    (관리자가 가족 메모에서 지우지 않아도 자동으로 정리됩니다)
+  const realMemberKeys = new Set(
+    users
+      .filter(u => !u.isDependent && u.name)
+      .map(u => `${(u.familyGroupId || '').trim()}|${u.name.trim()}`)
+  )
+
   users.forEach(u => {
     const shared = getSharedChildren(u, users)
     const linked = findLinkedFamilyMembers(u, users)
     shared.forEach(c => {
       if (seen.has(c.id)) return
+      // 이 자녀가 이미 계정을 만들어 명단에 있으면 가상 항목을 만들지 않습니다.
+      if (realMemberKeys.has(`${(u.familyGroupId || '').trim()}|${(c.name || '').trim()}`)) {
+        seen.add(c.id)
+        return
+      }
       seen.add(c.id)
       out.push({
         id: `dep_${c.id}`,
