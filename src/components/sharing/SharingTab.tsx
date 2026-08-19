@@ -11,23 +11,6 @@ import PraiseBoard from './PraiseBoard'
 import PhotoGallery from './PhotoGallery'
 import AddPostModal from './AddPostModal'
 
-// 🔒 "유튜브 URL" 입력값이 실제로 youtube.com / youtu.be 도메인인지 검증
-// (검증 없이 저장하면 다른 성도가 "유튜브 링크"로 오인하고 임의 사이트로 클릭할 위험이 있음)
-function isValidYouTubeUrl(url: string): boolean {
-  const trimmed = url.trim()
-  if (!trimmed) return true // 빈 값(선택사항)은 통과
-  try {
-    const u = new URL(trimmed)
-    const host = u.hostname.toLowerCase().replace(/^www\./, '')
-    return (
-      (u.protocol === 'http:' || u.protocol === 'https:') &&
-      ['youtube.com', 'youtu.be', 'm.youtube.com', 'music.youtube.com'].includes(host)
-    )
-  } catch {
-    return false
-  }
-}
-
 interface SharingTabProps {
   currentUser: UserProfile
   allUsers?: UserProfile[]
@@ -64,9 +47,6 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
   }, [openToken, openSubTab])
 
   const isAdmin = currentUser.role === 'ADMIN'
-  // 🔒 비밀글(기도제목) 열람 권한: 작성자 본인 / 목회자(관리자) / 리더만 실제 내용을 볼 수 있습니다.
-  const canViewSecretPrayer = (prayer: PostItem) =>
-    !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
 
   const [showAddModal, setShowAddModal] = useState(false)
   // 행사사진 태그 필터. 서버 조회 조건이 되므로 여기(오케스트레이터)가 소유합니다.
