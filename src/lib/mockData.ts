@@ -1,6 +1,7 @@
 // REJECTED: 가입이 거절된 계정. 예전에는 profiles 행을 아예 삭제했는데, 로그인 계정은
 // 남아있어서 그분이 앱을 다시 열면 승인 대기 목록에 무한히 다시 올라왔습니다.
-export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON' | 'REJECTED'
+// TEACHER: 자녀(교회학교) 출석만 담당하는 선생님. 성도 자격은 일반 성도와 똑같습니다.
+export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON' | 'REJECTED' | 'TEACHER'
 
 /** 승인이 끝나 실제로 교회 명단에 포함되는 성도인지 (주소록/출석/통계 대상) */
 export function isApprovedMember(role: Role | undefined | null): boolean {
@@ -24,6 +25,16 @@ export function isBlockedRole(role: Role | undefined | null): boolean {
   return role === 'PENDING' || role === 'REJECTED'
 }
 
+/** 자녀(교회학교) 출석을 입력할 수 있는 사람인지 */
+export function canEditChildAttendance(role: Role | undefined | null): boolean {
+  return role === 'TEACHER' || role === 'LEADER' || role === 'ADMIN'
+}
+
+/** 관리 화면에 들어갈 수 있는 사람인지 (선생님은 출석 탭만 보입니다) */
+export function canOpenAdmin(role: Role | undefined | null): boolean {
+  return role === 'ADMIN' || role === 'LEADER' || role === 'COUPON' || role === 'TEACHER'
+}
+
 export interface UserProfile {
   id: string
   name: string
@@ -39,10 +50,16 @@ export interface UserProfile {
   birthday?: string // '08-15' (MM-DD)
   avatarUrl?: string
   createdAt: string
+  /** 가입 환영 팝업을 본 시각. 비어 있으면 승인 후 첫 방문이라는 뜻입니다. */
+  welcomedAt?: string
   // 아래 두 필드는 실제 계정이 없는 자녀 등 가족 구성원을 주소록에 표시하기 위한
   // 가상 항목(dependent entry)에만 설정됩니다. 실제 성도 프로필에는 사용되지 않습니다.
   isDependent?: boolean
   parentName?: string
+  /** 자녀 가상 항목에만 설정 — 교회학교 그룹(영아부 등). 비어 있으면 "미지정" */
+  childLabriId?: string
+  /** 선생님(TEACHER)이 담당하는 자녀 그룹. 비워두면 모든 자녀 그룹 담당입니다. */
+  teachGroup?: string
 }
 
 // 사용자 호칭 생성 헬퍼 함수
@@ -106,7 +123,9 @@ export interface MealRegistration {
 /** 앱 안 알림함 항목 (폰이 울리는 푸시가 아니라, 🔔 눌러서 확인하는 방식) */
 export interface NotificationItem {
   id: string
-  type: 'COMMENT' | 'LIKE' | 'NOTICE'
+  // COMMENT/LIKE/NOTICE = 성도님이 만든 알림
+  // MEAL/ATTENDANCE/BIRTHDAY/BULLETIN = 서버가 시간에 맞춰 자동으로 보내는 알림
+  type: 'COMMENT' | 'LIKE' | 'NOTICE' | 'MEAL' | 'ATTENDANCE' | 'BIRTHDAY' | 'BULLETIN'
   title: string
   body: string
   actorName: string

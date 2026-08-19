@@ -3,9 +3,9 @@
 import { useState, useMemo } from 'react'
 import { Search, Edit2, Save, X } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember } from '../../lib/mockData'
-import { formatBirthdayDisplay, getChildAgeLabel } from '../../lib/dateUtils'
+import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
-import { FamilyChildInfo, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren } from '../../lib/familyInfo'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 
 interface MembersTabProps {
@@ -31,8 +31,8 @@ export default function MembersTab({
   const [editLinkedMemberId, setEditLinkedMemberId] = useState<string>('')
   const [editMemberData, setEditMemberData] = useState<{
     name: string; phone: string; address: string; birthday: string;
-    role: Role; duty: string; labriId: string; familyGroupId: string; familyInfo: string; familyRole: string
-  }>({ name: '', phone: '', address: '', birthday: '', role: 'MEMBER', duty: '성도', labriId: '', familyGroupId: '', familyInfo: '', familyRole: '' })
+    role: Role; duty: string; labriId: string; familyGroupId: string; familyInfo: string; familyRole: string; teachGroup: string
+  }>({ name: '', phone: '', address: '', birthday: '', role: 'MEMBER', duty: '성도', labriId: '', familyGroupId: '', familyInfo: '', familyRole: '', teachGroup: '' })
   // 가족 현황: 자녀 등 미가입 구성원 목록 + 기타 메모 (구조화 저장, familyInfo.ts 참고)
   const [editFamilyNote, setEditFamilyNote] = useState('')
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
@@ -58,7 +58,8 @@ export default function MembersTab({
       labriId: member.labriId || '',
       familyGroupId: member.familyGroupId || '',
       familyInfo: member.familyInfo || '',
-      familyRole: member.familyRole || ''
+      familyRole: member.familyRole || '',
+      teachGroup: member.teachGroup || ''
     })
     // 배우자가 연동되어 있으면 배우자가 입력한 자녀까지 합쳐서 보여줌 (부부는 자녀 정보 공유)
     setEditFamilyNote(parseFamilyInfo(member.familyInfo).note)
@@ -125,6 +126,7 @@ export default function MembersTab({
         address: editMemberData.address,
         birthday: editMemberData.birthday,
         role: editMemberData.role,
+        teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
         duty: editMemberData.duty,
         labriId: editMemberData.labriId || undefined,
         familyGroupId: resolvedFid,
@@ -207,6 +209,7 @@ export default function MembersTab({
             address: editMemberData.address,
             birthday: editMemberData.birthday,
             role: editMemberData.role,
+            teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
             duty: editMemberData.duty,
             labriId: editMemberData.labriId || undefined,
             familyGroupId: resolvedFid || undefined,
@@ -227,6 +230,7 @@ export default function MembersTab({
         address: editMemberData.address,
         birthday: editMemberData.birthday,
         role: editMemberData.role,
+        teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
         duty: editMemberData.duty,
         labriId: editMemberData.labriId || undefined,
         familyGroupId: '',
@@ -247,6 +251,7 @@ export default function MembersTab({
             address: editMemberData.address,
             birthday: editMemberData.birthday,
             role: editMemberData.role,
+            teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
             duty: editMemberData.duty,
             labriId: editMemberData.labriId || undefined,
             familyGroupId: undefined,
@@ -294,6 +299,43 @@ export default function MembersTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredMembers, attendanceDateKeysDesc, dbAttendanceData, latestAttendanceDate])
 
+  // ── 성도 정보 CSV 내보내기 ──
+  // ⚠️ 연락처·주소가 들어가는 개인정보 파일이라 **목사(ADMIN)만** 받을 수 있게 합니다.
+  // 🔒 이름/주소가 '=', '+', '-', '@' 로 시작해도 엑셀에서 수식으로 실행되지 않도록
+  //    앞에 작은따옴표를 붙여 문자열로 고정합니다(CSV 인젝션 방지 — 출석 CSV와 동일).
+  const csvField = (value: string | number | undefined | null): string => {
+    let v = String(value ?? '')
+    if (/^[=+\-@]/.test(v)) v = `'${v}`
+    if (/[",\n\r]/.test(v)) v = `"${v.replace(/"/g, '""')}"`
+    return v
+  }
+
+  const handleDownloadMembersCSV = () => {
+    const rows = sortedFilteredMembers
+    let csv = '이름,직분,등급,라브리,연락처,주소,생일,가족현황,가입일\n'
+    rows.forEach(m => {
+      csv += [
+        m.name,
+        m.duty || '',
+        m.role,
+        m.labriId || '라브리 미정',
+        m.phone || '',
+        m.address || '',
+        formatBirthdayDisplay(m.birthday) || '',
+        buildFamilyStatusText(m, allUsers) || '',
+        m.createdAt || '',
+      ].map(csvField).join(',') + '\n'
+    })
+    // 엑셀에서 한글이 깨지지 않도록 맨 앞에 표시(BOM)를 붙입니다.
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `더브릿지교회_성도명단_${todayLocalDateStr()}.csv`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
+    showToast(`📥 성도 ${rows.length}명 명단 다운로드 시작`)
+  }
+
   return (
     <>
       <div className="space-y-3">
@@ -310,7 +352,20 @@ export default function MembersTab({
           {memberSearch && <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
         </div>
 
-        <p className="text-[10px] text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
+          {/* 성도 정보 CSV — 출석 CSV와 같은 모양의 작은 버튼. 개인정보라 목사님만 보입니다. */}
+          {currentUser?.role === 'ADMIN' && (
+            <button
+              onClick={handleDownloadMembersCSV}
+              title="성도 명단 CSV 다운로드"
+              aria-label="성도 명단 CSV 다운로드"
+              className="w-8 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
+            >
+              📥
+            </button>
+          )}
+        </div>
 
         {/* 성도 리스트 (장기결석자 우선 정렬) */}
         {sortedFilteredMembers.map(member => (
@@ -329,6 +384,7 @@ export default function MembersTab({
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   member.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
                   member.role === 'LEADER' ? 'bg-blue-100 text-blue-700' :
+                  member.role === 'TEACHER' ? 'bg-emerald-100 text-emerald-700' :
                   'bg-gray-100 text-gray-600'
                 }`}>{member.role}</span>
                 {!isLeader && (
@@ -382,6 +438,7 @@ export default function MembersTab({
                   <select value={editMemberData.role} onChange={e => setEditMemberData(p => ({ ...p, role: e.target.value as Role }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                     <option value="MEMBER">일반 성도</option>
                     <option value="LEADER">라브리 리더</option>
+                    <option value="TEACHER">교회학교 선생님</option>
                     <option value="COUPON">쿠폰 관리자</option>
                     <option value="ADMIN">총괄 관리자</option>
                   </select>
@@ -407,6 +464,26 @@ export default function MembersTab({
 
                 </select>
               </div>
+
+              {/* 담당 자녀 그룹 — 선생님에게만 보입니다 */}
+              {editMemberData.role === 'TEACHER' && (
+                <div>
+                  <label className="text-[10px] text-gray-400 font-semibold">담당 자녀 그룹</label>
+                  <select
+                    value={editMemberData.teachGroup}
+                    onChange={e => setEditMemberData(p => ({ ...p, teachGroup: e.target.value }))}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
+                  >
+                    <option value="">전체 담당 (모든 자녀 그룹)</option>
+                    {CHILD_LABRI_OPTIONS.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    비워두면 모든 자녀 그룹을 담당합니다. 선생님이 여러 분으로 나뉘면 그때 각자 지정하시면 됩니다.
+                  </p>
+                </div>
+              )}
 
               {/* 연락처 */}
               <div>
@@ -473,40 +550,45 @@ export default function MembersTab({
               {/* 가족 현황: 미가입 자녀 등 (나이대는 생일 기반 자동 표시) */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일)</label>
+                  <label className="text-[10px] text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
                   <button type="button" onClick={addEditChild} className="text-[10px] font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {editChildren.length === 0 && (
                     <p className="text-[10px] text-gray-300">등록된 미가입 자녀가 없습니다.</p>
                   )}
-                  {editChildren.map(child => {
-                    const ageLabel = getChildAgeLabel(child.birthday)
-                    return (
-                      <div key={child.id} className="flex gap-1 items-center">
-                        <input
-                          type="text"
-                          value={child.name}
-                          onChange={e => updateEditChild(child.id, { name: e.target.value })}
-                          placeholder="이름"
-                          className="w-[35%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
-                        />
-                        <input
-                          type="text"
-                          value={child.birthday || ''}
-                          onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
-                          placeholder="생일 YYYY-MM-DD"
-                          className="w-[40%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
-                        />
-                        {ageLabel && (
-                          <span className="w-[15%] text-center text-[10px] font-bold text-[#335f87] bg-blue-50 rounded-lg py-2">{ageLabel}</span>
-                        )}
-                        <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0">
-                          <X size={13} />
-                        </button>
-                      </div>
-                    )
-                  })}
+                  {editChildren.map(child => (
+                    <div key={child.id} className="flex gap-1 items-center">
+                      <input
+                        type="text"
+                        value={child.name}
+                        onChange={e => updateEditChild(child.id, { name: e.target.value })}
+                        placeholder="이름"
+                        className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                      />
+                      <input
+                        type="text"
+                        value={child.birthday || ''}
+                        onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
+                        placeholder="생일 YYYY-MM-DD"
+                        className="w-[36%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                      />
+                      {/* 교회학교 그룹. 미지정이면 주소록 목록·생일 달력·출석체크에서 빠집니다. */}
+                      <select
+                        value={child.labriId || ''}
+                        onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
+                        className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                      >
+                        <option value="">미지정</option>
+                        {CHILD_LABRI_OPTIONS.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 

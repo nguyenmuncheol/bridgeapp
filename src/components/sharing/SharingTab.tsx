@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
 import { dbFetchDistinctTags } from '../../lib/db'
@@ -14,6 +14,10 @@ import AddPostModal from './AddPostModal'
 interface SharingTabProps {
   currentUser: UserProfile
   allUsers?: UserProfile[]
+  /** 알림을 눌러서 들어온 경우 열어야 할 서브탭 ('prayer' | 'photo' | 'praise') */
+  openSubTab?: string
+  /** 같은 서브탭을 연달아 요청해도 다시 열리도록 하는 번호표 */
+  openToken?: number
 }
 
 // ── 나눔 탭: 기도제목 | 행사사진 | 찬양/묵상나눔 3개 서브탭 + 작성 모달 ──
@@ -26,8 +30,22 @@ interface SharingTabProps {
 //
 // 행사사진의 태그 필터는 이 컴포넌트가 소유합니다 — 선택된 태그가 곧 서버 조회 조건이라
 // (이미 불러온 사진 안에서 거르는 게 아니라) 여기서 관리해야 페이지네이션과 맞물립니다.
-export default function SharingTab({ currentUser, allUsers = [] }: SharingTabProps) {
+export default function SharingTab({ currentUser, allUsers = [], openSubTab = '', openToken = 0 }: SharingTabProps) {
   const [subTab, setSubTab] = useState<'prayer' | 'photo' | 'praise'>('prayer')
+
+  // 서브탭을 바꿀 때도 화면 맨 위에서 시작합니다(큰 탭과 동일한 규칙).
+  const goSubTab = (next: 'prayer' | 'photo' | 'praise') => {
+    setSubTab(next)
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+  // 알림에서 들어온 경우 그 글이 있는 서브탭을 열어 줍니다.
+  useEffect(() => {
+    if (openSubTab === 'prayer' || openSubTab === 'photo' || openSubTab === 'praise') {
+      goSubTab(openSubTab)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openToken, openSubTab])
+
   const isAdmin = currentUser.role === 'ADMIN'
 
   const [showAddModal, setShowAddModal] = useState(false)
@@ -81,9 +99,9 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
     <div className="space-y-4 pb-6 relative">
       {/* 서브탭 */}
       <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold">
-        <button onClick={() => setSubTab('prayer')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'prayer' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🙏 기도제목</button>
-        <button onClick={() => setSubTab('photo')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'photo' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>📸 행사사진</button>
-        <button onClick={() => setSubTab('praise')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'praise' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🎵 찬양/묵상나눔</button>
+        <button onClick={() => goSubTab('prayer')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'prayer' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🙏 기도제목</button>
+        <button onClick={() => goSubTab('photo')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'photo' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>📸 행사사진</button>
+        <button onClick={() => goSubTab('praise')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'praise' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🎵 찬양/묵상나눔</button>
       </div>
 
       <div className={subTab === 'prayer' ? '' : 'hidden'}>

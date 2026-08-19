@@ -10,9 +10,10 @@ import MyPageTab from '../src/components/mypage/MyPageTab'
 import AdminDashboard from '../src/components/admin/AdminDashboard'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
+import WelcomeModal from '../src/components/auth/WelcomeModal'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, NotificationItem } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
-import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications } from '../src/lib/db'
+import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications, dbMarkWelcomed } from '../src/lib/db'
 import NotificationPanel from '../src/components/NotificationPanel'
 import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
@@ -32,6 +33,13 @@ export default function Home() {
   // 서버에서 그릴 때와 브라우저에서 그릴 때가 달라지면 안 되므로, 초기값은 항상 'home'으로
   // 두고 화면이 뜬 직후(useEffect)에 주소를 읽어 맞춥니다.
   const [currentTab, setCurrentTab] = useState('home')
+
+  // ── 알림을 눌렀을 때 "그 글이 있는 서브탭"까지 열어 주기 위한 요청값 ──
+  // 큰 탭만 바꾸면 나눔은 늘 기도제목이, 우리소식은 늘 교회일정이 먼저 보입니다.
+  // token은 같은 서브탭을 연달아 요청해도 다시 열리도록 하는 번호표입니다.
+  const [subTabRequest, setSubTabRequest] = useState<{ tab: string; sub: string; token: number }>(
+    { tab: '', sub: '', token: 0 }
+  )
   const [users, setUsers] = useState<UserProfile[]>([])  // 더미 데이터 제거
   const [isLoading, setIsLoading] = useState(true)        // DB 로드 완료 전 로딩
 
@@ -52,6 +60,8 @@ export default function Home() {
   // ── 앱 안 알림함 ── (헤더의 내 이름 버튼에서 열립니다)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
+  // 승인 후 첫 방문 환영 팝업 (계정에 기록해 딱 한 번만 뜹니다)
+  const [showWelcome, setShowWelcome] = useState(false)
 
   // 로그아웃/세션만료 시 완전한 비로그인 상태로 되돌립니다.
   const resetToGuest = () => {
@@ -187,6 +197,8 @@ export default function Home() {
         birthday: profileData.birthday,
         avatarUrl: profileData.avatar_url,
         createdAt: toLocalDateStr(profileData.created_at) || toLocalDateStr(new Date()),
+        // 환영 팝업을 이미 봤는지 (없으면 승인 후 첫 방문)
+        welcomedAt: profileData.welcomed_at || undefined,
       }
 
       setUsers(prev => {
@@ -258,9 +270,15 @@ export default function Home() {
   }
 
   // 탭 전환: 관리자 대시보드 모드 자동 해제 + 주소창 갱신
-  const handleSetCurrentTab = (tab: string) => {
+  const handleSetCurrentTab = (tab: string, subTab?: string) => {
     setIsAdminViewMode(false)
     setCurrentTab(tab)
+    if (subTab) {
+      setSubTabRequest(prev => ({ tab, sub: subTab, token: prev.token + 1 }))
+    }
+    // 🐛 과거 불편: 스크롤을 내린 채 다른 탭으로 가면 그 위치 그대로 보였습니다.
+    //    새 화면의 중간부터 보여서 "왜 위쪽이 잘렸지?" 하게 됩니다.
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
     if (typeof window !== 'undefined') {
       // pushState 를 쓰면 휴대폰 뒤로가기가 "이전 탭"으로 동작합니다.
       // (기존에는 뒤로가기를 누르면 앱이 그냥 닫혔습니다)
@@ -313,6 +331,25 @@ export default function Home() {
   }, [isGuest, isPending, isRejected, currentUserId])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
+
+  // ── 가입 환영 팝업 ──
+  // 승인이 끝난 성도인데 아직 환영 인사를 못 받았으면 딱 한 번 띄웁니다.
+  // (추가정보 입력 모달이 떠 있는 동안에는 겹치지 않게 기다립니다)
+  useEffect(() => {
+    if (isGuest || isPending || isRejected) return
+    if (showProfileSetup) return
+    if (!currentUser || currentUser.id === 'guest') return
+    if (currentUser.welcomedAt) return
+    setShowWelcome(true)
+  }, [isGuest, isPending, isRejected, showProfileSetup, currentUser])
+
+  const handleCloseWelcome = () => {
+    setShowWelcome(false)
+    // 화면에서도 즉시 "본 것"으로 바꿔, 명단이 다시 로드돼도 또 뜨지 않게 합니다.
+    const now = new Date().toISOString()
+    setUsers(prev => prev.map(u => (u.id === currentUserId ? { ...u, welcomedAt: now } : u)))
+    dbMarkWelcomed(currentUserId).catch(() => { /* 실패하면 다음에 한 번 더 뜹니다 */ })
+  }
 
   // ── 주소창(#해시)과 현재 탭 맞추기 ──
   useEffect(() => {
@@ -617,12 +654,22 @@ export default function Home() {
               <>
                 {/* 우리소식 탭 */}
                 {currentTab === 'news' && (
-                  <NewsTab currentUser={currentUser} allUsers={users} />
+                  <NewsTab
+                    currentUser={currentUser}
+                    allUsers={users}
+                    openSubTab={subTabRequest.tab === 'news' ? subTabRequest.sub : ''}
+                    openToken={subTabRequest.token}
+                  />
                 )}
 
                 {/* 나눔 탭 */}
                 {currentTab === 'sharing' && (
-                  <SharingTab currentUser={currentUser} allUsers={users} />
+                  <SharingTab
+                    currentUser={currentUser}
+                    allUsers={users}
+                    openSubTab={subTabRequest.tab === 'sharing' ? subTabRequest.sub : ''}
+                    openToken={subTabRequest.token}
+                  />
                 )}
 
                 {/* 신청 탭 */}
@@ -644,6 +691,11 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* 가입 승인 후 첫 방문 환영 */}
+      {showWelcome && !isGuest && (
+        <WelcomeModal currentUser={currentUser} onClose={handleCloseWelcome} />
+      )}
 
       {/* 알림함 (헤더의 내 이름 버튼에서 열림) */}
       {showNotifications && !isGuest && (

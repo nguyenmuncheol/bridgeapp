@@ -295,7 +295,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           <div className="p-3 bg-gray-50">
             <button onClick={() => setShowChurchGuideModal(true)}
               className="w-full py-2 bg-white border border-gray-200 text-[#335f87] text-xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1.5">
-              <Info size={14} /> 더브릿지 교회 안내 (비전 · 연혁 · 예배시간) <ChevronRight size={14} />
+              <Info size={14} /> 더브릿지 교회 안내 (비전 · 사역자 · 예배시간) <ChevronRight size={14} />
             </button>
           </div>
         )}

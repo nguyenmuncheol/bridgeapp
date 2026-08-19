@@ -1,26 +1,71 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Church, Clock3, Users, Award, Heart, BookOpen } from 'lucide-react'
+import { X, Church, Clock3, Users, Heart, Mail, Phone } from 'lucide-react'
 
 interface ChurchGuideModalProps {
   onClose: () => void
 }
 
+/** 비전 화면에 단계별로 보여줄 내용 (글은 그대로, 보이는 모양만 정리했습니다) */
+const VISION_SECTIONS: { title: string; items: string[] }[] = [
+  {
+    title: '우리의 비전은 심플해요',
+    items: [
+      '하나님에게서 멀리 떨어진 자들을 가까이 오게 하는 것입니다.',
+      '방법은 계속 변화할 것입니다.',
+      '기존 성도들이 불편함을 느끼더라도 우리는 하나님에게서 멀리 떨어진 사람들을 위해 계속 변화할 것입니다.',
+    ],
+  },
+  {
+    title: '우리 사역의 방향',
+    items: [
+      '죽은 것 같은 잠든 것 같은 신앙이 아니라 살아있는 신앙을 갖도록 돕습니다.',
+      '하나님 나라 백성의 분명한 정체성을 가지고 모든 삶의 하나님의 주권을 인정하는 삶을 살도록 합니다.',
+      '우리는 가정을 소중히 여기며 행복과 회복을 돕습니다.',
+      '우리는 성령의 역사와 변화를 믿으며 이 변화에 동참하도록 돕습니다.',
+    ],
+  },
+  {
+    title: '우리의 목적',
+    items: [
+      '20-40세대에 집중합니다.',
+      '새신자에 집중합니다.',
+      '복음을 알고 전하며 이웃의 구원에 집중합니다.',
+      '성령께서 만드신 진실한 공동체에 집중합니다.',
+      '다음세대들이 교회오기를 좋아하는 것에 집중합니다.',
+    ],
+  },
+]
+
+/** 핵심사역은 "제목 : 설명" 구조라 따로 둡니다 */
+const CORE_MINISTRIES: { name: string; desc: string }[] = [
+  { name: '본질적인 예배', desc: '하나님을 만나는 역동과 자유가 있는 예배를 추구합니다.' },
+  { name: '역동적인 공동체', desc: '하나님을 담는 공동체 · 일상속 신앙나눔 · 진심어린 돌봄 · 새신자 정착을 돕는 공동체' },
+  { name: '복음 전도 사역', desc: '믿는 자들의 제자화 훈련을 통한 복음 전도 사역 (목적이 있는 삶)' },
+  { name: '다음세대 신앙잇기', desc: '아이들의 웃음이 있는 교회 · 부모의 신앙을 본 받는 교회' },
+]
+
+const PASTOR = {
+  role: '전임목사',
+  name: '정제호',
+  email: 'jehojung88@gmail.com',
+  phone: '0969388213',
+  bio: '1975년에 태어나 성결대 신학과와 성결신학대학원을 졸업하고, 목사안수를 받았다. 안양 밝은빛교회와 등촌제일교회, 인천복된교회에서 청년부와 교육목사로 섬겼고, 굿네이버스 아동보호전문기관, 스리랑카 예수전도단 DTS와 간사, 제주열방대학 SOIWSW 수료 후 2015년 베트남 하노이로 이주하여 2018년부터 하노이 더브릿지 교회에서 전임목사로 사역하고 있다.',
+}
+
+/**
+ * 실제로 운영 중인 부서만 적습니다.
+ * (출석체크의 교회학교 그룹은 영아부·초등부까지 미리 만들어 두었지만,
+ *  지금 모이는 부서는 아래 두 곳뿐이라 안내에는 이 둘만 보여줍니다)
+ */
+const DEPARTMENTS = [
+  { name: '유아·유치부', time: '매주 일요일 오전 11:00', loc: '유아·유치부실' },
+  { name: '중고등부', time: '매주 일요일 오전 11:00', loc: '중고등부실' },
+]
+
 export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
-  const [activeTab, setActiveTab] = useState<'vision' | 'history' | 'guide'>('vision')
-
-  const CHURCH_HISTORY = [
-    { year: '2022', title: '더브릿지교회 창립 예배', desc: '베트남 하노이 미딩에서 성도 12명으로 첫 예약예배 시작' },
-    { year: '2023', title: '라브리(소그룹) 공동체 출범', desc: '삶과 기도를 나누는 3개 라브리 소그룹 정식 결성' },
-    { year: '2024', title: '지역 사회 섬김 및 선교지 지원', desc: '현지 베트남 아동 후원 및 한국어 교실 봉사 개설' },
-    { year: '2025', title: '전교인 수련회 및 비전 선포', desc: '하노이 및 근교 한인 성도 네트워크 다리 역할 확립' },
-  ]
-
-  const DEPARTMENTS = [
-    { name: '유아부', time: '매주 일요일 오전 11:00', loc: '유아부실' },
-    { name: '중고등부', time: '매주 일요일 오전 11:00', loc: '중고등부실' },
-  ]
+  const [activeTab, setActiveTab] = useState<'vision' | 'pastor' | 'guide'>('vision')
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
@@ -36,7 +81,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
           </button>
         </div>
 
-        {/* 서브탭 3개: 비전 | 연혁 | 교회안내 */}
+        {/* 서브탭 3개: 비전 | 사역자 소개 | 예배/부서 */}
         <div className="flex bg-gray-100 p-1 border-b border-gray-200 text-xs font-bold">
           <button
             onClick={() => setActiveTab('vision')}
@@ -47,12 +92,12 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
             🌟 비전
           </button>
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => setActiveTab('pastor')}
             className={`flex-1 py-2 rounded-lg transition-all ${
-              activeTab === 'history' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'
+              activeTab === 'pastor' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'
             }`}
           >
-            📜 연혁
+            🙋 사역자 소개
           </button>
           <button
             onClick={() => setActiveTab('guide')}
@@ -69,49 +114,94 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
           {/* 1. 비전 */}
           {activeTab === 'vision' && (
             <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-1.5 text-center">
-                <span className="text-[10px] font-bold text-[#335f87] tracking-widest uppercase">Church Core Vision</span>
-                <h4 className="font-black text-sm text-gray-900 leading-snug">"하나님과 사람, 사람과 사람을 잇는 공동체"</h4>
-                <p className="text-[11px] text-gray-600 italic">"진리를 알지니 진리가 너희를 자유롭게 하리라" (요한복음 8:32)</p>
-              </div>
+              {VISION_SECTIONS.map((section, si) => (
+                <div key={section.title} className="space-y-2">
+                  <h5 className="font-black text-sm text-gray-900 flex items-center gap-1.5">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-[#335f87] text-white text-[10px] font-black flex items-center justify-center">
+                      {si + 1}
+                    </span>
+                    {section.title}
+                  </h5>
+                  <ul className="space-y-1.5 pl-1">
+                    {section.items.map((text, ii) => (
+                      <li key={ii} className="flex gap-2 items-start">
+                        <span className="mt-[3px] shrink-0 w-[18px] h-[18px] rounded-md bg-blue-50 text-[#335f87] text-[10px] font-bold flex items-center justify-center">
+                          {ii + 1}
+                        </span>
+                        <p className="text-[12px] text-gray-700 leading-relaxed flex-1">{text}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
 
+              {/* 핵심사역 — 제목 + 설명 구조라 카드로 보여줍니다 */}
               <div className="space-y-2">
-                <h5 className="font-bold text-gray-900 flex items-center gap-1">
-                  <Heart size={14} className="text-rose-500" /> 3대 핵심 가치
+                <h5 className="font-black text-sm text-gray-900 flex items-center gap-1.5">
+                  <span className="w-5 h-5 shrink-0 rounded-full bg-[#335f87] text-white text-[10px] font-black flex items-center justify-center">
+                    {VISION_SECTIONS.length + 1}
+                  </span>
+                  우리의 핵심사역
                 </h5>
                 <div className="space-y-2">
-                  <div className="p-3 bg-gray-50 rounded-xl space-y-0.5">
-                    <span className="font-bold text-gray-800">1. 예배 (Worship)</span>
-                    <p className="text-gray-600 text-[11px]">이국 땅 하노이에서 온 마음과 뜻을 다해 드리는 진실한 예배</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl space-y-0.5">
-                    <span className="font-bold text-gray-800">2. 공동체 (Community)</span>
-                    <p className="text-gray-600 text-[11px]">라브리(소그룹)를 통해 삶과 기도를 깊이 나누는 따뜻한 식구</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl space-y-0.5">
-                    <span className="font-bold text-gray-800">3. 섬김 (Service)</span>
-                    <p className="text-gray-600 text-[11px]">하노이 지역 사회와 선교 현장에 그리스도의 사랑을 흘려보냄</p>
-                  </div>
+                  {CORE_MINISTRIES.map((m, i) => (
+                    <div key={m.name} className="p-3 bg-gray-50 rounded-xl space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-[18px] h-[18px] shrink-0 rounded-md bg-white border border-gray-200 text-[#335f87] text-[10px] font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                        <span className="font-bold text-gray-900 text-[12px]">{m.name}</span>
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed pl-[26px]">{m.desc}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
 
-          {/* 2. 연혁 */}
-          {activeTab === 'history' && (
-            <div className="space-y-3">
-              <h5 className="font-bold text-gray-900 flex items-center gap-1">
-                <Award size={14} className="text-amber-600" /> 더브릿지교회가 걸어온 길
-              </h5>
-              <div className="relative border-l-2 border-blue-200 pl-4 ml-2 space-y-4">
-                {CHURCH_HISTORY.map((item, idx) => (
-                  <div key={idx} className="relative">
-                    <div className="absolute -left-[21px] top-0 w-3 h-3 bg-[#335f87] rounded-full border-2 border-white" />
-                    <span className="font-mono font-black text-[#335f87] text-xs">{item.year}</span>
-                    <h6 className="font-bold text-gray-800 text-xs mt-0.5">{item.title}</h6>
-                    <p className="text-gray-500 text-[11px] mt-0.5">{item.desc}</p>
+          {/* 2. 사역자 소개 */}
+          {activeTab === 'pastor' && (
+            <div className="space-y-4">
+              {/* Our Pastor */}
+              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Heart size={13} className="text-rose-500 shrink-0" />
+                  <span className="text-[10px] font-bold text-[#335f87] tracking-widest uppercase">Our Pastor</span>
+                </div>
+                <p className="text-[12px] text-gray-700 leading-relaxed">
+                  교회의 비전은 당신이 구원받은 목적을 발견하고, 하나님이 당신을 위해 창조하신 인생을 살도록 하는 것입니다.
+                  담임목사님은 사람들을 향한 하나님의 목적과 예수님의 사랑이 담긴 메시지를 전하고 있습니다.
+                </p>
+              </div>
+
+              {/* 전임목사 프로필 */}
+              <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-bold text-[#335f87] bg-white border border-blue-100 px-1.5 py-0.5 rounded">
+                      {PASTOR.role}
+                    </span>
+                    <span className="font-black text-sm text-gray-900">{PASTOR.name}</span>
                   </div>
-                ))}
+                  <div className="mt-2 space-y-1">
+                    <a
+                      href={`mailto:${PASTOR.email}`}
+                      className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-[#335f87]"
+                    >
+                      <Mail size={12} className="shrink-0 text-gray-400" />
+                      {PASTOR.email}
+                    </a>
+                    <a
+                      href={`tel:${PASTOR.phone}`}
+                      className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-[#335f87]"
+                    >
+                      <Phone size={12} className="shrink-0 text-gray-400" />
+                      {PASTOR.phone}
+                    </a>
+                  </div>
+                </div>
+                <p className="px-4 py-3 text-[12px] text-gray-700 leading-relaxed">{PASTOR.bio}</p>
               </div>
             </div>
           )}

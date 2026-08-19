@@ -298,17 +298,6 @@ export function calculateAge(raw?: string | null): number | null {
   return age >= 0 ? age : null
 }
 
-// 자녀 나이대 자동 표시: 만 0~3세 유아, 4~12세 어린이, 13~18세 학생, 19세 이상 청년.
-// 생일이 없거나(연도 미상 포함) 나이를 계산할 수 없으면 null(화면에는 별도 표기하지 않음).
-export function getChildAgeLabel(raw?: string | null): string | null {
-  const age = calculateAge(raw)
-  if (age === null) return null
-  if (age <= 3) return '유아'
-  if (age <= 12) return '어린이'
-  if (age <= 18) return '학생'
-  return '청년'
-}
-
 // 최근 N개 월 리스트 (YYYY-MM 형식)
 export function getRecentMonths(count = 3) {
   const months: { value: string; label: string }[] = []

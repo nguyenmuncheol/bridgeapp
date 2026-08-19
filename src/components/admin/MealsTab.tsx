@@ -20,8 +20,12 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
   // 미응답 가정 목록은 길어질 수 있어 기본은 접어 둡니다(숫자는 접힌 상태에서도 보입니다).
   const [showPending, setShowPending] = useState(false)
 
-  // 신청 탭과 캐시를 공유해 반복 조회하지 않음
-  const { data: mealRegistrations } = useCachedQuery('mealRegistrations', () => dbFetchMealRegistrations())
+  // 신청 탭과 캐시를 공유해 반복 조회하지 않음 (같은 키를 써야 공유됩니다)
+  const mealDateStrs = useMemo(() => upcomingSundays.map(s => s.dateStr), [upcomingSundays])
+  const { data: mealRegistrations } = useCachedQuery(
+    `mealRegistrations:${mealDateStrs[0] || ''}`,
+    () => dbFetchMealRegistrations(mealDateStrs)
+  )
   useEffect(() => {
     if (mealRegistrations) setDbMealRegistrations(mealRegistrations)
   }, [mealRegistrations])

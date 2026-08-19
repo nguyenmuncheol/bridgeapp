@@ -5,9 +5,10 @@
  * 이제는:
  *  - 배우자 정보는 더 이상 텍스트로 저장하지 않고, 이미 있는 "가족/배우자 연결" 기능
  *    (familyGroupId)으로 실제 연동된 계정에서 그때그때 이름을 가져와 보여줍니다.
- *  - 자녀 등 계정이 없는 가족 구성원은 이름/생일을 별도 목록(JSON)으로 저장합니다. 나이대
- *    (유아/어린이/학생/청년) 구분은 더 이상 수동 선택이 아니라 생일로부터 자동 계산해서
- *    보여줍니다(dateUtils.getChildAgeLabel 참고). 생일이 없으면 나이대 표기 없이 이름만 보입니다.
+ *  - 자녀 등 계정이 없는 가족 구성원은 이름/생일/교회학교 그룹을 별도 목록(JSON)으로 저장합니다.
+ *    예전에 쓰던 나이대(유아/어린이/학생/청년) 자동 표시는 없앴고, 대신 실제로 출석을 관리하는
+ *    교회학교 그룹(영아부·유아·유치부·초등부·중고등부)을 직접 지정합니다.
+ *    그룹을 지정하지 않으면 "미지정"이며, 주소록 목록·생일 달력·출석체크에서 빠집니다.
  *  - 부부(배우자 연동된 두 계정)는 자녀 목록을 공유합니다. 화면에 보여줄 때는 항상 "본인 저장분 +
  *    배우자 저장분"을 합쳐서(getSharedChildren) 보여주고, 저장할 때도 두 계정 모두에 동일한 최신
  *    목록을 기록(양쪽 동기화)해서 누가 먼저 입력했든 서로 최신 정보를 보게 됩니다.
@@ -19,10 +20,19 @@
  */
 import { UserProfile } from './mockData'
 
+/** 자녀가 속한 교회학교 그룹. 빈 값이면 "미지정"입니다. */
+export const CHILD_LABRI_OPTIONS = ['영아부', '유아·유치부', '초등부', '중고등부'] as const
+
 export interface FamilyChildInfo {
   id: string
   name: string
   birthday?: string // 'YYYY-MM-DD' 또는 'MM-DD'. 관리자는 모를 수 있으므로 비어있을 수 있음(부모가 마이페이지에서 입력)
+  /**
+   * 자녀 교회학교 그룹(영아부/유아·유치부/초등부/중고등부).
+   * 비어 있으면 "미지정" — 출석체크·주소록 목록·생일 달력에서 제외됩니다.
+   * (부모의 가족현황 줄에는 이름이 그대로 나옵니다)
+   */
+  labriId?: string
 }
 
 export interface FamilyInfoData {
@@ -43,7 +53,8 @@ export function parseFamilyInfo(raw?: string | null): FamilyInfoData {
           .map((c: any) => ({
             id: c.id || `child_${Math.random().toString(36).slice(2, 9)}`,
             name: c.name.trim(),
-            birthday: c.birthday || ''
+            birthday: c.birthday || '',
+            labriId: typeof c.labriId === 'string' ? c.labriId : ''
           })),
         addressRequestedAt: typeof parsed.addressRequestedAt === 'string' ? parsed.addressRequestedAt : ''
       }
@@ -56,7 +67,9 @@ export function parseFamilyInfo(raw?: string | null): FamilyInfoData {
 
 export function serializeFamilyInfo(data: FamilyInfoData): string {
   const note = (data.note || '').trim()
-  const children = (data.children || []).filter(c => c.name && c.name.trim())
+  const children = (data.children || [])
+    .filter(c => c.name && c.name.trim())
+    .map(c => ({ id: c.id, name: c.name, birthday: c.birthday || '', labriId: c.labriId || '' }))
   const addressRequestedAt = data.addressRequestedAt || ''
   if (!note && children.length === 0 && !addressRequestedAt) return ''
   return JSON.stringify({ note, children, addressRequestedAt })
@@ -116,9 +129,14 @@ export function buildAddressRequestUpdate(user: UserProfile, requested: boolean)
   return serializeFamilyInfo({ ...data, addressRequestedAt: requested ? new Date().toISOString() : '' })
 }
 
-// 배우자 등 미입력 생일이 있는 자녀 목록 (마이페이지 "생일 입력 알림"용)
+/**
+ * 생일이 아직 안 적힌 자녀 목록 (마이페이지 "생일 입력 알림"용).
+ *
+ * 교회학교 그룹이 **지정된** 자녀만 대상으로 합니다.
+ * 미지정 자녀는 생일 달력에도 안 나오므로 굳이 생일을 재촉하지 않습니다.
+ */
 export function getMissingBirthdayChildren(user: UserProfile, allUsers: UserProfile[]): FamilyChildInfo[] {
-  return getSharedChildren(user, allUsers).filter(c => !c.birthday)
+  return getSharedChildren(user, allUsers).filter(c => !c.birthday && !!c.labriId)
 }
 
 // 주소록 등에 보여줄 "배우자:xxx / 자녀:xxx/xxx" 형태의 요약 문자열 생성
@@ -194,6 +212,8 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
         birthday: c.birthday,
         createdAt: '',
         isDependent: true,
+        // 자녀 교회학교 그룹. 비어 있으면 주소록 목록/생일 달력에서 숨깁니다.
+        childLabriId: c.labriId || '',
         // 주소록에서 "부모 바로 아래"에 자녀를 붙이려면 어느 가정인지 알아야 합니다.
         // (가족 연결이 안 된 분의 자녀는 값이 없어, 주소록에서 단독 항목으로 나옵니다)
         familyGroupId: u.familyGroupId,

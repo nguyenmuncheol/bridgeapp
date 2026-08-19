@@ -80,17 +80,24 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
   //
   // 성능: 예전에는 날짜 칸마다(월 31칸 + 목록 재계산) 모든 성도의 생일을 다시 파싱해서
   // 200명 기준 월 6,000회 이상 파싱이 일어났습니다. 한 달치를 한 번만 계산해 재사용합니다.
+  // 교회학교 그룹이 지정되지 않은 자녀는 생일 달력·생일 목록에서 뺍니다.
+  // (생일을 안 적어도 되는 자녀라서, 빈 생일이 계속 재촉거리가 되지 않도록)
+  const birthdayEntries = useMemo(
+    () => addressBookEntries.filter(u => !u.isDependent || !!u.childLabriId),
+    [addressBookEntries]
+  )
+
   const birthdaysByDay = useMemo(() => {
     const map: Record<number, string[]> = {}
     const lastDay = new Date(calYear, calMonth + 1, 0).getDate()
     for (let day = 1; day <= lastDay; day++) {
-      const names = addressBookEntries
+      const names = birthdayEntries
         .filter(u => birthdayMatchesCalendarDay(u.birthday, calYear, calMonth + 1, day))
         .map(u => u.name)
       if (names.length > 0) map[day] = names
     }
     return map
-  }, [addressBookEntries, calYear, calMonth])
+  }, [birthdayEntries, calYear, calMonth])
 
   const getBirthdaysForDate = (day: number): string[] => birthdaysByDay[day] || []
 
@@ -231,7 +238,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
         </div>
       </div>
 
-      <BirthdayList addressBookEntries={addressBookEntries} allUsers={allUsers} calMonth={calMonth} />
+      <BirthdayList addressBookEntries={birthdayEntries} allUsers={allUsers} calMonth={calMonth} />
 
       {/* ── 일정 텍스트 직접 수정/추가 모달 (관리자/리더) ── */}
       {calEditModal && (

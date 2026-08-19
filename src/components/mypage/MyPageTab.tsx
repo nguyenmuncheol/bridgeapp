@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare } from 'lucide-react'
-import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember } from '../../lib/mockData'
-import { FamilyChildInfo, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
-import { getChildAgeLabel, parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
+import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember, canOpenAdmin } from '../../lib/mockData'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
+import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -366,8 +366,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         </div>
       </section>
 
-      {/* ── 관리자/리더/쿠폰관리자: 대시보드 진입 버튼 ── */}
-      {(currentUser.role === 'ADMIN' || currentUser.role === 'LEADER' || currentUser.role === 'COUPON') && (
+      {/* ── 관리자/리더/쿠폰관리자/선생님: 대시보드 진입 버튼 ── */}
+      {canOpenAdmin(currentUser.role) && (
         <section>
           <button
             onClick={onNavigateAdmin}
@@ -375,17 +375,22 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           >
             <div className="flex items-center gap-3">
               <span className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg">
-                {currentUser.role === 'COUPON' ? '🎟️' : '🛠️'}
+                {currentUser.role === 'COUPON' ? '🎟️' : currentUser.role === 'TEACHER' ? '🧒' : '🛠️'}
               </span>
               <div className="text-left">
                 <p className="font-bold text-sm">
-                  {currentUser.role === 'ADMIN' ? '관리자 대시보드' : currentUser.role === 'LEADER' ? '리더 대시보드' : '쿠폰 관리 대시보드'}
+                  {currentUser.role === 'ADMIN' ? '관리자 대시보드'
+                    : currentUser.role === 'LEADER' ? '리더 대시보드'
+                    : currentUser.role === 'TEACHER' ? '교회학교 출석 관리'
+                    : '쿠폰 관리 대시보드'}
                 </p>
                 <p className="text-[11px] text-blue-200 mt-0.5">
                   {currentUser.role === 'ADMIN'
                     ? '출석 · 식수 · 가입승인 · 쿠폰 관리'
                     : currentUser.role === 'LEADER'
                     ? '주일 식사 집계 · 라브리 출석 통계'
+                    : currentUser.role === 'TEACHER'
+                    ? '담당 자녀 그룹 출석 확인'
                     : '주일 식사 쿠폰 발급 및 차감 전용 관리'}
                 </p>
               </div>
@@ -555,7 +560,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     <p className="text-[10px] text-gray-300">등록된 자녀가 없습니다.</p>
                   )}
                   {editChildren.map(child => {
-                    const ageLabel = getChildAgeLabel(child.birthday)
+                    // 교회학교 그룹이 지정된 자녀만 생일을 챙깁니다.
+                    // (미지정 자녀는 생일을 비워두셔도 되고, 생일 달력에도 안 나옵니다)
+                    const needsBirthday = !!child.labriId && !child.birthday
                     return (
                       <div key={child.id} className="flex gap-1 items-center">
                         <input
@@ -563,18 +570,25 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                           value={child.name}
                           onChange={e => updateEditChild(child.id, { name: e.target.value })}
                           placeholder="이름"
-                          className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                          className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
                         />
                         <input
                           type="text"
                           value={child.birthday || ''}
                           onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
                           placeholder="생일 YYYY-MM-DD"
-                          className={`w-[40%] p-2 rounded-lg border focus:outline-none font-medium text-[11px] ${!child.birthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                          className={`w-[36%] p-2 rounded-lg border focus:outline-none font-medium text-[11px] ${needsBirthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                         />
-                        {ageLabel && (
-                          <span className="w-[15%] text-center text-[10px] font-bold text-[#335f87] bg-blue-50 rounded-lg py-2">{ageLabel}</span>
-                        )}
+                        <select
+                          value={child.labriId || ''}
+                          onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
+                          className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                        >
+                          <option value="">미지정</option>
+                          {CHILD_LABRI_OPTIONS.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
                         <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0">
                           <X size={13} />
                         </button>

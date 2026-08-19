@@ -11,25 +11,54 @@ interface NotificationPanelProps {
   items: NotificationItem[]
   setItems: (next: NotificationItem[]) => void
   onClose: () => void
-  /** 알림을 눌렀을 때 해당 화면으로 이동 */
-  onNavigate: (tab: string) => void
+  /** 알림을 눌렀을 때 해당 화면(+서브탭)으로 이동 */
+  onNavigate: (tab: string, subTab?: string) => void
   /** 내 정보 화면으로 이동 */
   onGoMyPage: () => void
   onLogout: () => void
   canLogout: boolean
 }
 
-/** 글 종류 → 어느 탭에서 볼 수 있는지 */
-function tabOf(category?: string): string {
-  if (category === 'NOTICE') return 'home'
-  if (category === 'MEMBER_NEWS') return 'news'
-  return 'sharing'   // PRAYER / PRAISE / PHOTO
+/**
+ * 알림 하나 → 어느 화면으로 보낼지.
+ *
+ * 큰 탭만 정하면 나눔은 늘 "기도제목"이, 우리소식은 늘 "교회일정"이 먼저 보입니다.
+ * 그래서 **서브탭까지** 함께 정해서 돌려줍니다.
+ */
+function destinationOf(n: NotificationItem): { tab: string; sub: string } {
+  // ① 서버가 시간에 맞춰 보내는 알림은 글이 아니라 "할 일"이라 목적지가 정해져 있습니다.
+  if (n.type === 'MEAL') return { tab: 'request', sub: '' }
+  if (n.type === 'ATTENDANCE') return { tab: 'mypage', sub: '' }   // 관리 화면은 내 정보에서 들어갑니다
+  if (n.type === 'BULLETIN') return { tab: 'home', sub: '' }
+  if (n.type === 'BIRTHDAY') return { tab: 'news', sub: 'memberNews' }
+
+  // ② 댓글·좋아요·공지는 그 글이 실제로 있는 게시판으로 보냅니다.
+  switch (n.postCategory) {
+    case 'NOTICE':       return { tab: 'home',    sub: '' }
+    case 'MEMBER_NEWS':  return { tab: 'news',    sub: 'memberNews' }
+    case 'PHOTO':        return { tab: 'sharing', sub: 'photo' }
+    case 'PRAISE':       return { tab: 'sharing', sub: 'praise' }
+    case 'PRAYER':       return { tab: 'sharing', sub: 'prayer' }
+    case 'LABRI':        return { tab: 'sharing', sub: 'prayer' }
+    default:
+      // 글 종류를 알 수 없으면(옛날 알림 등) 알림 종류로 최선의 추측을 합니다.
+      return n.type === 'NOTICE' ? { tab: 'home', sub: '' } : { tab: 'sharing', sub: 'prayer' }
+  }
 }
 
 function iconOf(type: NotificationItem['type']): string {
   if (type === 'COMMENT') return '💬'
   if (type === 'LIKE') return '🙏'
+  if (type === 'MEAL') return '🍚'
+  if (type === 'ATTENDANCE') return '📋'
+  if (type === 'BIRTHDAY') return '🎂'
+  if (type === 'BULLETIN') return '📖'
   return '📢'
+}
+
+/** 서버가 자동으로 보내는 알림인지 (사람이 만든 알림과 문장 모양이 다릅니다) */
+function isSystemType(type: NotificationItem['type']): boolean {
+  return type === 'MEAL' || type === 'ATTENDANCE' || type === 'BIRTHDAY' || type === 'BULLETIN'
 }
 
 /** '2026-08-19T05:12:00Z' → '방금 전 / 3시간 전 / 8/18 21:30' */
@@ -82,7 +111,8 @@ export default function NotificationPanel({
 
   const handleOpen = (n: NotificationItem) => {
     setItems(items.map(x => (x.id === n.id ? { ...x, isRead: true } : x)))
-    onNavigate(tabOf(n.postCategory))
+    const { tab, sub } = destinationOf(n)
+    onNavigate(tab, sub || undefined)
     onClose()
   }
 
@@ -136,15 +166,24 @@ export default function NotificationPanel({
             >
               <span className="text-base leading-none mt-0.5 shrink-0">{iconOf(n.type)}</span>
               <span className="flex-1 min-w-0 space-y-0.5">
-                <span className="block text-xs text-gray-800 leading-snug">
-                  <strong className="font-bold">{n.actorName}</strong>
-                  {n.type === 'COMMENT' && '님이 댓글을 남겼습니다'}
-                  {n.type === 'LIKE' && `님이 ${n.body}`}
-                  {n.type === 'NOTICE' && '님이 새 공지를 올렸습니다'}
-                </span>
-                <span className="block text-[11px] text-gray-500 truncate">
-                  {n.type === 'COMMENT' ? `"${n.body}"` : n.title}
-                </span>
+                {isSystemType(n.type) ? (
+                  <>
+                    <span className="block text-xs text-gray-800 leading-snug font-bold">{n.title}</span>
+                    <span className="block text-[11px] text-gray-500 leading-relaxed">{n.body}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="block text-xs text-gray-800 leading-snug">
+                      <strong className="font-bold">{n.actorName}</strong>
+                      {n.type === 'COMMENT' && '님이 댓글을 남겼습니다'}
+                      {n.type === 'LIKE' && `님이 ${n.body}`}
+                      {n.type === 'NOTICE' && '님이 새 공지를 올렸습니다'}
+                    </span>
+                    <span className="block text-[11px] text-gray-500 truncate">
+                      {n.type === 'COMMENT' ? `"${n.body}"` : n.title}
+                    </span>
+                  </>
+                )}
                 <span className="block text-[10px] text-gray-400">{whenText(n.createdAt)}</span>
               </span>
               <span

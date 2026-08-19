@@ -38,7 +38,9 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     labriId: d.labri_id,
     duty: d.duty || '',
     familyGroupId: d.family_group_id,
+    welcomedAt: d.welcomed_at || undefined,
     familyRole: d.family_role,
+    teachGroup: d.teach_group || '',
     familyInfo: d.family_info,
     birthday: d.birthday,
     avatarUrl: d.avatar_url,
@@ -58,6 +60,7 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   familyRole: string
   role: Role
   familyGroupId: string
+  teachGroup: string
 }>) {
   const payload: any = {}
   if (updates.name !== undefined) payload.name = updates.name
@@ -71,6 +74,7 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   if (updates.familyRole !== undefined) payload.family_role = updates.familyRole || null
   if (updates.role !== undefined) payload.role = updates.role
   if (updates.familyGroupId !== undefined) payload.family_group_id = updates.familyGroupId ? updates.familyGroupId : null
+  if (updates.teachGroup !== undefined) payload.teach_group = updates.teachGroup || null
 
   const res = await supabase.from('profiles').update(payload).eq('id', userId)
   if (!res.error) invalidateCache('profiles', { exact: true })
@@ -641,8 +645,17 @@ export async function dbUpsertEventForm(eventData: EventFormData) {
 // ==========================================
 // 6. 주일 식사 신청 (meal_registrations)
 // ==========================================
-export async function dbFetchMealRegistrations() {
-  const { data, error } = await supabase.from('meal_registrations').select('*')
+/**
+ * 식사 신청 조회.
+ *
+ * 🐛 과거 낭비: DB에 쌓인 **모든** 신청 기록을 매번 받아왔습니다. 그런데 화면에서 쓰는 건
+ * 다가오는 4주치뿐입니다. 작년 3월 기록까지 받아오지만 아무 데도 안 썼습니다.
+ * → 볼 날짜만 지정해서 받아옵니다. (dateStrs 를 안 주면 예전처럼 전체 — 관리 용도)
+ */
+export async function dbFetchMealRegistrations(dateStrs?: string[]) {
+  let query = supabase.from('meal_registrations').select('*')
+  if (dateStrs && dateStrs.length > 0) query = query.in('date_str', dateStrs)
+  const { data, error } = await query
   throwIfFetchFailed(error, '식사 신청 현황')
   if (!data) return []
   return data
@@ -670,7 +683,7 @@ export async function dbSaveMealRegistration(payload: {
     onConflict: 'family_group_id,date_str',
     ignoreDuplicates: false
   })
-  if (!res.error) invalidateCache('mealRegistrations', { exact: true })
+  if (!res.error) invalidateCache('mealRegistrations')
   return res
 }
 
@@ -693,7 +706,7 @@ export async function dbCleanupStaleMealRegistrations(staleKeys: string[], dateS
     return { error, removed: 0 }
   }
   const removed = data?.length || 0
-  if (removed > 0) invalidateCache('mealRegistrations', { exact: true })
+  if (removed > 0) invalidateCache('mealRegistrations')
   return { error: null, removed }
 }
 
@@ -735,6 +748,16 @@ export async function dbDeleteComment(commentId: string) {
 // 남의 이름으로 가짜 알림을 만들 수 없게 하려고 일부러 그렇게 했습니다.
 // 앱은 내 알림을 **읽고 / 읽음 표시하고 / 지우는** 것만 합니다.
 
+/** 가입 환영 팝업을 봤다고 기록합니다 (다음부터 안 뜨게) */
+export async function dbMarkWelcomed(userId: string) {
+  if (!userId || userId === 'guest') return { error: null }
+  const { error } = await supabase
+    .from('profiles')
+    .update({ welcomed_at: new Date().toISOString() })
+    .eq('id', userId)
+  return { error }
+}
+
 export async function dbFetchNotifications(userId: string, limit = 30): Promise<NotificationItem[]> {
   if (!userId || userId === 'guest') return []
   const { data, error } = await supabase
@@ -774,6 +797,22 @@ export async function dbDeleteNotification(id: string) {
   const { error } = await supabase.from('notifications').delete().eq('id', id)
   if (!error) invalidateCache('notifications')
   return { error }
+}
+
+/** 자동 알림 종류 (관리자 화면에서 "지금 한 번 실행"으로 시험해 볼 수 있습니다) */
+export type NotificationJob =
+  | 'meal1' | 'meal2' | 'bulletin' | 'birthday'
+  | 'attend1' | 'attend2' | 'attend3' | 'cleanup'
+
+/**
+ * 정해진 시각에 자동으로 나가는 알림을 **지금 즉시** 한 번 돌립니다.
+ *
+ * 금요일 저녁까지 기다리지 않고도 잘 도는지 확인하실 수 있게 만든 버튼입니다.
+ * force=true 로 부르면 "이미 보냄" 기록을 지우고 다시 보냅니다.
+ */
+export async function dbRunNotificationJob(job: NotificationJob, force = false) {
+  const { data, error } = await supabase.rpc('run_notification_job', { p_job: job, p_force: force })
+  return { message: (data as string) || '', error }
 }
 
 export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAccount>> {
@@ -1045,6 +1084,63 @@ export async function dbMergeCouponsIntoFamily(
 // ==========================================
 // 8. 출석체크 (attendance_records)
 // ==========================================
+// ==========================================
+// 자녀(교회학교) 출석 — 어른 출석표와 **완전히 분리된 별도 표**입니다.
+//
+// 자녀는 로그인 계정이 없어서 어른 출석표에 넣을 수 없습니다.
+// (어른 출석표는 "계정이 있는 사람"만 넣을 수 있게 되어 있습니다)
+// 그래서 자녀 전용 표를 따로 두고, 부모의 가족현황에 적힌 자녀 id로 구분합니다.
+// ==========================================
+
+export interface ChildAttendanceRow {
+  dependent_id: string
+  child_name: string
+  family_group_id: string | null
+  labri_id: string
+  date_str: string
+  status: 'ATTEND' | 'ABSENT'
+  note: string
+}
+
+export async function dbFetchChildAttendanceRecords(dateStr?: string) {
+  let query = supabase.from('child_attendance_records').select('*')
+  if (dateStr) query = query.eq('date_str', dateStr)
+  const { data, error } = await query
+  throwIfFetchFailed(error, '자녀 출석 기록')
+  return (data || []) as any[]
+}
+
+export async function dbSaveChildAttendanceRecords(records: {
+  dependentId: string
+  childName: string
+  familyGroupId?: string
+  labriId: string
+  dateStr: string
+  status: 'ATTEND' | 'ABSENT'
+  note?: string
+  recordedBy?: string
+}[]) {
+  if (!records || records.length === 0) return { error: null }
+
+  const payload = records.map(r => ({
+    dependent_id: r.dependentId,
+    child_name: r.childName,
+    family_group_id: r.familyGroupId || null,
+    labri_id: r.labriId,
+    date_str: r.dateStr,
+    status: r.status,
+    note: r.status === 'ABSENT' ? (r.note || '') : '',
+    recorded_by: r.recordedBy || null
+  }))
+
+  const res = await supabase
+    .from('child_attendance_records')
+    .upsert(payload, { onConflict: 'dependent_id,date_str' })
+
+  if (!res.error) invalidateCache('childAttendanceRecords:')
+  return res
+}
+
 export async function dbFetchAttendanceRecords(dateStr?: string, userId?: string) {
   let query = supabase.from('attendance_records').select('*')
   if (dateStr) {

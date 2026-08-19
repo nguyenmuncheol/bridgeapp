@@ -79,7 +79,13 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
   const [editContent, setEditContent] = useState('')
 
   // Supabase DB에서 식사 신청 및 행사 신청 로드 (관리자 "식사" 탭과 캐시를 공유해 반복 조회하지 않음)
-  const { data: mealRegistrations } = useCachedQuery('mealRegistrations', () => dbFetchMealRegistrations())
+  // 화면에서 쓰는 4주치만 받아옵니다(과거 기록은 쓰지 않습니다).
+  // 캐시 키에 첫 주일을 넣어, 주가 넘어가면 자동으로 새로 받아옵니다.
+  const mealDateStrs = useMemo(() => upcomingSundays.map(s => s.dateStr), [upcomingSundays])
+  const { data: mealRegistrations } = useCachedQuery(
+    `mealRegistrations:${mealDateStrs[0] || ''}`,
+    () => dbFetchMealRegistrations(mealDateStrs)
+  )
   const { data: latestEventForm } = useCachedQuery('eventForm:latest', () => dbFetchLatestEventForm())
 
   useEffect(() => {

@@ -2,36 +2,80 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { CheckSquare } from 'lucide-react'
-import { UserProfile, isApprovedMember } from '../../lib/mockData'
-import { dbFetchAttendanceRecords, dbSaveAttendanceRecords } from '../../lib/db'
+import { UserProfile, isApprovedMember, canEditChildAttendance } from '../../lib/mockData'
+import {
+  dbFetchAttendanceRecords, dbSaveAttendanceRecords,
+  dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
+} from '../../lib/db'
+import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '개인사정', '가족방문']
+const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
 
 interface AttendanceCheckModalProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
 }
 
-// ── 출석체크 버튼 + 모달 (리더/관리자 전용, 자체 상태 관리) ──
+/** 자녀 그룹인지 (영아부·유아·유치부·초등부·중고등부) */
+function isChildGroup(group: string): boolean {
+  return (CHILD_LABRI_OPTIONS as readonly string[]).includes(group)
+}
+
+// ── 출석체크 버튼 + 모달 (리더/관리자/선생님 전용, 자체 상태 관리) ──
 export default function AttendanceCheckModal({ currentUser, allUsers }: AttendanceCheckModalProps) {
-  const isLeaderOrAdmin = currentUser.role === 'LEADER' || currentUser.role === 'ADMIN'
+  const isLeader = currentUser.role === 'LEADER'
+  const isAdmin = currentUser.role === 'ADMIN'
+  const isTeacher = currentUser.role === 'TEACHER'
+  const canCheck = canEditChildAttendance(currentUser.role)
 
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [checkSelections, setCheckSelections] = useState<Record<string, 'ATTEND' | 'ABSENT'>>({})
   const [checkNotes, setCheckNotes] = useState<Record<string, string>>({})
   const [checkSubmitted, setCheckSubmitted] = useState(false)
   // 🔧 이전에는 이 날짜에 "어떤 라브리든" 한 명이라도 출석기록이 있으면 무조건 완료로
-  // 표시되는 버그가 있었습니다. loadAttendanceRecords()에서 현재 담당 그룹 전원의
-  // 기록이 실제로 DB에 존재할 때만 true로 설정하도록 고쳤습니다.
+  // 표시되는 버그가 있었습니다. 현재 담당 그룹 전원의 기록이 실제로 DB에 존재할 때만
+  // true로 설정합니다.
   const [hasSubmittedAttendance, setHasSubmittedAttendance] = useState(false)
-  const [adminLabriFilter, setAdminLabriFilter] = useState<string>('라브리1')
 
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
     setToastMsg((isErr ? '⚠️ ' : '') + msg)
     setTimeout(() => setToastMsg(''), 2500)
   }
+
+  // ── 교회학교 그룹이 지정된 자녀들 (계정이 없으므로 부모의 가족현황에서 만들어 옵니다) ──
+  const childEntries = useMemo(
+    () => buildDependentEntries(allUsers).filter(c => !!c.childLabriId),
+    [allUsers]
+  )
+
+  // ── 내가 출석을 입력할 수 있는 그룹 목록 ──
+  const availableGroups = useMemo(() => {
+    // 자녀 그룹은 "지정된 자녀가 한 명이라도 있는 그룹"만 보여줍니다.
+    const activeChildGroups = CHILD_LABRI_OPTIONS.filter(g => childEntries.some(c => c.childLabriId === g))
+
+    if (isTeacher) {
+      // 담당 그룹을 지정하지 않은 선생님 = 모든 자녀 그룹 담당
+      const mine = (currentUser.teachGroup || '').trim()
+      return mine ? activeChildGroups.filter(g => g === mine) : [...activeChildGroups]
+    }
+    if (isAdmin) return [...ADULT_GROUPS, ...activeChildGroups]
+    if (isLeader) return [currentUser.labriId || '미정']
+    return []
+  }, [isTeacher, isAdmin, isLeader, currentUser.teachGroup, currentUser.labriId, childEntries])
+
+  const [selectedGroup, setSelectedGroup] = useState('')
+  // 그룹 목록이 만들어지면 첫 번째 그룹을 자동 선택합니다.
+  useEffect(() => {
+    if (availableGroups.length === 0) return
+    if (!selectedGroup || !availableGroups.includes(selectedGroup)) {
+      setSelectedGroup(availableGroups[0])
+    }
+  }, [availableGroups, selectedGroup])
+
+  const childMode = isChildGroup(selectedGroup)
 
   // 가장 최근 지난 주일 날짜 계산 (오늘이 일요일이면 오늘, 월~토요일이면 직전 일요일)
   // 🐛 과거 버그: 이 값을 화면이 처음 만들어질 때 딱 한 번만 계산했습니다.
@@ -64,45 +108,57 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   }, [targetSundayDateStr])
 
   // 주소록 및 출석체크: 승인대기자 및 쿠폰 관리자(COUPON) 제외
-  const members = allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON')
-  const myLabriMembers = members.filter(u => u.labriId === currentUser.labriId && currentUser.labriId)
-  const targetMembers = isLeaderOrAdmin
-    ? (currentUser.role === 'ADMIN'
-        ? (adminLabriFilter === '미정' ? members.filter(u => !u.labriId || u.labriId === '미정') : members.filter(u => u.labriId === adminLabriFilter))
-        : myLabriMembers)
-    : []
-  // checkSelections에는 그날 전체(다른 라브리 포함) 출석기록이 담길 수 있으므로, 반드시
-  // targetMembers(리더 본인 라브리 또는 관리자가 선택한 그룹)로만 좁혀서 카운팅합니다.
+  const members = useMemo(
+    () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON'),
+    [allUsers]
+  )
+
+  // 지금 화면에 보여줄 대상 (어른 성도 또는 자녀)
+  const targetMembers = useMemo(() => {
+    if (!selectedGroup) return []
+    if (childMode) return childEntries.filter(c => c.childLabriId === selectedGroup)
+    if (selectedGroup === '미정') return members.filter(u => !u.labriId || u.labriId === '미정')
+    return members.filter(u => u.labriId === selectedGroup)
+  }, [selectedGroup, childMode, childEntries, members])
+
   const attendedCount = targetMembers.filter(m => checkSelections[m.id] === 'ATTEND').length
   // 전원 명시적으로 출석/결석을 표시해야만 제출 가능 (미처리 인원이 자동으로 '출석' 처리되는 것을 방지)
   const allMembersChecked = targetMembers.length > 0 && targetMembers.every(m => !!checkSelections[m.id])
 
-  // DB에서 출석체크 데이터 로드 (해당 날짜 전체 기록을 캐시로 가져온 뒤, 라브리 필터가 바뀌어도
-  // 같은 날짜라면 재요청 없이 캐시를 그대로 재사용하고 클라이언트에서만 다시 계산합니다)
+  // ── DB에서 출석 기록 로드 ──
+  // 어른 출석표와 자녀 출석표는 완전히 다른 표라서 따로 불러옵니다.
   const { data: rawRecords, refetch: refetchAttendance } = useCachedQuery(
     `attendanceRecords:${targetSundayDateStr}`,
     () => dbFetchAttendanceRecords(targetSundayDateStr),
-    { enabled: isLeaderOrAdmin }
+    { enabled: canCheck && !isTeacher }
+  )
+  const { data: rawChildRecords, refetch: refetchChildAttendance } = useCachedQuery(
+    `childAttendanceRecords:${targetSundayDateStr}`,
+    () => dbFetchChildAttendanceRecords(targetSundayDateStr),
+    { enabled: canCheck }
   )
 
   // 현재 담당 그룹 전원의 기록이 실제로 있을 때만 "완료"로 표시
   useEffect(() => {
-    if (!rawRecords) return
     const selections: Record<string, 'ATTEND' | 'ABSENT'> = {}
     const notes: Record<string, string> = {}
-    rawRecords.forEach((r: any) => {
+    ;(rawRecords || []).forEach((r: any) => {
       selections[r.user_id] = r.status as 'ATTEND' | 'ABSENT'
       if (r.note) notes[r.user_id] = r.note
+    })
+    // 자녀 기록은 dependent_id로 저장되므로 화면 id(dep_...)에 맞춰 붙입니다.
+    ;(rawChildRecords || []).forEach((r: any) => {
+      selections[`dep_${r.dependent_id}`] = r.status as 'ATTEND' | 'ABSENT'
+      if (r.note) notes[`dep_${r.dependent_id}`] = r.note
     })
     setCheckSelections(selections)
     setCheckNotes(notes)
     const relevantIds = targetMembers.map(m => m.id)
     setHasSubmittedAttendance(relevantIds.length > 0 && relevantIds.every(id => !!selections[id]))
-    // targetMembers는 adminLabriFilter에 따라 파생되므로, 필터가 바뀔 때도 완료 여부를 다시 계산합니다.
+    // targetMembers는 selectedGroup에 따라 파생되므로, 그룹이 바뀔 때도 완료 여부를 다시 계산합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawRecords, adminLabriFilter])
+  }, [rawRecords, rawChildRecords, selectedGroup])
 
-  // 출석체크 제출 (DB 동기화)
   // 이미 선택된 상태(출석/결석)를 다시 누르면 "미지정" 상태로 되돌립니다.
   const toggleCheckSelection = (memberId: string, status: 'ATTEND' | 'ABSENT') => {
     setCheckSelections(prev => {
@@ -134,22 +190,40 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     if (isSubmittingAttendance) return
 
     // 안전장치: 전원이 명시적으로 출석/결석 표시되지 않았다면 제출하지 않음
-    // (버튼도 비활성화되지만, 방어적으로 한 번 더 확인)
     if (!allMembersChecked) {
-      showToast('아직 출석/결석을 표시하지 않은 성도가 있습니다.', true)
+      showToast('아직 출석/결석을 표시하지 않은 대상이 있습니다.', true)
       return
     }
-    const records = targetMembers.map(m => ({
-      userId: m.id,
-      dateStr: targetSundayDateStr,
-      labriId: m.labriId || '미정',
-      status: checkSelections[m.id] as 'ATTEND' | 'ABSENT',
-      note: checkNotes[m.id] || '',
-      recordedBy: currentUser.id
-    }))
 
     setIsSubmittingAttendance(true)
-    const { error } = await dbSaveAttendanceRecords(records)
+    let error: any = null
+
+    if (childMode) {
+      const records = targetMembers.map(m => ({
+        dependentId: m.id.replace(/^dep_/, ''),
+        childName: m.name,
+        familyGroupId: m.familyGroupId,
+        labriId: selectedGroup,
+        dateStr: targetSundayDateStr,
+        status: checkSelections[m.id] as 'ATTEND' | 'ABSENT',
+        note: checkNotes[m.id] || '',
+        recordedBy: currentUser.id,
+      }))
+      const res = await dbSaveChildAttendanceRecords(records)
+      error = res.error
+    } else {
+      const records = targetMembers.map(m => ({
+        userId: m.id,
+        dateStr: targetSundayDateStr,
+        labriId: m.labriId || '미정',
+        status: checkSelections[m.id] as 'ATTEND' | 'ABSENT',
+        note: checkNotes[m.id] || '',
+        recordedBy: currentUser.id,
+      }))
+      const res = await dbSaveAttendanceRecords(records)
+      error = res.error
+    }
+
     setIsSubmittingAttendance(false)
     if (error) {
       showToast('출석체크 저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
@@ -163,7 +237,11 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     }, 1200)
   }
 
-  if (!isLeaderOrAdmin) return null
+  if (!canCheck) return null
+  // 선생님인데 담당할 자녀가 아직 한 명도 없으면 버튼을 숨깁니다.
+  if (availableGroups.length === 0) return null
+
+  const showGroupTabs = availableGroups.length > 1
 
   return (
     <>
@@ -175,7 +253,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
       <button
         onClick={() => {
-          refetchAttendance()
+          if (!isTeacher) refetchAttendance()
+          refetchChildAttendance()
           setShowAttendanceModal(true)
         }}
         className={`px-2.5 py-1.5 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition-all ${
@@ -186,44 +265,53 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
         {hasSubmittedAttendance ? `✅ ${targetSundayShortLabel} 출첵완료` : `🚨 ${targetSundayShortLabel} 출첵하기`}
       </button>
 
-      {/* ── 출석체크 모달 (화면 중앙 정중앙 팝업 배치 + 제출 버튼) ── */}
+      {/* ── 출석체크 모달 ── */}
       {showAttendanceModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-[#335f87] text-white">
               <div>
                 <h3 className="font-black text-sm">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
-                <p className="text-[10px] text-blue-200 mt-0.5">출석: {attendedCount}/{targetMembers.length}명</p>
+                <p className="text-[10px] text-blue-200 mt-0.5">
+                  {selectedGroup} · 출석 {attendedCount}/{targetMembers.length}명
+                </p>
               </div>
               <button onClick={() => setShowAttendanceModal(false)} className="p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
             </div>
 
             <div className="overflow-y-auto flex-1 p-4 space-y-3">
-              {/* 관리자: 라브리 선택 탭 */}
-              {currentUser.role === 'ADMIN' && (
+              {/* 그룹 선택 탭 (어른 라브리 + 자녀 그룹) */}
+              {showGroupTabs && (
                 <div className="bg-slate-100 p-1.5 rounded-xl space-y-1">
                   <div className="flex justify-between items-center px-1">
-                    <span className="text-[10px] font-bold text-slate-600">🏛️ 라브리 선택</span>
+                    <span className="text-[10px] font-bold text-slate-600">🏛️ 그룹 선택</span>
                     <span className="text-[9px] font-bold text-[#335f87] bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                      {adminLabriFilter === '미정' ? '미정/새가족' : adminLabriFilter} ({targetMembers.length}명)
+                      {selectedGroup === '미정' ? '미정/새가족' : selectedGroup} ({targetMembers.length}명)
                     </span>
                   </div>
                   <div className="grid grid-cols-4 gap-1">
-                    {['라브리1', '라브리2', '라브리3', '미정'].map(labri => (
+                    {availableGroups.map(group => (
                       <button
-                        key={labri}
+                        key={group}
                         type="button"
-                        onClick={() => setAdminLabriFilter(labri)}
-                        className={`py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                          adminLabriFilter === labri
+                        onClick={() => setSelectedGroup(group)}
+                        className={`py-1.5 px-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                          selectedGroup === group
                             ? 'bg-[#335f87] text-white shadow-xs'
-                            : 'bg-white text-slate-700 hover:bg-slate-50'
+                            : isChildGroup(group)
+                              ? 'bg-white text-emerald-700 hover:bg-emerald-50'
+                              : 'bg-white text-slate-700 hover:bg-slate-50'
                         }`}
                       >
-                        {labri === '미정' ? '미정/새가족' : labri}
+                        {group === '미정' ? '미정/새가족' : group}
                       </button>
                     ))}
                   </div>
+                  {childMode && (
+                    <p className="text-[9px] text-slate-500 px-1 leading-relaxed">
+                      교회학교 그룹이 지정된 자녀만 나옵니다. 안 보이는 자녀는 부모님 정보에서 그룹을 지정해 주세요.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -232,13 +320,19 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                 <button
                   type="button"
                   onClick={() => {
-                    const newSel: Record<string, 'ATTEND' | 'ABSENT'> = {}
-                    targetMembers.forEach(m => { newSel[m.id] = 'ATTEND' })
-                    setCheckSelections(newSel)
+                    setCheckSelections(prev => {
+                      const next = { ...prev }
+                      targetMembers.forEach(m => { next[m.id] = 'ATTEND' })
+                      return next
+                    })
                   }}
                   className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700"
                 >⚡ 전원 출석</button>
               </div>
+
+              {targetMembers.length === 0 && (
+                <p className="py-8 text-center text-xs text-gray-400">이 그룹에 해당하는 사람이 없습니다.</p>
+              )}
 
               {targetMembers.map(member => {
                 const sel = checkSelections[member.id]
@@ -247,7 +341,9 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-gray-900">{member.name}</span>
-                        <span className="text-[10px] text-gray-400 ml-1.5">{member.duty}</span>
+                        <span className="text-[10px] text-gray-400 ml-1.5">
+                          {childMode ? member.parentName : member.duty}
+                        </span>
                       </div>
                       <div className="flex gap-1">
                         <button

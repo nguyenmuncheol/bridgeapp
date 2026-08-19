@@ -4,9 +4,11 @@ import { useState, useMemo } from 'react'
 import { Edit2, X } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
-import { dbSaveAttendanceRecords } from '../../lib/db'
+import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
+import { CHILD_LABRI_OPTIONS } from '../../lib/familyInfo'
+import { useCachedQuery } from '../../lib/dataCache'
 
 interface StatsTabProps {
   currentUser?: UserProfile
@@ -22,6 +24,8 @@ export default function StatsTab({
   currentUser, allUsers, showToast,
   dbAttendanceData, attendanceDateKeysDesc, getAbsenceStreak, loadAttendanceStats
 }: StatsTabProps) {
+  // 선생님은 자녀(교회학교) 출석만 봅니다. 어른 출석 통계는 숨깁니다.
+  const isTeacher = currentUser?.role === 'TEACHER'
   // ── 출석 탭 — 기간(시작~끝) 선택 ──
   // 🐛 과거 제약: "최근 3개월" 드롭다운뿐이라 그보다 오래된 기록은 아예 볼 수 없었고,
   //    분기·반기·연간 출석률을 뽑으려면 방법이 없었습니다.
@@ -166,6 +170,37 @@ export default function StatsTab({
     }
   }, [combinedMonthData, allUsers])
 
+  // ── 자녀(교회학교) 출석 ──
+  // 자녀는 계정이 없어서 어른 출석표에 들어갈 수 없습니다. 별도 표에서 따로 받아옵니다.
+  const { data: childRecords } = useCachedQuery(
+    'childAttendanceRecords:all',
+    () => dbFetchChildAttendanceRecords()
+  )
+
+  const childStats = useMemo(() => {
+    const inRange = (childRecords || []).filter((r: any) => {
+      const d = String(r.date_str || '')
+      return d >= safeStart && d <= safeEnd
+    })
+    const rows = CHILD_LABRI_OPTIONS.map(group => {
+      const list = inRange.filter((r: any) => r.labri_id === group)
+      const attend = list.filter((r: any) => r.status === 'ATTEND').length
+      return { label: group, attend, total: list.length }
+    }).filter(r => r.total > 0)
+    return {
+      rows,
+      totalAttend: rows.reduce((sum, r) => sum + r.attend, 0),
+      totalTotal: rows.reduce((sum, r) => sum + r.total, 0),
+    }
+  }, [childRecords, safeStart, safeEnd])
+
+  const CHILD_BAR: Record<string, string> = {
+    '영아부': '#fbcfe8', '유아·유치부': '#fde68a', '초등부': '#a7f3d0', '중고등부': '#bfdbfe',
+  }
+  const CHILD_TEXT: Record<string, string> = {
+    '영아부': '#be185d', '유아·유치부': '#b45309', '초등부': '#047857', '중고등부': '#1d4ed8',
+  }
+
   // ── 개별 출석 수정 모달 상태 및 저장 핸들러 ──
   const [editingAttendanceUser, setEditingAttendanceUser] = useState<{
     user: UserProfile
@@ -270,6 +305,7 @@ export default function StatsTab({
     <>
       <div className="space-y-4">
         {/* ───────── 상단: 선택한 주일 하루 ───────── */}
+        {!isTeacher && (
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
           <div className="space-y-1.5">
             <h3 className="font-bold text-xs text-gray-900">📊 선택한 주일 출석률</h3>
@@ -324,8 +360,49 @@ export default function StatsTab({
             </div>
           )}
         </div>
+        )}
+
+        {/* ── 자녀(교회학교) 출석 ── */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-xs text-gray-900">🧒 교회학교 출석</h3>
+            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
+          </div>
+
+          {childStats.rows.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-gray-400">
+              이 기간에 입력된 교회학교 출석이 없습니다.
+            </p>
+          ) : (
+            <>
+              {childStats.rows.map(({ label, attend, total }) => {
+                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                return (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
+                      <span className="font-bold text-gray-700">{attend}/{total}명 ({rate}%)</span>
+                    </div>
+                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
+                    </div>
+                  </div>
+                )
+              })}
+              <div className="pt-2 border-t border-gray-200 flex justify-between text-xs">
+                <span className="font-black text-gray-900">교회학교 합계</span>
+                <span className="font-black text-indigo-600">
+                  {childStats.totalAttend}/{childStats.totalTotal}명 (
+                  {childStats.totalTotal > 0 ? Math.round((childStats.totalAttend / childStats.totalTotal) * 100) : 0}%)
+                </span>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* 선택한 주일의 출석/결석 명단 (CSV는 아래 기간 카드에 있습니다) */}
+        {!isTeacher && (
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
           {/* CSV 버튼은 아래 "기간 출석률" 카드로 옮겼습니다 — 받아지는 범위가 기간이라
               이 카드(선택한 주일 하루)에 있으면 어느 범위가 받아지는지 헷갈립니다. */}
@@ -376,6 +453,7 @@ export default function StatsTab({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* ───────── 하단: 기간 통계 ───────── */}
         <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-xs">
@@ -424,6 +502,7 @@ export default function StatsTab({
         </div>
 
         {/* 기간 출석률 결과 + CSV */}
+        {!isTeacher && (
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -488,6 +567,7 @@ export default function StatsTab({
             </>
           )}
         </div>
+        )}
 
       </div>
 

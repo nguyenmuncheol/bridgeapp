@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import { buildFamilyStatusText } from '../../lib/familyInfo'
-import { formatBirthdayDisplay, getChildAgeLabel, calculateAge } from '../../lib/dateUtils'
+import { formatBirthdayDisplay, calculateAge } from '../../lib/dateUtils'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 
@@ -121,9 +121,12 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
     const q = searchQuery.trim()
     // 🐛 과거 문제: `name.includes(검색어)` 뿐이라 어르신이 "ㄱ"을 입력해 김/강/고 성도를
     // 찾으려 하면 결과가 하나도 안 나왔습니다. → 초성 검색 지원(koreanSearch.ts)
+    // 교회학교 그룹이 지정되지 않은 자녀는 주소록 목록에 넣지 않습니다.
+    // (부모 카드의 "가족현황" 줄에는 이름이 그대로 나옵니다)
+    const visibleEntries = addressBookEntries.filter(m => !m.isDependent || !!m.childLabriId)
     const base = q
-      ? addressBookEntries.filter(m => matchesKoreanSearch(m.name, q))
-      : addressBookEntries
+      ? visibleEntries.filter(m => matchesKoreanSearch(m.name, q))
+      : visibleEntries
     const activeFilter = ADDRESS_FILTERS.find(f => f.key === addressFilter) || ADDRESS_FILTERS[0]
     const filtered = base.filter(activeFilter.match)
 
@@ -258,7 +261,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                     <span className="text-[10px] text-gray-400">{member.duty}</span>
                   </div>
                   {member.isDependent ? (
-                    getChildAgeLabel(member.birthday) && <span className="text-[10px] text-[#335f87]">{getChildAgeLabel(member.birthday)}</span>
+                    member.childLabriId && <span className="text-[10px] text-[#335f87]">{member.childLabriId}</span>
                   ) : (
                     member.labriId && member.labriId !== '미정' && (
                       <span className="text-[10px] text-[#335f87]">{member.labriId}</span>

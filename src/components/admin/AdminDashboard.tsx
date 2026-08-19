@@ -10,6 +10,7 @@ import ApprovalTab from './ApprovalTab'
 import CouponsTab from './CouponsTab'
 import MembersTab from './MembersTab'
 import StatsTab from './StatsTab'
+import NotificationJobsTab from './NotificationJobsTab'
 
 interface AdminDashboardProps {
   currentUser?: UserProfile
@@ -24,8 +25,10 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ currentUser, allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack }: AdminDashboardProps) {
   const isLeader = currentUser?.role === 'LEADER'
   const isCouponManager = currentUser?.role === 'COUPON'
-  const defaultTab = isCouponManager ? 'coupons' : 'meals'
-  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members'>(defaultTab)
+  // 선생님은 출석 탭만 볼 수 있습니다 (성도 정보·식권·식사 집계는 안 보입니다)
+  const isTeacher = currentUser?.role === 'TEACHER'
+  const defaultTab = isCouponManager ? 'coupons' : isTeacher ? 'stats' : 'meals'
+  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts'>(defaultTab)
 
   const pendingCount = allUsers.filter(u => u.role === 'PENDING').length
 
@@ -100,10 +103,10 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           </button>
           <div>
             <h1 className="font-bold text-base">
-              {isCouponManager ? '🎟️ 쿠폰 관리 대시보드' : isLeader ? '📊 리더 대시보드' : '🛠️ 관리자 대시보드'}
+              {isCouponManager ? '🎟️ 쿠폰 관리 대시보드' : isTeacher ? '🧒 교회학교 출석 관리' : isLeader ? '📊 리더 대시보드' : '🛠️ 관리자 대시보드'}
             </h1>
             <p className="text-[11px] text-slate-400">
-              {isCouponManager ? '식사 쿠폰 전용 관리' : isLeader ? '식사 집계 및 출석 통계' : '더브릿지교회 운영 관리 모드'}
+              {isCouponManager ? '식사 쿠폰 전용 관리' : isTeacher ? '담당 자녀 그룹 출석 확인' : isLeader ? '식사 집계 및 출석 통계' : '더브릿지교회 운영 관리 모드'}
             </p>
           </div>
         </div>
@@ -112,11 +115,12 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       {/* 탭 메뉴 (권한별 동적 필터링: LEADER는 식사/출석만, COUPON은 쿠폰만, ADMIN은 전체) */}
       <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold overflow-x-auto">
         {[
-          { id: 'meals', label: '🍱 식사', show: !isCouponManager },
-          { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, show: !isLeader && !isCouponManager },
-          { id: 'members', label: '📋 성도', show: !isCouponManager },
-          { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader },
+          { id: 'meals', label: '🍱 식사', show: !isCouponManager && !isTeacher },
+          { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, show: !isLeader && !isCouponManager && !isTeacher },
+          { id: 'members', label: '📋 성도', show: !isCouponManager && !isTeacher },
+          { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader && !isTeacher },
           { id: 'stats', label: '📊 출석', show: !isCouponManager },
+          { id: 'alerts', label: '🔔 알림', show: currentUser?.role === 'ADMIN' },
         ]
           .filter(t => t.show)
           .map(({ id, label }) => (
@@ -163,6 +167,9 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           latestAttendanceDate={latestAttendanceDate}
         />
       )}
+
+      {/* ── 자동 알림 점검 탭 (관리자 전용) ── */}
+      {adminTab === 'alerts' && <NotificationJobsTab showToast={showToast} />}
 
       {/* ── 출석 탭 ── */}
       {adminTab === 'stats' && (

@@ -182,6 +182,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                   <select value={selectedRoles[pending.id] || 'MEMBER'} onChange={(e) => setSelectedRoles({ ...selectedRoles, [pending.id]: e.target.value as Role })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
                     <option value="MEMBER">일반 성도</option>
                     <option value="LEADER">라브리 리더</option>
+                    <option value="TEACHER">교회학교 선생님</option>
                     <option value="COUPON">쿠폰 관리자</option>
                     <option value="ADMIN">총괄 관리자</option>
                   </select>
