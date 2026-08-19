@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Download, Edit2, X } from 'lucide-react'
+import { Edit2, X } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember } from '../../lib/mockData'
-import { getRecentMonths } from '../../lib/dateUtils'
+import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
@@ -22,26 +22,46 @@ export default function StatsTab({
   currentUser, allUsers, showToast,
   dbAttendanceData, attendanceDateKeysDesc, getAbsenceStreak, loadAttendanceStats
 }: StatsTabProps) {
-  // ── 출석 탭 — 월/날짜 드롭다운 (DB 기록 기반) ──
-  const recentMonths = useMemo(() => getRecentMonths(3), [])
-  const [statsMonth, setStatsMonth] = useState(recentMonths[recentMonths.length - 1].value)
+  // ── 출석 탭 — 기간(시작~끝) 선택 ──
+  // 🐛 과거 제약: "최근 3개월" 드롭다운뿐이라 그보다 오래된 기록은 아예 볼 수 없었고,
+  //    분기·반기·연간 출석률을 뽑으려면 방법이 없었습니다.
+  // → 시작일/종료일을 직접 고르게 바꿨습니다. 기본값은 지금까지와 같은 느낌이 되도록
+  //   "가장 최근 주일" 하루로 맞춰 둡니다.
+  const defaultSunday = useMemo(() => getMostRecentSunday().dateStr, [])
+  const [rangeStart, setRangeStart] = useState<string>(defaultSunday)
+  const [rangeEnd, setRangeEnd] = useState<string>(defaultSunday)
+
+  // 시작일이 종료일보다 뒤여도 통계가 사라지지 않도록 자동으로 바로잡아 사용합니다.
+  const [safeStart, safeEnd] = rangeStart <= rangeEnd ? [rangeStart, rangeEnd] : [rangeEnd, rangeStart]
 
   const combinedMonthData = useMemo(() => {
     const filteredDb: Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]> = {}
     Object.entries(dbAttendanceData).forEach(([date, list]) => {
-      if (date.startsWith(statsMonth)) {
+      if (date >= safeStart && date <= safeEnd) {
         filteredDb[date] = list
       }
     })
     return filteredDb
-  }, [statsMonth, dbAttendanceData])
+  }, [safeStart, safeEnd, dbAttendanceData])
 
   const monthSundays = useMemo(() => {
     return Object.keys(combinedMonthData).sort()
   }, [combinedMonthData])
 
+  // 화면에 쓰는 기간 표기 (하루짜리면 날짜 하나만 보여줍니다)
+  const rangeLabel = safeStart === safeEnd ? safeStart : `${safeStart} ~ ${safeEnd}`
+
   const [statsDate, setStatsDate] = useState<string>('')
   const selectedStatsDate = statsDate && monthSundays.includes(statsDate) ? statsDate : (monthSundays[monthSundays.length - 1] || '')
+
+  // 기간 단축 버튼 (자주 쓰는 범위를 한 번에)
+  const applyQuickRange = (weeksBack: number) => {
+    const end = getMostRecentSunday().dateStr
+    const start = getMostRecentSunday(-weeksBack).dateStr
+    setRangeStart(start)
+    setRangeEnd(end)
+    setStatsDate('')
+  }
 
   const attendanceRows = useMemo(() => {
     const data = combinedMonthData[selectedStatsDate] || []
@@ -97,6 +117,45 @@ export default function StatsTab({
     const totalTotal = recordedRows.reduce((sum, r) => sum + r.total, 0)
     return { rows, totalAttend, totalTotal }
   }, [attendanceRows])
+
+  // ── 선택한 기간 전체의 라브리별 출석률 ──
+  // 하루짜리 기간이면 위 labriStats 와 같은 값이 나오고,
+  // 여러 주일을 고르면 그 기간 전체를 합산합니다. (분기·반기·연간 통계용)
+  const rangeLabriStats = useMemo(() => {
+    const members = allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON')
+    const labriOf = new Map(members.map(u => [u.id, normalizeLabriLabel(u.labriId)]))
+    const groups = ['라브리1', '라브리2', '라브리3', '라브리 미정']
+
+    const acc: Record<string, { attend: number; recorded: number }> = {}
+    groups.forEach(g => { acc[g] = { attend: 0, recorded: 0 } })
+
+    Object.values(combinedMonthData).forEach(list => {
+      list.forEach(rec => {
+        const labri = labriOf.get(rec.userId)
+        if (!labri || !acc[labri]) return
+        acc[labri].recorded += 1
+        if (rec.status === 'ATTEND') acc[labri].attend += 1
+      })
+    })
+
+    const rows = groups
+      .map(label => ({
+        label,
+        attend: acc[label].attend,
+        total: acc[label].recorded,
+        memberCount: members.filter(u => normalizeLabriLabel(u.labriId) === label).length,
+        notRecorded: acc[label].recorded === 0,
+      }))
+      .filter(r => r.memberCount > 0)
+
+    const recordedRows = rows.filter(r => !r.notRecorded)
+    return {
+      rows,
+      totalAttend: recordedRows.reduce((sum, r) => sum + r.attend, 0),
+      totalTotal: recordedRows.reduce((sum, r) => sum + r.total, 0),
+      sundayCount: Object.keys(combinedMonthData).length,
+    }
+  }, [combinedMonthData, allUsers])
 
   // ── 개별 출석 수정 모달 상태 및 저장 핸들러 ──
   const [editingAttendanceUser, setEditingAttendanceUser] = useState<{
@@ -190,30 +249,64 @@ export default function StatsTab({
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `더브릿지교회_출석기록_${statsMonth}.csv`
+    // 파일명에도 기간을 넣어, 나중에 여러 개를 받아도 구분됩니다.
+    a.download = safeStart === safeEnd
+      ? `더브릿지교회_출석기록_${safeStart}.csv`
+      : `더브릿지교회_출석기록_${safeStart}_${safeEnd}.csv`
     a.click()
-    showToast(`📥 ${statsMonth} 전체 출석 데이터 다운로드 시작`)
+    showToast(`📥 ${rangeLabel} 출석 데이터 다운로드 시작`)
   }
 
   return (
     <>
       <div className="space-y-4">
-        {/* 월/날짜 선택 드롭다운 */}
-        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs flex gap-2 text-xs">
-          <div className="flex-1">
-            <label className="text-[10px] text-gray-400 font-bold block mb-1">월 선택</label>
-            <select
-              value={statsMonth}
-              onChange={e => { setStatsMonth(e.target.value); setStatsDate('') }}
-              className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
-            >
-              {recentMonths.map(m => (
-                <option key={m.value} value={m.value}>{m.label} ({m.value})</option>
-              ))}
-            </select>
+        {/* 통계 기간 선택 (시작일 ~ 종료일) */}
+        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-xs">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">시작일</label>
+              <input
+                type="date"
+                value={rangeStart}
+                onChange={e => { setRangeStart(e.target.value); setStatsDate('') }}
+                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
+              />
+            </div>
+            <span className="pb-2.5 text-gray-400 font-bold">~</span>
+            <div className="flex-1">
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">종료일</label>
+              <input
+                type="date"
+                value={rangeEnd}
+                onChange={e => { setRangeEnd(e.target.value); setStatsDate('') }}
+                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
+              />
+            </div>
           </div>
-          <div className="flex-1">
-            <label className="text-[10px] text-gray-400 font-bold block mb-1">날짜 선택</label>
+
+          {/* 자주 쓰는 기간을 한 번에 (기간이 길어도 전부 계산됩니다) */}
+          <div className="flex gap-1.5">
+            {[
+              { label: '최근 주일', weeks: 0 },
+              { label: '4주', weeks: 4 },
+              { label: '3개월', weeks: 13 },
+              { label: '6개월', weeks: 26 },
+              { label: '1년', weeks: 52 },
+            ].map(q => (
+              <button
+                key={q.label}
+                onClick={() => applyQuickRange(q.weeks)}
+                className="flex-1 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-600 transition-all"
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="pt-0.5">
+            <label className="text-[10px] text-gray-400 font-bold block mb-1">
+              상세 명단으로 볼 주일 <span className="font-normal">(기간 안에 기록이 있는 날짜)</span>
+            </label>
             <select
               value={selectedStatsDate}
               onChange={e => setStatsDate(e.target.value)}
@@ -226,9 +319,64 @@ export default function StatsTab({
           </div>
         </div>
 
+        {/* 선택한 기간 전체 출석률 */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-bold text-xs text-gray-900">🗓️ 기간 전체 출석률</h3>
+            <span className="text-[10px] text-gray-400 font-medium text-right">
+              {rangeLabel} · 기록 {rangeLabriStats.sundayCount}주일
+            </span>
+          </div>
+
+          {rangeLabriStats.sundayCount === 0 ? (
+            <p className="text-xs text-gray-400 py-2 text-center">이 기간에는 출석 기록이 없습니다.</p>
+          ) : (
+            <>
+              {rangeLabriStats.rows.map(({ label, attend, total, memberCount, notRecorded }) => {
+                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                const colors: Record<string, string> = { '라브리1': '#335f87', '라브리2': '#914c24', '라브리3': '#2d7d46', '라브리 미정': '#6b7280' }
+                const color = colors[label] || '#6b7280'
+                return (
+                  <div key={label} className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-bold text-gray-800">{label}</span>
+                      {notRecorded ? (
+                        <span className="font-bold text-gray-400">미기록 (성도 {memberCount}명)</span>
+                      ) : (
+                        <span className="font-bold" style={{ color }}>{attend}/{total}회 ({rate}%)</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                      {notRecorded ? (
+                        <div className="h-full w-full bg-[repeating-linear-gradient(45deg,#f3f4f6,#f3f4f6_6px,#e5e7eb_6px,#e5e7eb_12px)]" />
+                      ) : (
+                        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, backgroundColor: color }} />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {rangeLabriStats.rows.length > 0 && (
+                <div className="pt-2 border-t border-gray-200 space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
+                    <span className="font-black text-[#335f87]">
+                      {rangeLabriStats.totalAttend}/{rangeLabriStats.totalTotal}회 ({rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#335f87] rounded-full transition-all"
+                      style={{ width: `${rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%` }} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* 출석률 통계 (합계 행 포함) */}
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
-          <h3 className="font-bold text-xs text-gray-900">📊 출석률 통계 — {selectedStatsDate || statsMonth}</h3>
+          <h3 className="font-bold text-xs text-gray-900">📊 선택한 주일 출석률 — {selectedStatsDate || '기록 없음'}</h3>
           {labriStats.rows.map(({ label, attend, total, memberCount, notRecorded }) => {
             const rate = total > 0 ? Math.round((attend / total) * 100) : 0
             const colors: Record<string, string> = { '라브리1': '#335f87', '라브리2': '#914c24', '라브리3': '#2d7d46', '라브리 미정': '#6b7280' }
@@ -275,11 +423,14 @@ export default function StatsTab({
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-xs text-gray-900">{selectedStatsDate} 출석/결석 명단</h3>
+            {/* CSV 다운로드 — 이모지 한 글자로 축소 (선택한 기간 전체가 받아집니다) */}
             <button
               onClick={handleDownloadCSV}
-              className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow-2xs"
+              title={`CSV 다운로드 (${rangeLabel})`}
+              aria-label={`출석 기록 CSV 다운로드 (${rangeLabel})`}
+              className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-base flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
             >
-              <Download size={12} /> CSV ({statsMonth})
+              📥
             </button>
           </div>
           <table className="w-full text-xs text-left">

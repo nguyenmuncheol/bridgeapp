@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, Dispatch, SetStateAction } from 'react'
+import { useState, Dispatch, SetStateAction, ReactNode } from 'react'
 import { Heart, Filter, Trash2, X, Edit2 } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
-import { dbUpdatePost, dbDeletePost } from '../../lib/db'
+import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
+  // 작성자 이름/사진을 최신 프로필로 보여주기 위해 필요합니다.
+  allUsers: UserProfile[]
   isAdmin: boolean
   photos: PostItem[]
   setPhotos: Dispatch<SetStateAction<PostItem[]>>
@@ -23,13 +25,31 @@ interface PhotoGalleryProps {
 }
 
 // ── 행사사진 갤러리 (태그 필터/좋아요/상세보기/수정/삭제) ──
-export default function PhotoGallery({ currentUser, isAdmin, photos, setPhotos, dynamicTags, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
+export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, setPhotos, dynamicTags, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
   const [selectedTag, setSelectedTag] = useState('전체')
   const [activePhotoModal, setActivePhotoModal] = useState<PostItem | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<PostItem | null>(null)
   const [editPhotoTitle, setEditPhotoTitle] = useState('')
   const [editPhotoContent, setEditPhotoContent] = useState('')
   const [editPhotoTag, setEditPhotoTag] = useState('')
+
+  // 다른 게시판(기도제목/찬양나눔)과 동일하게 작성자를 표시합니다.
+  // 🐛 과거 문제: 행사사진만 누가 올렸는지 안 보여서, 사진에 문제가 있어도
+  //    누구에게 물어봐야 할지 알 수 없었습니다.
+  const renderAuthor = (authorId?: string, authorName?: string, size = 'w-5 h-5 text-[9px]') => {
+    const user = allUsers.find(u => u.id === authorId || u.name === authorName)
+    const displayName = user?.name || authorName || '성도'
+    return (
+      <span className="flex items-center gap-1 min-w-0">
+        <span className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
+          {user?.avatarUrl
+            ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+            : displayName.slice(0, 1)}
+        </span>
+        <span className="truncate">{displayName}</span>
+      </span>
+    )
+  }
 
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
@@ -38,30 +58,38 @@ export default function PhotoGallery({ currentUser, isAdmin, photos, setPhotos, 
   }
 
   // ── 행사사진 좋아요 (그리드/상세 모달 공용, 1인 1회 토글) ──
+  // 🐛 과거 버그 2가지:
+  //  ① 화면의 값을 읽어 계산한 뒤 게시글을 통째로 덮어썼습니다. 여러 명이 비슷한 시각에
+  //     누르면 뒤에 누른 사람이 앞사람 좋아요를 지웠습니다.
+  //  ② 이 방식은 "남의 게시글을 수정"하는 것이라, 게시글 수정 권한을 작성자·관리자로
+  //     조이면 좋아요가 통째로 고장납니다.
+  // → 기도제목/교우소식과 동일하게 서버 함수(dbTogglePostLike)를 거칩니다.
   const handlePhotoLike = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
     const target = photos.find(p => p.id === id)
     if (!target) return
     const likedUsers = target.likedUserIds || []
+    const before = { likes: target.likes, likedUserIds: likedUsers }
     const isLiked = likedUsers.includes(currentUser.id)
     const newLikes = isLiked ? Math.max(0, target.likes - 1) : target.likes + 1
     const newLikedUsers = isLiked ? likedUsers.filter(uid => uid !== currentUser.id) : [...likedUsers, currentUser.id]
 
     // 낙관적 UI 업데이트
-    setPhotos(prev => prev.map(p => p.id === id ? { ...p, likes: newLikes, likedUserIds: newLikedUsers } : p))
-    if (activePhotoModal?.id === id) {
-      setActivePhotoModal(prev => prev ? { ...prev, likes: newLikes, likedUserIds: newLikedUsers } : null)
+    const applyLocal = (likes: number, ids: string[]) => {
+      setPhotos(prev => prev.map(p => p.id === id ? { ...p, likes, likedUserIds: ids } : p))
+      setActivePhotoModal(prev => prev && prev.id === id ? { ...prev, likes, likedUserIds: ids } : prev)
     }
-    try {
-      const { error } = await dbUpdatePost(id, { likes: newLikes, likedUserIds: newLikedUsers })
-      if (error) throw error
-    } catch {
-      // 실패 시 롤백
-      setPhotos(prev => prev.map(p => p.id === id ? { ...p, likes: target.likes, likedUserIds: likedUsers } : p))
-      if (activePhotoModal?.id === id) {
-        setActivePhotoModal(prev => prev ? { ...prev, likes: target.likes, likedUserIds: likedUsers } : null)
-      }
+    applyLocal(newLikes, newLikedUsers)
+
+    const res = await dbTogglePostLike(id, currentUser.id, before)
+    if (res.error) {
+      applyLocal(before.likes, before.likedUserIds)
       showToast('좋아요 처리 중 오류가 발생했습니다.', true)
+      return
+    }
+    // 서버가 알려준 최종 값으로 맞춥니다 (다른 사람이 동시에 눌렀을 수 있으므로)
+    if (res.likes !== newLikes || res.likedUserIds.length !== newLikedUsers.length) {
+      applyLocal(res.likes, res.likedUserIds)
     }
   }
 
@@ -181,8 +209,10 @@ export default function PhotoGallery({ currentUser, isAdmin, photos, setPhotos, 
                 </div>
               )}
 
-              <div className="flex justify-between text-[10px] text-gray-400 items-center pt-1 border-t border-gray-50">
-                <span>{photo.createdAt}</span>
+              <div className="flex justify-between text-[10px] text-gray-400 items-center pt-1 border-t border-gray-50 gap-1">
+                <span className="flex items-center gap-1 min-w-0">
+                  {renderAuthor(photo.authorId, photo.authorName)}
+                </span>
                 <button
                   onClick={(e) => handlePhotoLike(photo.id, e)}
                   className="flex items-center gap-0.5 text-rose-500 font-bold hover:scale-110 transition-transform active:scale-95"
@@ -190,6 +220,7 @@ export default function PhotoGallery({ currentUser, isAdmin, photos, setPhotos, 
                   <Heart size={11} className="fill-rose-500" /> {photo.likes}
                 </button>
               </div>
+              <p className="text-[9px] text-gray-300">{photo.createdAt}</p>
             </div>
           </div>
         ))}
@@ -206,14 +237,35 @@ export default function PhotoGallery({ currentUser, isAdmin, photos, setPhotos, 
         </button>
       )}
 
-      {/* ── 행사사진 수정 모달 (z-[70]으로 상세 모달 위로 최상단 배치 + 설명 내용 수정 지원) ── */}
+      {/* ── 행사사진 수정 모달 ──
+          🐛 과거 버그: 이 창과 사진 상세 창이 둘 다 z-[70]이었습니다. 층이 같으면
+          나중에 그려지는 쪽(사진 상세)이 위로 올라오기 때문에, 수정 버튼을 눌러도
+          수정 창이 사진 뒤에 가려져 글자를 칠 수 없었습니다.
+          → 수정 창을 z-[90]으로 올리고, 뒤의 사진 창은 흐리게 + 클릭 차단합니다.
+          → 무엇을 고치는 중인지 알 수 있게 사진 미리보기를 수정 창 안에 넣었습니다. */}
       {editingPhoto && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 행사사진 정보 수정</h3>
               <button onClick={() => setEditingPhoto(null)} className="text-gray-400 font-bold">✕</button>
             </div>
+
+            {/* 어떤 사진을 수정하는 중인지 보여줍니다 */}
+            {editingPhoto.imageUrls && editingPhoto.imageUrls.length > 0 && (
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl p-2">
+                <img
+                  src={editingPhoto.imageUrls[0]}
+                  alt=""
+                  className="w-12 h-12 rounded-lg object-cover shrink-0"
+                />
+                <div className="min-w-0 text-[11px] text-gray-500 leading-snug">
+                  <p className="font-bold text-gray-700 truncate">{editingPhoto.title}</p>
+                  <p>사진 {editingPhoto.imageUrls.length}장 · 사진 자체는 바뀌지 않습니다</p>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-[10px] text-gray-400 font-bold">제목</label>
               <input
@@ -258,6 +310,8 @@ export default function PhotoGallery({ currentUser, isAdmin, photos, setPhotos, 
           photo={activePhotoModal}
           currentUser={currentUser}
           isAdmin={isAdmin}
+          renderAuthor={renderAuthor}
+          isEditing={!!editingPhoto}
           onClose={() => setActivePhotoModal(null)}
           onLike={(id) => handlePhotoLike(id)}
           onEdit={(photo) => {
@@ -277,6 +331,8 @@ function PhotoDetailModal({
   photo,
   currentUser,
   isAdmin,
+  renderAuthor,
+  isEditing,
   onClose,
   onLike,
   onEdit,
@@ -285,6 +341,9 @@ function PhotoDetailModal({
   photo: PostItem
   currentUser: UserProfile
   isAdmin: boolean
+  renderAuthor: (authorId?: string, authorName?: string, size?: string) => ReactNode
+  /** 수정창이 열려 있으면 이 창은 뒤로 물러납니다 (겹쳐 보이지 않도록) */
+  isEditing: boolean
   onClose: () => void
   onLike: (id: string) => void
   onEdit: (photo: PostItem) => void
@@ -319,12 +378,23 @@ function PhotoDetailModal({
   const canManage = photo.authorId === currentUser.id || isAdmin
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div
+      className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 transition-all ${
+        isEditing ? 'pointer-events-none opacity-40' : ''
+      }`}
+      aria-hidden={isEditing}
+    >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-[11px] px-3 py-1.5 rounded-full z-10 font-semibold">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-          <div>
+          <div className="min-w-0">
             <h3 className="font-bold text-sm text-gray-900">{photo.title}</h3>
+            {/* 누가 언제 올렸는지 — 다른 게시판과 동일한 표기 */}
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-0.5">
+              {renderAuthor(photo.authorId, photo.authorName)}
+              <span>·</span>
+              <span>{photo.createdAt}</span>
+            </div>
             {photo.tags && (
               <div className="flex gap-1 mt-0.5">
                 {photo.tags.filter(t => t !== '전체').map(t => (

@@ -46,6 +46,27 @@ export function getUserDisplayName(user: UserProfile, suffix = '님'): string {
   return `${user.name}${suffix}`
 }
 
+/**
+ * 직분을 빼고 '이름님'만 만듭니다.
+ * 식사 신청처럼 "누가 마지막으로 고쳤나"만 알면 되는 곳에서, 이름이 길어지지 않도록 씁니다.
+ */
+export function getSimpleUserName(user: UserProfile, suffix = '님'): string {
+  if (!user || user.id === 'guest') return `방문자${suffix}`
+  return `${(user.name || '').trim() || '성도'}${suffix}`
+}
+
+/**
+ * 예전에 '홍길동 집사님' 형태로 저장된 값을 '홍길동님'으로 정리해서 보여줍니다.
+ * (이미 저장된 신청 기록을 고치지 않고도 화면 표기를 통일할 수 있습니다)
+ */
+export function simplifyStoredName(stored?: string | null, suffix = '님'): string {
+  const raw = (stored || '').trim()
+  if (!raw) return `성도${suffix}`
+  const first = raw.split(/\s+/)[0]
+  const bare = first.replace(/님$/, '')
+  return `${bare || '성도'}${suffix}`
+}
+
 export interface MealRegistration {
   id: string
   dateStr: string // e.g. '2026-08-09'

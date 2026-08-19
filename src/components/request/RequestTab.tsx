@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Utensils, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
-import { UserProfile, getUserDisplayName } from '../../lib/mockData'
-import { getUpcomingSundays, isMealRegistrationLocked } from '../../lib/dateUtils'
+import { UserProfile, getSimpleUserName, simplifyStoredName } from '../../lib/mockData'
+import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
 import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/familyKey'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -52,11 +52,11 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
   const familyId = familyKeyOf(currentUser)
 
   const [familyMealStore, setFamilyMealStore] = useState<Record<string, Record<number, {
-    submitted: boolean; attending: boolean; adultCount: number; childCount: number; updatedBy: string
+    submitted: boolean; attending: boolean; adultCount: number; childCount: number; updatedBy: string; updatedAt: string
   }>>>({})
 
   const currentMealData = familyMealStore[familyId]?.[selectedWeek] || {
-    submitted: false, attending: true, adultCount: 1, childCount: 0, updatedBy: ''
+    submitted: false, attending: true, adultCount: 1, childCount: 0, updatedBy: '', updatedAt: ''
   }
   const [tempAttending, setTempAttending] = useState(true)
   const [tempAdult, setTempAdult] = useState(1)
@@ -102,7 +102,9 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
         attending: r.attending,
         adultCount: r.adult_count,
         childCount: r.child_count,
-        updatedBy: r.registered_by_user_name
+        // 예전 기록은 '임진재 성도님'처럼 직분이 붙어 있어, 화면 표기를 '임진재님'으로 통일합니다.
+        updatedBy: simplifyStoredName(r.registered_by_user_name),
+        updatedAt: String(r.updated_at || r.created_at || '')
       }
     })
     setFamilyMealStore(prev => ({ ...prev, ...newStore }))
@@ -154,7 +156,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
       familyGroupId: familyId,
       dateStr: targetSunday,
       registeredByUserId: currentUser.id,
-      registeredByUserName: getUserDisplayName(currentUser),
+      registeredByUserName: getSimpleUserName(currentUser),
       attending: tempAttending,
       adultCount: tempAttending ? tempAdult : 0,
       childCount: tempAttending ? tempChild : 0
@@ -179,7 +181,8 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           attending: tempAttending,
           adultCount: tempAttending ? tempAdult : 0,
           childCount: tempAttending ? tempChild : 0,
-          updatedBy: getUserDisplayName(currentUser),
+          updatedBy: getSimpleUserName(currentUser),
+          updatedAt: new Date().toISOString(),
         }
       }
     }))
@@ -226,37 +229,37 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           </span>
         </div>
 
-        {spouse && (
-          <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
-            <Users size={14} className="text-emerald-600 shrink-0" />
-            <span>배우자 <strong>[{getUserDisplayName(spouse)}]</strong>과 식사 신청이 연동됩니다.</span>
-          </div>
-        )}
-
-        {/* 향후 4주 탭 (월요일 기준 동적) */}
-        {/* 현재 신청 상태를 항상 보이게 (1초 토스트만으로는 저장됐는지 확인할 방법이 없었습니다) */}
-        <div className={`p-3 rounded-xl border text-xs ${
+        {/* 안내 카드 — 예전에는 "배우자 연동 안내"와 "현재 신청 상태"가 따로 두 칸이라
+            화면을 많이 차지하고 눈이 두 번 이동해야 했습니다. 한 칸으로 합쳤습니다. */}
+        <div className={`p-3 rounded-xl border text-xs space-y-1 ${
           currentMealData.submitted
             ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
             : 'bg-gray-50 border-gray-200 text-gray-500'
         }`}>
+          {spouse && (
+            <p className="flex items-start gap-1.5 leading-relaxed">
+              <Users size={13} className="shrink-0 mt-0.5 opacity-70" />
+              <span>배우자 <strong>[{getSimpleUserName(spouse)}]</strong>과 식사 신청이 연동됩니다.</span>
+            </p>
+          )}
+
           {currentMealData.submitted ? (
             <>
-              <p className="font-bold">
+              <p className="font-bold leading-relaxed">
                 {currentMealData.attending
                   ? `현재 신청: 성인 ${currentMealData.adultCount}명 · 어린이 ${currentMealData.childCount}명`
                   : '현재 신청: 식사 안 함'}
               </p>
-              <p className="text-[11px] mt-0.5 opacity-80">
-                {sundayDates[selectedWeek]} · 최종 수정 {currentMealData.updatedBy}
+              <p className="text-[11px] opacity-80 leading-relaxed">
+                최종 수정 {currentMealData.updatedBy || '성도님'}
+                {formatDateTimeShort(currentMealData.updatedAt)
+                  ? ` (${formatDateTimeShort(currentMealData.updatedAt)})`
+                  : ''}
               </p>
             </>
           ) : (
-            <p className="font-bold">{sundayDates[selectedWeek]} · 아직 신청하지 않으셨습니다</p>
+            <p className="font-bold leading-relaxed">{sundayDates[selectedWeek]} · 아직 신청하지 않으셨습니다</p>
           )}
-          <p className="text-[11px] mt-1 opacity-70">
-            우리 가정 전체 인원을 입력해 주세요. 가족이 각각 신청하면 두 번 계산됩니다.
-          </p>
         </div>
 
         <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-50 rounded-xl text-xs font-medium">

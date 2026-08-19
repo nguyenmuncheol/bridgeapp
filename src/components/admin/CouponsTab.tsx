@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Minus } from 'lucide-react'
+import { Plus, Minus, Undo2 } from 'lucide-react'
 import { UserProfile, MealCouponAccount, isApprovedMember } from '../../lib/mockData'
 import { dbFetchMealCoupons, dbUpdateMealCoupon } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -26,13 +26,30 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
   // 진행 중인 가정 id (같은 가정 버튼 중복 클릭 방지)
   const [pendingFamilyId, setPendingFamilyId] = useState<string | null>(null)
 
-  const handleUpdateCoupon = async (famId: string, familyName: string, delta: number) => {
+  // ── 되돌리기 ──
+  // 🐛 과거 불편: 식사 줄에서 빠르게 누르다 보면 옆 가정 버튼을 잘못 눌러도
+  //    되돌릴 방법이 없어서, 관리자에게 따로 부탁하거나 그냥 넘어갔습니다.
+  // → 마지막 발급/차감 1건을 기억해 두고, 한 번에 되돌릴 수 있게 합니다.
+  const [lastAction, setLastAction] = useState<
+    { famId: string; famName: string; applied: number; at: number } | null
+  >(null)
+  const [isUndoing, setIsUndoing] = useState(false)
+
+  // 오래된 되돌리기 안내는 스스로 사라집니다 (한참 뒤에 눌러 엉뚱한 결과가 나는 것 방지)
+  useEffect(() => {
+    if (!lastAction) return
+    const timer = setTimeout(() => setLastAction(null), 60_000)
+    return () => clearTimeout(timer)
+  }, [lastAction])
+
+  const handleUpdateCoupon = async (famId: string, familyName: string, delta: number, isUndo = false) => {
     if (pendingFamilyId) return // 다른 요청 진행 중이면 무시 (연타로 인한 이중 차감 방지)
     const famName = familyName || couponAccounts[famId]?.familyName || famId
     const shortName = famName.replace(' 가정', '')
 
     // 차감은 되돌리기 어려우므로 대상과 수량을 확인합니다.
-    if (delta < 0) {
+    // (되돌리기 버튼으로 들어온 경우는 이미 의도가 확인되었으므로 건너뜁니다)
+    if (delta < 0 && !isUndo) {
       const cur = couponAccounts[famId]?.balance ?? 0
       if (cur <= 0) {
         showToast(`⚠️ ${shortName}: 남은 쿠폰이 없습니다.`)
@@ -42,7 +59,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
     }
 
     setPendingFamilyId(famId)
-    const res = await dbUpdateMealCoupon(famId, famName, delta)
+    const res = await dbUpdateMealCoupon(famId, famName, delta, isUndo ? '되돌리기' : undefined)
     setPendingFamilyId(null)
 
     // 🐛 과거 버그: 저장 실패를 전혀 확인하지 않고 화면 숫자를 바꾸고
@@ -67,7 +84,9 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
             dateStr: todayLocalDateStr(),
             type: (applied > 0 ? 'GRANT' : 'USE') as 'GRANT' | 'USE',
             amount: Math.abs(applied),
-            note: applied > 0 ? (applied === 10 ? '관리자 10장 발급' : '관리자 발급') : '식사 사용/차감'
+            note: isUndo
+              ? '되돌리기'
+              : (applied > 0 ? (applied === 10 ? '관리자 10장 발급' : '관리자 발급') : '식사 사용/차감')
           }]
         : prevHist
       return {
@@ -83,9 +102,25 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
 
     if (applied === 0) {
       showToast(`${shortName}: 변경된 내용이 없습니다 (잔여: ${newBal}장)`)
+      if (isUndo) setLastAction(null)
+      return
+    }
+
+    if (isUndo) {
+      // 되돌리기를 또 되돌리면 헷갈리므로 여기서 끝냅니다.
+      setLastAction(null)
+      showToast(`↩️ ${shortName}: 되돌렸습니다 (잔여: ${newBal}장)`)
     } else {
+      setLastAction({ famId, famName, applied, at: Date.now() })
       showToast(`🎟️ ${shortName}: ${applied > 0 ? `+${applied}장 발급` : `${applied}장 차감`} (잔여: ${newBal}장)`)
     }
+  }
+
+  const handleUndo = async () => {
+    if (!lastAction || isUndoing || pendingFamilyId) return
+    setIsUndoing(true)
+    await handleUpdateCoupon(lastAction.famId, lastAction.famName, -lastAction.applied, true)
+    setIsUndoing(false)
   }
 
   // ── 쿠폰구매 QR 모달 ──
@@ -105,6 +140,28 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
           </button>
         </div>
         <p className="text-[10px] text-gray-400">승인된 가정별 쿠폰 잔액을 관리합니다. +/- 버튼으로 발급/차감하세요.</p>
+
+        {/* 방금 한 작업을 한 번에 되돌리는 막대 (1분 뒤 자동으로 사라집니다) */}
+        {lastAction && (
+          <div className="flex items-center gap-2 bg-slate-800 text-white rounded-xl px-3 py-2 animate-fade-in">
+            <span className="text-[11px] flex-1 leading-snug">
+              방금 <strong>{lastAction.famName.replace(' 가정', '')}</strong>
+              {lastAction.applied > 0 ? ` +${lastAction.applied}장 발급` : ` ${lastAction.applied}장 차감`}
+            </span>
+            <button
+              onClick={handleUndo}
+              disabled={isUndoing || pendingFamilyId !== null}
+              className="px-2.5 py-1.5 bg-white text-slate-800 text-[11px] font-bold rounded-lg flex items-center gap-1 shrink-0 disabled:opacity-50 active:scale-95 transition-all"
+            >
+              <Undo2 size={12} /> {isUndoing ? '되돌리는 중...' : '되돌리기'}
+            </button>
+            <button
+              onClick={() => setLastAction(null)}
+              className="p-1.5 -m-0.5 text-slate-400 hover:text-white shrink-0"
+              title="닫기"
+            >✕</button>
+          </div>
+        )}
         <div className="space-y-2">
           {(() => {
             // DB 쿠폰 계정 + allUsers 가정 그룹을 병합하여 전체 표시 (조부/조모/부/모/자녀 순 정렬)

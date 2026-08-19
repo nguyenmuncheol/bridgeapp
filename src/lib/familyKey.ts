@@ -15,7 +15,7 @@
 // → 아래 함수로 어떤 형태의 옛날 키든 "지금 이 사람의 가정 키"로 되돌려서,
 //   화면 표시와 주방 집계 양쪽 모두 가정당 한 건만 세도록 합니다.
 
-import { UserProfile } from './mockData'
+import { UserProfile, isApprovedMember } from './mockData'
 
 /** 이 사람이 지금 사용해야 하는 가정 키 */
 export function familyKeyOf(user: Pick<UserProfile, 'id' | 'familyGroupId'>): string {
@@ -65,4 +65,46 @@ export function staleFamilyKeys(currentUser: UserProfile, allUsers: UserProfile[
   })
   keys.delete(canonical)
   return Array.from(keys).filter(Boolean)
+}
+
+/** 화면에 보여줄 가정 단위 */
+export interface FamilyUnit {
+  /** 가정 키 (familyKeyOf 와 동일 기준) */
+  key: string
+  /** '임진재 · 장호정 가정' 또는 혼자면 '홍길동' */
+  label: string
+  /** 이 가정에 속한 성도들 */
+  members: UserProfile[]
+}
+
+/**
+ * 승인된 성도들을 가정 단위로 묶습니다.
+ * 관리자 화면에서 "아직 응답 안 한 가정"을 계산할 때 씁니다.
+ * (실제 계정이 없는 자녀 등 가상 항목은 제외합니다)
+ */
+export function buildFamilyUnits(allUsers: UserProfile[]): FamilyUnit[] {
+  const groups = new Map<string, UserProfile[]>()
+  ;(allUsers || []).forEach(u => {
+    if (!u || u.isDependent) return
+    if (!isApprovedMember(u.role)) return
+    const key = familyKeyOf(u)
+    const list = groups.get(key)
+    if (list) list.push(u)
+    else groups.set(key, [u])
+  })
+
+  const units: FamilyUnit[] = []
+  groups.forEach((members, key) => {
+    // 부부(부/모)를 먼저, 그 다음 이름순으로 정렬해 이름표를 만듭니다.
+    const sorted = [...members].sort((a, b) => {
+      const rank = (r?: string) => (r === '부' ? 0 : r === '모' ? 1 : 2)
+      const d = rank(a.familyRole) - rank(b.familyRole)
+      return d !== 0 ? d : (a.name || '').localeCompare(b.name || '')
+    })
+    const names = sorted.map(m => m.name).filter(Boolean)
+    const label = names.length > 1 ? `${names.join(' · ')} 가정` : (names[0] || '이름 없음')
+    units.push({ key, label, members: sorted })
+  })
+
+  return units.sort((a, b) => a.label.localeCompare(b.label))
 }

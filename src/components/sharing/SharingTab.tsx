@@ -97,6 +97,7 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
       <div className={subTab === 'photo' ? '' : 'hidden'}>
         <PhotoGallery
           currentUser={currentUser}
+          allUsers={allUsers}
           isAdmin={isAdmin}
           photos={photos}
           setPhotos={setPhotos}

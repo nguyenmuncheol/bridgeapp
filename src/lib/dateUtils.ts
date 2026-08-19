@@ -325,3 +325,18 @@ export function getRecentMonths(count = 3) {
   
   return months
 }
+
+/**
+ * '2026-08-18T21:30:00Z' → '8/18 21:30' (보는 사람의 시간대 기준)
+ * 식사 신청의 "최종 수정" 시각처럼, 날짜와 시각을 짧게 보여줄 때 씁니다.
+ */
+export function formatDateTimeShort(input?: string | Date | null): string {
+  if (!input) return ''
+  const d = input instanceof Date ? input : new Date(input)
+  if (isNaN(d.getTime())) return ''
+  const mm = d.getMonth() + 1
+  const dd = d.getDate()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${mm}/${dd} ${hh}:${mi}`
+}

@@ -10,9 +10,9 @@ import MyPageTab from '../src/components/mypage/MyPageTab'
 import AdminDashboard from '../src/components/admin/AdminDashboard'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
-import { UserProfile, Role, getUserDisplayName } from '../src/lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
-import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser } from '../src/lib/db'
+import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole } from '../src/lib/db'
 import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
 import { LogIn, LogOut } from 'lucide-react'
@@ -34,6 +34,8 @@ export default function Home() {
   const [rosterError, setRosterError] = useState<string | null>(null)
   // OAuth 콜백에서 로그인 교환이 실패했을 때 표시할 안내
   const [authError, setAuthError] = useState<string>('')
+  // 대기 중에 관리자가 승인하면 화면이 저절로 바뀌는데, 왜 바뀌었는지 알 수 있도록 띄우는 축하 안내
+  const [justApproved, setJustApproved] = useState(false)
 
   // 로그아웃/세션만료 시 완전한 비로그인 상태로 되돌립니다.
   const resetToGuest = () => {
@@ -256,6 +258,47 @@ export default function Home() {
   const isPending = !isGuest && currentUser.role === 'PENDING'
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
 
+  // ── 승인되면 화면이 저절로 바뀌도록 ──
+  // 🐛 과거 불편: 관리자가 승인해도 성도 화면은 그대로 "승인 대기 중"이었고,
+  //    직접 "승인 상태 새로고침"을 누르거나 앱을 껐다 켜야만 바뀌었습니다.
+  //    어르신들은 이걸 모르고 "가입이 안 된다"고 생각하셨습니다.
+  // → 대기/거절 상태일 때만, 화면을 보고 있을 때만 15초마다 내 등급을 확인합니다.
+  //   (승인이 끝나면 조건이 거짓이 되어 확인도 자동으로 멈춥니다)
+  useEffect(() => {
+    if (isGuest || !(isPending || isRejected)) return
+    let stopped = false
+    const myRoleNow = currentUser.role
+
+    const check = async () => {
+      if (stopped) return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      const role = await dbFetchMyRole(currentUserId)
+      if (stopped || !role || role === myRoleNow) return
+
+      setUsers(prev => prev.map(u => (u.id === currentUserId ? { ...u, role } : u)))
+      if (isApprovedMember(role)) {
+        setJustApproved(true)
+        // 승인된 순간부터 주소록 등에서 다른 성도 정보가 필요하므로 전체 명단을 받아옵니다.
+        try {
+          const dbUsers = await dbFetchProfiles()
+          if (!stopped && dbUsers && dbUsers.length > 0) setUsers(dbUsers)
+        } catch { /* 명단 조회 실패는 기존 rosterError 흐름이 처리합니다 */ }
+      }
+    }
+
+    const timer = setInterval(check, 15_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    check()
+
+    return () => {
+      stopped = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [isGuest, isPending, isRejected, currentUserId, currentUser.role])
+
+
   // 관리자 - 가입 승인 처리
   const handleApproveUser = async (
     userId: string,
@@ -351,6 +394,19 @@ export default function Home() {
       )}
 
       <main className="p-4">
+        {/* 승인이 확인되면 화면이 저절로 바뀝니다. 왜 바뀌었는지 알 수 있도록 알려드립니다. */}
+        {justApproved && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-3 flex items-start gap-2 animate-fade-in">
+            <span className="text-base leading-none mt-0.5">🎉</span>
+            <div className="flex-1 space-y-1">
+              <p className="text-xs font-bold text-emerald-800">가입이 승인되었습니다</p>
+              <p className="text-[11px] text-emerald-700 leading-relaxed">
+                이제 소식 · 나눔 · 신청 기능을 모두 이용하실 수 있습니다. 환영합니다!
+              </p>
+            </div>
+            <button onClick={() => setJustApproved(false)} className="p-2 -m-1 text-emerald-400 hover:text-emerald-600 shrink-0" title="닫기">✕</button>
+          </div>
+        )}
         {rosterError && !isLoading && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-3 flex items-start gap-2">
             <span className="text-base leading-none mt-0.5">📡</span>
@@ -421,6 +477,9 @@ export default function Home() {
                   <p className="text-xs text-gray-500 leading-relaxed">
                     교회 관리자의 가입 승인 완료 후<br />소식, 나눔, 신청 기능을 이용하실 수 있습니다.
                   </p>
+                  <p className="text-[11px] text-[#335f87] font-medium">
+                    승인되면 이 화면이 자동으로 바뀝니다. 그대로 두셔도 됩니다.
+                  </p>
                 </div>
                 <button
                   onClick={async () => {
@@ -436,8 +495,9 @@ export default function Home() {
                       const dbUsers = await dbFetchProfiles()
                       if (dbUsers && dbUsers.length > 0) setUsers(dbUsers)
                       const me = dbUsers.find(u => u.id === currentUserId)
-                      if (me && me.role !== 'PENDING' && me.role !== 'REJECTED') {
-                        alert('승인되었습니다! 이제 모든 기능을 이용하실 수 있습니다.')
+                      if (me && isApprovedMember(me.role)) {
+                        // 화면이 곧 바뀌므로 alert 대신 상단 안내로 알려드립니다.
+                        setJustApproved(true)
                       } else {
                         alert('아직 승인되지 않았습니다. 교회 관리자에게 문의해 주세요.')
                       }

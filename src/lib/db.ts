@@ -77,6 +77,22 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   return res
 }
 
+/**
+ * 내 승인 상태(등급)만 가볍게 확인합니다.
+ * 승인 대기 화면에서 몇 초마다 호출하므로, 성도 전체 명단이 아니라 내 한 줄만 읽습니다.
+ * 조회에 실패하면 null 을 돌려주고, 화면은 다음 차례에 다시 시도합니다.
+ */
+export async function dbFetchMyRole(userId: string): Promise<Role | null> {
+  if (!userId || userId === 'guest') return null
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error || !data) return null
+  return (data.role || null) as Role | null
+}
+
 export async function dbApproveUser(userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) {
   const payload: any = {
     role,
