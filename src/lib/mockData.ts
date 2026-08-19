@@ -7,6 +7,18 @@ export function isApprovedMember(role: Role | undefined | null): boolean {
   return role !== 'PENDING' && role !== 'REJECTED' && role !== undefined && role !== null
 }
 
+/**
+ * "실제 교회 성도"인지 — 명단·집계·통계에 넣을 대상인지 판단합니다.
+ *
+ * 🐛 과거 문제: 식권 명단과 식사 미응답 목록이 isApprovedMember()만 썼는데,
+ * 이 함수는 업무용 계정인 '쿠폰관리자'(COUPON)도 성도로 봅니다. 그래서 두 화면에
+ * 쿠폰관리자가 성도처럼 끼어 있었습니다. (주소록·생일·출석은 각자 따로 걸러내고 있었습니다)
+ * → 앞으로 명단/집계 화면은 전부 이 함수를 쓰면 같은 실수가 반복되지 않습니다.
+ */
+export function isChurchMember(role: Role | undefined | null): boolean {
+  return isApprovedMember(role) && role !== 'COUPON'
+}
+
 /** 아직 앱을 정상적으로 쓸 수 없는 상태인지 (대기 중이거나 거절됨) */
 export function isBlockedRole(role: Role | undefined | null): boolean {
   return role === 'PENDING' || role === 'REJECTED'
@@ -87,6 +99,8 @@ export interface MealCouponAccount {
   history: {
     id: string
     dateStr: string
+    /** 저장 시각(ISO). 같은 날 여러 건이 있을 때 순서를 정확히 가리기 위해 필요합니다. */
+    at?: string
     type: 'GRANT' | 'USE' | 'DEDUCT'
     amount: number
     note: string

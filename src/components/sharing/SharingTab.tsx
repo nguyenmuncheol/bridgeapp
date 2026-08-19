@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
-import { dbFetchPosts, dbFetchDistinctTags } from '../../lib/db'
+import { dbFetchDistinctTags } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { usePaginatedPosts } from '../../lib/usePaginatedPosts'
 import PrayerBoard, { sortPrayers } from './PrayerBoard'
@@ -22,14 +22,17 @@ interface SharingTabProps {
 // 탭 전환 시 입력 중이던 댓글 등 UI 상태가 유지되도록 언마운트 대신 CSS로 숨김 처리합니다.
 //
 // 기도제목/행사사진은 전체를 한 번에 불러오지 않고 "더보기" 버튼으로 20개씩 이어서 불러옵니다
-// (usePaginatedPosts). 찬양/묵상나눔은 아직 게시물 수가 적어 기존 방식(useCachedQuery, 전체 조회)을
-// 유지했습니다 — 나중에 필요해지면 같은 패턴으로 전환하면 됩니다.
+// (usePaginatedPosts). 찬양/묵상나눔도 댓글 기능이 들어가면서 같은 방식으로 전환했습니다.
+//
+// 행사사진의 태그 필터는 이 컴포넌트가 소유합니다 — 선택된 태그가 곧 서버 조회 조건이라
+// (이미 불러온 사진 안에서 거르는 게 아니라) 여기서 관리해야 페이지네이션과 맞물립니다.
 export default function SharingTab({ currentUser, allUsers = [] }: SharingTabProps) {
   const [subTab, setSubTab] = useState<'prayer' | 'photo' | 'praise'>('prayer')
   const isAdmin = currentUser.role === 'ADMIN'
 
-  const [praises, setPraises] = useState<PostItem[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
+  // 행사사진 태그 필터. 서버 조회 조건이 되므로 여기(오케스트레이터)가 소유합니다.
+  const [selectedTag, setSelectedTag] = useState('전체')
 
   // ── 기도제목: 더보기 페이지네이션 ──
   const {
@@ -55,13 +58,20 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
     error: photosError,
     loadMore: loadMorePhotos,
     retry: retryPhotos
-  } = usePaginatedPosts('PHOTO')
+  } = usePaginatedPosts('PHOTO', { tag: selectedTag })
 
-  // ── 찬양/묵상나눔: 게시물이 적어 기존 전체 조회 캐시 방식 유지 ──
-  const { data: praisePosts, isLoading: praisesLoading, error: praisesError } = useCachedQuery('posts:PRAISE', () => dbFetchPosts('PRAISE'))
-  useEffect(() => {
-    if (praisePosts && praisePosts.length > 0) setPraises(praisePosts)
-  }, [praisePosts])
+  // ── 찬양/묵상나눔: 댓글 기능이 들어가면서 다른 게시판과 동일한 "더보기" 방식으로 전환 ──
+  // (예전에는 전체를 한 번에 불러왔습니다. 댓글까지 붙으면 글이 쌓일수록 느려집니다)
+  const {
+    items: praises,
+    setItems: setPraises,
+    isLoading: praisesLoading,
+    isLoadingMore: praisesLoadingMore,
+    hasMore: praisesHasMore,
+    error: praisesError,
+    loadMore: loadMorePraises,
+    retry: retryPraises
+  } = usePaginatedPosts('PRAISE')
 
   // 태그 필터 칩은 photos(페이지네이션으로 일부만 로드됨)가 아니라 전체 태그를 별도로 가볍게 조회
   const { data: dynamicTagsData, refetch: refetchTags } = useCachedQuery('postTags:PHOTO', () => dbFetchDistinctTags('PHOTO'))
@@ -92,7 +102,19 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
         />
       </div>
       <div className={subTab === 'praise' ? '' : 'hidden'}>
-        <PraiseBoard currentUser={currentUser} allUsers={allUsers} isAdmin={isAdmin} praises={praises} setPraises={setPraises} isLoading={praisesLoading && praises.length === 0} error={praisesError} />
+        <PraiseBoard
+          currentUser={currentUser}
+          allUsers={allUsers}
+          isAdmin={isAdmin}
+          praises={praises}
+          setPraises={setPraises}
+          isLoading={praisesLoading}
+          isLoadingMore={praisesLoadingMore}
+          hasMore={praisesHasMore}
+          onLoadMore={loadMorePraises}
+          error={praisesError}
+          onRetry={retryPraises}
+        />
       </div>
       <div className={subTab === 'photo' ? '' : 'hidden'}>
         <PhotoGallery
@@ -102,6 +124,8 @@ export default function SharingTab({ currentUser, allUsers = [] }: SharingTabPro
           photos={photos}
           setPhotos={setPhotos}
           dynamicTags={dynamicTags}
+          selectedTag={selectedTag}
+          onTagChange={setSelectedTag}
           isLoading={photosLoading}
           isLoadingMore={photosLoadingMore}
           hasMore={photosHasMore}

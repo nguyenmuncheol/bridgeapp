@@ -111,6 +111,21 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, setPrayers])
 
+  // 댓글이 수정되거나(내용) 삭제되면(null) 화면 목록도 같이 맞춰줍니다.
+  // 이걸 안 하면 다른 탭에 갔다 돌아왔을 때 지운 댓글이 다시 보입니다.
+  const handleCommentChanged = useCallback((postId: string, commentId: string, nextContent: string | null) => {
+    setPrayers(prev => prev.map(p => {
+      if (p.id !== postId) return p
+      const comments = (p.comments || [])
+      return {
+        ...p,
+        comments: nextContent === null
+          ? comments.filter(c => c.id !== commentId)
+          : comments.map(c => (c.id === commentId ? { ...c, content: nextContent } : c)),
+      }
+    }))
+  }, [setPrayers])
+
   const handleAddComment = useCallback(async (prayerId: string, text: string) => {
     const tempId = `c_${Date.now()}`
     setPrayers(prev => prev.map(p => p.id === prayerId ? {
@@ -224,6 +239,8 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
           onEdit={openEditModal}
           onDelete={handleDeletePrayer}
           onAddComment={handleAddComment}
+          onCommentChanged={handleCommentChanged}
+          onError={msg => showToast(msg, true)}
         />
       ))}
 

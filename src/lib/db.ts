@@ -337,9 +337,14 @@ const POSTS_PAGE_SIZE = 20
  */
 export async function dbFetchPostsPage(
   category: string,
-  opts: { limit?: number; cursor?: string | null } = {}
+  opts: { limit?: number; cursor?: string | null; tag?: string | null } = {}
 ): Promise<PostsPageResult> {
   const limit = opts.limit ?? POSTS_PAGE_SIZE
+  // 🐛 과거 한계: 태그 필터가 "이미 불러온 사진 안에서만" 걸러졌습니다.
+  // #부활절 사진이 30번째에 있으면 더보기를 두 번 눌러야 나타났습니다.
+  // → 서버에 "이 태그가 들어있는 글만" 요청합니다. (tags 는 배열 컬럼이라 contains 사용)
+  const tag = opts.tag && opts.tag !== '전체' ? opts.tag : null
+
   let query = supabase.from('posts').select(`
     *,
     post_comments (*)
@@ -348,6 +353,7 @@ export async function dbFetchPostsPage(
     .order('created_at', { ascending: false })
     .limit(limit)
 
+  if (tag) query = query.contains('tags', [tag])
   if (opts.cursor) {
     query = query.lt('created_at', opts.cursor)
   }
@@ -365,13 +371,16 @@ export async function dbFetchPostsPage(
   // 안 보였습니다. 고정글은 오래됐어도 항상 맨 위에 있어야 하므로, 첫 페이지에서는
   // 고정글만 따로 가볍게 조회해서 합칩니다. (고정글은 보통 한 자릿수라 부담이 없습니다.)
   if (!opts.cursor) {
-    const pinnedRes = await supabase.from('posts').select(`
+    let pinnedQuery = supabase.from('posts').select(`
       *,
       post_comments (*)
     `)
       .eq('category', category)
       .eq('is_pinned', true)
       .order('created_at', { ascending: false })
+    // 태그로 걸러 보는 중이면 고정글도 같은 태그일 때만 끼워 넣습니다.
+    if (tag) pinnedQuery = pinnedQuery.contains('tags', [tag])
+    const pinnedRes = await pinnedQuery
 
     if (!pinnedRes.error && pinnedRes.data && pinnedRes.data.length > 0) {
       const alreadyLoaded = new Set(items.map(i => i.id))
@@ -679,6 +688,37 @@ export async function dbCleanupStaleMealRegistrations(staleKeys: string[], dateS
   return { error: null, removed }
 }
 
+/**
+ * 댓글 수정 — 작성자 본인만 가능합니다(서버 정책 comments_update_policy).
+ * 남이 시도하면 0줄이 바뀌므로, 바뀐 줄이 없으면 실패로 처리합니다.
+ */
+export async function dbUpdateComment(commentId: string, content: string) {
+  const text = (content || '').trim()
+  if (!text) return { error: new Error('내용을 입력해 주세요.') }
+  const { data, error } = await supabase
+    .from('post_comments')
+    .update({ content: text })
+    .eq('id', commentId)
+    .select('id')
+  if (error) return { error }
+  if (!data || data.length === 0) return { error: new Error('수정 권한이 없습니다.') }
+  invalidateCache('posts:')
+  return { error: null }
+}
+
+/** 댓글 삭제 — 작성자 본인 또는 목사(ADMIN)만 가능합니다(서버 정책 comments_delete_policy). */
+export async function dbDeleteComment(commentId: string) {
+  const { data, error } = await supabase
+    .from('post_comments')
+    .delete()
+    .eq('id', commentId)
+    .select('id')
+  if (error) return { error }
+  if (!data || data.length === 0) return { error: new Error('삭제 권한이 없습니다.') }
+  invalidateCache('posts:')
+  return { error: null }
+}
+
 export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAccount>> {
   try {
     // 1. 쿠폰 잔액 테이블 조회
@@ -712,6 +752,8 @@ export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAcc
       const item = {
         id: h.id,
         dateStr: toLocalDateStr(h.created_at),
+        // 같은 날 여러 번 처리한 가정의 순서를 정확히 가리려면 시각까지 필요합니다.
+        at: String(h.created_at || ''),
         type: h.type,
         amount: h.amount,
         note: h.note || ''

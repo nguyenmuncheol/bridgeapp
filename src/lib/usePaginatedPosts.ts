@@ -26,8 +26,13 @@ export interface UsePaginatedPostsResult {
  * 사용 예:
  *   const { items, setItems, isLoading, hasMore, isLoadingMore, error, loadMore, retry } = usePaginatedPosts('MEMBER_NEWS')
  */
-export function usePaginatedPosts(category: string, opts: { limit?: number } = {}): UsePaginatedPostsResult {
+export function usePaginatedPosts(
+  category: string,
+  opts: { limit?: number; tag?: string | null } = {}
+): UsePaginatedPostsResult {
   const limit = opts.limit ?? 20
+  // 태그가 바뀌면 서버에 다시 물어봅니다('전체'는 필터 없음).
+  const tag = opts.tag && opts.tag !== '전체' ? opts.tag : null
   const [items, setItems] = useState<PostItem[]>([])
   // 🐛 과거 버그: hasMore가 true로 시작해서, 첫 로딩 중에 스켈레톤 아래 "더보기" 버튼이
   // 같이 떴습니다. 눌러도 커서가 없어 아무 일도 안 일어나서 앱이 멈춘 것처럼 보였습니다.
@@ -54,7 +59,7 @@ export function usePaginatedPosts(category: string, opts: { limit?: number } = {
     setError(null)
     cursorRef.current = null
 
-    dbFetchPostsPage(category, { limit })
+    dbFetchPostsPage(category, { limit, tag })
       .then(res => {
         if (cancelled) return
         setItems(res.items)
@@ -72,7 +77,7 @@ export function usePaginatedPosts(category: string, opts: { limit?: number } = {
     return () => { cancelled = true }
     // category가 바뀌면 처음부터 다시 불러옵니다(이전에는 최초 1회만 불러와서,
     // 카테고리를 바꿔도 이전 목록이 그대로 남는 구조였습니다).
-  }, [category, limit, reloadToken])
+  }, [category, limit, tag, reloadToken])
 
   const loadMore = () => {
     if (inFlightRef.current || !cursorRef.current) return
@@ -80,7 +85,7 @@ export function usePaginatedPosts(category: string, opts: { limit?: number } = {
     setIsLoadingMore(true)
     setError(null)
 
-    dbFetchPostsPage(category, { limit, cursor: cursorRef.current })
+    dbFetchPostsPage(category, { limit, tag, cursor: cursorRef.current })
       .then(res => {
         setItems(prev => appendUnique(prev, res.items))
         cursorRef.current = res.nextCursor

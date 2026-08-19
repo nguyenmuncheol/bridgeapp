@@ -8,6 +8,7 @@ import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, db
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
+import ImageSlider from '../ImageSlider'
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -424,20 +425,18 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                 {/* 주보 원본을 새 탭에서 열 수 있게 링크로 감쌌습니다.
                     작은 화면에서는 광고/헌금/일정 글씨를 읽을 수 없다는 지적을 반영 —
                     탭하면 브라우저 기본 확대 기능으로 크게 볼 수 있습니다. */}
-                <a
-                  href={bulletin.imageUrls[activeBulletinImgIdx]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center min-h-[200px]"
-                  title="탭하면 원본 크기로 열립니다"
-                >
-                  <img
-                    src={bulletin.imageUrls[activeBulletinImgIdx]}
-                    alt={`주보 ${activeBulletinImgIdx + 1}면`}
-                    className="w-full h-auto object-contain max-h-[360px]"
-                  />
-                </a>
-                <p className="text-[11px] text-center text-gray-400">사진을 탭하면 크게 볼 수 있습니다</p>
+                {/* 행사사진과 같은 부품(ImageSlider)을 씁니다 — 좌우로 밀거나 화살표로 넘길 수 있습니다.
+                    예전에는 아래 "1면/2면" 버튼을 정확히 눌러야만 넘어갔습니다. */}
+                <ImageSlider
+                  images={bulletin.imageUrls}
+                  index={activeBulletinImgIdx}
+                  onIndexChange={setActiveBulletinImgIdx}
+                  onImageClick={() => window.open(bulletin.imageUrls[activeBulletinImgIdx], '_blank', 'noopener,noreferrer')}
+                  alt="주보"
+                  maxHeightClass="max-h-[360px]"
+                  bgClass="bg-gray-50"
+                />
+                <p className="text-[11px] text-center text-gray-400">사진을 탭하면 원본 크기로 크게 볼 수 있습니다</p>
                 {bulletin.imageUrls.length > 1 && (
                   <div className="flex justify-center gap-1.5">
                     {bulletin.imageUrls.map((_, idx) => (

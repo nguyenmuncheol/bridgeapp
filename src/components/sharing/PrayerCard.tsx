@@ -1,8 +1,9 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { Heart, Lock, Trash2, Pin, CheckCircle2, Edit2 } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
+import CommentList from '../CommentList'
 
 interface PrayerCardProps {
   prayer: PostItem
@@ -14,14 +15,16 @@ interface PrayerCardProps {
   onEdit: (prayer: PostItem) => void
   onDelete: (id: string) => void
   onAddComment: (id: string, text: string) => void
+  /** 댓글이 수정/삭제되면 목록을 갱신하도록 부모에게 알립니다 (nextContent가 null이면 삭제) */
+  onCommentChanged: (postId: string, commentId: string, nextContent: string | null) => void
+  onError?: (msg: string) => void
 }
 
 // 기도제목 카드 한 장. React.memo로 감싸고, 댓글 입력값을 이 컴포넌트 내부(로컬 상태)에만 둬서
 // 댓글 입력창에 타이핑할 때 다른 카드들까지 함께 리렌더링되지 않도록 합니다.
 // (예전에는 입력값이 PrayerBoard 하나가 통째로 들고 있어서, 한 글자 칠 때마다 전체 목록이
 // 다시 그려졌습니다. 카드마다 독립적인 로컬 상태로 분리하면 그 카드만 다시 그려집니다.)
-function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin, onEdit, onDelete, onAddComment }: PrayerCardProps) {
-  const [commentText, setCommentText] = useState('')
+function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin, onEdit, onDelete, onAddComment, onCommentChanged, onError }: PrayerCardProps) {
 
   const canViewSecret = !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
 
@@ -36,13 +39,6 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
         )}
       </div>
     )
-  }
-
-  const submitComment = () => {
-    const text = commentText.trim()
-    if (!text) return
-    onAddComment(prayer.id, text)
-    setCommentText('')
   }
 
   return (
@@ -86,31 +82,19 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
               {prayer.isCompleted && <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 size={10} /> 응답 완료</span>}
             </div>
           </div>
-          {prayer.comments && prayer.comments.length > 0 && (
-            <div className="bg-gray-50 p-2.5 rounded-xl space-y-1.5 text-xs">
-              {prayer.comments.map(c => (
-                <div key={c.id} className="flex justify-between items-start text-[11px]">
-                  <div className="flex items-center gap-1.5 flex-1">
-                    {renderAvatar(c.authorId || '', c.authorName, 'w-4 h-4 text-[8px]')}
-                    <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
-                    <span className="text-gray-600 ml-1">{c.content}</span>
-                  </div>
-                  <span className="text-[10px] text-gray-400 shrink-0 ml-1">{c.createdAt}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-1.5 pt-1">
-            <input
-              type="text"
-              placeholder="함께 기도하는 마음(댓글)을 나누세요..."
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && submitComment()}
-              className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
-            />
-            <button onClick={submitComment} className="px-3 py-1 bg-[#335f87] text-white text-xs font-bold rounded-lg">등록</button>
-          </div>
+          {/* 댓글은 기도제목·교우소식·찬양나눔이 같은 부품(CommentList)을 씁니다.
+              수정/삭제 버튼도 여기에 들어 있습니다. */}
+          <CommentList
+            postId={prayer.id}
+            comments={prayer.comments || []}
+            currentUser={currentUser}
+            allUsers={allUsers}
+            isAdmin={isAdmin}
+            onAddComment={onAddComment}
+            onCommentChanged={onCommentChanged}
+            onError={onError}
+            placeholder="함께 기도하는 마음(댓글)을 나누세요..."
+          />
         </>
       ) : (
         <div className="flex items-center gap-2 py-3 px-1 text-gray-400 text-xs bg-gray-50/70 rounded-xl justify-center">

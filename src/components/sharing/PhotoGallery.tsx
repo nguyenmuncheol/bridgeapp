@@ -5,6 +5,8 @@ import { Heart, Filter, Trash2, X, Edit2 } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
+import ImageSlider from '../ImageSlider'
+import { toDownloadUrl, saveImage } from '../../lib/download'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -14,6 +16,9 @@ interface PhotoGalleryProps {
   photos: PostItem[]
   setPhotos: Dispatch<SetStateAction<PostItem[]>>
   dynamicTags: string[]
+  /** 현재 선택된 태그 (서버 조회 조건). SharingTab이 소유합니다. */
+  selectedTag: string
+  onTagChange: (tag: string) => void
   // "더보기" 페이지네이션 (SharingTab이 관리). 태그 필터는 지금까지 불러온 photos 안에서만
   // 걸러지므로, 아직 안 불러온 사진 중 그 태그가 있으면 "더보기"를 더 눌러야 보일 수 있습니다.
   isLoading: boolean
@@ -25,8 +30,7 @@ interface PhotoGalleryProps {
 }
 
 // ── 행사사진 갤러리 (태그 필터/좋아요/상세보기/수정/삭제) ──
-export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, setPhotos, dynamicTags, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
-  const [selectedTag, setSelectedTag] = useState('전체')
+export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, setPhotos, dynamicTags, selectedTag, onTagChange, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
   const [activePhotoModal, setActivePhotoModal] = useState<PostItem | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<PostItem | null>(null)
   const [editPhotoTitle, setEditPhotoTitle] = useState('')
@@ -145,7 +149,10 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
     if (activePhotoModal?.id === id) setActivePhotoModal(null)
   }
 
-  const filteredPhotos = selectedTag === '전체' ? photos : photos.filter(p => p.tags?.includes(selectedTag))
+  // 태그 필터는 이제 **서버**가 걸러줍니다(SharingTab이 선택된 태그를 조회에 넘김).
+  // 예전에는 이미 불러온 사진 안에서만 걸렀기 때문에, 30번째에 있는 #부활절 사진은
+  // "더보기"를 두 번 눌러야 나타났습니다.
+  const filteredPhotos = photos
 
   return (
     <div className="space-y-4">
@@ -158,7 +165,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
         <Filter size={14} className="text-gray-400 shrink-0" />
         {dynamicTags.map(tag => (
-          <button key={tag} onClick={() => setSelectedTag(tag)}
+          <button key={tag} onClick={() => onTagChange(tag)}
             className={`px-3 py-1 rounded-full shrink-0 transition-all text-xs ${selectedTag === tag ? 'bg-[#335f87] text-white font-bold' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>#{tag}</button>
         ))}
       </div>
@@ -177,7 +184,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       {isLoading && <SkeletonList count={4} variant="photo" />}
       {!isLoading && filteredPhotos.length === 0 && (
         <div className="py-8 text-center text-xs text-gray-400">
-          {selectedTag === '전체' ? '아직 등록된 사진이 없습니다.' : `#${selectedTag} 태그의 사진을 아직 못 찾았어요. ${hasMore ? '더보기를 눌러 더 찾아보세요.' : ''}`}
+          {selectedTag === '전체' ? '아직 등록된 사진이 없습니다.' : `#${selectedTag} 태그의 사진이 없습니다.`}
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
@@ -353,26 +360,32 @@ function PhotoDetailModal({
   const [imgIdx, setImgIdx] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
 
-  const handleDownloadSingle = () => {
-    const a = document.createElement('a')
-    a.href = images[imgIdx]
-    a.download = `더브릿지_행사사진_${photo.title}_${imgIdx + 1}.jpg`
-    a.click()
-    setToastMsg(`📷 현재 사진 (${imgIdx + 1}/${images.length}) 다운로드 시작`)
+  // 🐛 과거 버그: 사진이 저장되지 않고 그냥 새 탭에 열리기만 했습니다.
+  //   브라우저에는 "다른 도메인(=Supabase)의 파일에는 download 지시를 따르지 않는다"는
+  //   보안 규칙이 있어서, a.download 가 통째로 무시됐습니다.
+  //   전체 저장은 여기에 더해 0.3초 간격으로 새 탭을 여러 개 열려고 해서 팝업 차단까지 걸렸습니다.
+  // → download.ts 의 saveImage() 로 처리합니다. (Supabase의 ?download= 신호 + 휴대폰 공유 시트)
+  const [isSavingAll, setIsSavingAll] = useState(false)
+
+  const handleDownloadSingle = async () => {
+    setToastMsg(`📷 ${imgIdx + 1}번째 사진 저장 중...`)
+    await saveImage(images[imgIdx], `bridge_photo_${imgIdx + 1}.jpg`)
+    setToastMsg(`📷 ${imgIdx + 1}번째 사진을 저장했습니다`)
     setTimeout(() => setToastMsg(''), 2000)
   }
 
-  const handleDownloadAll = () => {
-    images.forEach((url, i) => {
-      setTimeout(() => {
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `더브릿지_행사사진_${photo.title}_${i + 1}.jpg`
-        a.click()
-      }, i * 300)
-    })
-    setToastMsg(`📦 전체 사진 ${images.length}장 다운로드 시작`)
-    setTimeout(() => setToastMsg(''), 2000)
+  const handleDownloadAll = async () => {
+    if (isSavingAll) return
+    setIsSavingAll(true)
+    for (let i = 0; i < images.length; i++) {
+      setToastMsg(`📦 ${i + 1}/${images.length}장 저장 중...`)
+      await saveImage(images[i], `bridge_photo_${i + 1}.jpg`)
+      // 연속으로 너무 빨리 요청하면 브라우저가 뒤쪽을 막습니다.
+      if (i < images.length - 1) await new Promise(r => setTimeout(r, 700))
+    }
+    setIsSavingAll(false)
+    setToastMsg(`📦 사진 ${images.length}장을 저장했습니다`)
+    setTimeout(() => setToastMsg(''), 2500)
   }
 
   const canManage = photo.authorId === currentUser.id || isAdmin
@@ -425,14 +438,14 @@ function PhotoDetailModal({
             <button onClick={onClose} className="text-gray-400 font-bold ml-1"><X size={18} /></button>
           </div>
         </div>
-        <div className="relative bg-black rounded-xl overflow-hidden min-h-[200px] flex items-center justify-center">
-          <img src={images[imgIdx]} alt="photo" className="w-full h-auto max-h-[300px] object-contain" />
-          {images.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
-              {imgIdx + 1} / {images.length}
-            </div>
-          )}
-        </div>
+        {/* 좌우로 밀거나 화살표로 넘길 수 있습니다 (주보 화면과 같은 부품) */}
+        <ImageSlider
+          images={images}
+          index={imgIdx}
+          onIndexChange={setImgIdx}
+          onImageClick={() => window.open(toDownloadUrl(images[imgIdx], ''), '_blank', 'noopener,noreferrer')}
+          alt={photo.title}
+        />
         {images.length > 1 && (
           <div className="flex gap-1 overflow-x-auto pb-1">
             {images.map((img, idx) => (
@@ -454,8 +467,10 @@ function PhotoDetailModal({
             <Heart size={14} className="fill-rose-500" /> 좋아요 {photo.likes}
           </button>
           <div className="flex gap-1.5">
-            <button onClick={handleDownloadSingle} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-[11px]">📷 장별 저장</button>
-            <button onClick={handleDownloadAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-[11px]">📦 전체 저장</button>
+            <button onClick={handleDownloadSingle} disabled={isSavingAll} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-[11px] disabled:opacity-50">📷 이 사진 저장</button>
+            <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-[11px] disabled:opacity-50">
+              {isSavingAll ? '저장 중...' : `📦 전체 저장 (${images.length}장)`}
+            </button>
           </div>
         </div>
       </div>

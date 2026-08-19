@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Minus, Undo2 } from 'lucide-react'
-import { UserProfile, MealCouponAccount, isApprovedMember } from '../../lib/mockData'
+import { UserProfile, MealCouponAccount, isChurchMember } from '../../lib/mockData'
 import { dbFetchMealCoupons, dbUpdateMealCoupon } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { todayLocalDateStr } from '../../lib/dateUtils'
@@ -82,6 +82,8 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
         ? [...prevHist, {
             id: `h_${Date.now()}`,
             dateStr: todayLocalDateStr(),
+            // 방금 처리한 가정이 곧바로 맨 위로 올라오도록 시각도 함께 기록합니다.
+            at: new Date().toISOString(),
             type: (applied > 0 ? 'GRANT' : 'USE') as 'GRANT' | 'USE',
             amount: Math.abs(applied),
             note: isUndo
@@ -165,7 +167,8 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
         <div className="space-y-2">
           {(() => {
             // DB 쿠폰 계정 + allUsers 가정 그룹을 병합하여 전체 표시 (조부/조모/부/모/자녀 순 정렬)
-            const approvedUsers = allUsers.filter(u => isApprovedMember(u.role))
+            // 업무용 계정(쿠폰관리자)은 성도 명단이 아니므로 식권 대상에서 뺍니다.
+            const approvedUsers = allUsers.filter(u => isChurchMember(u.role))
             const familyMap: Record<string, string> = {}
             const groupMembers: Record<string, UserProfile[]> = {}
 
@@ -212,35 +215,32 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
               return <p className="text-xs text-gray-400 text-center py-4">승인된 성도가 없습니다.</p>
             }
 
-            // 최근 발급/차감 이력 최신순 정렬 (이력이 최신인 가정 상단 배치)
+            // 최근에 발급/차감한 가정이 위로 오도록 정렬합니다.
+            // 🐛 과거 문제: 날짜(연-월-일)만 비교해서, 주일 아침에 여러 가정을 연달아
+            // 처리하면 전부 같은 날짜라 순서가 뒤죽박죽이 됐습니다. 방금 처리한 가정이
+            // 맨 위로 안 올라와서 봉사자가 헷갈렸습니다.
+            // → 저장 시각(at)까지 비교합니다. (DB에는 원래 시각이 있었는데 안 쓰고 있었습니다)
+            const lastTouchedAt = (acc: MealCouponAccount): string => {
+              const last = acc.history && acc.history.length > 0 ? acc.history[acc.history.length - 1] : null
+              if (!last) return ''
+              return last.at || last.dateStr || ''
+            }
             const sortedEntries = [...entries].sort((a, b) => {
-              const aLastHist = a.history && a.history.length > 0 ? a.history[a.history.length - 1] : null
-              const bLastHist = b.history && b.history.length > 0 ? b.history[b.history.length - 1] : null
-
-              const aDate = aLastHist?.dateStr || (a.balance > 0 ? '1999-01-01' : '')
-              const bDate = bLastHist?.dateStr || (b.balance > 0 ? '1999-01-01' : '')
-
-              if (aDate && bDate) {
-                return bDate.localeCompare(aDate)
-              }
-              if (aDate) return -1
-              if (bDate) return 1
+              const aAt = lastTouchedAt(a)
+              const bAt = lastTouchedAt(b)
+              if (aAt && bAt) return bAt.localeCompare(aAt)
+              // 내역이 아예 없는 가정은 맨 아래, 그 안에서는 이름 가나다순
+              if (aAt) return -1
+              if (bAt) return 1
               return a.familyName.localeCompare(b.familyName)
             })
 
             return sortedEntries.map((acc) => {
-              const lastHist = acc.history && acc.history.length > 0 ? acc.history[acc.history.length - 1] : null
               return (
                 <div key={acc.familyGroupId} className="p-3 bg-gray-50 rounded-xl flex items-center justify-between text-xs hover:bg-gray-100/70 transition-all">
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-gray-800">{acc.familyName}</h4>
-                      {lastHist && (
-                        <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-semibold">
-                          {lastHist.type === 'GRANT' ? '발급' : '차감'} {lastHist.dateStr.slice(5)}
-                        </span>
-                      )}
-                    </div>
+                    {/* 발급/차감 날짜 뱃지는 뺐습니다 — 최근 사용순으로 정렬되므로 순서만 보면 됩니다. */}
+                    <h4 className="font-bold text-gray-800">{acc.familyName}</h4>
                     <p className="text-[10px] text-gray-400 mt-0.5">잔여 쿠폰: <strong className="text-[#335f87]">{acc.balance}장</strong></p>
                   </div>
                   <div className="flex items-center gap-1">

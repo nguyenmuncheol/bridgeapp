@@ -178,6 +178,9 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
         birthday: c.birthday,
         createdAt: '',
         isDependent: true,
+        // 주소록에서 "부모 바로 아래"에 자녀를 붙이려면 어느 가정인지 알아야 합니다.
+        // (가족 연결이 안 된 분의 자녀는 값이 없어, 주소록에서 단독 항목으로 나옵니다)
+        familyGroupId: u.familyGroupId,
         parentName: buildParentLabel(u, linked)
       })
     })

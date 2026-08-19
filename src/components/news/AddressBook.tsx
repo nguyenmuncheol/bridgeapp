@@ -27,14 +27,43 @@ const ageOf = (m: UserProfile): number => {
   return age === null ? -1 : age
 }
 
+// 🐛 과거 문제: 부부는 묶는 규칙이 있는데 **자녀는 없었습니다.**
+// 자녀(계정이 없는 가상 항목)가 "나이 어린 사람"으로 취급돼 목록 맨 아래로 밀려서,
+// 목사님 가정 자녀 두 명이 부모와 10줄 떨어져 나오는 식이었습니다.
+// → 아래 childrenOf / flattenWithChildren 로 자녀를 부모 바로 아래에 붙입니다.
+
+/** 이 가정(들)에 속한 자녀를 나이 많은 순으로 꺼냅니다. 이미 배치된 자녀는 건너뜁니다. */
+function childrenOf(members: UserProfile[], scope: UserProfile[], claimed: Set<string>): UserProfile[] {
+  const gids = new Set(members.map(m => m.familyGroupId).filter(Boolean) as string[])
+  if (gids.size === 0) return []
+  const kids = scope.filter(c =>
+    c.isDependent && c.familyGroupId && gids.has(c.familyGroupId) && !claimed.has(c.id)
+  )
+  kids.forEach(k => claimed.add(k.id))
+  return [...kids].sort((a, b) => {
+    const d = ageOf(b) - ageOf(a)
+    return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', 'ko')
+  })
+}
+
+/** 가정 묶음(부부/단독)을 한 줄 목록으로 펼치면서, 각 가정 뒤에 그 집 자녀를 이어 붙입니다. */
+function flattenWithChildren(
+  units: { members: UserProfile[]; sortAge: number }[],
+  scope: UserProfile[],
+  claimed: Set<string>
+): UserProfile[] {
+  return units.flatMap(u => [...u.members, ...childrenOf(u.members, scope, claimed)])
+}
+
 // 부부 묶기: 전달된 scope(현재 화면에 표시될 후보 목록) 안에 familyRole이 '부'/'모'인 두 사람이
 // 같은 familyGroupId로 모두 존재할 때만 한 쌍으로 묶습니다. 배우자가 다른 라브리라 scope에
 // 없으면 억지로 데려오지 않고 단독으로 취급합니다.
+// (자녀 가상 항목은 여기서 제외하고, 나중에 부모 아래에 붙입니다)
 function groupCouplesInScope(scope: UserProfile[]): { members: UserProfile[]; sortAge: number }[] {
   const paired = new Set<string>()
   const units: { members: UserProfile[]; sortAge: number }[] = []
 
-  scope.forEach(m => {
+  scope.filter(m => !m.isDependent).forEach(m => {
     if (paired.has(m.id)) return
     const isSpouseRole = m.familyRole === '부' || m.familyRole === '모'
     const spouse = isSpouseRole && m.familyGroupId
@@ -99,10 +128,17 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
     if (addressFilter === '전체') {
       const pastor = filtered.filter(m => !m.isDependent && m.duty === '목사')
       const pastorWife = filtered.filter(m => !m.isDependent && m.duty === '사모')
-      const pinnedIds = new Set([...pastor, ...pastorWife].map(m => m.id))
-      const rest = filtered.filter(m => !pinnedIds.has(m.id))
-      const restSorted = sortUnitsByAge(groupCouplesInScope(rest)).flatMap(u => u.members)
-      return [...pastor, ...pastorWife, ...restSorted]
+      const pinnedAdults = [...pastor, ...pastorWife]
+      const pinnedIds = new Set(pinnedAdults.map(m => m.id))
+      const claimed = new Set<string>()
+      // 목사님 가정 자녀도 부모 바로 아래에 붙입니다.
+      const pinnedBlock = [...pinnedAdults, ...childrenOf(pinnedAdults, filtered, claimed)]
+      const rest = filtered.filter(m => !pinnedIds.has(m.id) && !claimed.has(m.id))
+      const restSorted = flattenWithChildren(sortUnitsByAge(groupCouplesInScope(rest)), rest, claimed)
+      // 부모를 이 화면에서 못 찾은 자녀는 맨 뒤에 나이순으로 둡니다.
+      const orphanKids = rest.filter(m => m.isDependent && !claimed.has(m.id))
+        .sort((a, b) => (ageOf(b) - ageOf(a)) || a.name.localeCompare(b.name, 'ko'))
+      return [...pinnedBlock, ...restSorted, ...orphanKids]
     }
 
     // ③ 라브리1/2/3/미정 필터: 관리자 또는 라브리리더 부부를 최상단에 고정
@@ -126,9 +162,13 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         pinnedBlock.push(...unit)
       })
 
-      const rest = filtered.filter(m => !pinnedIds.has(m.id))
-      const restSorted = sortUnitsByAge(groupCouplesInScope(rest)).flatMap(u => u.members)
-      return [...pinnedBlock, ...restSorted]
+      const claimed = new Set<string>()
+      const pinnedWithKids = [...pinnedBlock, ...childrenOf(pinnedBlock, filtered, claimed)]
+      const rest = filtered.filter(m => !pinnedIds.has(m.id) && !claimed.has(m.id))
+      const restSorted = flattenWithChildren(sortUnitsByAge(groupCouplesInScope(rest)), rest, claimed)
+      const orphanKids = rest.filter(m => m.isDependent && !claimed.has(m.id))
+        .sort((a, b) => (ageOf(b) - ageOf(a)) || a.name.localeCompare(b.name, 'ko'))
+      return [...pinnedWithKids, ...restSorted, ...orphanKids]
     }
 
     return filtered
@@ -173,7 +213,13 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
           </div>
         )}
         {displayedMembers.map(member => (
-          <div key={member.id} className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+          // 자녀는 살짝 들여쓰고 옅게 표시해 "이 집 아이"임이 한눈에 보이게 합니다.
+          <div
+            key={member.id}
+            className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
+              member.isDependent ? 'ml-5 border-gray-100/70 bg-gray-50/40' : 'border-gray-100'
+            }`}
+          >
             <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">

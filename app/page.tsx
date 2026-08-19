@@ -18,6 +18,18 @@ import { toLocalDateStr } from '../src/lib/dateUtils'
 import { LogIn, LogOut } from 'lucide-react'
 
 export default function Home() {
+  // 🐛 과거 불편: 어느 탭에 있는지가 화면 기억에만 있고 주소창에는 없어서,
+  //    새로고침하면 무조건 홈으로 돌아갔습니다. 휴대폰 뒤로가기도 앱을 그냥 껐습니다.
+  // → 주소 끝에 #news 같은 표시를 붙여, 새로고침해도 보던 탭이 유지되게 합니다.
+  //   (덤: 뒤로가기가 "이전 탭"으로 동작하고, 특정 탭 주소를 공유할 수도 있습니다)
+  const VALID_TABS = ['home', 'news', 'sharing', 'request', 'mypage']
+  const readTabFromHash = (): string => {
+    if (typeof window === 'undefined') return 'home'
+    const raw = (window.location.hash || '').replace(/^#/, '')
+    return VALID_TABS.includes(raw) ? raw : 'home'
+  }
+  // 서버에서 그릴 때와 브라우저에서 그릴 때가 달라지면 안 되므로, 초기값은 항상 'home'으로
+  // 두고 화면이 뜬 직후(useEffect)에 주소를 읽어 맞춥니다.
   const [currentTab, setCurrentTab] = useState('home')
   const [users, setUsers] = useState<UserProfile[]>([])  // 더미 데이터 제거
   const [isLoading, setIsLoading] = useState(true)        // DB 로드 완료 전 로딩
@@ -42,6 +54,10 @@ export default function Home() {
     setSupabaseUser(null)
     setCurrentUserId('guest')
     setCurrentTab('home')
+    // 주소창도 홈으로 되돌려, 로그아웃 후 새로고침하면 다시 잠긴 탭으로 가지 않게 합니다.
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
     setIsAdminViewMode(false)
     setShowProfileSetup(false)
     setUsers([])       // 성도 개인정보 명단 제거
@@ -237,10 +253,18 @@ export default function Home() {
     resetToGuest()
   }
 
-  // 탭 전환: 관리자 대시보드 모드 자동 해제
+  // 탭 전환: 관리자 대시보드 모드 자동 해제 + 주소창 갱신
   const handleSetCurrentTab = (tab: string) => {
     setIsAdminViewMode(false)
     setCurrentTab(tab)
+    if (typeof window !== 'undefined') {
+      // pushState 를 쓰면 휴대폰 뒤로가기가 "이전 탭"으로 동작합니다.
+      // (기존에는 뒤로가기를 누르면 앱이 그냥 닫혔습니다)
+      const next = tab === 'home' ? window.location.pathname + window.location.search : `#${tab}`
+      if (window.location.hash.replace(/^#/, '') !== tab) {
+        window.history.pushState(null, '', next)
+      }
+    }
   }
 
   const isGuest = currentUserId === 'guest'
@@ -257,6 +281,19 @@ export default function Home() {
 
   const isPending = !isGuest && currentUser.role === 'PENDING'
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
+
+  // ── 주소창(#해시)과 현재 탭 맞추기 ──
+  useEffect(() => {
+    // ① 처음 들어올 때 주소에 적힌 탭으로 이동
+    const initial = readTabFromHash()
+    if (initial !== 'home') setCurrentTab(initial)
+
+    // ② 뒤로가기/앞으로가기로 주소가 바뀌면 화면도 따라갑니다
+    const onHashChange = () => setCurrentTab(readTabFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── 승인되면 화면이 저절로 바뀌도록 ──
   // 🐛 과거 불편: 관리자가 승인해도 성도 화면은 그대로 "승인 대기 중"이었고,
@@ -335,7 +372,7 @@ export default function Home() {
       {/* 브랜드 헤더 */}
       <div className="bg-white/85 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
         <h1
-          onClick={() => { setCurrentTab('home'); setIsAdminViewMode(false) }}
+          onClick={() => handleSetCurrentTab('home')}
           className="text-xl font-black text-[#335f87] tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
           title="홈으로 이동"
         >
@@ -352,7 +389,7 @@ export default function Home() {
         ) : (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setCurrentTab('mypage'); setIsAdminViewMode(false) }}
+              onClick={() => handleSetCurrentTab('mypage')}
               className="flex items-center gap-1.5 bg-blue-50 text-[#335f87] font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
               title="내 정보 보기"
             >

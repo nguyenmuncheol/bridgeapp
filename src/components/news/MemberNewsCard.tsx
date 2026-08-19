@@ -4,6 +4,7 @@ import { memo, useState } from 'react'
 import { Heart, Edit2, Trash2 } from 'lucide-react'
 import { UserProfile, PostItem } from '../../lib/mockData'
 import Avatar from './Avatar'
+import CommentList from '../CommentList'
 
 interface MemberNewsCardProps {
   item: PostItem
@@ -14,20 +15,14 @@ interface MemberNewsCardProps {
   onEdit: (item: PostItem) => void
   onDelete: (id: string) => void
   onAddComment: (id: string, text: string) => void
+  /** 댓글이 수정/삭제되면 목록을 갱신하도록 부모에게 알립니다 (nextContent가 null이면 삭제) */
+  onCommentChanged: (postId: string, commentId: string, nextContent: string | null) => void
+  onError?: (msg: string) => void
 }
 
 // 교우소식 카드 한 장. React.memo + 댓글 입력값을 로컬 상태로 분리해서,
 // 댓글 입력 중 다른 카드들까지 함께 리렌더링되는 걸 막습니다(PrayerCard와 동일한 패턴).
-function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLike, onEdit, onDelete, onAddComment }: MemberNewsCardProps) {
-  const [commentText, setCommentText] = useState('')
-
-  const submitComment = () => {
-    const text = commentText.trim()
-    if (!text) return
-    onAddComment(item.id, text)
-    setCommentText('')
-  }
-
+function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLike, onEdit, onDelete, onAddComment, onCommentChanged, onError }: MemberNewsCardProps) {
   return (
     <div className="bg-white rounded-2xl border border-blue-50 p-4 shadow-2xs space-y-3">
       <div className="flex justify-between items-start">
@@ -67,30 +62,18 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLi
         </button>
       </div>
 
-      {item.comments && item.comments.length > 0 && (
-        <div className="bg-gray-50 p-2.5 rounded-xl space-y-1.5 text-xs">
-          {item.comments.map(c => (
-            <div key={c.id} className="flex justify-between items-start text-[11px]">
-              <div className="flex items-center gap-1.5 flex-1">
-                <Avatar allUsers={allUsers} authorId={c.authorId || ''} authorName={c.authorName} size="w-4 h-4 text-[8px]" />
-                <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
-                <span className="text-gray-600 ml-1">{c.content}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-1.5 pt-1">
-        <input
-          type="text"
-          placeholder="축하와 응원의 한마디를 나누세요..."
-          value={commentText}
-          onChange={e => setCommentText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submitComment()}
-          className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
-        />
-        <button onClick={submitComment} className="px-3 py-1 bg-[#335f87] text-white text-xs font-bold rounded-lg">등록</button>
-      </div>
+      {/* 댓글은 기도제목·찬양나눔과 같은 부품(CommentList)을 씁니다 — 수정/삭제 포함 */}
+      <CommentList
+        postId={item.id}
+        comments={item.comments || []}
+        currentUser={currentUser}
+        allUsers={allUsers}
+        isAdmin={isLeaderOrAdmin}
+        onAddComment={onAddComment}
+        onCommentChanged={onCommentChanged}
+        onError={onError}
+        placeholder="축하와 응원의 한마디를 나누세요..."
+      />
     </div>
   )
 }

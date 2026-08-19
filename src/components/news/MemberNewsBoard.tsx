@@ -120,6 +120,20 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
   }
 
   // 교우소식 댓글 등록 (DB 동기화)
+  // 댓글이 수정되거나(내용) 삭제되면(null) 화면 목록도 맞춰줍니다.
+  const handleCommentChanged = useCallback((postId: string, commentId: string, nextContent: string | null) => {
+    setMemberNewsList(prev => prev.map(n => {
+      if (n.id !== postId) return n
+      const comments = n.comments || []
+      return {
+        ...n,
+        comments: nextContent === null
+          ? comments.filter(c => c.id !== commentId)
+          : comments.map(c => (c.id === commentId ? { ...c, content: nextContent } : c)),
+      }
+    }))
+  }, [setMemberNewsList])
+
   const handleAddNewsComment = useCallback(async (newsId: string, text: string) => {
     // 낙관적 UI: 먼저 화면에 추가
     const tempId = `c_${Date.now()}`
@@ -224,6 +238,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
           onEdit={openEditModal}
           onDelete={handleDeleteNews}
           onAddComment={handleAddNewsComment}
+          onCommentChanged={handleCommentChanged}
+          onError={msg => showToast(msg, true)}
         />
       ))}
 

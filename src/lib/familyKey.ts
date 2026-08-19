@@ -15,7 +15,7 @@
 // → 아래 함수로 어떤 형태의 옛날 키든 "지금 이 사람의 가정 키"로 되돌려서,
 //   화면 표시와 주방 집계 양쪽 모두 가정당 한 건만 세도록 합니다.
 
-import { UserProfile, isApprovedMember } from './mockData'
+import { UserProfile, isChurchMember } from './mockData'
 
 /** 이 사람이 지금 사용해야 하는 가정 키 */
 export function familyKeyOf(user: Pick<UserProfile, 'id' | 'familyGroupId'>): string {
@@ -86,7 +86,8 @@ export function buildFamilyUnits(allUsers: UserProfile[]): FamilyUnit[] {
   const groups = new Map<string, UserProfile[]>()
   ;(allUsers || []).forEach(u => {
     if (!u || u.isDependent) return
-    if (!isApprovedMember(u.role)) return
+    // 업무용 계정(쿠폰관리자)은 가정 집계 대상이 아닙니다.
+    if (!isChurchMember(u.role)) return
     const key = familyKeyOf(u)
     const list = groups.get(key)
     if (list) list.push(u)

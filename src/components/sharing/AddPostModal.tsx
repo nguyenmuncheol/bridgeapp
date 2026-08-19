@@ -205,7 +205,22 @@ export default function AddPostModal({
           className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
         />
         {subTab === 'prayer' && <label className="flex items-center gap-2 text-xs text-gray-600 font-medium"><input type="checkbox" checked={isSecret} onChange={e => setIsSecret(e.target.checked)} /> 비밀글로 등록 (목회자/리더만 열람)</label>}
-        {subTab === 'praise' && <input type="text" placeholder="유튜브 URL (선택사항)" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium" />}
+        {subTab === 'praise' && (
+          <div className="space-y-1">
+            <input
+              type="text"
+              placeholder="영상 또는 웹페이지 주소 (선택)"
+              value={youtubeUrl}
+              onChange={e => setYoutubeUrl(e.target.value)}
+              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
+            />
+            {/* 예전에는 "유튜브 URL"이라고만 되어 있어서, 블로그·교회홈페이지 주소를 넣으면
+                검은 상자만 뜨고 아무것도 안 보였습니다. 이제 둘 다 됩니다. */}
+            <p className="text-[10px] text-gray-400 leading-relaxed px-0.5">
+              유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
+            </p>
+          </div>
+        )}
         {subTab === 'photo' && (
           <div className="space-y-2 text-xs">
             <div>
