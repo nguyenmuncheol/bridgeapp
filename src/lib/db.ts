@@ -533,15 +533,31 @@ export async function dbTogglePostLike(
   return { likes: nextLikes, likedUserIds: nextUsers, error: res.error }
 }
 
+/**
+ * 댓글 등록.
+ *
+ * 🐛 과거 버그: 저장만 하고 **진짜 댓글 번호를 돌려주지 않았습니다.**
+ * 화면은 임시 번호(c_1787...)를 붙여 두는데 그 번호가 그대로 남아서,
+ * **방금 쓴 댓글을 바로 수정하면** 그 임시 번호로 찾으러 갔다가 못 찾고
+ * "수정 권한이 없습니다"가 떴습니다. (새로고침 후에는 정상 동작 → 원인 파악이 어려웠음)
+ *
+ * → 이제 저장된 행의 id와 작성시각을 함께 돌려줍니다. 화면은 이 값으로 갈아끼웁니다.
+ */
 export async function dbAddComment(postId: string, authorId: string, authorName: string, content: string) {
   const res = await supabase.from('post_comments').insert({
     post_id: postId,
     author_id: authorId,
     author_name: authorName,
     content
-  })
-  if (!res.error) invalidateCache('posts:')
-  return res
+  }).select('id, created_at').single()
+
+  if (res.error) return { error: res.error, id: '', createdAt: '' }
+  invalidateCache('posts:')
+  return {
+    error: null,
+    id: String(res.data?.id || ''),
+    createdAt: toLocalDateStr(res.data?.created_at)
+  }
 }
 
 // ==========================================
@@ -596,6 +612,8 @@ export interface EventFormData {
   title: string
   content: string
   url: string
+  /** 신청 담당자 이름. 비어 있으면 "담당자에게 직접 신청해 주세요"로 표시됩니다. */
+  manager: string
 }
 
 export async function dbFetchLatestEventForm(): Promise<EventFormData | null> {
@@ -606,7 +624,8 @@ export async function dbFetchLatestEventForm(): Promise<EventFormData | null> {
     id: data.id,
     title: data.title,
     content: data.content || '',
-    url: data.url || ''
+    url: data.url || '',
+    manager: data.manager || ''
   }
 }
 
@@ -621,6 +640,7 @@ export async function dbUpsertEventForm(eventData: EventFormData) {
     title: eventData.title,
     content: eventData.content,
     url: eventData.url,
+    manager: eventData.manager || null,
     updated_at: new Date().toISOString()
   }
 
@@ -797,6 +817,34 @@ export async function dbDeleteNotification(id: string) {
   const { error } = await supabase.from('notifications').delete().eq('id', id)
   if (!error) invalidateCache('notifications')
   return { error }
+}
+
+/** 관리자가 직접 쓴 알림의 받는 사람 범위 */
+export type NotifyTarget = 'ALL' | 'LABRI' | 'TEACHER' | 'ADMIN' | 'USERS'
+
+/**
+ * 관리자가 직접 쓴 알림을 보냅니다.
+ *
+ * 보낸 사람 이름(senderName)은 화면에 그대로 보입니다.
+ * 교회 명의로 보낼지, 관리자 본인 이름으로 보낼지 관리자가 고릅니다.
+ */
+export async function dbSendManualNotification(params: {
+  title: string
+  body: string
+  target: NotifyTarget
+  labriId?: string
+  userIds?: string[]
+  senderName: string
+}) {
+  const { data, error } = await supabase.rpc('send_manual_notification', {
+    p_title: params.title,
+    p_body: params.body,
+    p_target: params.target,
+    p_labri: params.labriId || null,
+    p_user_ids: params.userIds && params.userIds.length > 0 ? params.userIds : null,
+    p_sender: params.senderName,
+  })
+  return { sent: Number(data ?? 0), error }
 }
 
 /** 자동 알림 종류 (관리자 화면에서 "지금 한 번 실행"으로 시험해 볼 수 있습니다) */

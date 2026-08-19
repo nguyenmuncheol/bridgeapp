@@ -1,14 +1,11 @@
 'use client'
 
-import { UserProfile, getSimpleUserName } from '../../lib/mockData'
+import { UserProfile, getSimpleUserName, KAKAO_OPEN_CHAT_URL } from '../../lib/mockData'
 
 interface WelcomeModalProps {
   currentUser: UserProfile
   onClose: () => void
 }
-
-/** 교회 단톡방 (카카오 오픈채팅) */
-const KAKAO_OPEN_CHAT_URL = 'https://open.kakao.com/o/gi8JM1Ii'
 
 /**
  * 가입이 승인된 뒤 **처음 앱에 들어왔을 때 딱 한 번** 뜨는 환영 화면.

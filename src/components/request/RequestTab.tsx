@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Utensils, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
+import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
 import { UserProfile, getSimpleUserName, simplifyStoredName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
@@ -73,10 +73,12 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
   const [eventFormUrl, setEventFormUrl] = useState('')
   const [eventFormTitle, setEventFormTitle] = useState('')
   const [eventFormContent, setEventFormContent] = useState('')
+  const [eventFormManager, setEventFormManager] = useState('')
   const [showEventEditModal, setShowEventEditModal] = useState(false)
   const [editUrl, setEditUrl] = useState('')
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
+  const [editManager, setEditManager] = useState('')
 
   // Supabase DB에서 식사 신청 및 행사 신청 로드 (관리자 "식사" 탭과 캐시를 공유해 반복 조회하지 않음)
   // 화면에서 쓰는 4주치만 받아옵니다(과거 기록은 쓰지 않습니다).
@@ -121,6 +123,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
     setEventFormTitle(latestEventForm.title)
     setEventFormContent(latestEventForm.content)
     setEventFormUrl(latestEventForm.url)
+    setEventFormManager(latestEventForm.manager || '')
     setEditTitle(latestEventForm.title)
     setEditContent(latestEventForm.content)
     setEditUrl(latestEventForm.url)
@@ -203,11 +206,13 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
     await dbUpsertEventForm({
       title: editTitle.trim(),
       content: editContent.trim(),
-      url: editUrl.trim()
+      url: editUrl.trim(),
+      manager: editManager.trim()
     })
     setEventFormUrl(editUrl.trim())
     setEventFormTitle(editTitle.trim())
     setEventFormContent(editContent.trim())
+    setEventFormManager(editManager.trim())
     setShowEventEditModal(false)
     showToast(editUrl.trim() ? '✅ 행사 신청 링크가 등록되었습니다!' : '행사 신청 링크가 삭제되었습니다.')
   }
@@ -249,22 +254,32 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
             </p>
           )}
 
+          {/* 아이콘 폭(13px)을 모든 줄에 맞춰, 글이 같은 열에서 시작하도록 했습니다 */}
           {currentMealData.submitted ? (
             <>
-              <p className="font-bold leading-relaxed">
-                {currentMealData.attending
-                  ? `현재 신청: 성인 ${currentMealData.adultCount}명 · 어린이 ${currentMealData.childCount}명`
-                  : '현재 신청: 식사 안 함'}
+              <p className="flex items-start gap-1.5 leading-relaxed font-bold">
+                <Utensils size={13} className="shrink-0 mt-0.5 opacity-70" />
+                <span>
+                  {currentMealData.attending
+                    ? `현재 신청: 성인 ${currentMealData.adultCount}명 · 어린이 ${currentMealData.childCount}명`
+                    : '현재 신청: 식사 안 함'}
+                </span>
               </p>
-              <p className="text-[11px] opacity-80 leading-relaxed">
-                최종 수정 {currentMealData.updatedBy || '성도님'}
-                {formatDateTimeShort(currentMealData.updatedAt)
-                  ? ` (${formatDateTimeShort(currentMealData.updatedAt)})`
-                  : ''}
+              <p className="flex items-start gap-1.5 leading-relaxed text-[11px] opacity-80">
+                <Pencil size={13} className="shrink-0 mt-0.5 opacity-70" />
+                <span>
+                  최종 수정 {currentMealData.updatedBy || '성도님'}
+                  {formatDateTimeShort(currentMealData.updatedAt)
+                    ? ` (${formatDateTimeShort(currentMealData.updatedAt)})`
+                    : ''}
+                </span>
               </p>
             </>
           ) : (
-            <p className="font-bold leading-relaxed">{sundayDates[selectedWeek]} · 아직 신청하지 않으셨습니다</p>
+            <p className="flex items-start gap-1.5 leading-relaxed font-bold">
+              <Utensils size={13} className="shrink-0 mt-0.5 opacity-70" />
+              <span>{sundayDates[selectedWeek]} · 아직 신청하지 않으셨습니다</span>
+            </p>
           )}
         </div>
 
@@ -377,6 +392,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                 setEditUrl(eventFormUrl)
                 setEditTitle(eventFormTitle)
                 setEditContent(eventFormContent)
+                setEditManager(eventFormManager)
                 setShowEventEditModal(true)
               }}
               className="px-2.5 py-1 bg-purple-50 text-purple-700 text-[11px] font-bold rounded-lg hover:bg-purple-100 flex items-center gap-1"
@@ -413,7 +429,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
             ) : (
               // URL 없을 때: 신청안내 amber 강조 버튼
               <div className="w-full py-3 bg-amber-50 border border-amber-200 rounded-xl text-center text-xs text-amber-800 font-bold">
-                📢 담당자에게 직접 신청해 주세요
+                📢 {eventFormManager ? `담당자(${eventFormManager})에게 직접 신청해 주세요` : '담당자에게 직접 신청해 주세요'}
               </div>
             )}
           </div>
@@ -466,10 +482,21 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                 />
                 <p className="text-[10px] text-gray-400 mt-1">URL 미입력 시 "담당자에게 직접 신청" 안내 표시</p>
               </div>
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold">담당자 이름 (선택)</label>
+                <input
+                  type="text"
+                  placeholder="예: 홍길동"
+                  value={editManager}
+                  onChange={e => setEditManager(e.target.value)}
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">입력하면 "담당자(홍길동)에게 직접 신청해 주세요"로 표시됩니다</p>
+              </div>
               {(eventFormTitle || eventFormUrl) && (
                 <button
                   type="button"
-                  onClick={() => { setEditUrl(''); setEditTitle(''); setEditContent('') }}
+                  onClick={() => { setEditUrl(''); setEditTitle(''); setEditContent(''); setEditManager('') }}
                   className="w-full py-2 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1"
                 >
                   <Trash2 size={12} /> 행사 신청 전체 삭제

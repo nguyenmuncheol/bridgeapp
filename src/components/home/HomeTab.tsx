@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
-import { UserProfile, PostItem, getUserDisplayName } from '../../lib/mockData'
+import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbDeletePost } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -242,7 +242,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
               <span className="text-[11px] font-bold text-blue-200 tracking-wider">더브릿지 공동체</span>
             </div>
             <h1 className="text-base font-black leading-snug">
-              {getUserDisplayName(currentUser)} 환영합니다! 🙏
+              {getSimpleUserName(currentUser)} 환영합니다! 🙏
             </h1>
             <p className="text-xs text-blue-100 leading-relaxed">
               오늘도 주님의 평안과 은혜가 가득하시길 기도합니다.
@@ -290,13 +290,31 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           </div>
         )}
 
-        {/* 로그인 성도 전용: 교회 안내 버튼만 노출 */}
+        {/* 로그인 성도 전용: 교회 안내(80%) + 카카오 단톡방(20%) */}
         {!isGuest && (
-          <div className="p-3 bg-gray-50">
+          <div className="p-3 bg-gray-50 flex gap-2 items-stretch">
             <button onClick={() => setShowChurchGuideModal(true)}
-              className="w-full py-2 bg-white border border-gray-200 text-[#335f87] text-xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1.5">
-              <Info size={14} /> 더브릿지 교회 안내 (비전 · 사역자 · 예배시간) <ChevronRight size={14} />
+              className="basis-4/5 grow-0 py-2 px-2 bg-white border border-gray-200 text-[#335f87] text-xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1.5 leading-snug">
+              <Info size={14} className="shrink-0" />
+              <span className="text-left">
+                더브릿지 교회 안내<br />
+                <span className="font-semibold text-[10px] text-gray-500">비전 · 사역자 · 예배시간</span>
+              </span>
+              <ChevronRight size={14} className="shrink-0" />
             </button>
+            {/* 앱 밖(카카오)으로 나가므로 새 창에서 엽니다 */}
+            <a
+              href={KAKAO_OPEN_CHAT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="교회 단톡방 열기"
+              className="basis-1/5 grow-0 bg-[#FEE500] hover:bg-[#FFDE00] text-[#3C1E1E] rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98] transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#3C1E1E">
+                <path d="M12 3C7.03 3 3 6.14 3 10.01c0 2.45 1.6 4.6 4.03 5.88l-.99 3.69c-.08.3.22.56.5.38L10.76 18c.4.04.81.06 1.24.06 4.97 0 9-3.14 9-7.01C21 6.14 16.97 3 12 3z" />
+              </svg>
+              <span className="text-[9px] font-bold leading-none">단톡방</span>
+            </a>
           </div>
         )}
       </section>
@@ -395,8 +413,11 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><CreditCard size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">온라인 헌금 안내</h2>
           </div>
-          <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl">
-            <span className="font-mono text-xs font-bold text-gray-800">우리은행 100-100-299503(예금주:임혜영)</span>
+          <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl gap-2">
+            <span className="font-mono text-xs font-bold text-gray-800 leading-relaxed">
+              우리은행 100-100-299503<br />
+              <span className="text-[11px] font-sans font-semibold text-gray-500">(예금주 : 임혜영 / LimHyeYoung)</span>
+            </span>
             <button onClick={handleCopyAccount}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${copied ? 'bg-emerald-600 text-white' : 'bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20'}`}>
               {copied ? <Check size={12} /> : <Copy size={12} />}

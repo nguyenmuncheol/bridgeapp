@@ -118,10 +118,15 @@ export default function CommentList({
                   </div>
                 ) : (
                   <div className="flex justify-between items-start gap-1">
+                    {/* 🐛 과거 문제: 이름과 내용이 한 줄에 나란히 있고 이름 칸이 줄지 않아,
+                        이름이 길면 내용 칸이 확 좁아졌습니다.
+                        → 이름은 윗줄, 내용은 아랫줄로 나눠 내용 폭을 항상 같게 만듭니다. */}
                     <div className="flex items-start gap-1.5 flex-1 min-w-0">
                       {renderAvatar(c.authorId || '', c.authorName)}
-                      <span className="font-bold text-gray-800 shrink-0">{c.authorName}:</span>
-                      <span className="text-gray-600 break-words">{c.content}</span>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <p className="font-bold text-gray-800 leading-snug break-all">{c.authorName}</p>
+                        <p className="text-gray-600 break-words leading-relaxed">{c.content}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <span className="text-[10px] text-gray-400">{c.createdAt}</span>

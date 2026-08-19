@@ -31,6 +31,7 @@ function destinationOf(n: NotificationItem): { tab: string; sub: string } {
   if (n.type === 'ATTENDANCE') return { tab: 'mypage', sub: '' }   // 관리 화면은 내 정보에서 들어갑니다
   if (n.type === 'BULLETIN') return { tab: 'home', sub: '' }
   if (n.type === 'BIRTHDAY') return { tab: 'news', sub: 'memberNews' }
+  if (n.type === 'MANUAL') return { tab: 'home', sub: '' }
 
   // ② 댓글·좋아요·공지는 그 글이 실제로 있는 게시판으로 보냅니다.
   switch (n.postCategory) {
@@ -53,12 +54,13 @@ function iconOf(type: NotificationItem['type']): string {
   if (type === 'ATTENDANCE') return '📋'
   if (type === 'BIRTHDAY') return '🎂'
   if (type === 'BULLETIN') return '📖'
+  if (type === 'MANUAL') return '📨'
   return '📢'
 }
 
 /** 서버가 자동으로 보내는 알림인지 (사람이 만든 알림과 문장 모양이 다릅니다) */
 function isSystemType(type: NotificationItem['type']): boolean {
-  return type === 'MEAL' || type === 'ATTENDANCE' || type === 'BIRTHDAY' || type === 'BULLETIN'
+  return type === 'MEAL' || type === 'ATTENDANCE' || type === 'BIRTHDAY' || type === 'BULLETIN' || type === 'MANUAL'
 }
 
 /** '2026-08-19T05:12:00Z' → '방금 전 / 3시간 전 / 8/18 21:30' */
@@ -170,6 +172,10 @@ export default function NotificationPanel({
                   <>
                     <span className="block text-xs text-gray-800 leading-snug font-bold">{n.title}</span>
                     <span className="block text-[11px] text-gray-500 leading-relaxed">{n.body}</span>
+                    {/* 관리자가 직접 보낸 알림은 누가 보냈는지 밝힙니다 */}
+                    {n.type === 'MANUAL' && n.actorName && (
+                      <span className="block text-[10px] text-gray-400">보낸 사람 · {n.actorName}</span>
+                    )}
                   </>
                 ) : (
                   <>

@@ -7,7 +7,7 @@ import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
-import { CHILD_LABRI_OPTIONS } from '../../lib/familyInfo'
+import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 
 interface StatsTabProps {
@@ -194,6 +194,33 @@ export default function StatsTab({
     }
   }, [childRecords, safeStart, safeEnd])
 
+  // 선택한 주일의 교회학교 명단 (그룹 → 아이들)
+  const childRoster = useMemo(() => {
+    const byId = new Map<string, any>()
+    ;(childRecords || []).forEach((r: any) => {
+      if (String(r.date_str) === selectedStatsDate) byId.set(String(r.dependent_id), r)
+    })
+    const kids = buildDependentEntries(allUsers).filter(c => !!c.childLabriId)
+    return CHILD_LABRI_OPTIONS
+      .map(group => ({
+        group,
+        rows: kids
+          .filter(c => c.childLabriId === group)
+          .map(c => {
+            const rec = byId.get(c.id.replace(/^dep_/, ''))
+            return {
+              id: c.id,
+              name: c.name,
+              parentName: c.parentName || '',
+              status: (rec?.status as 'ATTEND' | 'ABSENT' | undefined) || null,
+              note: rec?.note || '',
+            }
+          })
+          .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
+      }))
+      .filter(g => g.rows.length > 0)
+  }, [childRecords, selectedStatsDate, allUsers])
+
   const CHILD_BAR: Record<string, string> = {
     '영아부': '#fbcfe8', '유아·유치부': '#fde68a', '초등부': '#a7f3d0', '중고등부': '#bfdbfe',
   }
@@ -362,45 +389,6 @@ export default function StatsTab({
         </div>
         )}
 
-        {/* ── 자녀(교회학교) 출석 ── */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-xs text-gray-900">🧒 교회학교 출석</h3>
-            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
-          </div>
-
-          {childStats.rows.length === 0 ? (
-            <p className="py-4 text-center text-[11px] text-gray-400">
-              이 기간에 입력된 교회학교 출석이 없습니다.
-            </p>
-          ) : (
-            <>
-              {childStats.rows.map(({ label, attend, total }) => {
-                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
-                return (
-                  <div key={label} className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
-                      <span className="font-bold text-gray-700">{attend}/{total}명 ({rate}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
-                    </div>
-                  </div>
-                )
-              })}
-              <div className="pt-2 border-t border-gray-200 flex justify-between text-xs">
-                <span className="font-black text-gray-900">교회학교 합계</span>
-                <span className="font-black text-indigo-600">
-                  {childStats.totalAttend}/{childStats.totalTotal}명 (
-                  {childStats.totalTotal > 0 ? Math.round((childStats.totalAttend / childStats.totalTotal) * 100) : 0}%)
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-
         {/* 선택한 주일의 출석/결석 명단 (CSV는 아래 기간 카드에 있습니다) */}
         {!isTeacher && (
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
@@ -454,6 +442,81 @@ export default function StatsTab({
           </table>
         </div>
         )}
+
+        {/* ── 자녀(교회학교) 출석 ── */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-xs text-gray-900">🧒 교회학교 출석</h3>
+            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
+          </div>
+
+          {childStats.rows.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-gray-400">
+              이 기간에 입력된 교회학교 출석이 없습니다.
+            </p>
+          ) : (
+            <>
+              {childStats.rows.map(({ label, attend, total }) => {
+                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                return (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
+                      <span className="font-bold text-gray-700">{attend}/{total}명 ({rate}%)</span>
+                    </div>
+                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
+                    </div>
+                  </div>
+                )
+              })}
+              <div className="pt-2 border-t border-gray-200 flex justify-between text-xs">
+                <span className="font-black text-gray-900">교회학교 합계</span>
+                <span className="font-black text-indigo-600">
+                  {childStats.totalAttend}/{childStats.totalTotal}명 (
+                  {childStats.totalTotal > 0 ? Math.round((childStats.totalAttend / childStats.totalTotal) * 100) : 0}%)
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+        {/* 교회학교 명단 (선택한 주일) */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+          <h3 className="font-bold text-xs text-gray-900">🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단</h3>
+
+          {childRoster.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-gray-400">
+              교회학교 그룹이 지정된 자녀가 없습니다.
+            </p>
+          ) : (
+            childRoster.map(({ group, rows }) => (
+              <div key={group} className="space-y-1.5">
+                <p className="text-[11px] font-bold" style={{ color: CHILD_TEXT[group] }}>{group}</p>
+                <table className="w-full text-xs text-left">
+                  <tbody className="divide-y divide-gray-50 text-gray-700">
+                    {rows.map(r => (
+                      <tr key={r.id}>
+                        <td className="p-2 font-bold text-gray-800">{r.name}</td>
+                        <td className="p-2 text-gray-400 text-[10px]">{r.parentName}</td>
+                        <td className="p-2 text-center">
+                          {r.status ? (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {r.status === 'ABSENT' ? '❌ 결석' : '✅ 출석'}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 text-[10px]">미지정</span>
+                          )}
+                        </td>
+                        <td className="p-2 text-gray-500 text-[10px]">{r.note || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
+        </div>
 
         {/* ───────── 하단: 기간 통계 ───────── */}
         <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-xs">
@@ -550,17 +613,39 @@ export default function StatsTab({
                   </div>
                 )
               })}
-              {rangeLabriStats.rows.length > 0 && (
+              {/* 교회학교 — 기간 전체 (childStats 는 이미 선택한 기간으로 계산되어 있습니다) */}
+              {childStats.rows.length > 0 && (
+                <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                  <p className="text-[11px] font-bold text-gray-500">🧒 교회학교</p>
+                  {childStats.rows.map(({ label, attend, total }) => {
+                    const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                    return (
+                      <div key={`range-${label}`} className="space-y-1">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
+                          <span className="font-bold text-gray-700">{attend}/{total}회 ({rate}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {(rangeLabriStats.rows.length > 0 || childStats.rows.length > 0) && (
                 <div className="pt-2 border-t border-gray-200 space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
+                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(어른 + 교회학교)</span></span>
                     <span className="font-black text-indigo-600">
-                      {rangeLabriStats.totalAttend}/{rangeLabriStats.totalTotal}회 ({rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%)
+                      {rangeLabriStats.totalAttend + childStats.totalAttend}/{rangeLabriStats.totalTotal + childStats.totalTotal}회 ({(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all"
-                      style={{ backgroundColor: TOTAL_BAR, width: `${rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%` }} />
+                      style={{ backgroundColor: TOTAL_BAR, width: `${(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%` }} />
                   </div>
                 </div>
               )}

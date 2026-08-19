@@ -61,7 +61,15 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
       }],
     } : p))
 
-    const { error: addError } = await dbAddComment(postId, currentUser.id, getSimpleUserName(currentUser), text)
+    const { error: addError, id: realId, createdAt: realAt } = await dbAddComment(postId, currentUser.id, getSimpleUserName(currentUser), text)
+    if (!addError && realId) {
+      // 🐛 저장에 성공하면 **임시 번호를 진짜 번호로 갈아끼웁니다.**
+      // 이걸 안 하면 방금 쓴 댓글을 바로 수정·삭제할 때 서버가 그 댓글을 못 찾습니다.
+      setPraises(prev => prev.map(p => p.id === postId ? {
+        ...p,
+        comments: (p.comments || []).map(c => (c.id === tempId ? { ...c, id: realId, createdAt: realAt || c.createdAt } : c))
+      } : p))
+    }
     if (addError) {
       // 실패하면 방금 넣은 임시 댓글을 걷어냅니다 (저장 안 됐는데 남아 있으면 안 됩니다)
       setPraises(prev => prev.map(p => p.id === postId ? {

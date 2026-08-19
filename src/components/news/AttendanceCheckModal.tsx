@@ -122,8 +122,16 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   }, [selectedGroup, childMode, childEntries, members])
 
   const attendedCount = targetMembers.filter(m => checkSelections[m.id] === 'ATTEND').length
-  // 전원 명시적으로 출석/결석을 표시해야만 제출 가능 (미처리 인원이 자동으로 '출석' 처리되는 것을 방지)
-  const allMembersChecked = targetMembers.length > 0 && targetMembers.every(m => !!checkSelections[m.id])
+  // 표시한 사람만 저장합니다. 표시하지 않은 사람은 "미지정"으로 남습니다.
+  //
+  // 예전에는 **전원 표시해야만** 제출할 수 있었습니다. 그런데 늦게 오신 분이나
+  // 확인이 안 되는 분 때문에 한 명이라도 비면 아무것도 저장하지 못하고,
+  // 리더가 앱을 닫으면 그 주 출석이 통째로 날아갔습니다.
+  // → 이제 아는 것부터 저장하고 나중에 채울 수 있습니다.
+  //   (미지정이 남아 있으면 서버가 담당자에게 계속 알려줍니다)
+  const checkedMembers = targetMembers.filter(m => !!checkSelections[m.id])
+  const unsetCount = targetMembers.length - checkedMembers.length
+  const canSubmit = checkedMembers.length > 0
 
   // ── DB에서 출석 기록 로드 ──
   // 어른 출석표와 자녀 출석표는 완전히 다른 표라서 따로 불러옵니다.
@@ -189,9 +197,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     // 같은 사람/같은 날짜 기록이 두 줄 생길 수 있었습니다(통계가 두 배로 잡힘).
     if (isSubmittingAttendance) return
 
-    // 안전장치: 전원이 명시적으로 출석/결석 표시되지 않았다면 제출하지 않음
-    if (!allMembersChecked) {
-      showToast('아직 출석/결석을 표시하지 않은 대상이 있습니다.', true)
+    if (!canSubmit) {
+      showToast('한 명 이상 출석/결석을 표시해 주세요.', true)
       return
     }
 
@@ -199,7 +206,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     let error: any = null
 
     if (childMode) {
-      const records = targetMembers.map(m => ({
+      const records = checkedMembers.map(m => ({
         dependentId: m.id.replace(/^dep_/, ''),
         childName: m.name,
         familyGroupId: m.familyGroupId,
@@ -212,7 +219,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
       const res = await dbSaveChildAttendanceRecords(records)
       error = res.error
     } else {
-      const records = targetMembers.map(m => ({
+      const records = checkedMembers.map(m => ({
         userId: m.id,
         dateStr: targetSundayDateStr,
         labriId: m.labriId || '미정',
@@ -394,18 +401,28 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                   ✅ 출석체크가 명단에 정상 반영되었습니다!
                 </div>
               ) : (
-                <button
-                  onClick={handleSubmitAttendance}
-                  disabled={!allMembersChecked || isSubmittingAttendance}
-                  title={!allMembersChecked ? '전원 출석/결석 표시 후 제출할 수 있습니다.' : undefined}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
-                >
-                  <CheckSquare size={16} /> {isSubmittingAttendance
-                    ? '저장 중...'
-                    : !allMembersChecked
-                      ? `전원 표시 필요 (${targetMembers.filter(m => !checkSelections[m.id]).length}명 남음)`
-                      : `${hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기'} (${attendedCount}명 출석)`}
-                </button>
+                <div className="space-y-2">
+                  {unsetCount > 0 && checkedMembers.length > 0 && (
+                    <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+                      ⚠️ <strong>{unsetCount}명</strong>이 아직 표시되지 않았습니다. 이대로 저장하면 그분들은 <strong>미지정</strong>으로 남고,
+                      담당자에게 계속 알림이 갑니다.
+                    </p>
+                  )}
+                  <button
+                    onClick={handleSubmitAttendance}
+                    disabled={!canSubmit || isSubmittingAttendance}
+                    title={!canSubmit ? '한 명 이상 표시한 뒤 저장할 수 있습니다.' : undefined}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <CheckSquare size={16} /> {isSubmittingAttendance
+                      ? '저장 중...'
+                      : !canSubmit
+                        ? '한 명 이상 표시해 주세요'
+                        : unsetCount > 0
+                          ? `여기까지 저장하기 (${attendedCount}명 출석 · ${unsetCount}명 미지정)`
+                          : `${hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기'} (${attendedCount}명 출석)`}
+                  </button>
+                </div>
               )}
             </div>
           </div>

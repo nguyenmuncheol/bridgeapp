@@ -62,11 +62,15 @@ export interface UserProfile {
   teachGroup?: string
 }
 
-// 사용자 호칭 생성 헬퍼 함수
-// - 가입 대기자(PENDING) 또는 직분이 미정인 경우: "이름님" (예: 홍길동님)
-// - 정회원 이상이고 직분이 있는 경우: "이름 직분님" (예: 홍길동 목사님, 김영희 집사님)
-export function getUserDisplayName(user: UserProfile, suffix = '님'): string {
-  if (!user || user.id === 'guest') return '방문자님'
+/** 교회 단톡방 (카카오 오픈채팅) — 홈 화면 버튼과 가입 환영 팝업이 함께 씁니다 */
+export const KAKAO_OPEN_CHAT_URL = 'https://open.kakao.com/o/gi8JM1Ii'
+
+// 이름표(목록·명단·작성자 표기)에 쓰는 호칭입니다.
+// - 직분이 있으면 "홍길동 목사", 없으면 "홍길동"
+// - 예전에는 뒤에 '님'을 붙였는데, 명단에서는 군더더기라 기본값을 뺐습니다.
+//   말을 거는 문장("환영합니다 ○○님")은 getSimpleUserName 을 쓰세요.
+export function getUserDisplayName(user: UserProfile, suffix = ''): string {
+  if (!user || user.id === 'guest') return `방문자${suffix}`
   if (user.role === 'PENDING') return `${user.name}${suffix}`
   const duty = user.duty?.trim()
   if (duty) {
@@ -125,7 +129,8 @@ export interface NotificationItem {
   id: string
   // COMMENT/LIKE/NOTICE = 성도님이 만든 알림
   // MEAL/ATTENDANCE/BIRTHDAY/BULLETIN = 서버가 시간에 맞춰 자동으로 보내는 알림
-  type: 'COMMENT' | 'LIKE' | 'NOTICE' | 'MEAL' | 'ATTENDANCE' | 'BIRTHDAY' | 'BULLETIN'
+  // MANUAL = 관리자가 직접 써서 보낸 알림
+  type: 'COMMENT' | 'LIKE' | 'NOTICE' | 'MEAL' | 'ATTENDANCE' | 'BIRTHDAY' | 'BULLETIN' | 'MANUAL'
   title: string
   body: string
   actorName: string

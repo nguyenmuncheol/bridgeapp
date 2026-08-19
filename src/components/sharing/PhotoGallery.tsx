@@ -2,11 +2,13 @@
 
 import { useState, Dispatch, SetStateAction, ReactNode } from 'react'
 import { Heart, Filter, Trash2, X, Edit2 } from 'lucide-react'
-import { PostItem, UserProfile } from '../../lib/mockData'
+import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 import ImageSlider from '../ImageSlider'
 import { saveImage, openImageViewer } from '../../lib/download'
+import CommentList from '../CommentList'
+import { dbAddComment } from '../../lib/db'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -68,6 +70,45 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   //  ② 이 방식은 "남의 게시글을 수정"하는 것이라, 게시글 수정 권한을 작성자·관리자로
   //     조이면 좋아요가 통째로 고장납니다.
   // → 기도제목/교우소식과 동일하게 서버 함수(dbTogglePostLike)를 거칩니다.
+  // ── 댓글 (다른 게시판과 같은 공용 부품을 씁니다) ──
+  const handleAddComment = async (photoId: string, text: string) => {
+    const tempId = `c_${Date.now()}`
+    const authorName = getUserDisplayName(currentUser)
+    setPhotos(prev => prev.map(p => p.id === photoId ? {
+      ...p,
+      comments: [...(p.comments || []), { id: tempId, authorId: currentUser.id, authorName, content: text, createdAt: '방금 전' }]
+    } : p))
+
+    const { error, id, createdAt } = await dbAddComment(photoId, currentUser.id, authorName, text)
+    if (error) {
+      setPhotos(prev => prev.map(p => p.id === photoId ? {
+        ...p, comments: (p.comments || []).filter(c => c.id !== tempId)
+      } : p))
+      showToast('댓글 등록 중 오류가 발생했습니다.', true)
+      return
+    }
+    // 임시 번호를 진짜 번호로 갈아끼웁니다 (안 하면 방금 쓴 댓글을 못 고칩니다)
+    if (id) {
+      setPhotos(prev => prev.map(p => p.id === photoId ? {
+        ...p,
+        comments: (p.comments || []).map(c => (c.id === tempId ? { ...c, id, createdAt: createdAt || c.createdAt } : c))
+      } : p))
+    }
+  }
+
+  const handleCommentChanged = (photoId: string, commentId: string, nextContent: string | null) => {
+    setPhotos(prev => prev.map(p => {
+      if (p.id !== photoId) return p
+      const comments = p.comments || []
+      return {
+        ...p,
+        comments: nextContent === null
+          ? comments.filter(c => c.id !== commentId)
+          : comments.map(c => (c.id === commentId ? { ...c, content: nextContent } : c)),
+      }
+    }))
+  }
+
   const handlePhotoLike = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
     const target = photos.find(p => p.id === id)
@@ -328,6 +369,11 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
             setEditPhotoTag((photo.tags || []).filter(t => t !== '전체')[0] || '')
           }}
           onDelete={(id) => handleDeletePhoto(id)}
+          allUsers={allUsers}
+          comments={(photos.find(p => p.id === activePhotoModal.id)?.comments) || []}
+          onAddComment={handleAddComment}
+          onCommentChanged={handleCommentChanged}
+          onCommentError={msg => showToast(msg, true)}
         />
       )}
     </div>
@@ -343,7 +389,12 @@ function PhotoDetailModal({
   onClose,
   onLike,
   onEdit,
-  onDelete
+  onDelete,
+  allUsers,
+  comments,
+  onAddComment,
+  onCommentChanged,
+  onCommentError
 }: {
   photo: PostItem
   currentUser: UserProfile
@@ -355,6 +406,11 @@ function PhotoDetailModal({
   onLike: (id: string) => void
   onEdit: (photo: PostItem) => void
   onDelete: (id: string) => void
+  allUsers: UserProfile[]
+  comments: CommentItem[]
+  onAddComment: (postId: string, text: string) => void
+  onCommentChanged: (postId: string, commentId: string, nextContent: string | null) => void
+  onCommentError: (msg: string) => void
 }) {
   const images = photo.imageUrls || ['https://images.unsplash.com/photo-1544427920-c49ccfb85579?auto=format&fit=crop&w=800&q=80']
   const [imgIdx, setImgIdx] = useState(0)
@@ -485,6 +541,21 @@ function PhotoDetailModal({
               {isSavingAll ? '저장 중...' : `📦 전체 저장 (${images.length}장)`}
             </button>
           </div>
+        </div>
+
+        {/* 댓글 — 기도제목·찬양묵상·가족소식과 같은 공용 부품 */}
+        <div className="pt-1 border-t border-gray-100">
+          <CommentList
+            postId={photo.id}
+            comments={comments}
+            currentUser={currentUser}
+            allUsers={allUsers}
+            isAdmin={isAdmin}
+            onAddComment={onAddComment}
+            onCommentChanged={onCommentChanged}
+            onError={onCommentError}
+            placeholder="사진에 대한 이야기를 남겨보세요..."
+          />
         </div>
       </div>
     </div>

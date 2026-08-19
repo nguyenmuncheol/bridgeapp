@@ -131,8 +131,16 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
       comments: [...(p.comments || []), { id: tempId, authorId: currentUser.id, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
     } : p))
     try {
-      const { error } = await dbAddComment(prayerId, currentUser.id, getUserDisplayName(currentUser), text)
+      const { error, id, createdAt } = await dbAddComment(prayerId, currentUser.id, getUserDisplayName(currentUser), text)
       if (error) throw error
+      // 🐛 저장에 성공하면 **임시 번호를 진짜 번호로 갈아끼웁니다.**
+      // 이걸 안 하면 방금 쓴 댓글을 바로 수정·삭제할 때 서버가 그 댓글을 못 찾습니다.
+      if (id) {
+        setPrayers(prev => prev.map(p => p.id === prayerId ? {
+          ...p,
+          comments: (p.comments || []).map(c => (c.id === tempId ? { ...c, id, createdAt: createdAt || c.createdAt } : c))
+        } : p))
+      }
     } catch {
       setPrayers(prev => prev.map(p => p.id === prayerId ? {
         ...p,
