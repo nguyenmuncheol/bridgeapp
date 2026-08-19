@@ -389,7 +389,7 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
                             placeholder="결석 사유 직접 입력..."
                             value={notes[member.id] || ''}
                             onChange={e => setNotes(p => ({ ...p, [member.id]: e.target.value }))}
-                            className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none"
+                            className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none text-gray-900 font-medium"
                           />
                         </div>
                       )}
@@ -452,7 +452,7 @@ export default function AttendanceTab({ currentUser, allUsers }: AttendanceTabPr
               placeholder="이름, 직분, 주소 검색..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full text-xs pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none"
+              className="w-full text-xs pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none text-gray-900 font-medium"
             />
           </div>
 

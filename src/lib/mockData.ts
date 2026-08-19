@@ -1,4 +1,16 @@
-export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON'
+// REJECTED: 가입이 거절된 계정. 예전에는 profiles 행을 아예 삭제했는데, 로그인 계정은
+// 남아있어서 그분이 앱을 다시 열면 승인 대기 목록에 무한히 다시 올라왔습니다.
+export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON' | 'REJECTED'
+
+/** 승인이 끝나 실제로 교회 명단에 포함되는 성도인지 (주소록/출석/통계 대상) */
+export function isApprovedMember(role: Role | undefined | null): boolean {
+  return role !== 'PENDING' && role !== 'REJECTED' && role !== undefined && role !== null
+}
+
+/** 아직 앱을 정상적으로 쓸 수 없는 상태인지 (대기 중이거나 거절됨) */
+export function isBlockedRole(role: Role | undefined | null): boolean {
+  return role === 'PENDING' || role === 'REJECTED'
+}
 
 export interface UserProfile {
   id: string
@@ -11,17 +23,22 @@ export interface UserProfile {
   duty: string // 성도, 집사, 권사, 장로, 목사 등
   familyGroupId?: string // 가정을 묶는 그룹 ID (예: 'family_kim', 'family_lee')
   familyRole?: string // '부', '모', '자녀1', '자녀2', '조부', '조모', '자녀', '기타'
-  familyInfo?: string // '아내: 홍길순, 자녀: 김철수'
+  familyInfo?: string // 배우자 자동연동 + 자녀 구조화 데이터가 JSON으로 저장됨 (src/lib/familyInfo.ts 참고). 예전 방식의 일반 텍스트 메모도 호환됨.
   birthday?: string // '08-15' (MM-DD)
   avatarUrl?: string
   createdAt: string
+  // 아래 두 필드는 실제 계정이 없는 자녀 등 가족 구성원을 주소록에 표시하기 위한
+  // 가상 항목(dependent entry)에만 설정됩니다. 실제 성도 프로필에는 사용되지 않습니다.
+  isDependent?: boolean
+  parentName?: string
 }
 
 // 사용자 호칭 생성 헬퍼 함수
-// - 직분이 있으면: "이름 직분님" (예: 홍길동 목사님, 김영희 성도님)
-// - 직분이 없거나 미정이면: "이름님" (예: 홍길동님)
+// - 가입 대기자(PENDING) 또는 직분이 미정인 경우: "이름님" (예: 홍길동님)
+// - 정회원 이상이고 직분이 있는 경우: "이름 직분님" (예: 홍길동 목사님, 김영희 집사님)
 export function getUserDisplayName(user: UserProfile, suffix = '님'): string {
   if (!user || user.id === 'guest') return '방문자님'
+  if (user.role === 'PENDING') return `${user.name}${suffix}`
   const duty = user.duty?.trim()
   if (duty) {
     return `${user.name} ${duty}${suffix}`
@@ -88,6 +105,10 @@ export interface PostItem {
 
 export interface CommentItem {
   id: string
+  /** 댓글 작성자 계정 ID. 프로필 사진을 찾을 때 사용합니다.
+   *  (이전에는 이름으로만 찾았는데, 댓글에는 "김목사 목사님"처럼 직분이 붙은 이름이
+   *   저장되고 프로필의 이름은 "김목사"라서 한 번도 매칭되지 않았습니다.) */
+  authorId?: string
   authorName: string
   authorAvatar?: string
   content: string

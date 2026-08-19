@@ -34,7 +34,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'))
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기/뒤로가기 X 버튼 */}
         <button
@@ -126,6 +126,11 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               required
             />
             <p className="text-[10px] text-gray-500 mt-1">💡 현재 거주하시는 아파트+동+호수를 입력해 주세요.</p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 flex items-start gap-1.5">
+            <span className="text-[11px] mt-px">🔒</span>
+            <p className="text-[10px] text-blue-800 leading-relaxed">전화번호/주소는 교인관리 목적으로만 사용되며<br />공개되지 않습니다.</p>
           </div>
 
           {/* 생년월일 (연도 | 월 | 일 드롭다운) */}

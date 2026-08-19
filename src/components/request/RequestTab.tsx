@@ -4,7 +4,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { Utensils, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
 import { UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked } from '../../lib/dateUtils'
-import { dbFetchMealRegistrations, dbSaveMealRegistration, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
+import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
+import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/familyKey'
+import { useCachedQuery } from '../../lib/dataCache'
 
 interface RequestTabProps {
   currentUser: UserProfile
@@ -19,14 +21,35 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
   const sundayDates = upcomingSundays.map(s => s.displayStr)
   const [selectedWeek, setSelectedWeek] = useState(0)
   const selectedSundayObj = upcomingSundays[selectedWeek]?.dateObj || new Date()
-  const { isLocked, remainingText } = isMealRegistrationLocked(selectedSundayObj)
+  // 🐛 과거 버그: 마감 여부를 화면이 그려질 때 딱 한 번만 계산했습니다. 홈 화면 앱을
+  // 켜둔 채로 시간이 지나면(토요일 아침에 열어두고 오후에 다시 보는 경우) 이미 마감된
+  // 시간인데도 "마감까지 3시간" 표시가 그대로였고, 저장 버튼도 그대로 눌렸습니다.
+  // → 1분마다, 그리고 앱을 다시 볼 때마다 다시 계산합니다.
+  const [clockTick, setClockTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setClockTick(t => t + 1), 60_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') setClockTick(t => t + 1) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
+  const { isLocked, remainingText } = useMemo(
+    () => isMealRegistrationLocked(selectedSundayObj),
+    // clockTick이 바뀔 때마다 다시 계산합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedSundayObj, clockTick]
+  )
 
   const spouse = allUsers.find(u =>
     u.familyGroupId === currentUser.familyGroupId &&
     u.id !== currentUser.id &&
     currentUser.familyGroupId
   )
-  const familyId = currentUser.familyGroupId || `fam_single_${currentUser.id}`
+  // 가정 키는 familyKey.ts 한 곳에서만 만듭니다(화면·주방 집계가 같은 기준을 쓰도록).
+  const familyId = familyKeyOf(currentUser)
 
   const [familyMealStore, setFamilyMealStore] = useState<Record<string, Record<number, {
     submitted: boolean; attending: boolean; adultCount: number; childCount: number; updatedBy: string
@@ -43,7 +66,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string) => {
     setToastMsg(msg)
-    setTimeout(() => setToastMsg(''), 1000)
+    setTimeout(() => setToastMsg(''), 3000)
   }
 
   // ── 행사 신청 (제목 + 내용 + URL 3필드) ──
@@ -55,55 +78,79 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
 
-  // Supabase DB에서 식사 신청 및 행사 신청 로드
+  // Supabase DB에서 식사 신청 및 행사 신청 로드 (관리자 "식사" 탭과 캐시를 공유해 반복 조회하지 않음)
+  const { data: mealRegistrations } = useCachedQuery('mealRegistrations', () => dbFetchMealRegistrations())
+  const { data: latestEventForm } = useCachedQuery('eventForm:latest', () => dbFetchLatestEventForm())
+
   useEffect(() => {
-    // 1. 식사 신청 로드
-    dbFetchMealRegistrations().then(regs => {
-      if (regs && regs.length > 0) {
-        const newStore: Record<string, Record<number, any>> = {}
-        regs.forEach(r => {
-          const wIdx = upcomingSundays.findIndex(s => s.dateStr === r.date_str)
-          if (wIdx !== -1) {
-            if (!newStore[r.family_group_id]) newStore[r.family_group_id] = {}
-            newStore[r.family_group_id][wIdx] = {
-              submitted: true,
-              attending: r.attending,
-              adultCount: r.adult_count,
-              childCount: r.child_count,
-              updatedBy: r.registered_by_user_name
-            }
-          }
-        })
-        setFamilyMealStore(prev => ({ ...prev, ...newStore }))
+    if (!mealRegistrations || mealRegistrations.length === 0) return
+    const newStore: Record<string, Record<number, any>> = {}
+    const stamp: Record<string, string> = {}
+    mealRegistrations.forEach(r => {
+      const wIdx = upcomingSundays.findIndex(s => s.dateStr === r.date_str)
+      if (wIdx === -1) return
+      // 옛날 키로 저장된 줄도 지금 이 가정의 것으로 인식되게 변환합니다.
+      const key = resolveFamilyKey(r.family_group_id, allUsers)
+      const seenAt = String(r.updated_at || r.created_at || '')
+      const slot = `${key}#${wIdx}`
+      // 같은 가정에 옛/새 줄이 둘 다 있으면 가장 최근에 저장한 것만 씁니다.
+      if (stamp[slot] !== undefined && stamp[slot] >= seenAt) return
+      stamp[slot] = seenAt
+      if (!newStore[key]) newStore[key] = {}
+      newStore[key][wIdx] = {
+        submitted: true,
+        attending: r.attending,
+        adultCount: r.adult_count,
+        childCount: r.child_count,
+        updatedBy: r.registered_by_user_name
       }
     })
+    setFamilyMealStore(prev => ({ ...prev, ...newStore }))
+  }, [mealRegistrations, upcomingSundays, allUsers])
 
-    // 2. 행사 신청 로드
-    dbFetchLatestEventForm().then(ef => {
-      if (ef) {
-        setEventFormTitle(ef.title)
-        setEventFormContent(ef.content)
-        setEventFormUrl(ef.url)
-        setEditTitle(ef.title)
-        setEditContent(ef.content)
-        setEditUrl(ef.url)
-      }
-    })
-  }, [upcomingSundays])
+  useEffect(() => {
+    if (!latestEventForm) return
+    setEventFormTitle(latestEventForm.title)
+    setEventFormContent(latestEventForm.content)
+    setEventFormUrl(latestEventForm.url)
+    setEditTitle(latestEventForm.title)
+    setEditContent(latestEventForm.content)
+    setEditUrl(latestEventForm.url)
+  }, [latestEventForm])
 
-  const handleSelectWeek = (idx: number) => {
-    setSelectedWeek(idx)
-    const d = familyMealStore[familyId]?.[idx]
-    // 저장된 데이터가 있으면 그 값으로 복원, 없으면 기본값
+  // 🐛 과거 버그(가장 심각): 저장된 인원을 화면 입력칸에 넣어주는 코드가
+  // "주차 탭을 손으로 눌렀을 때"에만 실행됐습니다. 앱을 열면 이번 주 탭이 기본 선택인데
+  // 그 경로로는 실행되지 않아서, 이미 성인 2 / 어린이 3으로 신청해둔 가정도 화면에는
+  // 항상 "성인 1, 어린이 0"으로 보였습니다.
+  // 배우자가 그걸 보고 "한 명만 신청했네" 하며 고쳐서 저장하면 **어린이 3명이 사라졌습니다.**
+  // ("식사 안 함"으로 신청한 가정도 화면에는 "식사함"이 선택된 것처럼 보였습니다.)
+  // → 주차가 바뀌거나 서버 데이터가 도착하면 항상 저장값을 화면에 반영합니다.
+  useEffect(() => {
+    const d = familyMealStore[familyId]?.[selectedWeek]
     setTempAttending(d ? d.attending : true)
     setTempAdult(d ? d.adultCount : 1)
     setTempChild(d ? d.childCount : 0)
+  }, [familyMealStore, familyId, selectedWeek])
+
+  const handleSelectWeek = (idx: number) => {
+    setSelectedWeek(idx)
   }
 
+  const [isSavingMeal, setIsSavingMeal] = useState(false)
+
   const handleSaveMeal = async () => {
-    if (isLocked) return
+    if (isLocked || isSavingMeal) return
     const targetSunday = upcomingSundays[selectedWeek]?.dateStr || ''
-    await dbSaveMealRegistration({
+    if (!targetSunday) {
+      showToast('\u26a0\ufe0f \ub0a0\uc9dc\ub97c \ud655\uc778\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4. \uc0c8\ub85c\uace0\uce68 \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.')
+      return
+    }
+
+    setIsSavingMeal(true)
+    // \ud83d\udc1b \uacfc\uac70 \ubc84\uadf8: \uc800\uc7a5 \uacb0\uacfc\ub97c \ud655\uc778\ud558\uc9c0 \uc54a\uace0 \ubb34\uc870\uac74 "\u2705 \uc2e0\uccad \uc644\ub8cc" \ud1a0\uc2a4\ud2b8\ub97c \ub744\uc6e0\uc2b5\ub2c8\ub2e4.
+    // \uad50\ud68c \uc9c0\ud558\uc2e4 \uc640\uc774\ud30c\uac00 \ub04a\uae30\uac70\ub098 \uad8c\ud55c \uc124\uc815\uc774 \ub9de\uc9c0 \uc54a\uc73c\uba74, \uc131\ub3c4\ub294 \uc2e0\uccad\ub41c \uc904 \uc54c\uace0
+    // \ub3cc\uc544\uac00\uc9c0\ub9cc \uc8fc\ubc29 \uba85\ub2e8\uc5d0\ub294 \uc5c6\ub294 \uc0c1\ud669\uc774 \ub429\ub2c8\ub2e4.
+    const res = await dbSaveMealRegistration({
       familyGroupId: familyId,
       dateStr: targetSunday,
       registeredByUserId: currentUser.id,
@@ -112,6 +159,16 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
       adultCount: tempAttending ? tempAdult : 0,
       childCount: tempAttending ? tempChild : 0
     })
+    setIsSavingMeal(false)
+
+    if (res.error) {
+      showToast('\u26a0\ufe0f \uc800\uc7a5\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4. \uc778\ud130\ub137 \uc0c1\ud0dc\ub97c \ud655\uc778\ud558\uace0 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.')
+      return
+    }
+
+    // 가족 연결 전에 혼자 신청해둔 옛날 줄이 남아 있으면 주방 집계가 두 배로 잡힙니다.
+    // 저장이 성공한 뒤 같은 날짜의 옛날 줄을 정리합니다. (실패해도 신청 자체는 유효)
+    void dbCleanupStaleMealRegistrations(staleFamilyKeys(currentUser, allUsers), targetSunday)
 
     setFamilyMealStore(prev => ({
       ...prev,
@@ -126,7 +183,11 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
         }
       }
     }))
-    showToast(currentMealData.submitted ? '✅ 식사 신청이 수정되었습니다!' : '✅ 식사 신청이 완료되었습니다!')
+    showToast(
+      tempAttending
+        ? `\u2705 \uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4 \u2014 \uc131\uc778 ${tempAdult}\uba85, \uc5b4\ub9b0\uc774 ${tempChild}\uba85`
+        : '\u2705 \uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4 \u2014 \uc774\ubc88 \uc8fc\ub294 \uc2dd\uc0ac\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4'
+    )
   }
 
   const handleSaveEventForm = async () => {
@@ -173,6 +234,31 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
         )}
 
         {/* 향후 4주 탭 (월요일 기준 동적) */}
+        {/* 현재 신청 상태를 항상 보이게 (1초 토스트만으로는 저장됐는지 확인할 방법이 없었습니다) */}
+        <div className={`p-3 rounded-xl border text-xs ${
+          currentMealData.submitted
+            ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
+            : 'bg-gray-50 border-gray-200 text-gray-500'
+        }`}>
+          {currentMealData.submitted ? (
+            <>
+              <p className="font-bold">
+                {currentMealData.attending
+                  ? `현재 신청: 성인 ${currentMealData.adultCount}명 · 어린이 ${currentMealData.childCount}명`
+                  : '현재 신청: 식사 안 함'}
+              </p>
+              <p className="text-[11px] mt-0.5 opacity-80">
+                {sundayDates[selectedWeek]} · 최종 수정 {currentMealData.updatedBy}
+              </p>
+            </>
+          ) : (
+            <p className="font-bold">{sundayDates[selectedWeek]} · 아직 신청하지 않으셨습니다</p>
+          )}
+          <p className="text-[11px] mt-1 opacity-70">
+            우리 가정 전체 인원을 입력해 주세요. 가족이 각각 신청하면 두 번 계산됩니다.
+          </p>
+        </div>
+
         <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-50 rounded-xl text-xs font-medium">
           {sundayDates.map((dateStr, idx) => (
             <button key={idx} onClick={() => handleSelectWeek(idx)}
@@ -199,10 +285,23 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
               {[{ label: '성인', val: tempAdult, set: setTempAdult, min: 1 }, { label: '어린이', val: tempChild, set: setTempChild, min: 0 }].map(({ label, val, set, min }) => (
                 <div key={label} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-gray-100">
                   <span className="text-gray-600 font-bold">{label}</span>
-                  <div className="flex items-center gap-2">
-                    <button disabled={isLocked} onClick={() => set(Math.max(min, val - 1))} className="w-5 h-5 bg-gray-100 rounded text-gray-600 flex items-center justify-center font-bold disabled:opacity-50">-</button>
-                    <span className="font-bold text-[#335f87] w-4 text-center">{val}</span>
-                    <button disabled={isLocked} onClick={() => set(val + 1)} className="w-5 h-5 bg-gray-100 rounded text-gray-600 flex items-center justify-center font-bold disabled:opacity-50">+</button>
+                  {/* 버튼 크기 20px -> 44px: 교회에서 가장 중요한 숫자(몇 인분을 준비할지)를
+                      정하는 버튼인데 앱에서 가장 작았습니다. 권장 최소 크기의 절반도 안 돼서
+                      어르신이 +와 -를 잘못 누르기 쉬웠고, 저장된 값도 화면에 안 보였습니다. */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      disabled={isLocked}
+                      onClick={() => set(Math.max(min, val - 1))}
+                      aria-label={`${label} 인원 줄이기`}
+                      className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-lg disabled:opacity-50"
+                    >−</button>
+                    <span className="font-bold text-[#335f87] w-8 text-center text-base">{val}</span>
+                    <button
+                      disabled={isLocked}
+                      onClick={() => set(val + 1)}
+                      aria-label={`${label} 인원 늘리기`}
+                      className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-lg disabled:opacity-50"
+                    >+</button>
                   </div>
                 </div>
               ))}
@@ -212,16 +311,45 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           {!isLocked ? (
             <button
               onClick={handleSaveMeal}
-              className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+              disabled={isSavingMeal}
+              className={`w-full py-3 rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-60 ${
                 currentMealData.submitted ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-[#335f87] hover:bg-[#2b5072] text-white'
               }`}
             >
-              {currentMealData.submitted ? `수정하기 (최종: ${currentMealData.updatedBy})` : '식사 신청하기'}
+              {/* 🐛 과거 버그: "안 함"을 골라도 버튼이 계속 "식사 신청하기"였습니다(정반대 의미).
+                  또 저장 중 표시가 없어서 반응이 없어 보이면 여러 번 누르게 됐습니다. */}
+              {isSavingMeal
+                ? '저장 중...'
+                : !tempAttending
+                  ? '식사 안 함으로 저장'
+                  : currentMealData.submitted
+                    ? '수정 내용 저장하기'
+                    : '식사 신청하기'}
             </button>
           ) : (
-            <div className="w-full py-2.5 bg-gray-200 text-gray-500 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1">
-              <Lock size={12} /> 신청 완료 (마감시간 경과)
-            </div>
+            <div className="w-full space-y-1.5">
+              {/* 🐛 과거 버그: 마감된 주에는 신청 여부와 관계없이 무조건
+                  "신청 완료 (마감시간 경과)"가 떴습니다. 토요일 오후 2시부터 월요일 새벽까지
+                  약 34시간 동안, 신청을 깜빡한 분에게도 "신청 완료"라고 알려준 셈입니다.
+                  그분은 식사하러 오시는데 밥이 없습니다. */}
+              {currentMealData.submitted ? (
+                <div className="w-full py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1">
+                  <Lock size={12} />
+                  {currentMealData.attending
+                    ? `신청 완료 · 성인 ${currentMealData.adultCount}명, 어린이 ${currentMealData.childCount}명 (마감)`
+                    : '식사 안 함으로 신청됨 (마감)'}
+                </div>
+              ) : (
+                <div className="w-full py-2.5 bg-gray-100 text-gray-500 border border-gray-200 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1">
+                  <Lock size={12} /> 이번 주는 신청하지 않으셨습니다 (마감)
+                </div>
+              )}
+              {upcomingSundays.length > 1 && (
+                <p className="text-[11px] text-gray-400 text-center">
+                  다음 주일은 위 날짜 탭에서 신청하실 수 있습니다.
+                </p>
+              )}
+                        </div>
           )}
         </div>
       </section>
@@ -290,7 +418,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
 
       {/* 관리자: 행사 등록/수정 모달 (제목 + 내용 + URL 3필드) */}
       {showEventEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-gray-900">📋 행사 신청 관리 (관리자)</h3>
@@ -304,7 +432,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   placeholder="예: 2026 여름 수련회"
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
               </div>
               <div>
@@ -314,7 +442,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   placeholder="행사 일시, 장소, 신청 방법 등 안내 내용을 입력하세요..."
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium"
                 />
               </div>
               <div>
@@ -324,7 +452,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   placeholder="https://forms.google.com/..."
                   value={editUrl}
                   onChange={e => setEditUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87]"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
                 <p className="text-[10px] text-gray-400 mt-1">URL 미입력 시 "담당자에게 직접 신청" 안내 표시</p>
               </div>

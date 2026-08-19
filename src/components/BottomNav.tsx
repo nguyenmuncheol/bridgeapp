@@ -17,7 +17,10 @@ const NAV_ITEMS = [
 
 export default function BottomNav({ currentTab, setCurrentTab }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-lg">
+    // pb-[env(safe-area-inset-bottom)]: 아이폰에서 홈 화면 앱으로 실행하면 화면 맨 아래
+    // 약 34px이 시스템 홈 인디케이터 영역입니다. 이 여백이 없으면 메뉴가 그 아래로 들어가
+    // 글자가 가려지고, 그 부분을 누르면 iOS가 탭을 가로채서 "가끔 안 눌려요"가 됩니다.
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-lg pb-[env(safe-area-inset-bottom)]">
       <div className="w-full max-w-lg md:max-w-xl mx-auto flex items-stretch">
         {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
           const isActive = currentTab === id

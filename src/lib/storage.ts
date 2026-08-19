@@ -63,38 +63,55 @@ export async function compressImage(file: File, maxWidth = 1600, quality = 0.82)
   })
 }
 
+/** 업로드를 허용할 이미지 확장자 */
+const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif']
+/** 압축 후에도 이 크기를 넘으면 업로드하지 않습니다 (모바일 데이터 보호) */
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024 // 8MB
+
 /**
  * 단일 파일을 압축 후 Supabase Storage에 업로드하고 Public URL을 반환합니다.
+ *
+ * 🐛 과거 버그: 업로드가 실패하면 조용히 "이미지를 base64 글자로 바꿔서" 반환했습니다.
+ * 그 글자 덩어리가 DB의 게시글/프로필 행에 그대로 저장되는데, 한 장에 400KB
+ * (압축 실패 경로에서는 원본 그대로라 10MB 이상)입니다. 그러면 그 게시판을 여는
+ * **모든 성도가 매번 그걸 내려받게 되고**, 나중에 정리할 방법도 없습니다
+ * (파일 삭제 함수의 경로 추출 정규식이 base64에는 안 맞습니다).
+ * 사용자는 업로드가 실패했다는 사실조차 알 수 없었습니다.
+ *
+ * → 이제 실패하면 예외를 던집니다. 호출부에서 "이미지 업로드에 실패했습니다"를
+ *   보여주고 글 등록을 막아야 합니다.
  */
 export async function uploadImageToStorage(file: File, folder = 'uploads'): Promise<string> {
-  try {
-    // 1. 클라이언트 측에서 자동 압축 수행
-    const processedFile = await compressImage(file)
+  // 1. 클라이언트 측에서 자동 압축 수행
+  const processedFile = await compressImage(file)
 
-    const fileExt = processedFile.name.split('.').pop() || 'jpg'
-    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
-
-    const { data, error } = await supabase.storage
-      .from(DEFAULT_BUCKET)
-      .upload(fileName, processedFile, {
-        cacheControl: '3600',
-        upsert: false
-      })
-
-    if (error) {
-      console.warn('Supabase storage upload fallback to data URL:', error.message)
-      return await fileToDataUrl(processedFile)
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from(DEFAULT_BUCKET)
-      .getPublicUrl(data.path)
-
-    return publicUrlData.publicUrl
-  } catch (err) {
-    console.error('Storage upload error:', err)
-    return await fileToDataUrl(file)
+  if (processedFile.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`이미지 용량이 너무 큽니다 (${Math.round(processedFile.size / 1024 / 1024)}MB). 8MB 이하로 줄여서 다시 시도해 주세요.`)
   }
+
+  // 확장자가 없거나(카카오톡에서 받은 사진 등) 이미지가 아닌 경우 jpg로 처리.
+  // (기존에는 확장자 없는 'photo' 같은 이름에서 '.photo'가 붙어 브라우저가 이미지로 인식 못 했습니다)
+  const nameParts = processedFile.name.split('.')
+  const rawExt = nameParts.length > 1 ? (nameParts.pop() || '').toLowerCase() : ''
+  const fileExt = ALLOWED_EXTS.includes(rawExt) ? rawExt : 'jpg'
+  const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
+
+  const { data, error } = await supabase.storage
+    .from(DEFAULT_BUCKET)
+    .upload(fileName, processedFile, {
+      cacheControl: '3600',
+      upsert: false
+    })
+
+  if (error) {
+    throw new Error(`이미지 업로드에 실패했습니다: ${error.message}`)
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from(DEFAULT_BUCKET)
+    .getPublicUrl(data.path)
+
+  return publicUrlData.publicUrl
 }
 
 /**
@@ -108,11 +125,17 @@ export async function uploadMultipleImagesToStorage(
   const total = files.length
   const urls: string[] = []
 
-  for (let i = 0; i < total; i++) {
-    if (onProgress) onProgress(i, total)
-    const url = await uploadImageToStorage(files[i], folder)
-    urls.push(url)
-    if (onProgress) onProgress(i + 1, total)
+  try {
+    for (let i = 0; i < total; i++) {
+      if (onProgress) onProgress(i, total)
+      const url = await uploadImageToStorage(files[i], folder)
+      urls.push(url)
+      if (onProgress) onProgress(i + 1, total)
+    }
+  } catch (err) {
+    // 중간에 실패하면 이미 올라간 파일들은 아무도 참조하지 않는 쓰레기가 되므로 정리합니다.
+    if (urls.length > 0) await deleteImagesFromStorage(urls).catch(() => {})
+    throw err
   }
 
   return urls
@@ -144,12 +167,4 @@ export async function deleteImagesFromStorage(publicUrls: string[]): Promise<voi
   if (error) {
     console.warn('Storage 파일 삭제 실패:', error.message)
   }
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.readAsDataURL(file)
-  })
 }

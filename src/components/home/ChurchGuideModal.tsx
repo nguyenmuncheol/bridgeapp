@@ -18,14 +18,12 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
   ]
 
   const DEPARTMENTS = [
-    { name: '유치부 / 초등부', time: '매주 일요일 오전 11:00', loc: '1층 교육관', teacher: '이교사 성도' },
-    { name: '청소년부 (중고등부)', time: '매주 일요일 오전 11:00', loc: '1층 소예배실', teacher: '박집사' },
-    { name: '청년부', time: '매주 주일 예배 후 오후 1:30', loc: '2층 모임실', teacher: '최리더' },
-    { name: '찬양대 (브릿지 워십)', time: '매주 일요일 오전 10:00 연습', loc: '2층 본당', teacher: '김사모' },
+    { name: '유아부', time: '매주 일요일 오전 11:00', loc: '유아부실' },
+    { name: '중고등부', time: '매주 일요일 오전 11:00', loc: '중고등부실' },
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[85vh] flex flex-col shadow-2xl">
         {/* 헤더 */}
         <div className="bg-[#335f87] text-white p-4 flex items-center justify-between">
@@ -128,16 +126,8 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                 </h5>
                 <div className="space-y-1.5">
                   <div className="p-2.5 bg-blue-50/60 rounded-xl flex justify-between items-center">
-                    <span className="font-bold text-gray-800">주일 대예배</span>
-                    <div className="text-right"><p className="font-bold text-[#335f87]">일요일 11:00 AM</p><p className="text-[10px] text-gray-400">2층 본당</p></div>
-                  </div>
-                  <div className="p-2.5 bg-gray-50 rounded-xl flex justify-between items-center">
-                    <span className="font-bold text-gray-800">수요 기도회</span>
-                    <div className="text-right"><p className="font-bold text-gray-700">수요일 7:30 PM</p><p className="text-[10px] text-gray-400">2층 본당</p></div>
-                  </div>
-                  <div className="p-2.5 bg-gray-50 rounded-xl flex justify-between items-center">
-                    <span className="font-bold text-gray-800">새벽 기도회</span>
-                    <div className="text-right"><p className="font-bold text-gray-700">화·목 6:30 AM</p><p className="text-[10px] text-gray-400">1층 기도실</p></div>
+                    <span className="font-bold text-gray-800">주일 예배</span>
+                    <div className="text-right"><p className="font-bold text-[#335f87]">일요일 11:00 AM</p><p className="text-[10px] text-gray-400">대예배실</p></div>
                   </div>
                 </div>
               </div>
@@ -150,10 +140,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                 <div className="space-y-2">
                   {DEPARTMENTS.map((dept, idx) => (
                     <div key={idx} className="p-3 bg-gray-50 rounded-xl space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-gray-800">{dept.name}</span>
-                        <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-md">{dept.teacher} 담당</span>
-                      </div>
+                      <span className="font-bold text-gray-800">{dept.name}</span>
                       <p className="text-[11px] text-gray-500">{dept.time} ({dept.loc})</p>
                     </div>
                   ))}
