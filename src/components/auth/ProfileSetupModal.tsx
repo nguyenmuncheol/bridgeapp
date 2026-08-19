@@ -128,6 +128,11 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
             <p className="text-[10px] text-gray-500 mt-1">💡 현재 거주하시는 아파트+동+호수를 입력해 주세요.</p>
           </div>
 
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 flex items-start gap-1.5">
+            <span className="text-[11px] mt-px">🔒</span>
+            <p className="text-[10px] text-blue-800 leading-relaxed">전화번호/주소는 교인관리 목적으로만 사용되며<br />공개되지 않습니다.</p>
+          </div>
+
           {/* 생년월일 (연도 | 월 | 일 드롭다운) */}
           <div>
             <label className="block text-gray-600 font-semibold mb-1">

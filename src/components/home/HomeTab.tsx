@@ -2,11 +2,14 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
-import { INITIAL_BULLETIN, UserProfile, PostItem, getUserDisplayName } from '../../lib/mockData'
-import { getUpcomingSundays } from '../../lib/dateUtils'
+import { UserProfile, PostItem, getUserDisplayName } from '../../lib/mockData'
+import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbDeletePost } from '../../lib/db'
+import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
+import ImageSlider from '../ImageSlider'
+import { openImageViewer } from '../../lib/download'
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -29,21 +32,26 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   const upcomingSundays = useMemo(() => getUpcomingSundays(2), [])
 
   // 주보 상태 (imageUrls 배열 기반)
-  const [bulletin, setBulletin] = useState({
-    ...INITIAL_BULLETIN,
-    imageUrls: INITIAL_BULLETIN.imageUrls || [],
-  })
+  // 🐛 과거 버그: 개발용 예시 데이터(INITIAL_BULLETIN)로 초기화되어 있었습니다.
+  // 주보를 아직 한 번도 안 올렸거나 조회에 실패하면, 홈 화면에 실제로 존재하지 않는
+  // "김목사" 목사님의 8/9 설교와 외국 스톡 사진이 떴습니다. 로그인 안 한 방문자에게도요.
+  // → 데이터가 없으면 null로 두고 "아직 등록된 주보가 없습니다"를 보여줍니다.
+  const [bulletin, setBulletin] = useState<{
+    date: string; title: string; preacher: string; passage: string; summary: string; imageUrls: string[]
+  } | null>(null)
   const [showBulletinModal, setShowBulletinModal] = useState(false)
   const [activeBulletinImgIdx, setActiveBulletinImgIdx] = useState(0)
 
   // 주보 편집 모달 상태
   const [showBulletinEditModal, setShowBulletinEditModal] = useState(false)
-  const [editBulletinDate, setEditBulletinDate] = useState(bulletin.date)
-  const [editBulletinTitle, setEditBulletinTitle] = useState(bulletin.title)
-  const [editBulletinPassage, setEditBulletinPassage] = useState(bulletin.passage)
-  const [editBulletinPreacher, setEditBulletinPreacher] = useState(bulletin.preacher)
-  const [editBulletinSummary, setEditBulletinSummary] = useState(bulletin.summary)
-  const [editBulletinImages, setEditBulletinImages] = useState<string[]>(bulletin.imageUrls)
+  // 주보 날짜는 이제 'YYYY-MM-DD'로 저장합니다(화면 표시는 formatBulletinDisplay 사용).
+  const [editBulletinDate, setEditBulletinDate] = useState('')
+  const [editBulletinTitle, setEditBulletinTitle] = useState('')
+  const [editBulletinPassage, setEditBulletinPassage] = useState('')
+  const [editBulletinPreacher, setEditBulletinPreacher] = useState('')
+  const [editBulletinSummary, setEditBulletinSummary] = useState('')
+  const [editBulletinImages, setEditBulletinImages] = useState<string[]>([])
+  const [isSavingBulletin, setIsSavingBulletin] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 공지 상태
@@ -53,33 +61,32 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   const [newNoticeTitle, setNewNoticeTitle] = useState('')
   const [newNoticeContent, setNewNoticeContent] = useState('')
 
-  // Supabase DB 주보 및 공지사항 로드
-  useEffect(() => {
-    dbFetchLatestBulletin().then(dbBul => {
-      if (dbBul) {
-        setBulletin({
-          date: dbBul.date,
-          title: dbBul.title,
-          preacher: dbBul.preacher,
-          passage: dbBul.passage,
-          summary: dbBul.summary,
-          imageUrls: dbBul.imageUrls
-        })
-        setEditBulletinDate(dbBul.date)
-        setEditBulletinTitle(dbBul.title)
-        setEditBulletinPassage(dbBul.passage)
-        setEditBulletinPreacher(dbBul.preacher)
-        setEditBulletinSummary(dbBul.summary)
-        setEditBulletinImages(dbBul.imageUrls)
-      }
-    })
+  // Supabase DB 주보 및 공지사항 로드 (다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용)
+  const { data: latestBulletin } = useCachedQuery('bulletin:latest', () => dbFetchLatestBulletin())
+  const { data: noticePosts } = useCachedQuery('posts:NOTICE', () => dbFetchPosts('NOTICE'))
 
-    dbFetchPosts('NOTICE').then(dbNotices => {
-      if (dbNotices && dbNotices.length > 0) {
-        setNotices(dbNotices)
-      }
+  useEffect(() => {
+    if (!latestBulletin) return
+    setBulletin({
+      date: latestBulletin.date,
+      title: latestBulletin.title,
+      preacher: latestBulletin.preacher,
+      passage: latestBulletin.passage,
+      summary: latestBulletin.summary,
+      imageUrls: latestBulletin.imageUrls
     })
-  }, [])
+    // 구버전("8/17(일)")으로 저장된 값도 신형('YYYY-MM-DD')으로 바꿔서 편집칸에 넣습니다.
+    setEditBulletinDate(bulletinDateToSortable(latestBulletin.date) || latestBulletin.date)
+    setEditBulletinTitle(latestBulletin.title)
+    setEditBulletinPassage(latestBulletin.passage)
+    setEditBulletinPreacher(latestBulletin.preacher)
+    setEditBulletinSummary(latestBulletin.summary)
+    setEditBulletinImages(latestBulletin.imageUrls)
+  }, [latestBulletin])
+
+  useEffect(() => {
+    if (noticePosts && noticePosts.length > 0) setNotices(noticePosts)
+  }, [noticePosts])
 
   const showToast = (msg: string, duration = 1000) => {
     setToastMsg(msg)
@@ -90,38 +97,74 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
-    showToast('⏳ 주보 이미지 업로드 중...', 2000)
     const selectedFiles = Array.from(files).slice(0, 4)
-    const uploadedUrls = await uploadMultipleImagesToStorage(selectedFiles, 'bulletins')
-    setEditBulletinImages(uploadedUrls)
-    showToast('✅ 주보 이미지가 성공적으로 업로드되었습니다!')
+    showToast(`⏳ 주보 이미지 ${selectedFiles.length}장 업로드 중...`, 30000)
+    try {
+      const uploadedUrls = await uploadMultipleImagesToStorage(selectedFiles, 'bulletins')
+      setEditBulletinImages(uploadedUrls)
+      showToast('✅ 주보 이미지가 업로드되었습니다!', 2500)
+    } catch (err: any) {
+      // 🐛 과거 버그: 업로드가 실패해도 조용히 "이미지를 글자로 바꿔" 넣어버려서
+      // DB에 수 MB짜리 덩어리가 저장되고, 사용자는 실패 사실도 몰랐습니다.
+      showToast(`⚠️ ${err?.message || '이미지 업로드에 실패했습니다.'}`, 4000)
+    } finally {
+      // 같은 파일을 다시 선택할 수 있도록 초기화
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   const handleSaveBulletin = async () => {
+    if (isSavingBulletin) return
+    if (!editBulletinDate) {
+      showToast('⚠️ 주보 날짜(주일)를 선택해 주세요.', 3000)
+      return
+    }
     const newBul = {
-      date: editBulletinDate,
+      date: editBulletinDate, // 'YYYY-MM-DD'
       title: editBulletinTitle,
       passage: editBulletinPassage,
       preacher: editBulletinPreacher,
       summary: editBulletinSummary,
       imageUrls: editBulletinImages,
     }
-    await dbUpsertBulletin(newBul)
+    setIsSavingBulletin(true)
+    const res = await dbUpsertBulletin(newBul)
+    setIsSavingBulletin(false)
+
+    // 🐛 과거 버그: 저장 결과를 확인하지 않아, 실패해도 화면만 바뀌고
+    // "✅ 저장되었습니다"가 떴습니다. 새로고침하면 원래대로 돌아갑니다.
+    if (res.error) {
+      showToast(`⚠️ 저장하지 못했습니다: ${res.error.message || ''}`, 4000)
+      return
+    }
+
     setBulletin(newBul)
     setActiveBulletinImgIdx(0)
     setShowBulletinEditModal(false)
-    showToast('✅ 주보 내용 및 이미지가 저장되었습니다!')
+    showToast('✅ 주보가 저장되었습니다!', 2500)
   }
 
   const handleDeleteNotice = async (noticeId: string) => {
-    await dbDeletePost(noticeId)
+    const target = notices.find(n => n.id === noticeId)
+    // 🐛 과거 버그: 확인 창 없이 곧바로 삭제됐고, 실패해도 화면에서는 사라졌습니다.
+    if (!confirm(`'${target?.title || '이 공지'}' 를 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return
+
+    const res = await dbDeletePost(noticeId)
+    if (res.error) {
+      showToast(`⚠️ 삭제하지 못했습니다: ${res.error.message || ''}`, 4000)
+      return
+    }
     setNotices(prev => prev.filter(n => n.id !== noticeId))
     setSelectedNoticeModal(null)
-    showToast('공지가 삭제되었습니다.')
+    showToast('공지가 삭제되었습니다.', 2500)
   }
 
   const handleCreateNotice = async () => {
-    if (!newNoticeTitle.trim() || !newNoticeContent.trim()) return
+    if (!newNoticeTitle.trim() || !newNoticeContent.trim()) {
+      // 🐛 과거 버그: 제목/내용이 비면 아무 반응 없이 조용히 무시했습니다.
+      showToast('⚠️ 제목과 내용을 모두 입력해 주세요.', 3000)
+      return
+    }
     const newNoticeData: Partial<PostItem> = {
       authorId: currentUser.id,
       authorName: getUserDisplayName(currentUser),
@@ -130,29 +173,46 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
       category: 'NOTICE',
     }
     const res = await dbCreatePost(newNoticeData)
+
+    // 🐛 과거 버그: 저장 실패를 확인하지 않고, 실패했을 때 임시 id(`n_...`)를 붙여
+    // 목록에 얹었습니다. 관리자는 등록됐다고 믿지만 아무도 그 공지를 볼 수 없습니다.
+    if (res.error || !res.data?.id) {
+      showToast(`⚠️ 공지를 등록하지 못했습니다: ${res.error?.message || ''}`, 4000)
+      return
+    }
+
     const newNotice: PostItem = {
-      id: res.data?.id || `n_${Date.now()}`,
+      id: res.data.id,
       authorId: currentUser.id,
       authorName: getUserDisplayName(currentUser),
       title: newNoticeTitle.trim(),
       content: newNoticeContent.trim(),
       category: 'NOTICE',
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: todayLocalDateStr(),
       likes: 0,
     }
     setNotices(prev => [newNotice, ...prev])
     setNewNoticeTitle('')
     setNewNoticeContent('')
     setShowNoticeCreateModal(false)
-    showToast('✅ 신규 공지사항이 등록되었습니다!')
+    showToast('✅ 신규 공지사항이 등록되었습니다!', 2500)
   }
 
   // 헌금계좌 숫자만 복사 + 1초 소멸 토스트
-  const handleCopyAccount = () => {
-    navigator.clipboard.writeText('100100299503')
-    setCopied(true)
-    showToast('📋 계좌번호가 복사되었습니다!')
-    setTimeout(() => setCopied(false), 1000)
+  // 🐛 과거 버그: navigator.clipboard는 카카오톡/네이버 인앱 브라우저처럼 보안 조건이
+  // 다른 환경에서는 아예 없거나 실패합니다. 그런데 실패를 대비하지 않아서, 오류가 나면
+  // 그 아래 줄(성공 표시/토스트)이 실행되지 않아 **버튼을 눌러도 아무 반응이 없었습니다.**
+  const ACCOUNT_DIGITS = '100100299503'
+  const handleCopyAccount = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('clipboard unavailable')
+      await navigator.clipboard.writeText(ACCOUNT_DIGITS)
+      setCopied(true)
+      showToast('📋 계좌번호가 복사되었습니다!', 2500)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      showToast('복사가 지원되지 않는 브라우저입니다. 계좌번호를 길게 눌러 복사해 주세요.', 4000)
+    }
   }
 
   return (
@@ -235,7 +295,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           <div className="p-3 bg-gray-50">
             <button onClick={() => setShowChurchGuideModal(true)}
               className="w-full py-2 bg-white border border-gray-200 text-[#335f87] text-xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1.5">
-              <Info size={14} /> 더브릿지 교회 안내 (비전 · 연혁 · 예배시간) <ChevronRight size={14} />
+              <Info size={14} /> 더브릿지 교회 안내 (비전 · 사역자 · 예배시간) <ChevronRight size={14} />
             </button>
           </div>
         )}
@@ -283,35 +343,49 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           <div className="flex items-center gap-2">
             {currentUser.role === 'ADMIN' && (
               <button onClick={() => {
-                setEditBulletinDate(bulletin.date)
-                setEditBulletinTitle(bulletin.title)
-                setEditBulletinPassage(bulletin.passage)
-                setEditBulletinPreacher(bulletin.preacher)
-                setEditBulletinSummary(bulletin.summary)
-                setEditBulletinImages(bulletin.imageUrls)
+                setEditBulletinDate(bulletinDateToSortable(bulletin?.date) || '')
+                setEditBulletinTitle(bulletin?.title || '')
+                setEditBulletinPassage(bulletin?.passage || '')
+                setEditBulletinPreacher(bulletin?.preacher || '')
+                setEditBulletinSummary(bulletin?.summary || '')
+                setEditBulletinImages(bulletin?.imageUrls || [])
                 setShowBulletinEditModal(true)
               }}
                 className="text-[11px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-lg hover:bg-amber-200">
-                ✏️ 주보 수정
+                ✏️ {bulletin ? '주보 수정' : '주보 등록'}
               </button>
             )}
-            <span className="text-[11px] text-gray-400">{bulletin.date}</span>
+            {bulletin && (
+              <span className="text-[11px] text-gray-400">{formatBulletinDisplay(bulletin.date)}</span>
+            )}
           </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100">
-          <div className="flex items-start justify-between">
-            <h3 className="font-bold text-gray-900 text-sm leading-snug">{bulletin.title}</h3>
-            <span className="text-[11px] text-[#335f87] bg-blue-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
-          </div>
-          <p className="text-xs text-amber-800 font-semibold">{bulletin.passage}</p>
-          <p className="text-xs text-gray-600 leading-relaxed pt-1 border-t border-gray-200/50 whitespace-pre-wrap">{bulletin.summary}</p>
-        </div>
+        {bulletin ? (
+          <>
+            <div className="bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100">
+              <div className="flex items-start justify-between">
+                <h3 className="font-bold text-gray-900 text-sm leading-snug">{bulletin.title}</h3>
+                {bulletin.preacher && (
+                  <span className="text-[11px] text-[#335f87] bg-blue-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
+                )}
+              </div>
+              {bulletin.passage && <p className="text-xs text-amber-800 font-semibold">{bulletin.passage}</p>}
+              {bulletin.summary && (
+                <p className="text-xs text-gray-600 leading-relaxed pt-1 border-t border-gray-200/50 whitespace-pre-wrap">{bulletin.summary}</p>
+              )}
+            </div>
 
-        <button onClick={() => { setActiveBulletinImgIdx(0); setShowBulletinModal(true) }}
-          className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-xl hover:bg-gray-200 flex items-center justify-center gap-1">
-          주보 전체보기 <ChevronRight size={14} />
-        </button>
+            <button onClick={() => { setActiveBulletinImgIdx(0); setShowBulletinModal(true) }}
+              className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-xl hover:bg-gray-200 flex items-center justify-center gap-1">
+              주보 전체보기 <ChevronRight size={14} />
+            </button>
+          </>
+        ) : (
+          <div className="py-8 text-center text-xs text-gray-400">
+            아직 등록된 주보가 없습니다.
+          </div>
+        )}
       </section>
 
       {/* ─── 4. 온라인 헌금 계좌 (로그인 성도 전용) ─── */}
@@ -335,13 +409,13 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
       {showChurchGuideModal && <ChurchGuideModal onClose={() => setShowChurchGuideModal(false)} />}
 
       {/* ─── 주보 전체보기 모달 (다중 이미지 슬라이드) ─── */}
-      {showBulletinModal && (
+      {showBulletinModal && bulletin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-gray-900">이번 주 주보</h3>
-                <p className="text-xs text-gray-400">{bulletin.date}</p>
+                <p className="text-xs text-gray-400">{formatBulletinDisplay(bulletin.date)}</p>
               </div>
               <button onClick={() => setShowBulletinModal(false)} className="text-gray-400 font-bold text-lg px-1">✕</button>
             </div>
@@ -349,13 +423,21 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             {/* 다중 이미지 슬라이드 */}
             {bulletin.imageUrls && bulletin.imageUrls.length > 0 && (
               <div className="space-y-2">
-                <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center min-h-[200px]">
-                  <img
-                    src={bulletin.imageUrls[activeBulletinImgIdx]}
-                    alt={`주보 ${activeBulletinImgIdx + 1}면`}
-                    className="w-full h-auto object-contain max-h-[360px]"
-                  />
-                </div>
+                {/* 주보 원본을 새 탭에서 열 수 있게 링크로 감쌌습니다.
+                    작은 화면에서는 광고/헌금/일정 글씨를 읽을 수 없다는 지적을 반영 —
+                    탭하면 브라우저 기본 확대 기능으로 크게 볼 수 있습니다. */}
+                {/* 행사사진과 같은 부품(ImageSlider)을 씁니다 — 좌우로 밀거나 화살표로 넘길 수 있습니다.
+                    예전에는 아래 "1면/2면" 버튼을 정확히 눌러야만 넘어갔습니다. */}
+                <ImageSlider
+                  images={bulletin.imageUrls}
+                  index={activeBulletinImgIdx}
+                  onIndexChange={setActiveBulletinImgIdx}
+                  onImageClick={() => openImageViewer(bulletin.imageUrls[activeBulletinImgIdx])}
+                  alt="주보"
+                  maxHeightClass="max-h-[360px]"
+                  bgClass="bg-gray-50"
+                />
+                <p className="text-[11px] text-center text-gray-400">사진을 탭하면 크게 볼 수 있고, 다시 탭하면 닫힙니다</p>
                 {bulletin.imageUrls.length > 1 && (
                   <div className="flex justify-center gap-1.5">
                     {bulletin.imageUrls.map((_, idx) => (
@@ -401,9 +483,9 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                     <button
                       key={s.dateStr}
                       type="button"
-                      onClick={() => setEditBulletinDate(s.displayStr)}
+                      onClick={() => setEditBulletinDate(s.dateStr)}
                       className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${
-                        editBulletinDate === s.displayStr
+                        editBulletinDate === s.dateStr
                           ? 'bg-[#335f87] text-white border-[#335f87] shadow-sm'
                           : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                       }`}

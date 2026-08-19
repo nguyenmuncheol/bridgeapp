@@ -1,4 +1,39 @@
-export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON'
+// REJECTED: 가입이 거절된 계정. 예전에는 profiles 행을 아예 삭제했는데, 로그인 계정은
+// 남아있어서 그분이 앱을 다시 열면 승인 대기 목록에 무한히 다시 올라왔습니다.
+// TEACHER: 자녀(교회학교) 출석만 담당하는 선생님. 성도 자격은 일반 성도와 똑같습니다.
+export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON' | 'REJECTED' | 'TEACHER'
+
+/** 승인이 끝나 실제로 교회 명단에 포함되는 성도인지 (주소록/출석/통계 대상) */
+export function isApprovedMember(role: Role | undefined | null): boolean {
+  return role !== 'PENDING' && role !== 'REJECTED' && role !== undefined && role !== null
+}
+
+/**
+ * "실제 교회 성도"인지 — 명단·집계·통계에 넣을 대상인지 판단합니다.
+ *
+ * 🐛 과거 문제: 식권 명단과 식사 미응답 목록이 isApprovedMember()만 썼는데,
+ * 이 함수는 업무용 계정인 '쿠폰관리자'(COUPON)도 성도로 봅니다. 그래서 두 화면에
+ * 쿠폰관리자가 성도처럼 끼어 있었습니다. (주소록·생일·출석은 각자 따로 걸러내고 있었습니다)
+ * → 앞으로 명단/집계 화면은 전부 이 함수를 쓰면 같은 실수가 반복되지 않습니다.
+ */
+export function isChurchMember(role: Role | undefined | null): boolean {
+  return isApprovedMember(role) && role !== 'COUPON'
+}
+
+/** 아직 앱을 정상적으로 쓸 수 없는 상태인지 (대기 중이거나 거절됨) */
+export function isBlockedRole(role: Role | undefined | null): boolean {
+  return role === 'PENDING' || role === 'REJECTED'
+}
+
+/** 자녀(교회학교) 출석을 입력할 수 있는 사람인지 */
+export function canEditChildAttendance(role: Role | undefined | null): boolean {
+  return role === 'TEACHER' || role === 'LEADER' || role === 'ADMIN'
+}
+
+/** 관리 화면에 들어갈 수 있는 사람인지 (선생님은 출석 탭만 보입니다) */
+export function canOpenAdmin(role: Role | undefined | null): boolean {
+  return role === 'ADMIN' || role === 'LEADER' || role === 'COUPON' || role === 'TEACHER'
+}
 
 export interface UserProfile {
   id: string
@@ -11,10 +46,20 @@ export interface UserProfile {
   duty: string // 성도, 집사, 권사, 장로, 목사 등
   familyGroupId?: string // 가정을 묶는 그룹 ID (예: 'family_kim', 'family_lee')
   familyRole?: string // '부', '모', '자녀1', '자녀2', '조부', '조모', '자녀', '기타'
-  familyInfo?: string // '아내: 홍길순, 자녀: 김철수'
+  familyInfo?: string // 배우자 자동연동 + 자녀 구조화 데이터가 JSON으로 저장됨 (src/lib/familyInfo.ts 참고). 예전 방식의 일반 텍스트 메모도 호환됨.
   birthday?: string // '08-15' (MM-DD)
   avatarUrl?: string
   createdAt: string
+  /** 가입 환영 팝업을 본 시각. 비어 있으면 승인 후 첫 방문이라는 뜻입니다. */
+  welcomedAt?: string
+  // 아래 두 필드는 실제 계정이 없는 자녀 등 가족 구성원을 주소록에 표시하기 위한
+  // 가상 항목(dependent entry)에만 설정됩니다. 실제 성도 프로필에는 사용되지 않습니다.
+  isDependent?: boolean
+  parentName?: string
+  /** 자녀 가상 항목에만 설정 — 교회학교 그룹(영아부 등). 비어 있으면 "미지정" */
+  childLabriId?: string
+  /** 선생님(TEACHER)이 담당하는 자녀 그룹. 비워두면 모든 자녀 그룹 담당입니다. */
+  teachGroup?: string
 }
 
 // 사용자 호칭 생성 헬퍼 함수
@@ -30,6 +75,38 @@ export function getUserDisplayName(user: UserProfile, suffix = '님'): string {
   return `${user.name}${suffix}`
 }
 
+/**
+ * 직분을 빼고 '이름님'만 만듭니다.
+ * 식사 신청처럼 "누가 마지막으로 고쳤나"만 알면 되는 곳에서, 이름이 길어지지 않도록 씁니다.
+ */
+export function getSimpleUserName(user: UserProfile, suffix = '님'): string {
+  if (!user || user.id === 'guest') return `방문자${suffix}`
+  return `${(user.name || '').trim() || '성도'}${suffix}`
+}
+
+/**
+ * 예전에 '홍길동 집사님' 형태로 저장된 값을 '홍길동님'으로 정리해서 보여줍니다.
+ * (이미 저장된 신청 기록을 고치지 않고도 화면 표기를 통일할 수 있습니다)
+ */
+export function simplifyStoredName(stored?: string | null, suffix = '님'): string {
+  const raw = (stored || '').trim()
+  if (!raw) return `성도${suffix}`
+  const first = raw.split(/\s+/)[0]
+  const bare = first.replace(/님$/, '')
+  return `${bare || '성도'}${suffix}`
+}
+
+/**
+ * 연속 결석 주수를 화면에 표시할 문자열로 바꿉니다.
+ * 9주까지는 숫자로, 그보다 오래되면 '장기'로 표시합니다.
+ * (12주·37주처럼 큰 숫자는 칸을 밀어내기만 하고, 정작 필요한 정보는
+ *  "오래 안 나오셨다"는 사실 하나뿐이라 이렇게 정했습니다)
+ */
+export function formatAbsenceStreak(weeks: number): string {
+  if (!weeks || weeks <= 0) return ''
+  return weeks > 9 ? '장기' : `${weeks}주`
+}
+
 export interface MealRegistration {
   id: string
   dateStr: string // e.g. '2026-08-09'
@@ -43,6 +120,21 @@ export interface MealRegistration {
   updatedAt: string
 }
 
+/** 앱 안 알림함 항목 (폰이 울리는 푸시가 아니라, 🔔 눌러서 확인하는 방식) */
+export interface NotificationItem {
+  id: string
+  // COMMENT/LIKE/NOTICE = 성도님이 만든 알림
+  // MEAL/ATTENDANCE/BIRTHDAY/BULLETIN = 서버가 시간에 맞춰 자동으로 보내는 알림
+  type: 'COMMENT' | 'LIKE' | 'NOTICE' | 'MEAL' | 'ATTENDANCE' | 'BIRTHDAY' | 'BULLETIN'
+  title: string
+  body: string
+  actorName: string
+  postId?: string
+  postCategory?: string
+  isRead: boolean
+  createdAt: string
+}
+
 export interface MealCouponAccount {
   familyGroupId: string
   familyName: string // 예: '김목사/이권사 가정'
@@ -50,6 +142,8 @@ export interface MealCouponAccount {
   history: {
     id: string
     dateStr: string
+    /** 저장 시각(ISO). 같은 날 여러 건이 있을 때 순서를 정확히 가리기 위해 필요합니다. */
+    at?: string
     type: 'GRANT' | 'USE' | 'DEDUCT'
     amount: number
     note: string
@@ -89,6 +183,10 @@ export interface PostItem {
 
 export interface CommentItem {
   id: string
+  /** 댓글 작성자 계정 ID. 프로필 사진을 찾을 때 사용합니다.
+   *  (이전에는 이름으로만 찾았는데, 댓글에는 "김목사 목사님"처럼 직분이 붙은 이름이
+   *   저장되고 프로필의 이름은 "김목사"라서 한 번도 매칭되지 않았습니다.) */
+  authorId?: string
   authorName: string
   authorAvatar?: string
   content: string
