@@ -368,24 +368,30 @@ function PhotoDetailModal({
   const [isSavingAll, setIsSavingAll] = useState(false)
 
   const handleDownloadSingle = async () => {
-    setToastMsg(`📷 ${imgIdx + 1}번째 사진 저장 중...`)
-    await saveImage(images[imgIdx], `bridge_photo_${imgIdx + 1}.jpg`)
-    setToastMsg(`📷 ${imgIdx + 1}번째 사진을 저장했습니다`)
-    setTimeout(() => setToastMsg(''), 2000)
+    setToastMsg('📷 저장 중...')
+    const ok = await saveImage(images[imgIdx], `bridge_photo_${imgIdx + 1}.jpg`)
+    setToastMsg(ok ? '📷 사진을 저장했습니다' : '⚠️ 저장하지 못했습니다')
+    setTimeout(() => setToastMsg(''), 2200)
   }
 
   const handleDownloadAll = async () => {
     if (isSavingAll) return
     setIsSavingAll(true)
+    let saved = 0
     for (let i = 0; i < images.length; i++) {
       setToastMsg(`📦 ${i + 1}/${images.length}장 저장 중...`)
-      await saveImage(images[i], `bridge_photo_${i + 1}.jpg`)
-      // 연속으로 너무 빨리 요청하면 브라우저가 뒤쪽을 막습니다.
-      if (i < images.length - 1) await new Promise(r => setTimeout(r, 700))
+      // 실제로 저장이 시작된 것만 셉니다 — "저장했습니다"가 거짓말이 되지 않도록.
+      if (await saveImage(images[i], `bridge_photo_${i + 1}.jpg`)) saved++
+      // 연속으로 너무 빨리 저장하면 브라우저가 뒤쪽을 막습니다.
+      if (i < images.length - 1) await new Promise(r => setTimeout(r, 900))
     }
     setIsSavingAll(false)
-    setToastMsg(`📦 사진 ${images.length}장을 저장했습니다`)
-    setTimeout(() => setToastMsg(''), 2500)
+    setToastMsg(
+      saved === images.length
+        ? `📦 사진 ${saved}장을 저장했습니다`
+        : `⚠️ ${images.length}장 중 ${saved}장만 저장됐습니다`
+    )
+    setTimeout(() => setToastMsg(''), 3000)
   }
 
   const canManage = photo.authorId === currentUser.id || isAdmin

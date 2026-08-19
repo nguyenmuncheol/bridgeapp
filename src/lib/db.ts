@@ -449,11 +449,17 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
   // 기도제목 비밀글 토글(PrayerBoard)이 화면에는 반영되지만 DB에는 저장되지 않던 문제.
   if (updates.tags !== undefined) payload.tags = updates.tags
   if (updates.isSecret !== undefined) payload.is_secret = updates.isSecret
-  const res = await supabase.from('posts').update(payload).eq('id', id)
-  if (!res.error) {
-    invalidateCache('posts:')
-    if (updates.tags !== undefined) invalidateCache('postTags:')
+  // 🐛 과거 버그(조용한 실패): 권한이 없어 한 줄도 안 바뀌어도 서버는 "성공(204)"으로 답합니다.
+  // 그래서 아멘/좋아요/축하응원을 눌러도 화면만 바뀌고 실제로는 저장이 안 됐는데,
+  // 앱은 오류가 없으니 성공으로 알고 그대로 뒀습니다. (새로고침하면 원래대로 돌아감)
+  // → .select('id') 로 "실제로 몇 줄이 바뀌었는지" 확인하고, 0줄이면 실패로 처리합니다.
+  const res = await supabase.from('posts').update(payload).eq('id', id).select('id')
+  if (res.error) return res
+  if (!res.data || res.data.length === 0) {
+    return { ...res, error: new Error('저장 권한이 없거나 글을 찾을 수 없습니다.') }
   }
+  invalidateCache('posts:')
+  if (updates.tags !== undefined) invalidateCache('postTags:')
   return res
 }
 
@@ -510,7 +516,10 @@ export async function dbTogglePostLike(
     }
   }
 
-  // ── RPC 미적용 환경용 대체 경로 (동시 클릭 시 유실 가능성은 남습니다) ──
+  // ── RPC 미적용 환경용 대체 경로 ──
+  // ⚠️ 게시글 수정 권한이 "작성자·관리자"로 좁혀진 뒤로, 남의 글에 대한 이 경로는 실패합니다.
+  //    (그게 정상입니다 — 아멘/좋아요는 반드시 위 RPC를 거쳐야 합니다)
+  //    dbUpdatePost가 이제 "0줄 변경"을 실패로 돌려주므로, 화면이 조용히 거짓말하지 않습니다.
   const isLiked = fallback.likedUserIds.includes(userId)
   const nextLikes = isLiked ? Math.max(0, fallback.likes - 1) : fallback.likes + 1
   const nextUsers = isLiked

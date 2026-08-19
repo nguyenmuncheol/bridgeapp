@@ -32,59 +32,50 @@ export function toDownloadUrl(url: string, fileName: string): string {
   }
 }
 
-/** 이 기기가 "파일 공유(사진에 저장)"를 지원하는지 */
-function canShareFiles(files: File[]): boolean {
-  const nav: any = typeof navigator !== 'undefined' ? navigator : null
-  return !!(nav && typeof nav.share === 'function' && typeof nav.canShare === 'function' && nav.canShare({ files }))
-}
-
 /**
- * 사진 한 장을 기기에 저장합니다.
- * 1순위: 휴대폰 공유 시트("사진에 저장" / "카톡으로 보내기")
- * 2순위: 브라우저 다운로드 (Supabase 저장 신호 사용)
- * 어떤 경로든 실패하면 조용히 2순위로 넘어가므로, 화면이 멈추지 않습니다.
+ * 사진 한 장을 기기에 **저장**합니다.
+ *
+ * 🐛 1차 수정 때의 문제: 휴대폰에서 "공유 시트"를 먼저 띄웠더니, 저장하려는 분에게
+ * 카톡·메일 공유 창이 떠서 오히려 헷갈렸습니다(안드로이드). 또 전체 저장에서 첫 장만
+ * 공유 창이 뜨고 나머지는 창이 닫히는 사이에 묻혀 실제로 저장되지 않았습니다.
+ * → 공유 시트를 쓰지 않고 **항상 다운로드**합니다.
+ *
+ * 방법: 사진을 먼저 받아서(fetch) 브라우저 안의 임시 파일로 바꾼 뒤 저장합니다.
+ * 이렇게 하면 "다른 도메인 파일에는 download 지시가 안 통한다"는 제약을 피할 수 있습니다.
+ * 받아오기 자체가 막히면 Supabase의 `?download=` 신호로 대신 저장합니다.
+ *
+ * 성공하면 true, 저장이 시작되지 못했으면 false를 돌려줍니다.
  */
-export async function saveImage(url: string, fileName: string): Promise<void> {
-  if (!url) return
+export async function saveImage(url: string, fileName: string): Promise<boolean> {
+  if (!url) return false
 
-  // ── 1순위: 공유 시트 ──
-  try {
-    const res = await fetch(url)
-    if (res.ok) {
-      const blob = await res.blob()
-      const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' })
-      if (canShareFiles([file])) {
-        try {
-          await (navigator as any).share({ files: [file] })
-          return
-        } catch (err: any) {
-          // 사용자가 공유 창을 그냥 닫은 경우입니다. 다시 다운로드를 시도하면
-          // 원하지도 않은 파일이 저장되므로 여기서 끝냅니다.
-          if (err?.name === 'AbortError') return
-        }
-      }
-
-      // ── 공유가 안 되면 받아온 파일을 그대로 저장 (같은 도메인 취급이라 download가 동작합니다) ──
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      // 저장이 시작될 시간을 준 뒤 정리합니다.
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000)
-      return
-    }
-  } catch {
-    // 네트워크 오류나 CORS 문제 → 아래 2순위로 넘어갑니다.
+  const clickDownload = (href: string, revoke = false) => {
+    const a = document.createElement('a')
+    a.href = href
+    a.download = fileName
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    if (revoke) setTimeout(() => URL.revokeObjectURL(href), 20_000)
   }
 
-  // ── 2순위: Supabase 저장 신호 ──
-  const a = document.createElement('a')
-  a.href = toDownloadUrl(url, fileName)
-  a.rel = 'noopener noreferrer'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
+  try {
+    const res = await fetch(url, { mode: 'cors' })
+    if (res.ok) {
+      const blob = await res.blob()
+      clickDownload(URL.createObjectURL(blob), true)
+      return true
+    }
+  } catch {
+    // 네트워크/CORS 문제 → 아래 대체 경로
+  }
+
+  // 대체 경로: 서버가 "저장하세요" 신호를 붙여 보내도록 요청합니다.
+  try {
+    clickDownload(toDownloadUrl(url, fileName))
+    return true
+  } catch {
+    return false
+  }
 }

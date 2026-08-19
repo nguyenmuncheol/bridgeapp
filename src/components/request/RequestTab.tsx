@@ -288,22 +288,22 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
               {[{ label: '성인', val: tempAdult, set: setTempAdult, min: 1 }, { label: '어린이', val: tempChild, set: setTempChild, min: 0 }].map(({ label, val, set, min }) => (
                 <div key={label} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-gray-100">
                   <span className="text-gray-600 font-bold">{label}</span>
-                  {/* 버튼 크기 20px -> 44px: 교회에서 가장 중요한 숫자(몇 인분을 준비할지)를
-                      정하는 버튼인데 앱에서 가장 작았습니다. 권장 최소 크기의 절반도 안 돼서
-                      어르신이 +와 -를 잘못 누르기 쉬웠고, 저장된 값도 화면에 안 보였습니다. */}
-                  <div className="flex items-center gap-1">
+                  {/* 버튼 크기: 원래 20px로 너무 작아 오조작이 잦았습니다.
+                      44px로 키웠더니 이번엔 휴대폰 화면에서 과하게 커 보여서 28px로 조정했습니다.
+                      (좌우 여백을 함께 줘서 실제로 누를 수 있는 영역은 그대로 넉넉합니다) */}
+                  <div className="flex items-center gap-2">
                     <button
                       disabled={isLocked}
                       onClick={() => set(Math.max(min, val - 1))}
                       aria-label={`${label} 인원 줄이기`}
-                      className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-lg disabled:opacity-50"
+                      className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >−</button>
-                    <span className="font-bold text-[#335f87] w-8 text-center text-base">{val}</span>
+                    <span className="font-bold text-[#335f87] w-7 text-center text-sm">{val}</span>
                     <button
                       disabled={isLocked}
                       onClick={() => set(val + 1)}
                       aria-label={`${label} 인원 늘리기`}
-                      className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-lg disabled:opacity-50"
+                      className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >+</button>
                   </div>
                 </div>

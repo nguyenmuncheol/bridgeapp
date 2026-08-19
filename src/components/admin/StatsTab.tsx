@@ -44,15 +44,15 @@ export default function StatsTab({
     return filteredDb
   }, [safeStart, safeEnd, dbAttendanceData])
 
-  const monthSundays = useMemo(() => {
-    return Object.keys(combinedMonthData).sort()
-  }, [combinedMonthData])
+  // 상단 "선택 주일" 카드는 기간과 무관하게 **기록이 있는 모든 주일**에서 고를 수 있어야 합니다.
+  // (기간을 좁혔다고 해서 보고 싶은 주일을 못 고르면 불편합니다)
+  const allSundays = useMemo(() => Object.keys(dbAttendanceData).sort(), [dbAttendanceData])
 
   // 화면에 쓰는 기간 표기 (하루짜리면 날짜 하나만 보여줍니다)
   const rangeLabel = safeStart === safeEnd ? safeStart : `${safeStart} ~ ${safeEnd}`
 
   const [statsDate, setStatsDate] = useState<string>('')
-  const selectedStatsDate = statsDate && monthSundays.includes(statsDate) ? statsDate : (monthSundays[monthSundays.length - 1] || '')
+  const selectedStatsDate = statsDate && allSundays.includes(statsDate) ? statsDate : (allSundays[allSundays.length - 1] || '')
 
   // 기간 단축 버튼 (자주 쓰는 범위를 한 번에)
   const applyQuickRange = (weeksBack: number) => {
@@ -60,18 +60,18 @@ export default function StatsTab({
     const start = getMostRecentSunday(-weeksBack).dateStr
     setRangeStart(start)
     setRangeEnd(end)
-    setStatsDate('')
   }
 
   const attendanceRows = useMemo(() => {
-    const data = combinedMonthData[selectedStatsDate] || []
+    // 선택한 주일은 기간과 무관하므로 원본에서 직접 가져옵니다.
+    const data = dbAttendanceData[selectedStatsDate] || []
     return allUsers
       .filter(u => isApprovedMember(u.role) && u.role !== 'COUPON')
       .map(u => {
         const rec = data.find(r => r.userId === u.id)
         return { user: u, status: rec?.status || null, note: rec?.note || '' }
       })
-  }, [combinedMonthData, selectedStatsDate, allUsers])
+  }, [dbAttendanceData, selectedStatsDate, allUsers])
 
   // 출석/결석 명단 정렬: ①이번 주 결석자를 연속결석 주수가 많은 순으로 먼저, ②그 외(출석·미기록)는
   // 한 그룹으로 묶어 뒤에, 같은 그룹 내에서는 이름 가나다순으로 정렬합니다.
@@ -117,6 +117,15 @@ export default function StatsTab({
     const totalTotal = recordedRows.reduce((sum, r) => sum + r.total, 0)
     return { rows, totalAttend, totalTotal }
   }, [attendanceRows])
+
+  // 그래프 채움색 — 눈이 편한 파스텔톤. 글자는 진한 색을 따로 써서 대비를 지킵니다.
+  const BAR_COLORS: Record<string, string> = {
+    '라브리1': '#93c5fd', '라브리2': '#fdba74', '라브리3': '#86efac', '라브리 미정': '#d8dbe2',
+  }
+  const TEXT_COLORS: Record<string, string> = {
+    '라브리1': '#2563eb', '라브리2': '#c2570c', '라브리3': '#15803d', '라브리 미정': '#6b7280',
+  }
+  const TOTAL_BAR = '#a5b4fc'
 
   // ── 선택한 기간 전체의 라브리별 출석률 ──
   // 하루짜리 기간이면 위 labriStats 와 같은 값이 나오고,
@@ -260,127 +269,24 @@ export default function StatsTab({
   return (
     <>
       <div className="space-y-4">
-        {/* 통계 기간 선택 (시작일 ~ 종료일) */}
-        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-xs">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">시작일</label>
-              <input
-                type="date"
-                value={rangeStart}
-                onChange={e => { setRangeStart(e.target.value); setStatsDate('') }}
-                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
-              />
-            </div>
-            <span className="pb-2.5 text-gray-400 font-bold">~</span>
-            <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">종료일</label>
-              <input
-                type="date"
-                value={rangeEnd}
-                onChange={e => { setRangeEnd(e.target.value); setStatsDate('') }}
-                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* 자주 쓰는 기간을 한 번에 (기간이 길어도 전부 계산됩니다) */}
-          <div className="flex gap-1.5">
-            {[
-              { label: '최근 주일', weeks: 0 },
-              { label: '4주', weeks: 4 },
-              { label: '3개월', weeks: 13 },
-              { label: '6개월', weeks: 26 },
-              { label: '1년', weeks: 52 },
-            ].map(q => (
-              <button
-                key={q.label}
-                onClick={() => applyQuickRange(q.weeks)}
-                className="flex-1 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-600 transition-all"
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="pt-0.5">
-            <label className="text-[10px] text-gray-400 font-bold block mb-1">
-              상세 명단으로 볼 주일 <span className="font-normal">(기간 안에 기록이 있는 날짜)</span>
-            </label>
+        {/* ───────── 상단: 선택한 주일 하루 ───────── */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
+          <div className="space-y-1.5">
+            <h3 className="font-bold text-xs text-gray-900">📊 선택한 주일 출석률</h3>
             <select
               value={selectedStatsDate}
               onChange={e => setStatsDate(e.target.value)}
-              className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
+              className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold text-xs focus:outline-none"
             >
-              {monthSundays.length > 0 ? monthSundays.map(d => (
-                <option key={d} value={d}>{d}</option>
-              )) : <option value="">기록 없음</option>}
+              {allSundays.length > 0
+                ? [...allSundays].reverse().map(d => <option key={d} value={d}>{d}</option>)
+                : <option value="">기록 없음</option>}
             </select>
           </div>
-        </div>
-
-        {/* 선택한 기간 전체 출석률 */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-bold text-xs text-gray-900">🗓️ 기간 전체 출석률</h3>
-            <span className="text-[10px] text-gray-400 font-medium text-right">
-              {rangeLabel} · 기록 {rangeLabriStats.sundayCount}주일
-            </span>
-          </div>
-
-          {rangeLabriStats.sundayCount === 0 ? (
-            <p className="text-xs text-gray-400 py-2 text-center">이 기간에는 출석 기록이 없습니다.</p>
-          ) : (
-            <>
-              {rangeLabriStats.rows.map(({ label, attend, total, memberCount, notRecorded }) => {
-                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
-                const colors: Record<string, string> = { '라브리1': '#335f87', '라브리2': '#914c24', '라브리3': '#2d7d46', '라브리 미정': '#6b7280' }
-                const color = colors[label] || '#6b7280'
-                return (
-                  <div key={label} className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-bold text-gray-800">{label}</span>
-                      {notRecorded ? (
-                        <span className="font-bold text-gray-400">미기록 (성도 {memberCount}명)</span>
-                      ) : (
-                        <span className="font-bold" style={{ color }}>{attend}/{total}회 ({rate}%)</span>
-                      )}
-                    </div>
-                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                      {notRecorded ? (
-                        <div className="h-full w-full bg-[repeating-linear-gradient(45deg,#f3f4f6,#f3f4f6_6px,#e5e7eb_6px,#e5e7eb_12px)]" />
-                      ) : (
-                        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, backgroundColor: color }} />
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-              {rangeLabriStats.rows.length > 0 && (
-                <div className="pt-2 border-t border-gray-200 space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
-                    <span className="font-black text-[#335f87]">
-                      {rangeLabriStats.totalAttend}/{rangeLabriStats.totalTotal}회 ({rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#335f87] rounded-full transition-all"
-                      style={{ width: `${rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%` }} />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* 출석률 통계 (합계 행 포함) */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
-          <h3 className="font-bold text-xs text-gray-900">📊 선택한 주일 출석률 — {selectedStatsDate || '기록 없음'}</h3>
           {labriStats.rows.map(({ label, attend, total, memberCount, notRecorded }) => {
             const rate = total > 0 ? Math.round((attend / total) * 100) : 0
-            const colors: Record<string, string> = { '라브리1': '#335f87', '라브리2': '#914c24', '라브리3': '#2d7d46', '라브리 미정': '#6b7280' }
-            const color = colors[label] || '#6b7280'
+            const bar = BAR_COLORS[label] || '#d8dbe2'
+            const textColor = TEXT_COLORS[label] || '#6b7280'
             return (
               <div key={label} className="space-y-1.5">
                 <div className="flex justify-between text-xs">
@@ -389,14 +295,14 @@ export default function StatsTab({
                   {notRecorded ? (
                     <span className="font-bold text-gray-400">미기록 (성도 {memberCount}명)</span>
                   ) : (
-                    <span className="font-bold" style={{ color }}>{attend}/{total}명 ({rate}%)</span>
+                    <span className="font-bold" style={{ color: textColor }}>{attend}/{total}명 ({rate}%)</span>
                   )}
                 </div>
                 <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
                   {notRecorded ? (
                     <div className="h-full w-full bg-[repeating-linear-gradient(45deg,#f3f4f6,#f3f4f6_6px,#e5e7eb_6px,#e5e7eb_12px)]" />
                   ) : (
-                    <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, backgroundColor: color }} />
+                    <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, backgroundColor: bar }} />
                   )}
                 </div>
               </div>
@@ -407,32 +313,23 @@ export default function StatsTab({
             <div className="pt-2 border-t border-gray-200 space-y-1.5">
               <div className="flex justify-between text-xs">
                 <span className="font-black text-gray-900">전체 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
-                <span className="font-black text-[#335f87]">
+                <span className="font-black text-indigo-600">
                   {labriStats.totalAttend}/{labriStats.totalTotal}명 ({labriStats.totalTotal > 0 ? Math.round((labriStats.totalAttend / labriStats.totalTotal) * 100) : 0}%)
                 </span>
               </div>
               <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                <div className="h-full bg-[#335f87] rounded-full transition-all"
-                  style={{ width: `${labriStats.totalTotal > 0 ? Math.round((labriStats.totalAttend / labriStats.totalTotal) * 100) : 0}%` }} />
+                <div className="h-full rounded-full transition-all"
+                  style={{ backgroundColor: TOTAL_BAR, width: `${labriStats.totalTotal > 0 ? Math.round((labriStats.totalAttend / labriStats.totalTotal) * 100) : 0}%` }} />
               </div>
             </div>
           )}
         </div>
 
-        {/* 상세 명단 + CSV 다운로드 */}
+        {/* 선택한 주일의 출석/결석 명단 (CSV는 아래 기간 카드에 있습니다) */}
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-xs text-gray-900">{selectedStatsDate} 출석/결석 명단</h3>
-            {/* CSV 다운로드 — 이모지 한 글자로 축소 (선택한 기간 전체가 받아집니다) */}
-            <button
-              onClick={handleDownloadCSV}
-              title={`CSV 다운로드 (${rangeLabel})`}
-              aria-label={`출석 기록 CSV 다운로드 (${rangeLabel})`}
-              className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-base flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
-            >
-              📥
-            </button>
-          </div>
+          {/* CSV 버튼은 아래 "기간 출석률" 카드로 옮겼습니다 — 받아지는 범위가 기간이라
+              이 카드(선택한 주일 하루)에 있으면 어느 범위가 받아지는지 헷갈립니다. */}
+          <h3 className="font-bold text-xs text-gray-900">{selectedStatsDate || '선택한 주일'} 출석/결석 명단</h3>
           <table className="w-full text-xs text-left">
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
               <tr>
@@ -479,6 +376,119 @@ export default function StatsTab({
             </tbody>
           </table>
         </div>
+
+        {/* ───────── 하단: 기간 통계 ───────── */}
+        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-xs">
+          <h3 className="font-bold text-xs text-gray-900">🗓️ 기간 출석률</h3>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">시작일</label>
+              <input
+                type="date"
+                value={rangeStart}
+                onChange={e => setRangeStart(e.target.value)}
+                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
+              />
+            </div>
+            <span className="pb-2.5 text-gray-400 font-bold">~</span>
+            <div className="flex-1">
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">종료일</label>
+              <input
+                type="date"
+                value={rangeEnd}
+                onChange={e => setRangeEnd(e.target.value)}
+                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* 자주 쓰는 기간을 한 번에 (기간이 길어도 전부 계산됩니다) */}
+          <div className="flex gap-1.5">
+            {[
+              { label: '최근 주일', weeks: 0 },
+              { label: '4주', weeks: 4 },
+              { label: '3개월', weeks: 13 },
+              { label: '6개월', weeks: 26 },
+              { label: '1년', weeks: 52 },
+            ].map(q => (
+              <button
+                key={q.label}
+                onClick={() => applyQuickRange(q.weeks)}
+                className="flex-1 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-600 transition-all"
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+
+        </div>
+
+        {/* 기간 출석률 결과 + CSV */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-xs text-gray-900">기간 합산 결과</h3>
+              <span className="text-[10px] text-gray-400 font-medium">
+                {rangeLabel} · 기록 {rangeLabriStats.sundayCount}주일
+              </span>
+            </div>
+            {/* CSV는 "기간" 기준으로 받아지므로 이 카드에 둡니다 */}
+            <button
+              onClick={handleDownloadCSV}
+              title={`CSV 다운로드 (${rangeLabel})`}
+              aria-label={`출석 기록 CSV 다운로드 (${rangeLabel})`}
+              className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-base flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
+            >
+              📥
+            </button>
+          </div>
+
+          {rangeLabriStats.sundayCount === 0 ? (
+            <p className="text-xs text-gray-400 py-2 text-center">이 기간에는 출석 기록이 없습니다.</p>
+          ) : (
+            <>
+              {rangeLabriStats.rows.map(({ label, attend, total, memberCount, notRecorded }) => {
+                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                const bar = BAR_COLORS[label] || '#d8dbe2'
+                const textColor = TEXT_COLORS[label] || '#6b7280'
+                return (
+                  <div key={label} className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-bold text-gray-800">{label}</span>
+                      {notRecorded ? (
+                        <span className="font-bold text-gray-400">미기록 (성도 {memberCount}명)</span>
+                      ) : (
+                        <span className="font-bold" style={{ color: textColor }}>{attend}/{total}회 ({rate}%)</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                      {notRecorded ? (
+                        <div className="h-full w-full bg-[repeating-linear-gradient(45deg,#f3f4f6,#f3f4f6_6px,#e5e7eb_6px,#e5e7eb_12px)]" />
+                      ) : (
+                        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, backgroundColor: bar }} />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {rangeLabriStats.rows.length > 0 && (
+                <div className="pt-2 border-t border-gray-200 space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
+                    <span className="font-black text-indigo-600">
+                      {rangeLabriStats.totalAttend}/{rangeLabriStats.totalTotal}회 ({rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all"
+                      style={{ backgroundColor: TOTAL_BAR, width: `${rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%` }} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
       </div>
 
       {/* ── 개별 출석 정보 수정 모달 ── */}
