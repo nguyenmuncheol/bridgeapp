@@ -19,7 +19,8 @@ import NotificationPanel from '../src/components/NotificationPanel'
 import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
-import { LogIn } from 'lucide-react'
+import { usePullToRefresh } from '../src/lib/usePullToRefresh'
+import { LogIn, RefreshCw } from 'lucide-react'
 
 export default function Home() {
   // 🐛 과거 불편: 어느 탭에 있는지가 화면 기억에만 있고 주소창에는 없어서,
@@ -471,8 +472,26 @@ export default function Home() {
     return { error: null }
   }
 
+  const { pullPx, refreshing, threshold } = usePullToRefresh()
+
   return (
     <div className="bg-[#f7f9ff] min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
+      {/* 당겨서 새로고침 표시 (아이폰 설치 앱은 사파리와 달리 기본 당김-새로고침이 없어서 직접 구현) */}
+      <div
+        className="fixed left-1/2 top-2 z-50 w-9 h-9 flex items-center justify-center bg-white rounded-full shadow-md pointer-events-none"
+        style={{
+          transform: `translate(-50%, ${pullPx - 40}px)`,
+          opacity: pullPx > 0 || refreshing ? 1 : 0,
+          transition: pullPx === 0 ? 'opacity 0.2s, transform 0.2s' : undefined,
+        }}
+      >
+        <RefreshCw
+          size={18}
+          className={`text-[#335f87] ${refreshing ? 'animate-spin' : ''}`}
+          style={!refreshing ? { transform: `rotate(${(pullPx / threshold) * 360}deg)` } : undefined}
+        />
+      </div>
+
       {/* 브랜드 헤더 */}
       <div className="bg-white/85 backdrop-blur-md px-5 py-1.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
         {/* 가로형 로고에 교회 이름이 이미 들어 있어 글자를 따로 쓰지 않습니다 */}

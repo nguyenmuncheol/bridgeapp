@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Search, Edit2, Save, X } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
+import { Search, Edit2, Save, X, Camera } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { uploadImageToStorage } from '../../lib/storage'
 
 interface MembersTabProps {
   currentUser?: UserProfile
@@ -38,6 +39,34 @@ export default function MembersTab({
   // 가족 현황: 자녀 등 미가입 구성원 목록 + 기타 메모 (구조화 저장, familyInfo.ts 참고)
   const [editFamilyNote, setEditFamilyNote] = useState('')
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
+
+  // ── 자녀 프로필 사진 (관리자가 대신 올려줄 수 있게) ──
+  // 자녀는 자기 계정이 없어서 본인이 올릴 수 없으므로, 관리자도 편집 모달에서 올려줄 수 있습니다.
+  const [isUploadingChildPhoto, setIsUploadingChildPhoto] = useState(false)
+  const childFileInputRef = useRef<HTMLInputElement>(null)
+  const [photoChildId, setPhotoChildId] = useState('')
+  const pickChildPhoto = (childId: string) => {
+    setPhotoChildId(childId)
+    childFileInputRef.current?.click()
+  }
+  const handleChildFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const childId = photoChildId
+    if (!file || !childId) return
+    setIsUploadingChildPhoto(true)
+    showToast('⏳ 자녀 사진 업로드 중...')
+    try {
+      const uploadedUrl = await uploadImageToStorage(file, 'avatars')
+      setEditChildren(prev => prev.map(c => c.id === childId ? { ...c, avatarUrl: uploadedUrl } : c))
+      showToast('✅ 자녀 사진이 업로드되었습니다!')
+    } catch (err: any) {
+      showToast(`⚠️ ${err?.message || '사진 업로드에 실패했습니다.'}`)
+    } finally {
+      setIsUploadingChildPhoto(false)
+      setPhotoChildId('')
+      if (childFileInputRef.current) childFileInputRef.current.value = ''
+    }
+  }
 
   const filteredMembers = memberSearch
     ? approvedMembers.filter(m => m.name.includes(memberSearch) || m.phone.includes(memberSearch) || (m.email && m.email.includes(memberSearch)))
@@ -564,12 +593,24 @@ export default function MembersTab({
                   )}
                   {editChildren.map(child => (
                     <div key={child.id} className="flex gap-1 items-center">
+                      <button
+                        type="button"
+                        onClick={() => pickChildPhoto(child.id)}
+                        disabled={isUploadingChildPhoto}
+                        title="자녀 사진 넣기 / 바꾸기"
+                        aria-label={`${child.name || '자녀'} 사진 넣기`}
+                        className="w-8 h-8 shrink-0 rounded-full overflow-hidden bg-[#335f87]/10 text-[#335f87] text-2xs font-bold flex items-center justify-center border border-[#335f87]/20 active:scale-95 transition-transform disabled:opacity-50"
+                      >
+                        {child.avatarUrl
+                          ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
+                          : (photoChildId === child.id && isUploadingChildPhoto ? '…' : <Camera size={12} />)}
+                      </button>
                       <input
                         type="text"
                         value={child.name}
                         onChange={e => updateEditChild(child.id, { name: e.target.value })}
                         placeholder="이름"
-                        className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                        className="w-[24%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                       />
                       <input
                         type="text"
@@ -595,6 +636,8 @@ export default function MembersTab({
                     </div>
                   ))}
                 </div>
+                {/* 자녀 사진 고르는 창 (화면에는 안 보입니다) */}
+                <input ref={childFileInputRef} type="file" accept="image/*" onChange={handleChildFileChange} className="hidden" />
               </div>
 
               {/* 기타 가족 메모 */}
