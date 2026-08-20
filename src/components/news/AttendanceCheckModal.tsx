@@ -10,7 +10,7 @@ import {
 import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 
-const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '개인사정', '가족방문']
+const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
 
 interface AttendanceCheckModalProps {
@@ -314,16 +314,10 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                       </button>
                     ))}
                   </div>
-                  {childMode && (
-                    <p className="text-2xs text-slate-500 px-1 leading-relaxed">
-                      교회학교 그룹이 지정된 자녀만 나옵니다. 안 보이는 자녀는 부모님 정보에서 그룹을 지정해 주세요.
-                    </p>
-                  )}
                 </div>
               )}
 
-              <div className="flex items-center justify-between bg-amber-50 border border-amber-100 p-2.5 rounded-xl text-xs">
-                <span className="text-amber-900 font-medium">💡 전원 출석 클릭 후 결석자만 수정하세요</span>
+              <div className="flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -348,9 +342,10 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-gray-900">{member.name}</span>
-                        <span className="text-2xs text-gray-400 ml-1.5">
-                          {childMode ? member.parentName : member.duty}
-                        </span>
+                        {/* 자녀는 부모 이름을 붙이지 않습니다 (줄이 길어지고 굳이 필요 없음) */}
+                        {!childMode && member.duty && (
+                          <span className="text-2xs text-gray-400 ml-1.5">{member.duty}</span>
+                        )}
                       </div>
                       <div className="flex gap-1">
                         <button
