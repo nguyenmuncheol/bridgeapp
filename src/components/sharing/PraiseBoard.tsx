@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction } from 'react'
-import { Play, Trash2, X, ExternalLink, Edit2 } from 'lucide-react'
+import { Play, Trash2, X, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
 import { PostItem, UserProfile, getSimpleUserName } from '../../lib/mockData'
-import { dbUpdatePost, dbDeletePost, dbAddComment } from '../../lib/db'
+import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
 import { SkeletonList } from '../SkeletonCard'
@@ -76,6 +76,33 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         ...p, comments: (p.comments || []).filter(c => c.id !== tempId),
       } : p))
       showToast('댓글 등록 중 오류가 발생했습니다.', true)
+    }
+  }
+
+  // 좋아요 — 아멘/축하응원과 같은 방식입니다.
+  // 카드가 지금 화면에 보이는 값을 넘겨주고, 서버가 돌려준 값으로 마지막에 맞춥니다.
+  // (setState 안에서 값을 읽으면 React가 즉시 실행하지 않아 저장이 통째로 건너뛰어집니다)
+  const handleLike = async (e: any, id: string, current: { likes: number; likedUserIds: string[] }) => {
+    e.stopPropagation()
+    const before = { likes: current.likes, likedUserIds: current.likedUserIds || [] }
+    const liked = before.likedUserIds.includes(currentUser.id)
+    const guessLikes = liked ? Math.max(0, before.likes - 1) : before.likes + 1
+    const guessIds = liked
+      ? before.likedUserIds.filter(uid => uid !== currentUser.id)
+      : [...before.likedUserIds, currentUser.id]
+
+    const apply = (likes: number, ids: string[]) =>
+      setPraises(prev => prev.map(p => (p.id === id ? { ...p, likes, likedUserIds: ids } : p)))
+
+    apply(guessLikes, guessIds)
+    const res = await dbTogglePostLike(id, currentUser.id, before)
+    if (res.error) {
+      apply(before.likes, before.likedUserIds)
+      showToast('좋아요가 저장되지 않았습니다.', true)
+      return
+    }
+    if (res.likes !== guessLikes || res.likedUserIds.length !== guessIds.length) {
+      apply(res.likes, res.likedUserIds)
     }
   }
 
@@ -216,6 +243,22 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
           })() : (
             <div className="text-[11px] text-[#335f87] font-semibold flex items-center gap-1 opacity-60">탭하여 전체 내용 보기 →</div>
           )}
+
+          {/* 좋아요 · 댓글 수 */}
+          <div className="flex items-center gap-3 pt-1.5 border-t border-gray-50 text-[11px]">
+            <button
+              onClick={(e) => handleLike(e, praise.id, { likes: praise.likes, likedUserIds: praise.likedUserIds || [] })}
+              className={`flex items-center gap-1 font-bold transition-transform active:scale-95 ${
+                (praise.likedUserIds || []).includes(currentUser.id) ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
+              }`}
+            >
+              <Heart size={12} className={(praise.likedUserIds || []).includes(currentUser.id) ? 'fill-rose-500' : ''} />
+              {praise.likes || 0}
+            </button>
+            <span className="flex items-center gap-1 font-bold text-gray-400">
+              <MessageCircle size={12} /> {(praise.comments || []).length}
+            </span>
+          </div>
         </div>
       ))}
 

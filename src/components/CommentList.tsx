@@ -117,37 +117,37 @@ export default function CommentList({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-between items-start gap-1">
-                    {/* 🐛 과거 문제: 이름과 내용이 한 줄에 나란히 있고 이름 칸이 줄지 않아,
-                        이름이 길면 내용 칸이 확 좁아졌습니다.
-                        → 이름은 윗줄, 내용은 아랫줄로 나눠 내용 폭을 항상 같게 만듭니다. */}
-                    <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                      {renderAvatar(c.authorId || '', c.authorName)}
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <p className="font-bold text-gray-800 leading-snug break-all">{c.authorName}</p>
-                        <p className="text-gray-600 break-words leading-relaxed">{c.content}</p>
+                  <div className="space-y-1">
+                    {/* 🐛 과거 문제: 이름·내용과 [날짜·수정·삭제]가 **같은 줄을 나눠 써서**
+                        이름이나 내용이 길면 오른쪽 버튼이 잘렸습니다.
+                        → 첫 줄에 [아바타·이름 | 날짜·수정·삭제], 둘째 줄에 내용을 폭 전체로. */}
+                    <div className="flex justify-between items-center gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {renderAvatar(c.authorId || '', c.authorName)}
+                        <span className="font-bold text-gray-800 truncate">{c.authorName}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] text-gray-400">{c.createdAt}</span>
+                        {/* 버튼 사이를 띄우고 탭 영역을 키워, 수정하려다 삭제를 누르는 사고를 줄였습니다 */}
+                        {canEdit && (
+                          <button
+                            onClick={() => startEdit(c)}
+                            disabled={busy}
+                            aria-label="댓글 수정"
+                            className="px-1.5 py-1 -my-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
+                          >수정</button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => removeComment(c)}
+                            disabled={busy}
+                            aria-label="댓글 삭제"
+                            className="px-1.5 py-1 -my-1 text-gray-400 hover:text-rose-500 disabled:opacity-40"
+                          >{busy ? '...' : '삭제'}</button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-[10px] text-gray-400">{c.createdAt}</span>
-                      {/* 버튼 사이를 띄우고 탭 영역을 키워, 수정하려다 삭제를 누르는 사고를 줄였습니다 */}
-                      {canEdit && (
-                        <button
-                          onClick={() => startEdit(c)}
-                          disabled={busy}
-                          aria-label="댓글 수정"
-                          className="px-1.5 py-1 -my-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
-                        >수정</button>
-                      )}
-                      {canDelete && (
-                        <button
-                          onClick={() => removeComment(c)}
-                          disabled={busy}
-                          aria-label="댓글 삭제"
-                          className="px-1.5 py-1 -my-1 text-gray-400 hover:text-rose-500 disabled:opacity-40"
-                        >{busy ? '...' : '삭제'}</button>
-                      )}
-                    </div>
+                    <p className="text-gray-600 break-words leading-relaxed">{c.content}</p>
                   </div>
                 )}
               </div>

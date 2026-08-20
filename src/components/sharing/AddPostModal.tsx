@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
+import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 
@@ -144,8 +145,17 @@ export default function AddPostModal({
           setUploadProgress(null)
         }
 
-        if (uploadedImageUrls.length === 0) {
-          setErrorMsg('사진을 한 장 이상 선택해 주세요.')
+        // 행사사진은 **유튜브 주소만** 받습니다.
+        // (찬양/묵상은 아무 웹주소나 받지만, 여기서는 영상만 올리기로 정했습니다)
+        const photoVideo = youtubeUrl.trim()
+        if (photoVideo && !getYouTubeVideoId(photoVideo)) {
+          setErrorMsg('유튜브 주소만 넣을 수 있습니다. 주소를 다시 확인해 주세요.')
+          return
+        }
+
+        // 사진이 없어도 영상이 있으면 등록할 수 있습니다. 둘 다 없으면 올릴 게 없습니다.
+        if (uploadedImageUrls.length === 0 && !photoVideo) {
+          setErrorMsg('사진을 한 장 이상 고르거나, 유튜브 주소를 넣어 주세요.')
           return
         }
 
@@ -156,6 +166,7 @@ export default function AddPostModal({
           content: newContent.trim(),
           category: 'PHOTO',
           imageUrls: uploadedImageUrls,
+          youtubeUrl: photoVideo || undefined,
           tags: ['전체', tag]
         })
         if (res.error || !res.data?.id) {
@@ -172,6 +183,7 @@ export default function AddPostModal({
           content: newContent.trim(),
           category: 'PHOTO',
           imageUrls: uploadedImageUrls,
+          youtubeUrl: photoVideo || undefined,
           tags: ['전체', tag],
           createdAt: '방금 전',
           likes: 0,
@@ -223,6 +235,19 @@ export default function AddPostModal({
         )}
         {subTab === 'photo' && (
           <div className="space-y-2 text-xs">
+            <div className="space-y-1">
+              <label className="block text-gray-700 font-semibold">🎬 유튜브 영상 주소 (선택)</label>
+              <input
+                type="text"
+                placeholder="https://youtu.be/..."
+                value={youtubeUrl}
+                onChange={e => setYoutubeUrl(e.target.value)}
+                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
+              />
+              <p className="text-[10px] text-gray-400 leading-relaxed px-0.5">
+                유튜브 주소만 됩니다. 사진 없이 영상만 올려도 괜찮습니다.
+              </p>
+            </div>
             <div>
               <label className="block text-gray-700 font-semibold mb-1">📸 사진 파일 선택 (최대 10장)</label>
               <input

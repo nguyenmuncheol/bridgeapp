@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Edit2, X } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
-import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords } from '../../lib/db'
+import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
 import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
@@ -172,7 +172,7 @@ export default function StatsTab({
 
   // ── 자녀(교회학교) 출석 ──
   // 자녀는 계정이 없어서 어른 출석표에 들어갈 수 없습니다. 별도 표에서 따로 받아옵니다.
-  const { data: childRecords } = useCachedQuery(
+  const { data: childRecords, refetch: refetchChildAttendance } = useCachedQuery(
     'childAttendanceRecords:all',
     () => dbFetchChildAttendanceRecords()
   )
@@ -194,31 +194,28 @@ export default function StatsTab({
     }
   }, [childRecords, safeStart, safeEnd])
 
-  // 선택한 주일의 교회학교 명단 (그룹 → 아이들)
-  const childRoster = useMemo(() => {
+  // 선택한 주일의 교회학교 명단 (부서순 → 이름순, 성인 명단과 같은 구성)
+  const childRosterRows = useMemo(() => {
     const byId = new Map<string, any>()
     ;(childRecords || []).forEach((r: any) => {
       if (String(r.date_str) === selectedStatsDate) byId.set(String(r.dependent_id), r)
     })
-    const kids = buildDependentEntries(allUsers).filter(c => !!c.childLabriId)
-    return CHILD_LABRI_OPTIONS
-      .map(group => ({
-        group,
-        rows: kids
-          .filter(c => c.childLabriId === group)
-          .map(c => {
-            const rec = byId.get(c.id.replace(/^dep_/, ''))
-            return {
-              id: c.id,
-              name: c.name,
-              parentName: c.parentName || '',
-              status: (rec?.status as 'ATTEND' | 'ABSENT' | undefined) || null,
-              note: rec?.note || '',
-            }
-          })
-          .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
-      }))
-      .filter(g => g.rows.length > 0)
+    const order = new Map<string, number>(CHILD_LABRI_OPTIONS.map((g, i) => [g as string, i]))
+    return buildDependentEntries(allUsers)
+      .filter(c => !!c.childLabriId)
+      .map(child => {
+        const rec = byId.get(child.id.replace(/^dep_/, ''))
+        return {
+          child,
+          status: (rec?.status as 'ATTEND' | 'ABSENT' | undefined) || null,
+          note: rec?.note || '',
+        }
+      })
+      .sort((a, b) => {
+        const ga = order.get(a.child.childLabriId || '') ?? 99
+        const gb = order.get(b.child.childLabriId || '') ?? 99
+        return ga !== gb ? ga - gb : a.child.name.localeCompare(b.child.name, 'ko')
+      })
   }, [childRecords, selectedStatsDate, allUsers])
 
   const CHILD_BAR: Record<string, string> = {
@@ -247,11 +244,44 @@ export default function StatsTab({
     // 🐛 과거 버그: '미기록'은 그 사람의 출석 기록과 결석 사유를 되돌릴 수 없이 지우는데,
     // 출석/결석 버튼과 똑같이 생긴 채로 나란히 있었고 확인 창도 없었습니다.
     if (status === 'NONE') {
-      if (!confirm(`${getUserDisplayName(user)}님의 ${dateStr} 출석 기록을 삭제할까요?\n결석 사유도 함께 지워지며 되돌릴 수 없습니다.`)) return
+      if (!confirm(`${user.isDependent ? user.name : getUserDisplayName(user)}님의 ${dateStr} 출석 기록을 삭제할까요?\n결석 사유도 함께 지워지며 되돌릴 수 없습니다.`)) return
     }
 
     setIsSavingAttendance(true)
     try {
+    // ── 자녀(교회학교)는 별도 표에 저장됩니다 ──
+    if (user.isDependent) {
+      const depId = user.id.replace(/^dep_/, '')
+      if (status === 'NONE') {
+        const { error } = await dbDeleteChildAttendance(depId, dateStr)
+        if (error) {
+          alert(`출석 기록 삭제 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+          return
+        }
+      } else {
+        const { error } = await dbSaveChildAttendanceRecords([{
+          dependentId: depId,
+          childName: user.name,
+          familyGroupId: user.familyGroupId,
+          labriId: user.childLabriId || '미지정',
+          dateStr,
+          status,
+          note: status === 'ABSENT' ? note : '',
+          recordedBy: currentUser?.id
+        }])
+        if (error) {
+          alert(`출석 정보 저장 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+          return
+        }
+      }
+      refetchChildAttendance()
+      setEditingAttendanceUser(null)
+      showToast(status === 'NONE'
+        ? `${user.name}의 ${dateStr} 출석 기록을 삭제했습니다.`
+        : `✅ ${user.name}의 ${dateStr} 출석 정보가 수정되었습니다.`)
+      return
+    }
+
     if (status === 'NONE') {
       // 출석 기록 삭제 (미기록 처리)
       const { error } = await supabase
@@ -481,40 +511,58 @@ export default function StatsTab({
             </>
           )}
         </div>
-        {/* 교회학교 명단 (선택한 주일) */}
+        {/* 교회학교 명단 (선택한 주일) — 성인 명단과 같은 구성 */}
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
           <h3 className="font-bold text-xs text-gray-900">🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단</h3>
 
-          {childRoster.length === 0 ? (
+          {childRosterRows.length === 0 ? (
             <p className="py-4 text-center text-[11px] text-gray-400">
               교회학교 그룹이 지정된 자녀가 없습니다.
             </p>
           ) : (
-            childRoster.map(({ group, rows }) => (
-              <div key={group} className="space-y-1.5">
-                <p className="text-[11px] font-bold" style={{ color: CHILD_TEXT[group] }}>{group}</p>
-                <table className="w-full text-xs text-left">
-                  <tbody className="divide-y divide-gray-50 text-gray-700">
-                    {rows.map(r => (
-                      <tr key={r.id}>
-                        <td className="p-2 font-bold text-gray-800">{r.name}</td>
-                        <td className="p-2 text-gray-400 text-[10px]">{r.parentName}</td>
-                        <td className="p-2 text-center">
-                          {r.status ? (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {r.status === 'ABSENT' ? '❌ 결석' : '✅ 출석'}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300 text-[10px]">미지정</span>
-                          )}
-                        </td>
-                        <td className="p-2 text-gray-500 text-[10px]">{r.note || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))
+            <table className="w-full text-xs text-left">
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th className="p-2">이름</th>
+                  <th className="p-2">부서</th>
+                  <th className="p-2 text-center">출석여부</th>
+                  <th className="p-2">결석사유</th>
+                  <th className="p-2 text-right">수정</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 text-gray-700">
+                {childRosterRows.map(row => (
+                  <tr key={row.child.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="p-2 font-bold text-gray-800">{row.child.name}</td>
+                    <td className="p-2 text-gray-500">{row.child.childLabriId}</td>
+                    <td className="p-2 text-center">
+                      {row.status ? (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {row.status === 'ABSENT' ? '❌ 결석' : '✅ 출석'}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[10px]">미기록</span>
+                      )}
+                    </td>
+                    <td className="p-2 text-gray-500">{row.note || '-'}</td>
+                    <td className="p-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setEditingAttendanceUser({
+                          user: row.child,
+                          dateStr: selectedStatsDate,
+                          status: (row.status as 'ATTEND' | 'ABSENT') || 'NONE',
+                          note: row.note || ''
+                        })}
+                        disabled={!selectedStatsDate}
+                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ml-auto"
+                      >
+                        <Edit2 size={11} /> </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 
@@ -663,10 +711,14 @@ export default function StatsTab({
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-sm text-gray-900">
-                  ✏️ {getUserDisplayName(editingAttendanceUser.user)} 출석 수정
+                  ✏️ {editingAttendanceUser.user.isDependent
+                        ? editingAttendanceUser.user.name
+                        : getUserDisplayName(editingAttendanceUser.user)} 출석 수정
                 </h3>
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.labriId || '라브리 미정'})
+                  주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
+                    ? (editingAttendanceUser.user.childLabriId || '미지정')
+                    : (editingAttendanceUser.user.labriId || '라브리 미정')})
                 </p>
               </div>
               <button

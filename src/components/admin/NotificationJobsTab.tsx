@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Bell, Play, RefreshCw, Send } from 'lucide-react'
-import { dbRunNotificationJob, NotificationJob, dbSendManualNotification, NotifyTarget } from '../../lib/db'
+import { dbRunNotificationJob, NotificationJob, dbSendManualNotification } from '../../lib/db'
 import { UserProfile, getUserDisplayName, isChurchMember } from '../../lib/mockData'
 
 interface NotificationJobsTabProps {
@@ -13,13 +13,18 @@ interface NotificationJobsTabProps {
 
 const CHURCH_SENDER = '더브릿지교회'
 
-const TARGETS: { key: NotifyTarget; label: string }[] = [
-  { key: 'ALL', label: '전체 성도' },
-  { key: 'LABRI', label: '특정 라브리' },
-  { key: 'TEACHER', label: '선생님 전원' },
-  { key: 'ADMIN', label: '관리자 전원' },
-  { key: 'USERS', label: '개인 지정' },
-]
+/**
+ * 받는 사람 "빠른 선택" 그룹.
+ *
+ * 그룹을 누르면 그 사람들이 아래 개인 목록에 체크됩니다.
+ * 여러 그룹을 함께 눌러도 되고, 체크된 사람을 하나씩 빼거나 더할 수도 있습니다.
+ * 실제 발송은 **항상 체크된 개인 목록**으로 나가므로 겹치는 사람도 한 번만 받습니다.
+ */
+interface QuickGroup {
+  key: string
+  label: string
+  match: (m: UserProfile) => boolean
+}
 
 interface JobRow {
   id: NotificationJob
@@ -63,8 +68,6 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
   // ── 알림 직접 보내기 ──
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [target, setTarget] = useState<NotifyTarget>('ALL')
-  const [labriId, setLabriId] = useState('라브리1')
   const [pickedIds, setPickedIds] = useState<string[]>([])
   const [useChurchName, setUseChurchName] = useState(true)
   const [sending, setSending] = useState(false)
@@ -73,19 +76,31 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
     () => allUsers.filter(u => isChurchMember(u.role)).sort((a, b) => a.name.localeCompare(b.name, 'ko')),
     [allUsers]
   )
-  const labriOptions = useMemo(() => {
-    const set = new Set(members.map(m => m.labriId || '미정').filter(Boolean))
-    return Array.from(set).sort()
+
+  // 실제로 사람이 있는 라브리만 버튼으로 만듭니다.
+  const quickGroups = useMemo<QuickGroup[]>(() => {
+    const labris = Array.from(new Set(members.map(m => m.labriId || '미정'))).sort()
+    return [
+      { key: '전체', label: '전체', match: () => true },
+      ...labris.map(l => ({ key: l, label: l, match: (m: UserProfile) => (m.labriId || '미정') === l })),
+      { key: '리더', label: '라브리 리더', match: (m: UserProfile) => m.role === 'LEADER' },
+      { key: '선생님', label: '선생님', match: (m: UserProfile) => m.role === 'TEACHER' },
+      { key: '관리자', label: '관리자', match: (m: UserProfile) => m.role === 'ADMIN' },
+    ].filter(g => members.some(g.match))
   }, [members])
 
-  // 보내기 전에 "몇 명에게 가는지" 미리 세어 보여줍니다.
-  const receiverCount = useMemo(() => {
-    if (target === 'ALL') return members.length
-    if (target === 'LABRI') return members.filter(m => (m.labriId || '미정') === labriId).length
-    if (target === 'TEACHER') return members.filter(m => m.role === 'TEACHER').length
-    if (target === 'ADMIN') return members.filter(m => m.role === 'ADMIN').length
-    return pickedIds.length
-  }, [target, members, labriId, pickedIds])
+  // 그 그룹 사람이 **전부** 체크돼 있으면 켜진 것으로 봅니다.
+  const isGroupOn = (g: QuickGroup) => {
+    const ids = members.filter(g.match).map(m => m.id)
+    return ids.length > 0 && ids.every(id => pickedIds.includes(id))
+  }
+
+  const toggleGroup = (g: QuickGroup) => {
+    const ids = members.filter(g.match).map(m => m.id)
+    setPickedIds(prev => isGroupOn(g)
+      ? prev.filter(id => !ids.includes(id))          // 켜져 있으면 그 그룹만 빼기
+      : Array.from(new Set([...prev, ...ids])))       // 아니면 더하기 (겹쳐도 한 번만)
+  }
 
   const senderName = useChurchName
     ? CHURCH_SENDER
@@ -94,6 +109,8 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
   const togglePicked = (id: string) => {
     setPickedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
+
+  const receiverCount = pickedIds.length
 
   const handleSend = async () => {
     if (sending) return
@@ -110,9 +127,8 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
     const { sent, error } = await dbSendManualNotification({
       title: title.trim(),
       body: body.trim(),
-      target,
-      labriId: target === 'LABRI' ? labriId : undefined,
-      userIds: target === 'USERS' ? pickedIds : undefined,
+      target: 'USERS',
+      userIds: pickedIds,
       senderName,
     })
     setSending(false)
@@ -176,44 +192,45 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[10px] text-gray-400 font-bold">받는 사람</label>
-          <div className="grid grid-cols-3 gap-1">
-            {TARGETS.map(t => (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] text-gray-400 font-bold">받는 사람 — 그룹으로 한 번에 고르기</label>
+            {pickedIds.length > 0 && (
               <button
-                key={t.key}
                 type="button"
-                onClick={() => setTarget(t.key)}
-                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${target === t.key ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
-              >{t.label}</button>
+                onClick={() => setPickedIds([])}
+                className="text-[10px] font-bold text-gray-400 hover:text-rose-500"
+              >모두 해제</button>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {quickGroups.map(g => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => toggleGroup(g)}
+                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${isGroupOn(g) ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >{g.label}</button>
             ))}
           </div>
+          <p className="text-[10px] text-gray-400 leading-relaxed">
+            그룹을 누르면 아래 명단에 자동으로 ☑ 표시됩니다. 여러 그룹을 함께 골라도 되고, 한 사람씩 빼거나 더할 수 있습니다.
+          </p>
         </div>
 
-        {target === 'LABRI' && (
-          <select
-            value={labriId}
-            onChange={e => setLabriId(e.target.value)}
-            className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none"
-          >
-            {labriOptions.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        )}
-
-        {target === 'USERS' && (
-          <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-0.5">
-            {members.map(m => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => togglePicked(m.id)}
-                className={`w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors ${pickedIds.includes(m.id) ? 'bg-[#335f87]/10 text-[#335f87] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
-              >
-                {pickedIds.includes(m.id) ? '☑' : '☐'} {getUserDisplayName(m)}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-0.5">
+          {members.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => togglePicked(m.id)}
+              className={`w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors ${pickedIds.includes(m.id) ? 'bg-[#335f87]/10 text-[#335f87] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              {pickedIds.includes(m.id) ? '☑' : '☐'} {getUserDisplayName(m)}
+              <span className="text-gray-400 font-normal"> · {m.labriId || '미정'}</span>
+            </button>
+          ))}
+        </div>
 
         <input
           type="text"

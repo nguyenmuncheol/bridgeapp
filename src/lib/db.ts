@@ -453,6 +453,8 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
   // 기도제목 비밀글 토글(PrayerBoard)이 화면에는 반영되지만 DB에는 저장되지 않던 문제.
   if (updates.tags !== undefined) payload.tags = updates.tags
   if (updates.isSecret !== undefined) payload.is_secret = updates.isSecret
+  // 행사사진·찬양묵상의 영상 주소. 빈 문자열이면 "영상 없음"으로 지웁니다.
+  if (updates.youtubeUrl !== undefined) payload.youtube_url = updates.youtubeUrl || null
   // 🐛 과거 버그(조용한 실패): 권한이 없어 한 줄도 안 바뀌어도 서버는 "성공(204)"으로 답합니다.
   // 그래서 아멘/좋아요/축하응원을 눌러도 화면만 바뀌고 실제로는 저장이 안 됐는데,
   // 앱은 오류가 없으니 성공으로 알고 그대로 뒀습니다. (새로고침하면 원래대로 돌아감)
@@ -1156,6 +1158,17 @@ export async function dbFetchChildAttendanceRecords(dateStr?: string) {
   const { data, error } = await query
   throwIfFetchFailed(error, '자녀 출석 기록')
   return (data || []) as any[]
+}
+
+/** 자녀 출석 기록 한 줄 삭제 (관리자가 "미기록"으로 되돌릴 때) */
+export async function dbDeleteChildAttendance(dependentId: string, dateStr: string) {
+  const { error } = await supabase
+    .from('child_attendance_records')
+    .delete()
+    .eq('dependent_id', dependentId)
+    .eq('date_str', dateStr)
+  if (!error) invalidateCache('childAttendanceRecords:')
+  return { error }
 }
 
 export async function dbSaveChildAttendanceRecords(records: {

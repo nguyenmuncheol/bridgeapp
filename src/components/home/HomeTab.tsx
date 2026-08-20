@@ -294,12 +294,9 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
         {!isGuest && (
           <div className="p-3 bg-gray-50 flex gap-2 items-stretch">
             <button onClick={() => setShowChurchGuideModal(true)}
-              className="basis-4/5 grow-0 py-2 px-2 bg-white border border-gray-200 text-[#335f87] text-xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1.5 leading-snug">
+              className="basis-4/5 grow-0 py-2 px-2 bg-white border border-gray-200 text-[#335f87] text-[11px] font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1 whitespace-nowrap">
               <Info size={14} className="shrink-0" />
-              <span className="text-left">
-                더브릿지 교회 안내<br />
-                <span className="font-semibold text-[10px] text-gray-500">비전 · 사역자 · 예배시간</span>
-              </span>
+              <span className="text-left">교회안내 (비전 · 사역자 · 예배시간)</span>
               <ChevronRight size={14} className="shrink-0" />
             </button>
             {/* 앱 밖(카카오)으로 나가므로 새 창에서 엽니다 */}
@@ -308,12 +305,12 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
               target="_blank"
               rel="noopener noreferrer"
               title="교회 단톡방 열기"
-              className="basis-1/5 grow-0 bg-[#FEE500] hover:bg-[#FFDE00] text-[#3C1E1E] rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98] transition-all"
+              aria-label="교회 단톡방 열기"
+              className="basis-1/5 grow-0 bg-[#FEE500] hover:bg-[#FFDE00] text-[#3C1E1E] rounded-xl flex items-center justify-center active:scale-[0.98] transition-all"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#3C1E1E">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#3C1E1E">
                 <path d="M12 3C7.03 3 3 6.14 3 10.01c0 2.45 1.6 4.6 4.03 5.88l-.99 3.69c-.08.3.22.56.5.38L10.76 18c.4.04.81.06 1.24.06 4.97 0 9-3.14 9-7.01C21 6.14 16.97 3 12 3z" />
               </svg>
-              <span className="text-[9px] font-bold leading-none">단톡방</span>
             </a>
           </div>
         )}
