@@ -30,8 +30,11 @@ function isVietnamQuietHours(): boolean {
   return hour >= 22 || hour < 8
 }
 
-/** 알림 타입별로 눌렀을 때 이동할 화면. 지금은 MANUAL(관리자 직접알림)만 다룹니다. */
+/** 알림 타입별로 눌렀을 때 이동할 화면 (앱의 NotificationPanel destinationOf()와 동일한 규칙). */
 function urlFor(type: string): string {
+  if (type === 'MEAL') return '/#request'
+  if (type === 'ATTENDANCE') return '/#mypage'
+  if (type === 'BULLETIN') return '/#home'
   if (type === 'MANUAL') return '/#home'
   return '/'
 }
