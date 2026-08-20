@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
-import { buildFamilyStatusText } from '../../lib/familyInfo'
+import { buildFamilyStatusText, getChildGroupLabel } from '../../lib/familyInfo'
 import { formatBirthdayDisplay, calculateAge } from '../../lib/dateUtils'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
@@ -261,7 +261,10 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                     <span className="text-2xs text-gray-400">{member.duty}</span>
                   </div>
                   {member.isDependent ? (
-                    member.childLabriId && <span className="text-2xs text-[#335f87]">{member.childLabriId}</span>
+                    // "출석 미적용"은 부서 이름이 아니므로 부서 칸을 비워 둡니다.
+                    getChildGroupLabel(member.childLabriId) && (
+                      <span className="text-2xs text-[#335f87]">{getChildGroupLabel(member.childLabriId)}</span>
+                    )
                   ) : (
                     member.labriId && member.labriId !== '미정' && (
                       <span className="text-2xs text-[#335f87]">{member.labriId}</span>
