@@ -1,6 +1,6 @@
 'use client'
 
-import { UserProfile } from '../../lib/mockData'
+import { UserProfile, getInitials } from '../../lib/mockData'
 
 interface AvatarProps {
   allUsers: UserProfile[]
@@ -22,7 +22,7 @@ export default function Avatar({ allUsers, authorId, authorName, size = 'w-8 h-8
       {user?.avatarUrl ? (
         <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
       ) : (
-        (authorName || '성').slice(0, 1)
+        getInitials(authorName)
       )}
     </div>
   )

@@ -7,7 +7,7 @@ import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
-import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
+import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 
 interface StatsTabProps {
@@ -191,7 +191,7 @@ export default function StatsTab({
       const d = String(r.date_str || '')
       return d >= safeStart && d <= safeEnd
     })
-    const rows = CHILD_LABRI_OPTIONS.map(group => {
+    const rows = CHILD_ATTENDANCE_GROUPS.map(group => {
       const list = inRange.filter((r: any) => r.labri_id === group)
       const attend = list.filter((r: any) => r.status === 'ATTEND').length
       return { label: group, attend, total: list.length }
@@ -209,9 +209,9 @@ export default function StatsTab({
     ;(childRecords || []).forEach((r: any) => {
       if (String(r.date_str) === selectedStatsDate) byId.set(String(r.dependent_id), r)
     })
-    const order = new Map<string, number>(CHILD_LABRI_OPTIONS.map((g, i) => [g as string, i]))
+    const order = new Map<string, number>(CHILD_ATTENDANCE_GROUPS.map((g, i) => [g as string, i]))
     return buildDependentEntries(allUsers)
-      .filter(c => !!c.childLabriId)
+      .filter(c => (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.childLabriId || ''))
       .map(child => {
         const rec = byId.get(child.id.replace(/^dep_/, ''))
         return {

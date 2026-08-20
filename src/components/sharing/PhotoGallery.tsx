@@ -2,7 +2,7 @@
 
 import { useState, Dispatch, SetStateAction, ReactNode } from 'react'
 import { Heart, Filter, Trash2, X, Edit2, MessageCircle, Play } from 'lucide-react'
-import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
+import { PostItem, UserProfile, CommentItem, getUserDisplayName, getInitials } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 import ImageSlider from '../ImageSlider'
@@ -52,7 +52,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
         <span className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
           {user?.avatarUrl
             ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-            : displayName.slice(0, 1)}
+            : getInitials(displayName)}
         </span>
         <span className="truncate">{displayName}</span>
       </span>

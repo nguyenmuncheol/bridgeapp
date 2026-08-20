@@ -7,7 +7,7 @@ import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
 } from '../../lib/db'
-import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
+import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
@@ -18,9 +18,9 @@ interface AttendanceCheckModalProps {
   allUsers: UserProfile[]
 }
 
-/** 자녀 그룹인지 (영아부·유아·유치부·초등부·중고등부) */
+/** 출석을 체크하는 자녀 그룹인지 ("출석 미적용"은 여기서 빠집니다) */
 function isChildGroup(group: string): boolean {
-  return (CHILD_LABRI_OPTIONS as readonly string[]).includes(group)
+  return (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(group)
 }
 
 // ── 출석체크 버튼 + 모달 (리더/관리자/선생님 전용, 자체 상태 관리) ──
@@ -54,7 +54,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   // ── 내가 출석을 입력할 수 있는 그룹 목록 ──
   const availableGroups = useMemo(() => {
     // 자녀 그룹은 "지정된 자녀가 한 명이라도 있는 그룹"만 보여줍니다.
-    const activeChildGroups = CHILD_LABRI_OPTIONS.filter(g => childEntries.some(c => c.childLabriId === g))
+    const activeChildGroups = CHILD_ATTENDANCE_GROUPS.filter(g => childEntries.some(c => c.childLabriId === g))
 
     if (isTeacher) {
       // 담당 그룹을 지정하지 않은 선생님 = 모든 자녀 그룹 담당

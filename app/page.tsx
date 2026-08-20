@@ -8,10 +8,11 @@ import SharingTab from '../src/components/sharing/SharingTab'
 import RequestTab from '../src/components/request/RequestTab'
 import MyPageTab from '../src/components/mypage/MyPageTab'
 import AdminDashboard from '../src/components/admin/AdminDashboard'
+import { copyExternalImageToStorage } from '../src/lib/storage'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
 import WelcomeModal from '../src/components/auth/WelcomeModal'
-import { UserProfile, Role, getUserDisplayName, isApprovedMember, NotificationItem } from '../src/lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember, NotificationItem, getInitials } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
 import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications, dbMarkWelcomed } from '../src/lib/db'
 import NotificationPanel from '../src/components/NotificationPanel'
@@ -199,6 +200,22 @@ export default function Home() {
         createdAt: toLocalDateStr(profileData.created_at) || toLocalDateStr(new Date()),
         // 환영 팝업을 이미 봤는지 (없으면 승인 후 첫 방문)
         welcomedAt: profileData.welcomed_at || undefined,
+      }
+
+      // ── 카톡 프로필 사진을 우리 저장소로 한 번만 옮깁니다 ──
+      // 저장된 값이 아직 카카오 서버 주소라면, 그건 "복사 전"이라는 뜻입니다.
+      // 성도님이 카톡에서 사진을 바꾸면 그 주소가 죽어 사진이 깨지므로 미리 옮겨둡니다.
+      // 실패해도 화면은 그대로 진행합니다(다음 로그인 때 다시 시도).
+      if (spUser.avatarUrl && spUser.avatarUrl.includes('kakaocdn.net')) {
+        copyExternalImageToStorage(spUser.avatarUrl, 'avatars')
+          .then(copied => {
+            if (!copied) return
+            supabase.from('profiles').update({ avatar_url: copied }).eq('id', spUser.id)
+              .then(() => {
+                setUsers(prev => prev.map(u => (u.id === spUser.id ? { ...u, avatarUrl: copied } : u)))
+              })
+          })
+          .catch(() => { /* 조용히 넘어갑니다 */ })
       }
 
       setUsers(prev => {
@@ -440,13 +457,15 @@ export default function Home() {
     <div className="bg-[#f7f9ff] min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
       {/* 브랜드 헤더 */}
       <div className="bg-white/85 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
-        <h1
+        {/* 가로형 로고에 교회 이름이 이미 들어 있어 글자를 따로 쓰지 않습니다 */}
+        <button
           onClick={() => handleSetCurrentTab('home')}
-          className="text-xl font-black text-[#335f87] tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
+          className="shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
           title="홈으로 이동"
+          aria-label="더브릿지교회 홈으로 이동"
         >
-          The Bridge
-        </h1>
+          <img src="/logo-wide.png" alt="더브릿지교회" className="h-8 w-auto" />
+        </button>
 
         {isGuest ? (
           <button
@@ -468,7 +487,7 @@ export default function Home() {
               <span className="w-6 h-6 rounded-full bg-[#335f87] text-white flex items-center justify-center text-2xs font-bold shrink-0 overflow-hidden">
                 {currentUser.avatarUrl
                   ? <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  : currentUser.name.slice(0, 1)
+                  : getInitials(currentUser.name)
                 }
               </span>
               <span className="text-2xs">{getUserDisplayName(currentUser)}</span>
@@ -536,7 +555,7 @@ export default function Home() {
           // DB 로드 전 로딩 스피너 (더미 데이터 노출 방지)
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
             <div className="w-10 h-10 border-4 border-[#335f87]/20 border-t-[#335f87] rounded-full animate-spin" />
-            <p className="text-xs text-gray-400 font-medium">The Bridge 로딩 중...</p>
+            <p className="text-xs text-gray-400 font-medium">더브릿지교회 로딩 중...</p>
           </div>
         ) : isAdminViewMode ? (
           <AdminDashboard
@@ -674,7 +693,12 @@ export default function Home() {
 
                 {/* 신청 탭 */}
                 {currentTab === 'request' && (
-                  <RequestTab currentUser={currentUser} allUsers={users} />
+                  <RequestTab
+                    currentUser={currentUser}
+                    allUsers={users}
+                    openSubTab={subTabRequest.tab === 'request' ? subTabRequest.sub : ''}
+                    openToken={subTabRequest.token}
+                  />
                 )}
 
                 {/* 마이페이지 탭 */}

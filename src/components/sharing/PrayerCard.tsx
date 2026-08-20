@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { Heart, Lock, Trash2, Pin, CheckCircle2, Edit2 } from 'lucide-react'
-import { PostItem, UserProfile } from '../../lib/mockData'
+import { PostItem, UserProfile, getInitials } from '../../lib/mockData'
 import CommentList from '../CommentList'
 
 interface PrayerCardProps {
@@ -35,7 +35,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
         {user?.avatarUrl ? (
           <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          (authorName || '성').slice(0, 1)
+          getInitials(authorName)
         )}
       </div>
     )
