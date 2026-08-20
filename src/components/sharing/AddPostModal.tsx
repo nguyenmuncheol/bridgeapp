@@ -5,6 +5,7 @@ import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
@@ -41,6 +42,7 @@ export default function AddPostModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
+  useModalDismiss(isOpen, onClose)
   if (!isOpen) return null
 
   const resetAndClose = () => {
@@ -197,7 +199,10 @@ export default function AddPostModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+      onClick={backdropClose(onClose)}
+    >
       <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto">
         <h3 className="font-bold text-sm text-gray-900">
           {subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}

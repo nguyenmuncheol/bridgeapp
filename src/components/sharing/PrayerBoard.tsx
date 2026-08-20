@@ -7,6 +7,7 @@ import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../.
 import { getUserDisplayName } from '../../lib/mockData'
 import { SkeletonList } from '../SkeletonCard'
 import PrayerCard from './PrayerCard'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 // 고정글 우선, 그 다음 미완료(기도 중)를 완료보다 위로 정렬
 export const sortPrayers = (list: PostItem[]) =>
@@ -36,6 +37,7 @@ interface PrayerBoardProps {
 // ── 기도제목 게시판 (아멘/고정/댓글/비밀글/수정/삭제) ──
 export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, setPrayers, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PrayerBoardProps) {
   const [editingPrayer, setEditingPrayer] = useState<PostItem | null>(null)
+  useModalDismiss(!!editingPrayer, () => setEditingPrayer(null))
   const [editPrayerTitle, setEditPrayerTitle] = useState('')
   const [editPrayerContent, setEditPrayerContent] = useState('')
   const [editPrayerIsSecret, setEditPrayerIsSecret] = useState(false)
@@ -261,8 +263,11 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
 
       {/* ── 기도제목 수정 모달 ── */}
       {editingPrayer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setEditingPrayer(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 기도제목 수정</h3>
               <button onClick={() => setEditingPrayer(null)} className="text-gray-400"><X size={16} /></button>

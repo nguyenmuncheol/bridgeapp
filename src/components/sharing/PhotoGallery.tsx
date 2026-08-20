@@ -10,6 +10,7 @@ import { saveImage, openImageViewer } from '../../lib/download'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
 import { dbAddComment } from '../../lib/db'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -36,6 +37,7 @@ interface PhotoGalleryProps {
 export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, setPhotos, dynamicTags, selectedTag, onTagChange, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
   const [activePhotoModal, setActivePhotoModal] = useState<PostItem | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<PostItem | null>(null)
+  useModalDismiss(!!editingPhoto, () => setEditingPhoto(null))
   const [editPhotoTitle, setEditPhotoTitle] = useState('')
   const [editPhotoContent, setEditPhotoContent] = useState('')
   const [editPhotoTag, setEditPhotoTag] = useState('')
@@ -330,7 +332,10 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
           → 수정 창을 z-[90]으로 올리고, 뒤의 사진 창은 흐리게 + 클릭 차단합니다.
           → 무엇을 고치는 중인지 알 수 있게 사진 미리보기를 수정 창 안에 넣었습니다. */}
       {editingPhoto && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setEditingPhoto(null))}
+        >
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 행사사진 정보 수정</h3>
@@ -510,12 +515,15 @@ function PhotoDetailModal({
 
   const canManage = photo.authorId === currentUser.id || isAdmin
 
+  useModalDismiss(true, onClose)
+
   return (
     <div
       className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 transition-all ${
         isEditing ? 'pointer-events-none opacity-40' : ''
       }`}
       aria-hidden={isEditing}
+      onClick={backdropClose(onClose)}
     >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold">{toastMsg}</div>}

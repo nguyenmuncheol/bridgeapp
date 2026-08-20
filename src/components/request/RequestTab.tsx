@@ -7,6 +7,7 @@ import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } fro
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
 import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/familyKey'
 import { useCachedQuery } from '../../lib/dataCache'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface RequestTabProps {
   currentUser: UserProfile
@@ -92,6 +93,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
   const [eventFormContent, setEventFormContent] = useState('')
   const [eventFormManager, setEventFormManager] = useState('')
   const [showEventEditModal, setShowEventEditModal] = useState(false)
+  useModalDismiss(showEventEditModal, () => setShowEventEditModal(false))
   const [editUrl, setEditUrl] = useState('')
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
@@ -477,8 +479,11 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
 
       {/* 관리자: 행사 등록/수정 모달 (제목 + 내용 + URL 3필드) */}
       {showEventEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowEventEditModal(false))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-gray-900">📋 행사 신청 관리 (관리자)</h3>
               <button onClick={() => setShowEventEditModal(false)} className="text-gray-400"><X size={16} /></button>

@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface StatsTabProps {
   currentUser?: UserProfile
@@ -241,6 +242,7 @@ export default function StatsTab({
     status: 'ATTEND' | 'ABSENT' | 'NONE'
     note: string
   } | null>(null)
+  useModalDismiss(!!editingAttendanceUser, () => setEditingAttendanceUser(null))
 
   const [isSavingAttendance, setIsSavingAttendance] = useState(false)
 
@@ -715,8 +717,11 @@ export default function StatsTab({
 
       {/* ── 개별 출석 정보 수정 모달 ── */}
       {editingAttendanceUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setEditingAttendanceUser(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-[14px] text-gray-900">

@@ -6,6 +6,7 @@ import { UserProfile } from '../../lib/mockData'
 import { birthdayMatchesCalendarDay } from '../../lib/dateUtils'
 import { dbFetchChurchEvents, dbCreateChurchEvent, dbUpdateChurchEvent, dbDeleteChurchEvent } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import BirthdayList from './BirthdayList'
 
 type EventType = 'sunday' | 'special'
@@ -30,6 +31,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
   const [customEvents, setCustomEvents] = useState<ChurchEvent[]>([])
   const [calEditModal, setCalEditModal] = useState<{ day: number; dateStr: string } | null>(null)
+  useModalDismiss(!!calEditModal, () => setCalEditModal(null))
   const [editEventTitle, setEditEventTitle] = useState('')
   const [editEventType, setEditEventType] = useState<EventType>('special')
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
@@ -242,8 +244,11 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
       {/* ── 일정 텍스트 직접 수정/추가 모달 (관리자/리더) ── */}
       {calEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setCalEditModal(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">📅 {calEditModal.dateStr} 일정 편집</h3>
               <button onClick={() => setCalEditModal(null)} className="text-gray-400 font-bold">✕</button>

@@ -8,6 +8,7 @@ import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
 import { SkeletonList } from '../SkeletonCard'
 import { todayLocalDateStr } from '../../lib/dateUtils'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface PraiseBoardProps {
   currentUser: UserProfile
@@ -122,6 +123,8 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   const [selectedPraise, setSelectedPraise] = useState<PostItem | null>(null)
   const [editingPraise, setEditingPraise] = useState<PostItem | null>(null)
+  useModalDismiss(!!selectedPraise && !editingPraise, () => setSelectedPraise(null))
+  useModalDismiss(!!editingPraise, () => setEditingPraise(null))
   const [editPraiseTitle, setEditPraiseTitle] = useState('')
   const [editPraiseContent, setEditPraiseContent] = useState('')
 
@@ -275,7 +278,10 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
       {/* ── 찬양/묵상 상세 모달 (수정 & 삭제 버튼 포함) ── */}
       {selectedPraise && !editingPraise && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setSelectedPraise(null))}
+        >
           <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[85vh] overflow-y-auto">
             <div className="p-5 space-y-3">
               <div className="flex justify-between items-start">
@@ -372,8 +378,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
       {/* ── 찬양/묵상 수정 모달 ── */}
       {editingPraise && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setEditingPraise(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 찬양/묵상 수정</h3>
               <button onClick={() => setEditingPraise(null)} className="text-gray-400"><X size={16} /></button>

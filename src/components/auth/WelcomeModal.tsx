@@ -1,6 +1,7 @@
 'use client'
 
 import { UserProfile, getSimpleUserName, KAKAO_OPEN_CHAT_URL } from '../../lib/mockData'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface WelcomeModalProps {
   currentUser: UserProfile
@@ -14,9 +15,13 @@ interface WelcomeModalProps {
  * 기기에만 저장하면 폰을 바꾸거나 앱을 지웠을 때 또 뜹니다.
  */
 export default function WelcomeModal({ currentUser, onClose }: WelcomeModalProps) {
+  useModalDismiss(true, onClose)
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl animate-fade-in">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex items-center justify-center p-4"
+      onClick={backdropClose(onClose)}
+    >
+      <div className="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
         <img src="/logo-wide.png" alt="더브릿지교회" className="h-12 w-auto mx-auto" />
 
         <div className="space-y-1.5">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface ProfileSetupModalProps {
   initialName: string
@@ -33,8 +34,13 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'))
 
+  useModalDismiss(true, onCancel)
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto"
+      onClick={backdropClose(onCancel)}
+    >
       <div className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기/뒤로가기 X 버튼 */}
         <button

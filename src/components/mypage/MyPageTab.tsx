@@ -10,6 +10,7 @@ import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { getPushUiState, subscribeToPush, unsubscribeFromPush, type PushUiState } from '../../lib/push'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import PwaInstallButton from '../PwaInstallButton'
 
 interface MyPageTabProps {
@@ -341,6 +342,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   const myPrayers = prayers.filter(p => p.authorId === currentUser.id)
 
+  useModalDismiss(showEditModal, () => setShowEditModal(false))
+  useModalDismiss(!!selectedPrayer, () => setSelectedPrayer(null))
+
   return (
     <div className="space-y-4 pb-6">
       {toastMsg && <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50">{toastMsg}</div>}
@@ -566,8 +570,11 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
       {/* ── 프로필 수정 모달 ── */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowEditModal(false))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
               <h3 className="font-bold text-sm text-gray-900">✏️ 내 정보 & 프로필 수정</h3>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 font-bold">✕</button>
@@ -735,7 +742,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
       {/* ── 내 기도제목 상세 모달 ── */}
       {selectedPrayer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setSelectedPrayer(null))}
+        >
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-2">
               <div>

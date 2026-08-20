@@ -8,6 +8,7 @@ import { usePaginatedPosts } from '../../lib/usePaginatedPosts'
 import { todayLocalDateStr } from '../../lib/dateUtils'
 import { SkeletonList } from '../SkeletonCard'
 import MemberNewsCard from './MemberNewsCard'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface MemberNewsBoardProps {
   currentUser: UserProfile
@@ -18,9 +19,11 @@ interface MemberNewsBoardProps {
 // ── 교우소식 게시판 (작성/수정/삭제/좋아요/댓글) ──
 export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin }: MemberNewsBoardProps) {
   const [showAddNewsModal, setShowAddNewsModal] = useState(false)
+  useModalDismiss(showAddNewsModal, () => setShowAddNewsModal(false))
   const [newNewsTitle, setNewNewsTitle] = useState('')
   const [newNewsContent, setNewNewsContent] = useState('')
   const [editingNews, setEditingNews] = useState<PostItem | null>(null)
+  useModalDismiss(!!editingNews, () => setEditingNews(null))
   const [editNewsTitle, setEditNewsTitle] = useState('')
   const [editNewsContent, setEditNewsContent] = useState('')
 
@@ -272,8 +275,11 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
 
       {/* ── 교우소식 작성 모달 ── */}
       {showAddNewsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowAddNewsModal(false))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <h3 className="font-bold text-sm text-gray-900">📣 교우소식 작성</h3>
             <input
               type="text"
@@ -299,8 +305,11 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
 
       {/* ── 교우소식 수정 모달 ── */}
       {editingNews && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setEditingNews(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-gray-900">✏️ 교우소식 수정</h3>
               <button onClick={() => setEditingNews(null)} className="text-gray-400 font-bold">✕</button>

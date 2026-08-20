@@ -9,6 +9,7 @@ import {
 } from '../../lib/db'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
@@ -31,6 +32,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const canCheck = canEditChildAttendance(currentUser.role)
 
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
+  useModalDismiss(showAttendanceModal, () => setShowAttendanceModal(false))
   const [checkSelections, setCheckSelections] = useState<Record<string, 'ATTEND' | 'ABSENT'>>({})
   const [checkNotes, setCheckNotes] = useState<Record<string, string>>({})
   const [checkSubmitted, setCheckSubmitted] = useState(false)
@@ -274,7 +276,10 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
       {/* ── 출석체크 모달 ── */}
       {showAttendanceModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowAttendanceModal(false))}
+        >
           <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-[#335f87] text-white">
               <div>

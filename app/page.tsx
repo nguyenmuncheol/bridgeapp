@@ -18,6 +18,7 @@ import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyR
 import NotificationPanel from '../src/components/NotificationPanel'
 import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
+import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
 import { LogIn } from 'lucide-react'
 
 export default function Home() {
@@ -48,6 +49,7 @@ export default function Home() {
   const [currentUserId, setCurrentUserId] = useState<string>('guest')
   const [isAdminViewMode, setIsAdminViewMode] = useState<boolean>(false)
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false)
+  useModalDismiss(showAuthModal, () => setShowAuthModal(false))
   const [supabaseUser, setSupabaseUser] = useState<any>(null)
   const [showProfileSetup, setShowProfileSetup] = useState<boolean>(false)
   const [oauthName, setOauthName] = useState<string>('')
@@ -753,7 +755,10 @@ export default function Home() {
 
       {/* 회원가입 / 로그인 모달 */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowAuthModal(false))}
+        >
           <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowAuthModal(false)}

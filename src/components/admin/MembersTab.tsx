@@ -7,6 +7,7 @@ import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface MembersTabProps {
   currentUser?: UserProfile
@@ -28,6 +29,7 @@ export default function MembersTab({
   const approvedMembers = allUsers.filter(u => isApprovedMember(u.role))
   const [memberSearch, setMemberSearch] = useState('')
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null)
+  useModalDismiss(!!editingMember, () => setEditingMember(null))
   const [editLinkedMemberId, setEditLinkedMemberId] = useState<string>('')
   const [editMemberData, setEditMemberData] = useState<{
     name: string; phone: string; address: string; birthday: string;
@@ -411,7 +413,10 @@ export default function MembersTab({
 
       {/* ── 성도 편집 모달 ── */}
       {editingMember && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setEditingMember(null))}
+        >
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* 헤더 */}
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">

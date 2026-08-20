@@ -7,6 +7,7 @@ import { dbFetchMealCoupons, dbUpdateMealCoupon } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { todayLocalDateStr } from '../../lib/dateUtils'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
+import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface CouponsTabProps {
   allUsers: UserProfile[]
@@ -127,6 +128,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
 
   // ── 쿠폰구매 QR 모달 ──
   const [showQrModal, setShowQrModal] = useState(false)
+  useModalDismiss(showQrModal, () => setShowQrModal(false))
   const MEAL_QR_IMAGE_URL = 'https://isbwfpokewammwiicxqr.supabase.co/storage/v1/object/public/church-assets/photos/meal_account.jpg'
 
   return (
@@ -279,8 +281,11 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
 
       {/* ── 쿠폰구매 QR 모달 ── */}
       {showQrModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowQrModal(false))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto">
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm">💳 식사쿠폰 구매 (QR/계좌)</h3>
