@@ -168,3 +168,4 @@ supabase/
   - `run_comment_like_digest()` 함수가 두 시각에 돌면서, `notifications`에 안 읽은 COMMENT/LIKE가 있는 성도마다 "안 읽은 댓글·좋아요가 N건 있어요" 요약 푸시 1건을 만듭니다.
   - 앱에서 알림함을 열면(기존 `dbMarkAllNotificationsRead`) 자동으로 읽음 처리되어 다음 발송 대상에서 빠짐 — 별도 해제 로직 불필요.
   - `push_jobs`에 `notification_id` 없이 `user_id` + `payload`만으로도 발송 가능하도록 컬럼을 확장 (건별 발송과 요약 발송이 같은 큐/엣지함수를 공유).
+- ✅ 2026-08-20: 안 읽은 개수가 지난 발송과 그대로면 반복 발송하지 않도록 개선 (`20260820180000_push_digest_only_on_growth.sql`). `push_digest_state(user_id, last_notified_at)`에 "마지막으로 요약 푸시를 보낸 시각"을 저장해두고, 그 이후에 새로 생긴 안 읽은 댓글·좋아요가 있을 때만 다시 보냅니다 — 단순히 개수를 저장해 비교하면 "읽었다가 다시 늘어나 우연히 같은 개수가 됐을 때" 오작동할 수 있어 시각 기준으로 판단.
