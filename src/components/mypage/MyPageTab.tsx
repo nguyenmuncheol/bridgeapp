@@ -347,7 +347,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   return (
     <div className="space-y-4 pb-6">
-      {toastMsg && <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50">{toastMsg}</div>}
+      {toastMsg && <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">{toastMsg}</div>}
 
       {/* ── 프로필 카드 ── */}
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4 relative">

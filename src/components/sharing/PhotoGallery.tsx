@@ -526,7 +526,7 @@ function PhotoDetailModal({
       onClick={backdropClose(onClose)}
     >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold">{toastMsg}</div>}
+        {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold whitespace-nowrap">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <div className="min-w-0">
             <h3 className="font-bold text-sm text-gray-900">{photo.title}</h3>

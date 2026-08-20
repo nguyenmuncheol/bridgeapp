@@ -90,7 +90,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
     <div className="space-y-4 pb-6 relative">
       {/* 토스트 */}
       {toastMsg && (
-        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none">
+        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none whitespace-nowrap">
           {toastMsg}
         </div>
       )}
