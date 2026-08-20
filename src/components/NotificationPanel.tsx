@@ -171,8 +171,8 @@ export default function NotificationPanel({
             >
               {/* 교회 명의로 나간 알림은 이모지 대신 교회 로고를 보여줍니다 */}
               {n.actorName === CHURCH_NAME ? (
-                <span className="w-6 h-6 shrink-0 mt-0.5 rounded-md overflow-hidden bg-white border border-gray-100 flex items-center justify-center">
-                  <img src="/icons/icon-192.png" alt="더브릿지교회" className="w-full h-full object-contain" />
+                <span className="w-6 h-6 shrink-0 mt-0.5 flex items-center justify-center">
+                  <img src="/logo-square.png" alt="더브릿지교회" className="w-full h-full object-contain" />
                 </span>
               ) : (
                 <span className="text-base leading-none mt-0.5 shrink-0">{iconOf(n.type)}</span>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare } from 'lucide-react'
+import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare, Camera } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
@@ -164,6 +164,34 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     } finally {
       setIsUploadingAvatar(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  // ── 자녀 프로필 사진 ──
+  // 자녀는 자기 계정이 없으므로 부모가 대신 올려 줍니다.
+  // 동그라미를 누른 자녀가 누구인지 기억해 두었다가, 사진을 고르면 그 자녀에게 넣습니다.
+  const childFileInputRef = useRef<HTMLInputElement>(null)
+  const [photoChildId, setPhotoChildId] = useState('')
+  const pickChildPhoto = (childId: string) => {
+    setPhotoChildId(childId)
+    childFileInputRef.current?.click()
+  }
+  const handleChildFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const childId = photoChildId
+    if (!file || !childId) return
+    setIsUploadingAvatar(true)
+    showToast('⏳ 자녀 사진 업로드 중...')
+    try {
+      const uploadedUrl = await uploadImageToStorage(file, 'avatars')
+      updateEditChild(childId, { avatarUrl: uploadedUrl })
+      showToast('✅ 자녀 사진이 업로드되었습니다!')
+    } catch (err: any) {
+      showToast(`⚠️ ${err?.message || '사진 업로드에 실패했습니다.'}`)
+    } finally {
+      setIsUploadingAvatar(false)
+      setPhotoChildId('')
+      if (childFileInputRef.current) childFileInputRef.current.value = ''
     }
   }
 
@@ -555,7 +583,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   <label className="text-2xs text-gray-400 font-bold">자녀 정보</label>
                   <button type="button" onClick={addEditChild} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
-                <div className="mt-1 space-y-1.5">
+                <p className="text-2xs text-gray-400 mt-1">
+                  동그라미를 누르면 자녀 사진을 넣거나 바꿀 수 있습니다.
+                </p>
+                <div className="mt-1.5 space-y-2">
                   {editChildren.length === 0 && (
                     <p className="text-2xs text-gray-300">등록된 자녀가 없습니다.</p>
                   )}
@@ -564,38 +595,58 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     // (미지정 자녀는 생일을 비워두셔도 되고, 생일 달력에도 안 나옵니다)
                     const needsBirthday = !!child.labriId && !child.birthday
                     return (
-                      <div key={child.id} className="flex gap-1 items-center">
-                        <input
-                          type="text"
-                          value={child.name}
-                          onChange={e => updateEditChild(child.id, { name: e.target.value })}
-                          placeholder="이름"
-                          className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
-                        />
-                        <input
-                          type="text"
-                          value={child.birthday || ''}
-                          onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
-                          placeholder="생일 YYYY-MM-DD"
-                          className={`w-[36%] p-2 rounded-lg border focus:outline-none font-medium text-2xs ${needsBirthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
-                        />
-                        <select
-                          value={child.labriId || ''}
-                          onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
-                          className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
-                        >
-                          <option value="">미지정</option>
-                          {CHILD_LABRI_OPTIONS.map(g => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
-                        <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0">
-                          <X size={13} />
-                        </button>
+                      <div key={child.id} className="p-2 bg-gray-50/70 border border-gray-100 rounded-xl space-y-1.5">
+                        {/* 첫 줄: 사진 + 이름 + 삭제 */}
+                        <div className="flex gap-1.5 items-center">
+                          <button
+                            type="button"
+                            onClick={() => pickChildPhoto(child.id)}
+                            disabled={isUploadingAvatar}
+                            title="자녀 사진 넣기 / 바꾸기"
+                            aria-label={`${child.name || '자녀'} 사진 넣기`}
+                            className="w-10 h-10 shrink-0 rounded-full overflow-hidden bg-[#335f87]/10 text-[#335f87] text-2xs font-bold flex items-center justify-center border border-[#335f87]/20 active:scale-95 transition-transform disabled:opacity-50"
+                          >
+                            {child.avatarUrl
+                              ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
+                              : (photoChildId === child.id && isUploadingAvatar ? '…' : <Camera size={14} />)}
+                          </button>
+                          <input
+                            type="text"
+                            value={child.name}
+                            onChange={e => updateEditChild(child.id, { name: e.target.value })}
+                            placeholder="자녀 이름"
+                            className="flex-1 min-w-0 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                          />
+                          <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0" title="이 자녀 지우기">
+                            <X size={13} />
+                          </button>
+                        </div>
+                        {/* 둘째 줄: 생일 + 교회학교 그룹 */}
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={child.birthday || ''}
+                            onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
+                            placeholder="생일 YYYY-MM-DD"
+                            className={`w-1/2 p-2 rounded-lg border focus:outline-none font-medium text-2xs ${needsBirthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-white border-gray-200 text-gray-900'}`}
+                          />
+                          <select
+                            value={child.labriId || ''}
+                            onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
+                            className="w-1/2 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                          >
+                            <option value="">미지정</option>
+                            {CHILD_LABRI_OPTIONS.map(g => (
+                              <option key={g} value={g}>{g}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )
                   })}
                 </div>
+                {/* 자녀 사진 고르는 창 (화면에는 안 보입니다) */}
+                <input ref={childFileInputRef} type="file" accept="image/*" onChange={handleChildFileChange} className="hidden" />
               </div>
             </div>
             <div className="flex gap-2 pt-2">

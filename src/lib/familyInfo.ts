@@ -44,6 +44,11 @@ export interface FamilyChildInfo {
    * (부모의 가족현황 줄에는 이름이 그대로 나옵니다)
    */
   labriId?: string
+  /**
+   * 자녀 프로필 사진 주소. 부모가 [내 정보 > 정보 수정 > 자녀 정보]에서 올립니다.
+   * 비어 있으면 주소록·생일 달력에서 이름 두 글자가 동그라미에 표시됩니다.
+   */
+  avatarUrl?: string
 }
 
 export interface FamilyInfoData {
@@ -65,7 +70,8 @@ export function parseFamilyInfo(raw?: string | null): FamilyInfoData {
             id: c.id || `child_${Math.random().toString(36).slice(2, 9)}`,
             name: c.name.trim(),
             birthday: c.birthday || '',
-            labriId: typeof c.labriId === 'string' ? c.labriId : ''
+            labriId: typeof c.labriId === 'string' ? c.labriId : '',
+            avatarUrl: typeof c.avatarUrl === 'string' ? c.avatarUrl : ''
           })),
         addressRequestedAt: typeof parsed.addressRequestedAt === 'string' ? parsed.addressRequestedAt : ''
       }
@@ -80,7 +86,7 @@ export function serializeFamilyInfo(data: FamilyInfoData): string {
   const note = (data.note || '').trim()
   const children = (data.children || [])
     .filter(c => c.name && c.name.trim())
-    .map(c => ({ id: c.id, name: c.name, birthday: c.birthday || '', labriId: c.labriId || '' }))
+    .map(c => ({ id: c.id, name: c.name, birthday: c.birthday || '', labriId: c.labriId || '', avatarUrl: c.avatarUrl || '' }))
   const addressRequestedAt = data.addressRequestedAt || ''
   if (!note && children.length === 0 && !addressRequestedAt) return ''
   return JSON.stringify({ note, children, addressRequestedAt })
@@ -221,6 +227,8 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
         role: 'MEMBER',
         duty: '자녀',
         birthday: c.birthday,
+        // 부모가 올려준 자녀 사진 (없으면 이름 두 글자가 표시됩니다)
+        avatarUrl: c.avatarUrl || '',
         createdAt: '',
         isDependent: true,
         // 자녀 교회학교 그룹. 비어 있으면 주소록 목록/생일 달력에서 숨깁니다.
