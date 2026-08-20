@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Search, Edit2, Save, X } from 'lucide-react'
-import { UserProfile, Role, getUserDisplayName, isApprovedMember } from '../../lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren } from '../../lib/familyInfo'
@@ -373,7 +373,7 @@ export default function MembersTab({
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2">
                 <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
-                  {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" /> : member.name.slice(0, 1)}
+                  {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" /> : getInitials(member.name)}
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(member, '')}</h3>

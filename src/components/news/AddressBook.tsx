@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
-import { UserProfile } from '../../lib/mockData'
+import { UserProfile, getInitials } from '../../lib/mockData'
 import { buildFamilyStatusText } from '../../lib/familyInfo'
 import { formatBirthdayDisplay, calculateAge } from '../../lib/dateUtils'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
@@ -253,7 +253,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
             <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
               <div className="flex items-center gap-2.5">
                 <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
-                  {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : member.name.slice(0, 1)}
+                  {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">

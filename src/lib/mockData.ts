@@ -62,6 +62,20 @@ export interface UserProfile {
   teachGroup?: string
 }
 
+/**
+ * 프로필 사진이 없을 때 동그라미에 넣을 글자.
+ *
+ * 성을 빼고 **이름 두 글자**를 씁니다 (홍길동 → 길동).
+ * 한 글자만 보여주면 김·이·박이 너무 많아 누가 누군지 구분이 안 됩니다.
+ */
+export function getInitials(name?: string | null): string {
+  const raw = (name || '').trim()
+  if (!raw) return '성'
+  // 공백이 있으면 마지막 낱말을 씁니다 ("Nguyen 문철" → 문철)
+  const last = raw.split(/\s+/).pop() || raw
+  return last.length <= 2 ? last : last.slice(-2)
+}
+
 /** 교회 단톡방 (카카오 오픈채팅) — 홈 화면 버튼과 가입 환영 팝업이 함께 씁니다 */
 export const KAKAO_OPEN_CHAT_URL = 'https://open.kakao.com/o/gi8JM1Ii'
 

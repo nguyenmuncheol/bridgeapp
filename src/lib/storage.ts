@@ -168,3 +168,30 @@ export async function deleteImagesFromStorage(publicUrls: string[]): Promise<voi
     console.warn('Storage 파일 삭제 실패:', error.message)
   }
 }
+
+/**
+ * 카카오 프로필 사진을 **우리 저장소로 한 번 복사**합니다.
+ *
+ * 🐛 왜 필요한가: 지금까지는 카톡 서버 주소(k.kakaocdn.net/...)를 그대로 저장했습니다.
+ * 그런데 그건 사진 파일이 아니라 **주소**라서, 성도님이 카톡에서 프로필을 바꾸면
+ * 옛 주소가 사라져 앱에서 사진이 깨집니다. 게다가 주소가 http(보안 없음)라
+ * 브라우저가 막을 여지도 있습니다.
+ * → 가입 직후 한 번만 우리 저장소로 옮겨두면 이후로는 절대 안 깨집니다.
+ *
+ * 실패해도 앱이 멈추면 안 되므로, 못 가져오면 조용히 null 을 돌려줍니다.
+ */
+export async function copyExternalImageToStorage(url: string, folder = 'avatars'): Promise<string | null> {
+  try {
+    if (!url) return null
+    // https 로 바꿔서 시도합니다 (카카오는 https도 지원합니다)
+    const secure = url.startsWith('http://') ? 'https://' + url.slice(7) : url
+    const res = await fetch(secure)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    if (!blob.type.startsWith('image/')) return null
+    const file = new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' })
+    return await uploadImageToStorage(file, folder)
+  } catch {
+    return null
+  }
+}

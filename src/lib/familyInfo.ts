@@ -20,8 +20,19 @@
  */
 import { UserProfile } from './mockData'
 
-/** 자녀가 속한 교회학교 그룹. 빈 값이면 "미지정"입니다. */
-export const CHILD_LABRI_OPTIONS = ['영아부', '유아·유치부', '초등부', '중고등부'] as const
+/**
+ * 자녀가 속한 교회학교 그룹. 빈 값이면 "미지정"입니다.
+ *
+ * - 미지정(빈 값): 주소록·생일달력·출석 **모두 제외**
+ * - 출석 미적용: 주소록·생일달력에는 **보이고**, 출석체크·리마인더에서만 제외
+ *   (교회학교에 안 다니지만 명단에는 있어야 하는 자녀)
+ */
+export const CHILD_LABRI_NO_ATTENDANCE = '출석 미적용'
+
+export const CHILD_LABRI_OPTIONS = ['영아부', '유아·유치부', '초등부', '중고등부', CHILD_LABRI_NO_ATTENDANCE] as const
+
+/** 출석체크·통계 대상이 되는 그룹만 (출석 미적용 제외) */
+export const CHILD_ATTENDANCE_GROUPS = ['영아부', '유아·유치부', '초등부', '중고등부'] as const
 
 export interface FamilyChildInfo {
   id: string

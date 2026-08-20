@@ -2,7 +2,7 @@
 
 import { useState, Dispatch, SetStateAction } from 'react'
 import { Play, Trash2, X, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
-import { PostItem, UserProfile, getSimpleUserName } from '../../lib/mockData'
+import { PostItem, UserProfile, getSimpleUserName, getInitials } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
@@ -133,7 +133,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         {user?.avatarUrl ? (
           <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          (authorName || '성').slice(0, 1)
+          getInitials(authorName)
         )}
       </div>
     )

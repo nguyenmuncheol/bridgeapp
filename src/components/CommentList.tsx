@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CommentItem, UserProfile } from '../lib/mockData'
+import { CommentItem, UserProfile, getInitials } from '../lib/mockData'
 import { dbUpdateComment, dbDeleteComment } from '../lib/db'
 
 interface CommentListProps {
@@ -45,7 +45,7 @@ export default function CommentList({
       <span className="w-6 h-6 text-2xs rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden">
         {user?.avatarUrl
           ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-          : (authorName || '성').slice(0, 1)}
+          : getInitials(authorName)}
       </span>
     )
   }

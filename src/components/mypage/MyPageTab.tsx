@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare } from 'lucide-react'
-import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember, canOpenAdmin } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons } from '../../lib/db'
@@ -287,7 +287,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           >
             {currentUser.avatarUrl
               ? <img src={currentUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" style={{ objectPosition: 'center center' }} />
-              : currentUser.name.slice(0, 1)
+              : getInitials(currentUser.name)
             }
             <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 text-2xs flex items-center justify-center text-white font-bold transition-all">📷 수정</span>
           </button>
@@ -478,7 +478,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <div className="space-y-3 text-xs">
               <div className="flex flex-col items-center gap-2">
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-2xl border-2 border-blue-100 shadow-md">
-                  {avatarPreview ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : currentUser.name.slice(0, 1)}
+                  {avatarPreview ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : getInitials(currentUser.name)}
                 </div>
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
                   📷 프로필 사진 선택

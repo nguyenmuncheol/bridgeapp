@@ -6,6 +6,9 @@ import { NotificationItem, UserProfile, getUserDisplayName } from '../lib/mockDa
 import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification } from '../lib/db'
 import { formatDateTimeShort } from '../lib/dateUtils'
 
+/** 교회 명의로 나가는 알림의 보낸 사람 이름 (서버 함수들과 같은 값) */
+const CHURCH_NAME = '더브릿지교회'
+
 interface NotificationPanelProps {
   currentUser: UserProfile
   items: NotificationItem[]
@@ -27,7 +30,7 @@ interface NotificationPanelProps {
  */
 function destinationOf(n: NotificationItem): { tab: string; sub: string } {
   // ① 서버가 시간에 맞춰 보내는 알림은 글이 아니라 "할 일"이라 목적지가 정해져 있습니다.
-  if (n.type === 'MEAL') return { tab: 'request', sub: '' }
+  if (n.type === 'MEAL') return { tab: 'request', sub: 'meal' }
   if (n.type === 'ATTENDANCE') return { tab: 'mypage', sub: '' }   // 관리 화면은 내 정보에서 들어갑니다
   if (n.type === 'BULLETIN') return { tab: 'home', sub: '' }
   if (n.type === 'BIRTHDAY') return { tab: 'news', sub: 'memberNews' }
@@ -166,7 +169,14 @@ export default function NotificationPanel({
                 n.isRead ? '' : 'bg-blue-50/40'
               }`}
             >
-              <span className="text-base leading-none mt-0.5 shrink-0">{iconOf(n.type)}</span>
+              {/* 교회 명의로 나간 알림은 이모지 대신 교회 로고를 보여줍니다 */}
+              {n.actorName === CHURCH_NAME ? (
+                <span className="w-6 h-6 shrink-0 mt-0.5 rounded-md overflow-hidden bg-white border border-gray-100 flex items-center justify-center">
+                  <img src="/icons/icon-192.png" alt="더브릿지교회" className="w-full h-full object-contain" />
+                </span>
+              ) : (
+                <span className="text-base leading-none mt-0.5 shrink-0">{iconOf(n.type)}</span>
+              )}
               <span className="flex-1 min-w-0 space-y-0.5">
                 {isSystemType(n.type) ? (
                   <>

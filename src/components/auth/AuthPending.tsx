@@ -37,9 +37,8 @@ export default function AuthPending({ onGoogleLogin, onKakaoLogin, onRefreshStat
   return (
     <div className="min-h-[75vh] flex flex-col items-center justify-center p-4 space-y-6">
       {/* 로고 및 안내 */}
-      <div className="text-center space-y-2">
-        <div className="text-4xl">⛪</div>
-        <h2 className="font-black text-lg text-[#335f87]">더브릿지교회</h2>
+      <div className="text-center space-y-3">
+        <img src="/logo-wide.png" alt="더브릿지교회" className="h-16 w-auto mx-auto" />
         <p className="text-xs text-gray-500">
           카카오/구글 계정으로 간편하게 로그인/가입하세요.<br />
           관리자의 가입 승인 후 이용하실 수 있습니다.

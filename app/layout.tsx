@@ -18,8 +18,20 @@ export const metadata: Metadata = {
   description: "더브릿지교회 성도들을 위한 모바일 스마트 웹앱",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
+    icon: "/favicon.ico",
+    apple: "/icons/apple-touch-icon.png",
+  },
+  // 카톡·문자로 주소를 공유했을 때 뜨는 미리보기 (가로형 로고)
+  openGraph: {
+    title: "더브릿지교회 | The Bridge Church",
+    description: "더브릿지교회 성도들을 위한 모바일 스마트 웹앱",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    type: "website",
+    locale: "ko_KR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-image.png"],
   },
   appleWebApp: {
     capable: true,

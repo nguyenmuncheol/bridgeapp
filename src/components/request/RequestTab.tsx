@@ -11,10 +11,27 @@ import { useCachedQuery } from '../../lib/dataCache'
 interface RequestTabProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
+  /** 알림 등에서 특정 서브탭을 열어달라고 요청할 때 ('meal' | 'event') */
+  openSubTab?: string
+  /** 같은 서브탭을 연달아 요청해도 다시 열리도록 하는 번호표 */
+  openToken?: number
 }
 
-export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
+export default function RequestTab({ currentUser, allUsers, openSubTab = '', openToken = 0 }: RequestTabProps) {
   const isAdmin = currentUser.role === 'ADMIN'
+
+  // ── 서브탭: 주일식사 | 교회행사 (다른 메뉴와 같은 모양) ──
+  // 신청 화면을 열면 가장 자주 쓰는 "주일식사"가 먼저 보입니다.
+  // 탭을 바꿔도 입력 중이던 내용이 사라지지 않도록, 지우는 대신 CSS로 숨깁니다.
+  const [subTab, setSubTab] = useState<'meal' | 'event'>('meal')
+  const goSubTab = (next: 'meal' | 'event') => {
+    setSubTab(next)
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+  useEffect(() => {
+    if (openSubTab === 'meal' || openSubTab === 'event') goSubTab(openSubTab)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openToken, openSubTab])
 
   // ── 식사 신청 ──
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
@@ -226,7 +243,20 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
         </div>
       )}
 
+      {/* 서브탭 2종: 주일식사 | 교회행사 */}
+      <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-bold text-center">
+        <button
+          onClick={() => goSubTab('meal')}
+          className={`py-2 rounded-lg transition-all ${subTab === 'meal' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+        >🍚 주일식사</button>
+        <button
+          onClick={() => goSubTab('event')}
+          className={`py-2 rounded-lg transition-all ${subTab === 'event' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+        >📋 교회행사</button>
+      </div>
+
       {/* ─── 1. 주일 식사 신청 ─── */}
+      <div className={subTab === 'meal' ? '' : 'hidden'}>
       <section className="bg-white rounded-2xl p-5 border border-blue-50 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -378,8 +408,10 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           )}
         </div>
       </section>
+      </div>
 
       {/* ─── 2. 교회 행사 신청 (제목 + 내용 + URL) ─── */}
+      <div className={subTab === 'event' ? '' : 'hidden'}>
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -441,6 +473,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           </div>
         )}
       </section>
+      </div>
 
       {/* 관리자: 행사 등록/수정 모달 (제목 + 내용 + URL 3필드) */}
       {showEventEditModal && (
