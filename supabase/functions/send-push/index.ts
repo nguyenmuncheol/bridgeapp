@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
   const { data: jobs, error: jobsError } = await supabase
     .from('push_jobs')
-    .select('id, notification_id, notifications(user_id, type, title, body, actor_name)')
+    .select('id, notification_id, user_id, payload, notifications(user_id, type, title, body, actor_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
     .limit(50)
@@ -71,7 +71,15 @@ Deno.serve(async (req) => {
 
   for (const job of jobs) {
     const notif = Array.isArray(job.notifications) ? job.notifications[0] : job.notifications
-    if (!notif) {
+    // 알림 1건짜리 발송이면 그 알림에서, 요약(digest) 발송이면 push_jobs에 직접 담긴 값에서 가져옵니다.
+    const targetUserId = notif?.user_id ?? job.user_id
+    const payloadSource = notif
+      ? { title: notif.title || CHURCH_NAME, body: notif.body || '', url: urlFor(notif.type) }
+      : job.payload
+        ? { title: job.payload.title || CHURCH_NAME, body: job.payload.body || '', url: job.payload.url || '/' }
+        : null
+
+    if (!targetUserId || !payloadSource) {
       await supabase.from('push_jobs').update({ status: 'failed', processed_at: new Date().toISOString() }).eq('id', job.id)
       failed++
       continue
@@ -80,13 +88,9 @@ Deno.serve(async (req) => {
     const { data: subs } = await supabase
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth')
-      .eq('user_id', notif.user_id)
+      .eq('user_id', targetUserId)
 
-    const payload = JSON.stringify({
-      title: notif.title || CHURCH_NAME,
-      body: notif.body || '',
-      url: urlFor(notif.type),
-    })
+    const payload = JSON.stringify(payloadSource)
 
     for (const sub of subs || []) {
       try {
