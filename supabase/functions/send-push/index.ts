@@ -35,6 +35,8 @@ function urlFor(type: string): string {
   if (type === 'MEAL') return '/#request'
   if (type === 'ATTENDANCE') return '/#mypage'
   if (type === 'BULLETIN') return '/#home'
+  if (type === 'BIRTHDAY') return '/#news'
+  if (type === 'NOTICE') return '/#home'
   if (type === 'MANUAL') return '/#home'
   return '/'
 }
