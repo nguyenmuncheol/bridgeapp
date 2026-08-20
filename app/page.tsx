@@ -456,7 +456,7 @@ export default function Home() {
   return (
     <div className="bg-[#f7f9ff] min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
       {/* 브랜드 헤더 */}
-      <div className="bg-white/85 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
+      <div className="bg-white/85 backdrop-blur-md px-5 py-1.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
         {/* 가로형 로고에 교회 이름이 이미 들어 있어 글자를 따로 쓰지 않습니다 */}
         <button
           onClick={() => handleSetCurrentTab('home')}
@@ -464,7 +464,7 @@ export default function Home() {
           title="홈으로 이동"
           aria-label="더브릿지교회 홈으로 이동"
         >
-          <img src="/logo-wide.png" alt="더브릿지교회" className="h-8 w-auto" />
+          <img src="/logo-wide.png" alt="더브릿지교회" className="h-12 w-auto" />
         </button>
 
         {isGuest ? (
