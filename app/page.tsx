@@ -392,10 +392,7 @@ export default function Home() {
     let stopped = false
     const myRoleNow = currentUser.role
 
-    const check = async () => {
-      if (stopped) return
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-      const role = await dbFetchMyRole(currentUserId)
+    const applyRoleUpdate = async (role: Role | null | undefined) => {
       if (stopped || !role || role === myRoleNow) return
 
       setUsers(prev => prev.map(u => (u.id === currentUserId ? { ...u, role } : u)))
@@ -409,6 +406,24 @@ export default function Home() {
       }
     }
 
+    const check = async () => {
+      if (stopped) return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      const role = await dbFetchMyRole(currentUserId)
+      applyRoleUpdate(role)
+    }
+
+    // 관리자가 승인을 누르는 즉시 반영되도록, profiles 내 행 변경을 실시간으로 구독합니다.
+    // (아래 15초 폴링은 실시간 연결이 끊기는 등의 상황을 대비한 안전장치로 남겨둡니다)
+    const channel = supabase
+      .channel(`profile-role-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${currentUserId}` },
+        (payload) => applyRoleUpdate(payload.new?.role as Role | undefined)
+      )
+      .subscribe()
+
     const timer = setInterval(check, 15_000)
     const onVisible = () => { if (document.visibilityState === 'visible') check() }
     document.addEventListener('visibilitychange', onVisible)
@@ -418,6 +433,7 @@ export default function Home() {
       stopped = true
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
+      supabase.removeChannel(channel)
     }
   }, [isGuest, isPending, isRejected, currentUserId, currentUser.role])
 
