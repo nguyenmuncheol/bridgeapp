@@ -31,9 +31,10 @@
         │  INSERT INTO notifications (기존과 동일, type='MANUAL')
         ▼
   DB 트리거 (신규 — notifications에 type='MANUAL' 행이 생기면 자동 발동)
-        │  INSERT INTO push_jobs (발송할 알림 id만 큐에 적재)
+        │  1. INSERT INTO push_jobs (발송할 알림 id만 큐에 적재)
+        │  2. 곧바로 Edge Function 호출 시도 (지연 없이 바로 발송)
         ▼
-  pg_cron (1분 간격) 또는 pg_net trigger
+  pg_cron (10초 간격, 안전장치) — 방금 즉시호출이 실패했을 때만 여기서 다시 잡힘
         │  Edge Function 호출: send-push
         ▼
   supabase/functions/send-push/index.ts (Deno)
@@ -97,6 +98,8 @@ supabase/
   migrations/
     20260820000000_push_subscriptions.sql   -- push_subscriptions, push_jobs 테이블 + RLS
     20260820000001_push_trigger.sql         -- notifications 트리거 신설 (기존 함수는 손대지 않음)
+    20260820130000_push_trigger_immediate.sql -- 트리거에서 Edge Function 즉시 호출 추가 (지연 개선)
+    20260820130100_faster_cron.sql          -- 안전장치 주기 1분 → 10초로 단축
   functions/
     send-push/
       index.ts                              -- 큐 처리 + web-push 전송
@@ -134,16 +137,21 @@ supabase/
 
 이 코딩 환경에는 Supabase 로그인 권한이 없어서, 코드/파일은 전부 만들어 두지만 실제 서버 반영은 아래 명령어를 사장님 PC(또는 신뢰된 환경)에서 직접 실행해야 한다. 순서대로 실행하면 된다:
 
+✅ 2026-08-20 배포 완료. 순서는 아래와 같았고, 다음에 새 프로젝트에 다시 배포할 일이 있으면 그대로 따라하면 된다.
+
 1. `npx supabase login` (최초 1회, 브라우저 인증)
 2. `npx supabase link --project-ref isbwfpokewammwiicxqr`
-3. ~~VAPID 키 생성~~ → 완료 (공개키는 `.env.local`에 반영됨). **Vercel 환경변수**에도 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 등록 필요 (Vercel 프로젝트 Settings → Environment Variables, 또는 `npx vercel env add NEXT_PUBLIC_VAPID_PUBLIC_KEY`)
-4. `npx supabase secrets set VAPID_PRIVATE_KEY=<비밀키>` (비밀키는 채팅에서 받은 값을 붙여넣기 — 이 파일에는 남기지 않음)
-5. Supabase 대시보드 → SQL editor에서 한 번만 실행 (cron이 함수를 호출할 때 쓸 인증 정보):
+3. VAPID 키 생성 → 공개키는 `.env.local`과 **Vercel 환경변수**(`NEXT_PUBLIC_VAPID_PUBLIC_KEY`)에 등록
+4. Edge Function 시크릿 **두 개 다** 등록 (하나만 하면 함수가 시작하자마자 죽는다 — 실제로 겪은 실수):
+   - `npx supabase secrets set VAPID_PRIVATE_KEY=<비밀키>`
+   - `npx supabase secrets set VAPID_PUBLIC_KEY=<공개키>`
+5. Supabase 대시보드 → SQL editor에서 한 번만 실행 (cron이 함수를 호출할 때 쓸 인증 정보).
+   ⚠️ `<...>` 자리에 **진짜 service_role 키 값**을 넣어야 한다 — 예시 문구를 그대로 실행하면 그 문구 자체가 저장되어 인증이 계속 401로 실패한다 (실제로 겪은 실수):
    `select vault.create_secret('<Settings → API → service_role 키>', 'service_role_key');`
 6. `npx supabase db push` (테이블·트리거·cron 반영)
 7. `npx supabase functions deploy send-push` (Edge Function 배포)
 
-이후 실제 테스트(관리자 알림 발송 → 휴대폰 수신 확인)로 넘어가면 된다.
+실제 테스트(관리자 알림 발송 → 휴대폰 수신 확인)에서 지연이 크게 느껴지면 §2의 즉시호출이 실패하고 안전장치(cron)만 도는 상황일 수 있다 — `net._http_response` 테이블의 최근 행을 보면 원인을 바로 알 수 있다.
 
 ## 11. 다음 확장 (이번 구현 범위 아님, 참고용)
 
