@@ -124,7 +124,7 @@ export default function ImageSlider({
             >
               <ChevronRight size={22} />
             </button>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-2xs px-2 py-0.5 rounded-full font-mono">
               {safeIndex + 1} / {total}
             </div>
           </>
@@ -132,7 +132,7 @@ export default function ImageSlider({
       </div>
 
       {total > 1 && (
-        <p className="text-[11px] text-center text-gray-400">
+        <p className="text-2xs text-center text-gray-400">
           좌우로 밀거나 화살표를 눌러 넘겨 보세요
         </p>
       )}

@@ -228,7 +228,7 @@ export default function AddPostModal({
             />
             {/* 예전에는 "유튜브 URL"이라고만 되어 있어서, 블로그·교회홈페이지 주소를 넣으면
                 검은 상자만 뜨고 아무것도 안 보였습니다. 이제 둘 다 됩니다. */}
-            <p className="text-[10px] text-gray-400 leading-relaxed px-0.5">
+            <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
               유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
             </p>
           </div>
@@ -244,7 +244,7 @@ export default function AddPostModal({
                 onChange={e => setYoutubeUrl(e.target.value)}
                 className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
               />
-              <p className="text-[10px] text-gray-400 leading-relaxed px-0.5">
+              <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
                 유튜브 주소만 됩니다. 사진 없이 영상만 올려도 괜찮습니다.
               </p>
             </div>
@@ -283,7 +283,7 @@ export default function AddPostModal({
                         setPhotoFiles(prev => prev.filter((_, idx) => idx !== i))
                         setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i))
                       }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-[10px] font-bold flex items-center justify-center"
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center"
                       aria-label="이 사진 빼기"
                     >✕</button>
                   </div>
@@ -304,7 +304,7 @@ export default function AddPostModal({
                           key={tag}
                           type="button"
                           onClick={() => setSelectedTagChip(isSelected ? '' : tag)}
-                          className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all ${
+                          className={`px-2.5 py-1 rounded-lg border text-2xs font-semibold transition-all ${
                             isSelected ? 'bg-[#335f87] text-white shadow-2xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                           }`}
                         >
@@ -325,7 +325,7 @@ export default function AddPostModal({
                 onChange={e => setCustomTag(e.target.value)}
                 className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
               />
-              <p className="text-[10px] text-gray-400 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
+              <p className="text-2xs text-gray-400 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
             </div>
 
             {/* 실시간 업로드 진행률 바 */}
@@ -341,7 +341,7 @@ export default function AddPostModal({
                     style={{ width: `${uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-gray-500">고화질 사진을 최적 용량으로 자동 압축하고 있습니다.</p>
+                <p className="text-2xs text-gray-500">고화질 사진을 최적 용량으로 자동 압축하고 있습니다.</p>
               </div>
             )}
           </div>
@@ -349,7 +349,7 @@ export default function AddPostModal({
         {/* 입력 오류/실패 안내: 예전에는 아무 메시지 없이 버튼이 반응만 안 했습니다 */}
         {errorMsg && (
           <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5">
-            <p className="text-[11px] text-rose-700 font-semibold">{errorMsg}</p>
+            <p className="text-2xs text-rose-700 font-semibold">{errorMsg}</p>
           </div>
         )}
         <div className="flex gap-2 pt-2">

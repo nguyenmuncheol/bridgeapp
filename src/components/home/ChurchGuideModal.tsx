@@ -117,7 +117,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
               {VISION_SECTIONS.map((section, si) => (
                 <div key={section.title} className="space-y-2">
                   <h5 className="font-black text-sm text-gray-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 shrink-0 rounded-full bg-[#335f87] text-white text-[10px] font-black flex items-center justify-center">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-[#335f87] text-white text-2xs font-black flex items-center justify-center">
                       {si + 1}
                     </span>
                     {section.title}
@@ -125,10 +125,10 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   <ul className="space-y-1.5 pl-1">
                     {section.items.map((text, ii) => (
                       <li key={ii} className="flex gap-2 items-start">
-                        <span className="mt-[3px] shrink-0 w-[18px] h-[18px] rounded-md bg-blue-50 text-[#335f87] text-[10px] font-bold flex items-center justify-center">
+                        <span className="mt-[3px] shrink-0 w-[18px] h-[18px] rounded-md bg-blue-50 text-[#335f87] text-2xs font-bold flex items-center justify-center">
                           {ii + 1}
                         </span>
-                        <p className="text-[12px] text-gray-700 leading-relaxed flex-1">{text}</p>
+                        <p className="text-xs text-gray-700 leading-relaxed flex-1">{text}</p>
                       </li>
                     ))}
                   </ul>
@@ -138,7 +138,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
               {/* 핵심사역 — 제목 + 설명 구조라 카드로 보여줍니다 */}
               <div className="space-y-2">
                 <h5 className="font-black text-sm text-gray-900 flex items-center gap-1.5">
-                  <span className="w-5 h-5 shrink-0 rounded-full bg-[#335f87] text-white text-[10px] font-black flex items-center justify-center">
+                  <span className="w-5 h-5 shrink-0 rounded-full bg-[#335f87] text-white text-2xs font-black flex items-center justify-center">
                     {VISION_SECTIONS.length + 1}
                   </span>
                   우리의 핵심사역
@@ -147,12 +147,12 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   {CORE_MINISTRIES.map((m, i) => (
                     <div key={m.name} className="p-3 bg-gray-50 rounded-xl space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-[18px] h-[18px] shrink-0 rounded-md bg-white border border-gray-200 text-[#335f87] text-[10px] font-bold flex items-center justify-center">
+                        <span className="w-[18px] h-[18px] shrink-0 rounded-md bg-white border border-gray-200 text-[#335f87] text-2xs font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
-                        <span className="font-bold text-gray-900 text-[12px]">{m.name}</span>
+                        <span className="font-bold text-gray-900 text-xs">{m.name}</span>
                       </div>
-                      <p className="text-[11px] text-gray-600 leading-relaxed pl-[26px]">{m.desc}</p>
+                      <p className="text-2xs text-gray-600 leading-relaxed pl-[26px]">{m.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -167,9 +167,9 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
               <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Heart size={13} className="text-rose-500 shrink-0" />
-                  <span className="text-[10px] font-bold text-[#335f87] tracking-widest uppercase">Our Pastor</span>
+                  <span className="text-2xs font-bold text-[#335f87] tracking-widest uppercase">Our Pastor</span>
                 </div>
-                <p className="text-[12px] text-gray-700 leading-relaxed">
+                <p className="text-xs text-gray-700 leading-relaxed">
                   교회의 비전은 당신이 구원받은 목적을 발견하고, 하나님이 당신을 위해 창조하신 인생을 살도록 하는 것입니다.
                   담임목사님은 사람들을 향한 하나님의 목적과 예수님의 사랑이 담긴 메시지를 전하고 있습니다.
                 </p>
@@ -179,7 +179,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
               <div className="border border-gray-100 rounded-xl overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-[10px] font-bold text-[#335f87] bg-white border border-blue-100 px-1.5 py-0.5 rounded">
+                    <span className="text-2xs font-bold text-[#335f87] bg-white border border-blue-100 px-1.5 py-0.5 rounded">
                       {PASTOR.role}
                     </span>
                     <span className="font-black text-sm text-gray-900">{PASTOR.name}</span>
@@ -187,21 +187,21 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   <div className="mt-2 space-y-1">
                     <a
                       href={`mailto:${PASTOR.email}`}
-                      className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-[#335f87]"
+                      className="flex items-center gap-1.5 text-2xs text-gray-600 hover:text-[#335f87]"
                     >
                       <Mail size={12} className="shrink-0 text-gray-400" />
                       {PASTOR.email}
                     </a>
                     <a
                       href={`tel:${PASTOR.phone}`}
-                      className="flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-[#335f87]"
+                      className="flex items-center gap-1.5 text-2xs text-gray-600 hover:text-[#335f87]"
                     >
                       <Phone size={12} className="shrink-0 text-gray-400" />
                       {PASTOR.phone}
                     </a>
                   </div>
                 </div>
-                <p className="px-4 py-3 text-[12px] text-gray-700 leading-relaxed">{PASTOR.bio}</p>
+                <p className="px-4 py-3 text-xs text-gray-700 leading-relaxed">{PASTOR.bio}</p>
               </div>
             </div>
           )}
@@ -217,7 +217,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                 <div className="space-y-1.5">
                   <div className="p-2.5 bg-blue-50/60 rounded-xl flex justify-between items-center">
                     <span className="font-bold text-gray-800">주일 예배</span>
-                    <div className="text-right"><p className="font-bold text-[#335f87]">일요일 11:00 AM</p><p className="text-[10px] text-gray-400">대예배실</p></div>
+                    <div className="text-right"><p className="font-bold text-[#335f87]">일요일 11:00 AM</p><p className="text-2xs text-gray-400">대예배실</p></div>
                   </div>
                 </div>
               </div>
@@ -231,7 +231,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   {DEPARTMENTS.map((dept, idx) => (
                     <div key={idx} className="p-3 bg-gray-50 rounded-xl space-y-1">
                       <span className="font-bold text-gray-800">{dept.name}</span>
-                      <p className="text-[11px] text-gray-500">{dept.time} ({dept.loc})</p>
+                      <p className="text-2xs text-gray-500">{dept.time} ({dept.loc})</p>
                     </div>
                   ))}
                 </div>

@@ -77,7 +77,7 @@ export default function AuthPending({ onGoogleLogin, onKakaoLogin, onRefreshStat
         </button>
       </div>
 
-      <p className="text-[10px] text-gray-400 text-center max-w-xs leading-relaxed">
+      <p className="text-2xs text-gray-400 text-center max-w-xs leading-relaxed">
         로그인 시 식별을 위한 이름/이메일 등 프로필 정보를 가져오며,<br />
         추가 정보(전화번호/주소/생일)는 직접 입력해주세요
       </p>

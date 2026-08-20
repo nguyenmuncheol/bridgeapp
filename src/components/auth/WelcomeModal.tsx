@@ -30,8 +30,8 @@ export default function WelcomeModal({ currentUser, onClose }: WelcomeModalProps
         </div>
 
         <div className="bg-gray-50 rounded-2xl p-3 text-left space-y-1.5">
-          <p className="text-[11px] font-bold text-gray-700">이렇게 시작해 보세요</p>
-          <ul className="text-[11px] text-gray-500 leading-relaxed space-y-0.5">
+          <p className="text-2xs font-bold text-gray-700">이렇게 시작해 보세요</p>
+          <ul className="text-2xs text-gray-500 leading-relaxed space-y-0.5">
             <li>📅 <strong>우리소식</strong> — 교회 일정과 주소록</li>
             <li>🙏 <strong>나눔</strong> — 기도제목과 행사사진</li>
             <li>🍚 <strong>신청</strong> — 주일 식사 신청 (토요일 2시 마감)</li>

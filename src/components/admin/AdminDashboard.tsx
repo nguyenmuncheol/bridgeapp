@@ -105,7 +105,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
             <h1 className="font-bold text-base">
               {isCouponManager ? '🎟️ 쿠폰 관리 대시보드' : isTeacher ? '🧒 교회학교 출석 관리' : isLeader ? '📊 리더 대시보드' : '🛠️ 관리자 대시보드'}
             </h1>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-2xs text-slate-400">
               {isCouponManager ? '식사 쿠폰 전용 관리' : isTeacher ? '담당 자녀 그룹 출석 확인' : isLeader ? '식사 집계 및 출석 통계' : '더브릿지교회 운영 관리 모드'}
             </p>
           </div>

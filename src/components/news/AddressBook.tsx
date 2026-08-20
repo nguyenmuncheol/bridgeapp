@@ -205,7 +205,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       {/* 검색 중에도 필터 칩을 유지합니다. 예전에는 검색창에 글자를 넣는 순간
           칩 줄이 통째로 사라져서 화면이 손가락 밑에서 재구성됐습니다. */}
       {(
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl text-[11px] font-bold overflow-x-auto">
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl text-2xs font-bold overflow-x-auto">
           {ADDRESS_FILTERS.map(opt => (
             <button
               key={opt.key}
@@ -220,7 +220,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
 
       {/* 선택한 그룹에 몇 명이 있는지 바로 보여줍니다 */}
       {displayedMembers.length > 0 && (
-        <p className="text-[11px] text-gray-400 font-medium px-1">
+        <p className="text-2xs text-gray-400 font-medium px-1">
           {(() => {
             const total = displayedMembers.length
             // 자녀 탭은 성도 수를 따로 보여줄 이유가 없어 "자녀 총 N명"만 표시합니다.
@@ -251,20 +251,20 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
             }`}
           >
             <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+              <div className="flex items-center gap-2.5">
+                <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
                   {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : member.name.slice(0, 1)}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-gray-900 text-sm">{member.name}</span>
-                    <span className="text-[10px] text-gray-400">{member.duty}</span>
+                    <span className="text-2xs text-gray-400">{member.duty}</span>
                   </div>
                   {member.isDependent ? (
-                    member.childLabriId && <span className="text-[10px] text-[#335f87]">{member.childLabriId}</span>
+                    member.childLabriId && <span className="text-2xs text-[#335f87]">{member.childLabriId}</span>
                   ) : (
                     member.labriId && member.labriId !== '미정' && (
-                      <span className="text-[10px] text-[#335f87]">{member.labriId}</span>
+                      <span className="text-2xs text-[#335f87]">{member.labriId}</span>
                     )
                   )}
                 </div>
@@ -276,18 +276,18 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                 {member.isDependent ? (
                   <>
                     <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-[11px]">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
+                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
                   </>
                 ) : (
                   <>
                     {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
                     {member.phone && (
                       <div className="flex items-center gap-2 text-gray-600">
-                        <span className="w-3 text-center text-[11px]">📞</span>
+                        <span className="w-3 text-center text-2xs">📞</span>
                         <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
                       </div>
                     )}
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-[11px]">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
+                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
                     {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
                   </>
                 )}

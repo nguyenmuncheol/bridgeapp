@@ -353,7 +353,7 @@ export default function MembersTab({
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-[10px] text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
+          <p className="text-2xs text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
           {/* 성도 정보 CSV — 출석 CSV와 같은 모양의 작은 버튼. 개인정보라 목사님만 보입니다. */}
           {currentUser?.role === 'ADMIN' && (
             <button
@@ -371,17 +371,17 @@ export default function MembersTab({
         {sortedFilteredMembers.map(member => (
           <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
             <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
                   {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" /> : member.name.slice(0, 1)}
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(member, '')}</h3>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{member.email || '이메일 없음'}</p>
+                  <p className="text-2xs text-gray-400 mt-0.5">{member.email || '이메일 없음'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${
                   member.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
                   member.role === 'LEADER' ? 'bg-blue-100 text-blue-700' :
                   member.role === 'TEACHER' ? 'bg-emerald-100 text-emerald-700' :
@@ -394,7 +394,7 @@ export default function MembersTab({
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-gray-500 pl-12">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-2xs text-gray-500 pl-14">
               <span>📞 {member.phone ? <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a> : '미입력'}</span>
               <span>🏠 {member.address || '미입력'}</span>
               <span>🎂 {formatBirthdayDisplay(member.birthday) || '미입력'}</span>
@@ -417,7 +417,7 @@ export default function MembersTab({
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm">성도 정보 수정</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">{editingMember.name} ({editingMember.email || '이메일 없음'})</p>
+                <p className="text-2xs text-slate-400 mt-0.5">{editingMember.name} ({editingMember.email || '이메일 없음'})</p>
               </div>
               <button onClick={() => setEditingMember(null)} className="p-1 hover:bg-white/10 rounded-lg transition-all">
                 <X size={18} />
@@ -427,14 +427,14 @@ export default function MembersTab({
             <div className="p-5 space-y-3 text-xs">
               {/* 이름 */}
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">이름</label>
+                <label className="text-2xs text-gray-400 font-semibold">이름</label>
                 <input type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
 
               {/* 등급 + 직분 */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">등급 (Role)</label>
+                  <label className="text-2xs text-gray-400 font-semibold">등급 (Role)</label>
                   <select value={editMemberData.role} onChange={e => setEditMemberData(p => ({ ...p, role: e.target.value as Role }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                     <option value="MEMBER">일반 성도</option>
                     <option value="LEADER">라브리 리더</option>
@@ -444,7 +444,7 @@ export default function MembersTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">직분</label>
+                  <label className="text-2xs text-gray-400 font-semibold">직분</label>
                   <select value={editMemberData.duty} onChange={e => setEditMemberData(p => ({ ...p, duty: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                     {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
                       <option key={d} value={d}>{d}</option>
@@ -455,7 +455,7 @@ export default function MembersTab({
 
               {/* 소속 라브리 */}
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">소속 라브리</label>
+                <label className="text-2xs text-gray-400 font-semibold">소속 라브리</label>
                 <select value={editMemberData.labriId} onChange={e => setEditMemberData(p => ({ ...p, labriId: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                   <option value="">라브리 미정</option>
                   <option value="라브리1">라브리1</option>
@@ -468,7 +468,7 @@ export default function MembersTab({
               {/* 담당 자녀 그룹 — 선생님에게만 보입니다 */}
               {editMemberData.role === 'TEACHER' && (
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">담당 자녀 그룹</label>
+                  <label className="text-2xs text-gray-400 font-semibold">담당 자녀 그룹</label>
                   <select
                     value={editMemberData.teachGroup}
                     onChange={e => setEditMemberData(p => ({ ...p, teachGroup: e.target.value }))}
@@ -479,7 +479,7 @@ export default function MembersTab({
                       <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-gray-400 mt-1">
+                  <p className="text-2xs text-gray-400 mt-1">
                     비워두면 모든 자녀 그룹을 담당합니다. 선생님이 여러 분으로 나뉘면 그때 각자 지정하시면 됩니다.
                   </p>
                 </div>
@@ -487,19 +487,19 @@ export default function MembersTab({
 
               {/* 연락처 */}
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">연락처</label>
+                <label className="text-2xs text-gray-400 font-semibold">연락처</label>
                 <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="037-123-4567" />
               </div>
 
               {/* 주소 */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] text-gray-400 font-semibold">주소</label>
+                  <label className="text-2xs text-gray-400 font-semibold">주소</label>
                   {editingMember && (
                     <button
                       type="button"
                       onClick={() => handleRequestAddress(editingMember)}
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-[#335f87]'}`}
+                      className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-[#335f87]'}`}
                     >
                       {parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? '🏠 보완요청됨 (취소)' : '🏠 주소 보완요청'}
                     </button>
@@ -510,14 +510,14 @@ export default function MembersTab({
 
               {/* 생년월일 */}
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
+                <label className="text-2xs text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
                 <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="1990-08-15" />
               </div>
 
               {/* 가족 연결 및 호칭 */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
+                  <label className="text-2xs text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
                   <select
                     value={editLinkedMemberId}
                     onChange={e => setEditLinkedMemberId(e.target.value)}
@@ -532,7 +532,7 @@ export default function MembersTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">가족 내 호칭/역할</label>
+                  <label className="text-2xs text-gray-400 font-semibold">가족 내 호칭/역할</label>
                   <select
                     value={editMemberData.familyRole || ''}
                     onChange={e => setEditMemberData(p => ({ ...p, familyRole: e.target.value }))}
@@ -545,17 +545,17 @@ export default function MembersTab({
                   </select>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
+              <p className="text-2xs text-gray-400">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
 
               {/* 가족 현황: 미가입 자녀 등 (나이대는 생일 기반 자동 표시) */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
-                  <button type="button" onClick={addEditChild} className="text-[10px] font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
+                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {editChildren.length === 0 && (
-                    <p className="text-[10px] text-gray-300">등록된 미가입 자녀가 없습니다.</p>
+                    <p className="text-2xs text-gray-300">등록된 미가입 자녀가 없습니다.</p>
                   )}
                   {editChildren.map(child => (
                     <div key={child.id} className="flex gap-1 items-center">
@@ -564,20 +564,20 @@ export default function MembersTab({
                         value={child.name}
                         onChange={e => updateEditChild(child.id, { name: e.target.value })}
                         placeholder="이름"
-                        className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                        className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                       />
                       <input
                         type="text"
                         value={child.birthday || ''}
                         onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
                         placeholder="생일 YYYY-MM-DD"
-                        className="w-[36%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                        className="w-[36%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                       />
                       {/* 교회학교 그룹. 미지정이면 주소록 목록·생일 달력·출석체크에서 빠집니다. */}
                       <select
                         value={child.labriId || ''}
                         onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
-                        className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                        className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                       >
                         <option value="">미지정</option>
                         {CHILD_LABRI_OPTIONS.map(g => (
@@ -594,7 +594,7 @@ export default function MembersTab({
 
               {/* 기타 가족 메모 */}
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">기타 가족 메모</label>
+                <label className="text-2xs text-gray-400 font-semibold">기타 가족 메모</label>
                 <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="가족현황란에 보이는 내용" />
               </div>
 

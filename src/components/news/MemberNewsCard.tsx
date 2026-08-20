@@ -27,11 +27,11 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLi
     <div className="bg-white rounded-2xl border border-blue-50 p-4 shadow-2xs space-y-3">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2">
-          <Avatar allUsers={allUsers} authorId={item.authorId} authorName={item.authorName} size="w-6 h-6 text-[10px]" />
+          <Avatar allUsers={allUsers} authorId={item.authorId} authorName={item.authorName} size="w-6 h-6 text-2xs" />
           <span className="font-bold text-xs text-gray-900">{item.authorName}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-400">{item.createdAt}</span>
+          <span className="text-2xs text-gray-400">{item.createdAt}</span>
           {(item.authorId === currentUser.id || isLeaderOrAdmin) && (
             <>
               <button onClick={() => onEdit(item)} className="p-1 text-gray-400 hover:text-blue-600 rounded" title="수정">
@@ -51,7 +51,7 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLi
       <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
         <button
           onClick={() => onLike(item.id, { likes: item.likes, likedUserIds: item.likedUserIds || [] })}
-          className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 ${
+          className={`px-3 py-1 text-2xs font-bold rounded-lg transition-all flex items-center gap-1 ${
             (item.likedUserIds || []).includes(currentUser.id)
               ? 'bg-rose-100 text-rose-700'
               : 'bg-rose-50 text-rose-600 hover:bg-rose-100'

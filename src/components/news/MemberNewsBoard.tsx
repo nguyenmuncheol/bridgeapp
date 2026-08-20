@@ -224,7 +224,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
         <span className="text-xs text-gray-500 font-semibold">더브릿지 가족 News</span>
         <button
           onClick={() => setShowAddNewsModal(true)}
-          className="px-2.5 py-1 bg-[#335f87] text-white text-[11px] font-bold rounded-lg hover:bg-[#2b5072] flex items-center gap-1"
+          className="px-2.5 py-1 bg-[#335f87] text-white text-2xs font-bold rounded-lg hover:bg-[#2b5072] flex items-center gap-1"
         ><Plus size={12} /> 소식 나누기</button>
       </div>
 
@@ -233,9 +233,9 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
           <span className="text-base leading-none mt-0.5">📡</span>
           <div className="flex-1">
             <p className="text-xs font-bold text-amber-800">소식을 불러오지 못했습니다</p>
-            <p className="text-[11px] text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
+            <p className="text-2xs text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
           </div>
-          <button onClick={retryNews} className="px-2.5 py-1.5 bg-amber-600 text-white text-[11px] font-bold rounded-lg shrink-0">다시 시도</button>
+          <button onClick={retryNews} className="px-2.5 py-1.5 bg-amber-600 text-white text-2xs font-bold rounded-lg shrink-0">다시 시도</button>
         </div>
       )}
       {isNewsLoading && <SkeletonList count={3} />}

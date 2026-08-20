@@ -37,7 +37,7 @@ export default function BottomNav({ currentTab, setCurrentTab }: BottomNavProps)
               }`}>
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
               </div>
-              <span className={`text-[10px] leading-none font-medium truncate max-w-full px-0.5 ${
+              <span className={`text-2xs leading-none font-medium truncate max-w-full px-0.5 ${
                 isActive ? 'font-bold' : ''
               }`}>
                 {label}

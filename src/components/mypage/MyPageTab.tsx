@@ -279,22 +279,22 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
       {/* ── 프로필 카드 ── */}
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4 relative">
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
           <button
             onClick={openEditModal}
-            className="w-16 h-16 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl shrink-0 border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer relative group"
+            className="w-20 h-20 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl shrink-0 border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer relative group"
             title="프로필 사진 변경"
           >
             {currentUser.avatarUrl
               ? <img src={currentUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" style={{ objectPosition: 'center center' }} />
               : currentUser.name.slice(0, 1)
             }
-            <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 text-[10px] flex items-center justify-center text-white font-bold transition-all">📷 수정</span>
+            <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 text-2xs flex items-center justify-center text-white font-bold transition-all">📷 수정</span>
           </button>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
-              <span className="text-[10px] font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full">{currentUser.role}</span>
+              <span className="text-2xs font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full">{currentUser.role}</span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{currentUser.email}</p>
           </div>
@@ -305,31 +305,31 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
               <span className="text-sm mt-0.5">⛪</span>
               <div>
-                <span className="text-gray-400 text-[10px]">소속 라브리</span>
-                <p className="font-bold text-gray-800 text-[11px] mt-0.5">{currentUser.labriId || '미정 (모든 기능 이용 가능)'}</p>
+                <span className="text-gray-400 text-2xs">소속 라브리</span>
+                <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.labriId || '미정 (모든 기능 이용 가능)'}</p>
               </div>
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
               <Smartphone size={14} className="text-[#335f87] shrink-0 mt-1" />
               <div>
-                <span className="text-gray-400 text-[10px]">연락처</span>
-                <p className="font-bold text-gray-800 text-[11px] mt-0.5">{currentUser.phone || '연락처 미입력'}</p>
+                <span className="text-gray-400 text-2xs">연락처</span>
+                <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.phone || '연락처 미입력'}</p>
               </div>
             </div>
           </div>
           <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
             <MapPin size={14} className="text-[#335f87] shrink-0 mt-1" />
             <div>
-              <span className="text-gray-400 text-[10px]">거주지 주소</span>
-              <p className="font-bold text-gray-800 text-[11px] mt-0.5">{currentUser.address || '주소 미입력'}</p>
+              <span className="text-gray-400 text-2xs">거주지 주소</span>
+              <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.address || '주소 미입력'}</p>
             </div>
           </div>
           {buildFamilyStatusText(currentUser, allUsers) && (
             <div className="bg-amber-50/60 p-2.5 rounded-xl flex items-start gap-2 text-amber-900">
               <span className="text-sm mt-0.5">👨‍👩‍👧‍👦</span>
               <div>
-                <span className="text-amber-700 text-[10px] font-bold">가족</span>
-                <p className="font-bold text-[11px] mt-0.5">
+                <span className="text-amber-700 text-2xs font-bold">가족</span>
+                <p className="font-bold text-2xs mt-0.5">
                   {buildFamilyStatusText(currentUser, allUsers)}
                 </p>
               </div>
@@ -342,10 +342,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               className="w-full bg-rose-50 border border-rose-100 p-2.5 rounded-xl flex items-center gap-2 text-rose-700 text-left hover:bg-rose-100/70 transition-all"
             >
               <span className="text-sm">🎂</span>
-              <p className="flex-1 font-bold text-[11px] leading-snug">
+              <p className="flex-1 font-bold text-2xs leading-snug">
                 {missingBirthdayChildren.map(c => c.name).join(', ')} 자녀의 생일을 입력해주세요.
               </p>
-              <span className="text-[10px] font-bold shrink-0">입력하기 ›</span>
+              <span className="text-2xs font-bold shrink-0">입력하기 ›</span>
             </button>
           )}
           {addressRequested && (
@@ -355,12 +355,12 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               className="w-full bg-sky-50 border border-sky-100 p-2.5 rounded-xl flex items-center gap-2 text-sky-800 text-left hover:bg-sky-100/70 transition-all"
             >
               <span className="text-sm">🏠</span>
-              <p className="flex-1 font-bold text-[11px] leading-snug">
+              <p className="flex-1 font-bold text-2xs leading-snug">
                 상세주소를 입력해주세요
                 <br />
                 <span className="font-normal text-sky-600">주소정보는 교인관리 목적으로만 사용되며 공개되지 않습니다.</span>
               </p>
-              <span className="text-[10px] font-bold shrink-0">입력하기 ›</span>
+              <span className="text-2xs font-bold shrink-0">입력하기 ›</span>
             </button>
           )}
         </div>
@@ -384,7 +384,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     : currentUser.role === 'TEACHER' ? '교회학교 출석 관리'
                     : '쿠폰 관리 대시보드'}
                 </p>
-                <p className="text-[11px] text-blue-200 mt-0.5">
+                <p className="text-2xs text-blue-200 mt-0.5">
                   {currentUser.role === 'ADMIN'
                     ? '출석 · 식수 · 가입승인 · 쿠폰 관리'
                     : currentUser.role === 'LEADER'
@@ -407,7 +407,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <Ticket size={20} className="text-amber-100" />
             <div>
               <h3 className="font-bold text-sm">주일식사 쿠폰</h3>
-              <p className="text-[11px] text-amber-100 font-semibold">{displayFamilyName}</p>
+              <p className="text-2xs text-amber-100 font-semibold">{displayFamilyName}</p>
             </div>
           </div>
           {/* 조회 실패를 "0장"으로 보여주면 안 됩니다 — 성도가 식권을 못 받는 상황이 생깁니다 */}
@@ -432,9 +432,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <div key={p.id} onClick={() => setSelectedPrayer(p)} className="p-3 bg-gray-50 rounded-xl flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-all">
               <div className="flex-1">
                 <h4 className="font-bold text-xs text-gray-800 line-clamp-1">{p.title}</h4>
-                <p className="text-[11px] text-gray-500 mt-0.5">{p.createdAt}</p>
+                <p className="text-2xs text-gray-500 mt-0.5">{p.createdAt}</p>
               </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ml-2 ${p.isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              <span className={`text-2xs px-2 py-0.5 rounded-full font-bold shrink-0 ml-2 ${p.isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                 {p.isCompleted ? '응답 완료' : '기도 중'}
               </span>
             </div>
@@ -457,11 +457,11 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <PwaInstallButton />
             <div className="p-3 bg-blue-50/50 rounded-xl space-y-1">
               <span className="font-bold text-[#335f87]">아이폰 (Safari)</span>
-              <p className="text-gray-600 text-[11px]">하단 공유 버튼(공유 아이콘) 클릭 ➔ &apos;홈 화면에 추가&apos; 선택</p>
+              <p className="text-gray-600 text-2xs">하단 공유 버튼(공유 아이콘) 클릭 ➔ &apos;홈 화면에 추가&apos; 선택</p>
             </div>
             <div className="p-3 bg-emerald-50/50 rounded-xl space-y-1">
               <span className="font-bold text-emerald-700">안드로이드 (Chrome)</span>
-              <p className="text-gray-600 text-[11px]">위 설치 버튼이 안 보이면: 우측 상단 메뉴(⋮) 클릭 ➔ &apos;앱 설치&apos; 또는 &apos;홈 화면에 추가&apos; 선택</p>
+              <p className="text-gray-600 text-2xs">위 설치 버튼이 안 보이면: 우측 상단 메뉴(⋮) 클릭 ➔ &apos;앱 설치&apos; 또는 &apos;홈 화면에 추가&apos; 선택</p>
             </div>
           </div>
         )}
@@ -477,7 +477,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
             <div className="space-y-3 text-xs">
               <div className="flex flex-col items-center gap-2">
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-2xl border-2 border-blue-100 shadow-md">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-2xl border-2 border-blue-100 shadow-md">
                   {avatarPreview ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : currentUser.name.slice(0, 1)}
                 </div>
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
@@ -486,7 +486,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-500 font-bold">이름 (실명) <span className="text-rose-500">*</span></label>
+                <label className="text-2xs text-gray-500 font-bold">이름 (실명) <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={editName}
@@ -497,7 +497,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-500 font-bold">연락처 (전화번호)</label>
+                <label className="text-2xs text-gray-500 font-bold">연락처 (전화번호)</label>
                 <input
                   type="tel"
                   value={editPhone}
@@ -507,7 +507,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-500 font-bold">거주지 주소 (아파트/동호수)</label>
+                <label className="text-2xs text-gray-500 font-bold">거주지 주소 (아파트/동호수)</label>
                 <input
                   type="text"
                   value={editAddress}
@@ -517,7 +517,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">생년월일</label>
+                <label className="text-2xs text-gray-400 font-bold">생년월일</label>
                 <div className="grid grid-cols-3 gap-1.5 mt-1">
                   <select
                     value={editBirthYear}
@@ -552,12 +552,12 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               {/* 자녀 정보 (배우자가 연동되어 있으면 자동으로 공유됩니다) */}
               <div className="pt-1 border-t border-gray-100">
                 <div className="flex items-center justify-between mt-2">
-                  <label className="text-[10px] text-gray-400 font-bold">자녀 정보</label>
-                  <button type="button" onClick={addEditChild} className="text-[10px] font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <label className="text-2xs text-gray-400 font-bold">자녀 정보</label>
+                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {editChildren.length === 0 && (
-                    <p className="text-[10px] text-gray-300">등록된 자녀가 없습니다.</p>
+                    <p className="text-2xs text-gray-300">등록된 자녀가 없습니다.</p>
                   )}
                   {editChildren.map(child => {
                     // 교회학교 그룹이 지정된 자녀만 생일을 챙깁니다.
@@ -570,19 +570,19 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                           value={child.name}
                           onChange={e => updateEditChild(child.id, { name: e.target.value })}
                           placeholder="이름"
-                          className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                          className="w-[26%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                         />
                         <input
                           type="text"
                           value={child.birthday || ''}
                           onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
                           placeholder="생일 YYYY-MM-DD"
-                          className={`w-[36%] p-2 rounded-lg border focus:outline-none font-medium text-[11px] ${needsBirthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                          className={`w-[36%] p-2 rounded-lg border focus:outline-none font-medium text-2xs ${needsBirthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                         />
                         <select
                           value={child.labriId || ''}
                           onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
-                          className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                          className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                         >
                           <option value="">미지정</option>
                           {CHILD_LABRI_OPTIONS.map(g => (
@@ -620,7 +620,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <div className="flex justify-between items-start border-b border-gray-100 pb-2">
               <div>
                 <h3 className="font-bold text-sm text-gray-900">{selectedPrayer.title}</h3>
-                <p className="text-[11px] text-gray-400">{selectedPrayer.createdAt}</p>
+                <p className="text-2xs text-gray-400">{selectedPrayer.createdAt}</p>
               </div>
               <button onClick={() => setSelectedPrayer(null)} className="text-gray-400 font-bold">✕</button>
             </div>
@@ -633,10 +633,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
             {selectedPrayer.comments && selectedPrayer.comments.length > 0 && (
               <div className="space-y-1.5 text-xs">
-                <span className="font-bold text-gray-700 text-[11px]">나눔 및 댓글</span>
+                <span className="font-bold text-gray-700 text-2xs">나눔 및 댓글</span>
                 <div className="bg-gray-50 p-3 rounded-xl space-y-2">
                   {selectedPrayer.comments.map(c => (
-                    <div key={c.id} className="text-[11px]">
+                    <div key={c.id} className="text-2xs">
                       <span className="font-bold text-gray-900">{c.authorName}: </span>
                       <span className="text-gray-600">{c.content}</span>
                     </div>

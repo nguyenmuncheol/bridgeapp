@@ -42,7 +42,7 @@ export default function CommentList({
   const renderAvatar = (authorId: string, authorName: string) => {
     const user = allUsers.find(u => u.id === authorId || u.name === authorName)
     return (
-      <span className="w-4 h-4 text-[8px] rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden">
+      <span className="w-6 h-6 text-2xs rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden">
         {user?.avatarUrl
           ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
           : (authorName || '성').slice(0, 1)}
@@ -95,14 +95,14 @@ export default function CommentList({
             const busy = busyId === c.id
 
             return (
-              <div key={c.id} className="text-[11px]">
+              <div key={c.id} className="text-2xs">
                 {isEditing ? (
                   <div className="space-y-1.5">
                     <textarea
                       rows={2}
                       value={editingText}
                       onChange={e => setEditingText(e.target.value)}
-                      className="w-full text-[11px] p-2 bg-white rounded-lg border border-gray-200 focus:outline-none resize-none text-gray-900"
+                      className="w-full text-2xs p-2 bg-white rounded-lg border border-gray-200 focus:outline-none resize-none text-gray-900"
                     />
                     <div className="flex gap-1.5 justify-end">
                       <button
@@ -127,7 +127,7 @@ export default function CommentList({
                         <span className="font-bold text-gray-800 truncate">{c.authorName}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[10px] text-gray-400">{c.createdAt}</span>
+                        <span className="text-2xs text-gray-400">{c.createdAt}</span>
                         {/* 버튼 사이를 띄우고 탭 영역을 키워, 수정하려다 삭제를 누르는 사고를 줄였습니다 */}
                         {canEdit && (
                           <button
@@ -147,8 +147,8 @@ export default function CommentList({
                         )}
                       </div>
                     </div>
-                    {/* 아바타(16px) + 간격(6px) = 22px 만큼 밀어, 윗줄 이름과 같은 위치에서 글이 시작합니다 */}
-                    <p className="text-gray-600 break-words leading-relaxed pl-[22px]">{c.content}</p>
+                    {/* 아바타(24px) + 간격(6px) = 30px 만큼 밀어, 윗줄 이름과 같은 위치에서 글이 시작합니다 */}
+                    <p className="text-gray-600 break-words leading-relaxed pl-[30px]">{c.content}</p>
                   </div>
                 )}
               </div>

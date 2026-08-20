@@ -10,7 +10,7 @@ interface AvatarProps {
 }
 
 // 작성자/성도 아바타 렌더러 (교우소식 · 생일 리스트 공용)
-export default function Avatar({ allUsers, authorId, authorName, size = 'w-6 h-6 text-[10px]' }: AvatarProps) {
+export default function Avatar({ allUsers, authorId, authorName, size = 'w-8 h-8 text-2xs' }: AvatarProps) {
   // authorId가 있으면 id로만 찾습니다. 이름으로 찾으면 댓글에 저장된 이름이
   // "김목사 목사님"처럼 직분이 붙어 있어 프로필 이름("김목사")과 매칭되지 않고,
   // 동명이인이 있을 때 엉뚱한 사람 사진이 뜰 수도 있습니다.

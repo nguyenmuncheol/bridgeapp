@@ -171,10 +171,10 @@ export default function NotificationPanel({
                 {isSystemType(n.type) ? (
                   <>
                     <span className="block text-xs text-gray-800 leading-snug font-bold">{n.title}</span>
-                    <span className="block text-[11px] text-gray-500 leading-relaxed">{n.body}</span>
+                    <span className="block text-2xs text-gray-500 leading-relaxed">{n.body}</span>
                     {/* 관리자가 직접 보낸 알림은 누가 보냈는지 밝힙니다 */}
                     {n.type === 'MANUAL' && n.actorName && (
-                      <span className="block text-[10px] text-gray-400">보낸 사람 · {n.actorName}</span>
+                      <span className="block text-2xs text-gray-400">보낸 사람 · {n.actorName}</span>
                     )}
                   </>
                 ) : (
@@ -185,12 +185,12 @@ export default function NotificationPanel({
                       {n.type === 'LIKE' && `님이 ${n.body}`}
                       {n.type === 'NOTICE' && '님이 새 공지를 올렸습니다'}
                     </span>
-                    <span className="block text-[11px] text-gray-500 truncate">
+                    <span className="block text-2xs text-gray-500 truncate">
                       {n.type === 'COMMENT' ? `"${n.body}"` : n.title}
                     </span>
                   </>
                 )}
-                <span className="block text-[10px] text-gray-400">{whenText(n.createdAt)}</span>
+                <span className="block text-2xs text-gray-400">{whenText(n.createdAt)}</span>
               </span>
               <span
                 onClick={e => handleDelete(e, n.id)}

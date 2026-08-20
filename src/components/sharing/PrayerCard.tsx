@@ -28,7 +28,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
 
   const canViewSecret = !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
 
-  const renderAvatar = (authorId: string, authorName: string, size = 'w-6 h-6 text-[10px]') => {
+  const renderAvatar = (authorId: string, authorName: string, size = 'w-8 h-8 text-2xs') => {
     const user = allUsers.find(u => u.id === authorId || u.name === authorName)
     return (
       <div className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
@@ -45,9 +45,9 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
     <div className={`bg-white rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${prayer.isCompleted ? 'bg-gray-50/70 border-gray-100 opacity-80' : 'border-blue-50'}`}>
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2">
-          {renderAvatar(prayer.authorId, prayer.authorName, 'w-6 h-6 text-[10px]')}
+          {renderAvatar(prayer.authorId, prayer.authorName, 'w-8 h-8 text-2xs')}
           <span className="font-bold text-xs text-gray-900">{prayer.authorName}</span>
-          {prayer.isSecret && <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Lock size={10} /> 비밀글</span>}
+          {prayer.isSecret && <span className="text-2xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Lock size={10} /> 비밀글</span>}
         </div>
         <div className="flex items-center gap-1.5">
           {isAdmin && (
@@ -74,12 +74,12 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
             <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{prayer.content}</p>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
-            <span className="text-[11px] text-gray-400">{prayer.createdAt}</span>
+            <span className="text-2xs text-gray-400">{prayer.createdAt}</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => onAmen(prayer.id, { likes: prayer.likes, likedUserIds: prayer.likedUserIds || [] })} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg flex items-center gap-1">
+              <button onClick={() => onAmen(prayer.id, { likes: prayer.likes, likedUserIds: prayer.likedUserIds || [] })} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-2xs font-bold rounded-lg flex items-center gap-1">
                 <Heart size={12} className="fill-amber-500 text-amber-500" /> 아멘 ({prayer.likes})
               </button>
-              {prayer.isCompleted && <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 size={10} /> 응답 완료</span>}
+              {prayer.isCompleted && <span className="text-2xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 size={10} /> 응답 완료</span>}
             </div>
           </div>
           {/* 댓글은 기도제목·교우소식·찬양나눔이 같은 부품(CommentList)을 씁니다.
