@@ -10,6 +10,7 @@
   자동 알림 9종(식사·주보·생일·출석 등)은 이번 구현 대상이 아니다. 단, 나중에 쉽게 추가할 수 있도록 발송 트리거를 확장 가능한 형태로 만든다 (§3).
 - Edge Function과 SQL은 **레포 안에 파일로 버전관리**한다 (`supabase/` 디렉토리 신설, Supabase CLI 사용).
 - **조용한 시간대 (베트남 시각 밤 10시~오전 8시)에는 휴대폰이 울리지 않는다.** 이 시간에 발송할 알림이 생기면 곧바로 보내지 않고 쌓아뒀다가, 오전 8시가 지나면 그때 한꺼번에 보낸다 (§2, §9).
+  단, **관리자 시험 운영(4단계) 기간에는 끔** — 켜고 끄는 스위치(시크릿 값 하나)로 만들어서, 기본값은 꺼짐(바로 발송)이고 전체 공개(5단계) 직전에 한 줄 명령으로 켠다.
 
 ## 1. 현재 상태 (조사 결과)
 
@@ -26,17 +27,20 @@
 [관리자가 알림 작성 → 발송 버튼]
         │
         ▼
-  RPC send_manual_notification()  (기존 함수 — 알림 저장 로직은 그대로)
-        │  INSERT INTO notifications (기존과 동일)
-        │  + INSERT INTO push_jobs (신규 — 발송할 알림 id만 큐에 적재)
+  RPC send_manual_notification()  (기존 함수 — 손대지 않음)
+        │  INSERT INTO notifications (기존과 동일, type='MANUAL')
+        ▼
+  DB 트리거 (신규 — notifications에 type='MANUAL' 행이 생기면 자동 발동)
+        │  INSERT INTO push_jobs (발송할 알림 id만 큐에 적재)
         ▼
   pg_cron (1분 간격) 또는 pg_net trigger
         │  Edge Function 호출: send-push
         ▼
   supabase/functions/send-push/index.ts (Deno)
         1. push_jobs 에서 처리 안 된 항목 조회
-        2. 지금이 베트남 시각 22:00~08:00(조용한 시간대)이면 → 아무것도 보내지 않고 그대로 둠
-           (08:00 지나면 다음 실행 때 밀린 것까지 한꺼번에 발송됨)
+        2. 조용한 시간대 스위치가 켜져 있고, 지금이 베트남 시각 22:00~08:00이면
+           → 아무것도 보내지 않고 그대로 둠 (08:00 지나면 다음 실행 때 밀린 것까지 한꺼번에 발송됨)
+           스위치는 기본 꺼짐(테스트 기간용) — 시크릿 값 하나로 켜고 끔 (§4)
         3. 대상자(user_id)의 push_subscriptions 조회
         4. web-push 로 각 구독에 전송
         5. 실패(410/404) 구독 삭제, 성공/실패 push_jobs 에 기록
@@ -46,8 +50,10 @@
         - 'notificationclick' 이벤트 → 관련 화면으로 이동
 ```
 
-**큐 테이블(`push_jobs`)을 두는 이유**: `send_manual_notification` RPC 안에서 곧바로 `pg_net`으로 Edge Function을 호출하는 방식도 가능하지만, 실패 시 재시도가 어렵고 나중에 자동 알림 9종을 추가할 때마다 각 함수를 일일이 수정해야 한다. 대신 "알림이 저장되면 큐에 발송 대상만 남긴다 → Edge Function이 주기적으로 큐를 비운다" 구조로 만들면:
-- 자동 알림 9종을 나중에 추가할 때, 각 함수의 마지막 줄에 `INSERT INTO push_jobs` 한 줄만 추가하면 된다.
+**`send_manual_notification` 함수를 직접 고치지 않는 이유**: 이 함수의 SQL 정의가 이 레포에는 없어서(대시보드 관리 상태) 원본을 확인하지 못한 채 수정하면 기존 알림함 기능이 깨질 위험이 있다. 대신 `notifications` 테이블에 **새 행이 생기는 것을 감지하는 트리거**를 붙이는 방식으로, 어떤 함수가 알림을 만들었든 상관없이 안전하게 동작한다.
+
+**큐 테이블(`push_jobs`)을 두는 이유**: 트리거에서 곧바로 Edge Function을 호출하는 방식도 가능하지만, 실패 시 재시도가 어렵다. 대신 "알림이 저장되면 큐에 발송 대상만 남긴다 → Edge Function이 주기적으로 큐를 비운다" 구조로 만들면:
+- 자동 알림 9종을 나중에 추가할 때, 트리거의 `WHEN` 조건에 타입만 추가하면 된다 (예: `type IN ('MANUAL', 'MEAL')`).
 - Edge Function 실패해도 알림함(`notifications`)은 이미 저장되어 있으므로 영향 없음 (`Push plan.md` §8 "위험과 대비책"의 원칙과 일치).
 - 재시도가 단순해진다 (큐에 남아있으면 다음 주기에 다시 시도).
 
@@ -75,13 +81,14 @@ RLS: 본인 `user_id` 행만 select/insert/delete 가능. Edge Function은 servi
 | created_at | timestamptz | |
 | processed_at | timestamptz | |
 
-`send_manual_notification` 함수 마지막에 `INSERT INTO push_jobs (notification_id) SELECT id FROM notifications WHERE ...` 한 줄 추가.
+`notifications` 테이블에 `AFTER INSERT ... WHEN (NEW.type = 'MANUAL')` 트리거를 붙여 `push_jobs`에 자동으로 한 줄 쌓는다.
 
 ## 4. VAPID 키
 
 - `npx web-push generate-vapid-keys` 로 1회 생성 (로컬 실행, 레포에 커밋하지 않음).
 - 공개키 → `.env.local`의 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (Vercel 환경변수에도 등록 필요 — 사장님 작업).
 - 비밀키 → `npx supabase secrets set VAPID_PRIVATE_KEY=...` 로 Edge Function 시크릿에 등록.
+- 조용한 시간대 스위치 → `PUSH_QUIET_HOURS_ENABLED` 시크릿. 값을 안 넣거나 `false`면 꺼짐(테스트 기간 기본값), 전체 공개 직전에 `npx supabase secrets set PUSH_QUIET_HOURS_ENABLED=true` 한 번만 실행하면 켜짐.
 
 ## 5. 레포 구조 변경
 
@@ -89,7 +96,7 @@ RLS: 본인 `user_id` 행만 select/insert/delete 가능. Edge Function은 servi
 supabase/
   migrations/
     20260820000000_push_subscriptions.sql   -- push_subscriptions, push_jobs 테이블 + RLS
-    20260820000001_push_trigger.sql         -- send_manual_notification 함수 수정 (push_jobs insert 추가)
+    20260820000001_push_trigger.sql         -- notifications 트리거 신설 (기존 함수는 손대지 않음)
   functions/
     send-push/
       index.ts                              -- 큐 처리 + web-push 전송
@@ -123,7 +130,20 @@ supabase/
 - 시험 운영(4단계) 참여자는 개발 완료 후 사용자가 직접 지정하기로 함 (안드로이드·아이폰 섞어서 권장, 아이폰 최소 1명).
 - 조용한 시간대 확인: 밤 10시 이후에 관리자 알림을 보내봐서 즉시 울리지 않는지, 다음날 오전 8시가 지난 뒤 자동으로 오는지 확인.
 
-## 10. 다음 확장 (이번 구현 범위 아님, 참고용)
+## 10. 배포 — 직접 하셔야 하는 부분
+
+이 코딩 환경에는 Supabase 로그인 권한이 없어서, 코드/파일은 전부 만들어 두지만 실제 서버 반영은 아래 명령어를 사장님 PC(또는 신뢰된 환경)에서 직접 실행해야 한다. 순서대로 실행하면 된다:
+
+1. `npx supabase login` (최초 1회, 브라우저 인증)
+2. `npx supabase link --project-ref isbwfpokewammwiicxqr`
+3. `npx web-push generate-vapid-keys` → 나온 공개키를 `.env.local`과 Vercel 환경변수에 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 등록
+4. `npx supabase secrets set VAPID_PRIVATE_KEY=<위에서 나온 비밀키>`
+5. `npx supabase db push` (테이블·트리거 반영)
+6. `npx supabase functions deploy send-push` (Edge Function 배포)
+
+이후 실제 테스트(관리자 알림 발송 → 휴대폰 수신 확인)로 넘어가면 된다.
+
+## 11. 다음 확장 (이번 구현 범위 아님, 참고용)
 
 - 자동 알림 9종에 `push_jobs` insert 한 줄씩 추가 → 우선순위: 식사 미응답, 새 주보, 출석 리마인더 (`Push plan.md` §4 표 순서).
 - 관리 화면에서 알림 종류별 on/off 등은 `Push plan.md` §5 "나중에 여유 있을 때" 항목 참고.
