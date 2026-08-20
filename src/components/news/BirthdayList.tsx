@@ -28,7 +28,7 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
         <h3 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
           <span>🎂</span> {calMonth + 1}월 생일 성도
         </h3>
-        <span className="text-[10px] bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full">
+        <span className="text-2xs bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full">
           총 {monthBirthdays.length}명
         </span>
       </div>
@@ -40,13 +40,13 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
             const dayStr = mmdd ? `${parseInt(mmdd.slice(0, 2), 10)}월 ${parseInt(mmdd.slice(3, 5), 10)}일` : ''
             return (
               <div key={m.id} className="p-2.5 bg-pink-50/40 border border-pink-100 rounded-xl flex items-center gap-2.5">
-                <Avatar allUsers={allUsers} authorId={m.id} authorName={m.name} size="w-8 h-8 text-xs" />
+                <Avatar allUsers={allUsers} authorId={m.id} authorName={m.name} size="w-10 h-8 text-xs" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <span className="font-bold text-xs text-gray-900 truncate">{m.name}</span>
-                    <span className="text-[10px] text-gray-400 shrink-0">{m.duty}</span>
+                    <span className="text-2xs text-gray-400 shrink-0">{m.duty}</span>
                   </div>
-                  <p className="text-[10px] font-bold text-pink-600 mt-0.5">🎉 {dayStr}</p>
+                  <p className="text-2xs font-bold text-pink-600 mt-0.5">🎉 {dayStr}</p>
                 </div>
               </div>
             )

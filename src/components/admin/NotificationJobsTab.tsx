@@ -159,12 +159,12 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
           <Bell size={14} className="text-[#335f87]" />
           <h3 className="font-bold text-sm text-gray-900">자동 알림</h3>
         </div>
-        <p className="text-[11px] text-gray-500 leading-relaxed">
+        <p className="text-2xs text-gray-500 leading-relaxed">
           아래 알림들은 <strong>정해진 시각에 서버가 알아서</strong> 보냅니다. (베트남 시각 기준)<br />
           잘 도는지 확인하고 싶으실 때 <strong>지금 실행</strong>을 눌러 보세요.
           이미 보낸 알림은 다시 보내지 않으며, 정말 다시 보내려면 <strong>다시 보내기</strong>를 누르시면 됩니다.
         </p>
-        <p className="text-[10px] text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+        <p className="text-2xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
           ⚠️ 실제로 성도님들 알림함에 알림이 쌓입니다. 시험 삼아 여러 번 누르지 마세요.
         </p>
       </div>
@@ -177,29 +177,29 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] text-gray-400 font-bold">보낸 사람</label>
+          <label className="text-2xs text-gray-400 font-bold">보낸 사람</label>
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => setUseChurchName(true)}
-              className={`py-2 rounded-xl text-[11px] font-bold transition-all ${useChurchName ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
+              className={`py-2 rounded-xl text-2xs font-bold transition-all ${useChurchName ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
             >⛪ {CHURCH_SENDER}</button>
             <button
               type="button"
               onClick={() => setUseChurchName(false)}
-              className={`py-2 rounded-xl text-[11px] font-bold transition-all ${!useChurchName ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
+              className={`py-2 rounded-xl text-2xs font-bold transition-all ${!useChurchName ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
             >🙋 {currentUser ? getUserDisplayName(currentUser) : '관리자 본인'}</button>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] text-gray-400 font-bold">받는 사람 — 그룹으로 한 번에 고르기</label>
+            <label className="text-2xs text-gray-400 font-bold">받는 사람 — 그룹으로 한 번에 고르기</label>
             {pickedIds.length > 0 && (
               <button
                 type="button"
                 onClick={() => setPickedIds([])}
-                className="text-[10px] font-bold text-gray-400 hover:text-rose-500"
+                className="text-2xs font-bold text-gray-400 hover:text-rose-500"
               >모두 해제</button>
             )}
           </div>
@@ -209,11 +209,11 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
                 key={g.key}
                 type="button"
                 onClick={() => toggleGroup(g)}
-                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${isGroupOn(g) ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className={`py-1.5 px-1 rounded-lg text-2xs font-bold transition-all ${isGroupOn(g) ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >{g.label}</button>
             ))}
           </div>
-          <p className="text-[10px] text-gray-400 leading-relaxed">
+          <p className="text-2xs text-gray-400 leading-relaxed">
             그룹을 누르면 아래 명단에 자동으로 ☑ 표시됩니다. 여러 그룹을 함께 골라도 되고, 한 사람씩 빼거나 더할 수 있습니다.
           </p>
         </div>
@@ -224,7 +224,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
               key={m.id}
               type="button"
               onClick={() => togglePicked(m.id)}
-              className={`w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors ${pickedIds.includes(m.id) ? 'bg-[#335f87]/10 text-[#335f87] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`w-full text-left px-2 py-1.5 rounded-lg text-2xs transition-colors ${pickedIds.includes(m.id) ? 'bg-[#335f87]/10 text-[#335f87] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               {pickedIds.includes(m.id) ? '☑' : '☐'} {getUserDisplayName(m)}
               <span className="text-gray-400 font-normal"> · {m.labriId || '미정'}</span>
@@ -248,19 +248,19 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
         />
 
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] text-gray-500">
+          <p className="text-2xs text-gray-500">
             받는 사람 <strong className="text-[#335f87]">{receiverCount}명</strong>
           </p>
           <button
             onClick={handleSend}
             disabled={sending || !title.trim() || receiverCount === 0}
-            className="px-3.5 py-2 rounded-xl bg-[#335f87] text-white text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
+            className="px-3.5 py-2 rounded-xl bg-[#335f87] text-white text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
           >
             <Send size={11} />
             {sending ? '보내는 중' : '보내기'}
           </button>
         </div>
-        <p className="text-[10px] text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+        <p className="text-2xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
           ⚠️ 보낸 알림은 되돌릴 수 없습니다. 받는 사람과 인원을 꼭 확인해 주세요.
         </p>
       </div>
@@ -272,17 +272,17 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-gray-900">
                   <span className="mr-1">{job.icon}</span>{job.label}
-                  <span className="ml-1.5 text-[10px] font-semibold text-[#335f87] bg-[#335f87]/8 px-1.5 py-0.5 rounded">
+                  <span className="ml-1.5 text-2xs font-semibold text-[#335f87] bg-[#335f87]/8 px-1.5 py-0.5 rounded">
                     {job.when}
                   </span>
                 </p>
-                <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">{job.desc}</p>
+                <p className="text-2xs text-gray-500 leading-relaxed mt-0.5">{job.desc}</p>
               </div>
               <div className="flex gap-1 shrink-0">
                 <button
                   onClick={() => run(job.id, false)}
                   disabled={!!running}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#335f87] text-white text-[10px] font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-[#335f87] text-white text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
                 >
                   <Play size={10} />
                   {running === job.id ? '실행 중' : '지금 실행'}
@@ -291,7 +291,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
                   <button
                     onClick={() => run(job.id, true)}
                     disabled={!!running}
-                    className="px-2 py-1.5 rounded-lg bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
+                    className="px-2 py-1.5 rounded-lg bg-gray-100 text-gray-500 text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
                     title="이미 보냈더라도 다시 보냅니다"
                   >
                     <RefreshCw size={10} />
@@ -301,7 +301,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
               </div>
             </div>
             {results[job.id] && (
-              <p className="text-[11px] text-gray-600 bg-gray-50 rounded-lg px-2.5 py-1.5">{results[job.id]}</p>
+              <p className="text-2xs text-gray-600 bg-gray-50 rounded-lg px-2.5 py-1.5">{results[job.id]}</p>
             )}
           </div>
         ))}

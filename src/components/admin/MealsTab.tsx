@@ -133,13 +133,13 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
                     : 'bg-white border-amber-100 hover:bg-amber-50 text-gray-700'
                 }`}
               >
-                <span className="text-[10px] block font-semibold">{s.displayStr}</span>
+                <span className="text-2xs block font-semibold">{s.displayStr}</span>
                 <p className={`font-bold text-sm ${forecastWeek === idx ? 'text-white' : 'text-[#335f87]'}`}>
                   {stat.total}명
                 </p>
                 {/* 어느 주에 미응답이 많은지 한눈에 보이도록 표시합니다. */}
                 {stat.pendingUnits.length > 0 && (
-                  <span className={`text-[9px] block ${forecastWeek === idx ? 'text-amber-100' : 'text-rose-500'}`}>
+                  <span className={`text-2xs block ${forecastWeek === idx ? 'text-amber-100' : 'text-rose-500'}`}>
                     미응답 {stat.pendingUnits.length}
                   </span>
                 )}
@@ -153,7 +153,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
       <div className="bg-[#335f87] text-white p-4 rounded-2xl shadow-sm space-y-3">
         <div className="flex justify-between items-start">
           <div>
-            <span className="text-[11px] text-blue-200 font-medium">
+            <span className="text-2xs text-blue-200 font-medium">
               {upcomingSundays[forecastWeek]?.shortLabelStr} 주일 식사 신청 총원
             </span>
             <div className="text-3xl font-black mt-0.5">{currentWeekStat.total}명</div>
@@ -168,7 +168,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
         {/* 응답 현황 막대 — 집계 숫자를 믿어도 되는지 판단하는 근거가 됩니다. */}
         {totalFamilies > 0 && (
           <div className="pt-2 border-t border-white/15 space-y-1.5">
-            <div className="flex justify-between text-[11px] text-blue-100">
+            <div className="flex justify-between text-2xs text-blue-100">
               <span>가정 응답 현황</span>
               <span className="font-bold text-white">
                 {currentWeekStat.respondedCount} / {totalFamilies} 가정 ({responseRate}%)
@@ -197,7 +197,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
             <span className="font-bold text-xs text-gray-900">
               아직 응답 안 한 가정
             </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${
               pendingCount > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
             }`}>
               {pendingCount}가정
@@ -220,7 +220,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
                   {currentWeekStat.pendingUnits.map(u => (
                     <span
                       key={u.key}
-                      className="text-[11px] bg-rose-50 text-rose-700 border border-rose-100 px-2 py-1 rounded-lg font-medium"
+                      className="text-2xs bg-rose-50 text-rose-700 border border-rose-100 px-2 py-1 rounded-lg font-medium"
                     >
                       {u.label}
                     </span>
@@ -228,7 +228,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
                 </div>
                 <button
                   onClick={handleCopyPending}
-                  className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-[11px] font-bold rounded-xl transition-all"
+                  className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-2xs font-bold rounded-xl transition-all"
                 >
                   📋 미응답 가정 안내문 복사 (단톡방 붙여넣기용)
                 </button>
@@ -238,14 +238,14 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
             {/* "식사 안 함"으로 답한 가정은 미응답이 아닙니다. 헷갈리지 않도록 따로 보여줍니다. */}
             {currentWeekStat.absentUnits.length > 0 && (
               <div className="pt-2 border-t border-gray-100 space-y-1.5">
-                <p className="text-[11px] font-bold text-gray-500">
+                <p className="text-2xs font-bold text-gray-500">
                   식사 안 함으로 응답 ({currentWeekStat.absentUnits.length}가정)
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {currentWeekStat.absentUnits.map(u => (
                     <span
                       key={u.key}
-                      className="text-[11px] bg-gray-50 text-gray-500 border border-gray-100 px-2 py-1 rounded-lg"
+                      className="text-2xs bg-gray-50 text-gray-500 border border-gray-100 px-2 py-1 rounded-lg"
                     >
                       {u.label}
                     </span>
@@ -263,7 +263,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
           <h3 className="font-bold text-xs text-gray-900">
             {upcomingSundays[forecastWeek]?.shortLabelStr} 식사 신청자 목록
           </h3>
-          <span className="text-[10px] bg-blue-50 text-[#335f87] font-bold px-2 py-0.5 rounded-full">
+          <span className="text-2xs bg-blue-50 text-[#335f87] font-bold px-2 py-0.5 rounded-full">
             성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명
           </span>
         </div>

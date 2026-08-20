@@ -157,18 +157,18 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                   <button
                     type="button"
                     onClick={() => handleRequestAddress(pending)}
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(pending.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-[#335f87]'}`}
+                    className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(pending.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-[#335f87]'}`}
                   >
                     {parseFamilyInfo(pending.familyInfo).addressRequestedAt ? '🏠 보완요청됨' : '🏠 주소 보완요청'}
                   </button>
                 </p>
               </div>
-              <span className="text-[10px] bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded-full">승인 대기</span>
+              <span className="text-2xs bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded-full">승인 대기</span>
             </div>
             <div className="space-y-2 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">소속 라브리</label>
+                  <label className="text-2xs text-gray-400 font-semibold">소속 라브리</label>
                   <select value={selectedLabris[pending.id] || '미정'} onChange={(e) => setSelectedLabris({ ...selectedLabris, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
                     <option value="미정">라브리 미정</option>
                     <option value="라브리1">라브리1</option>
@@ -178,7 +178,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">부여 권한</label>
+                  <label className="text-2xs text-gray-400 font-semibold">부여 권한</label>
                   <select value={selectedRoles[pending.id] || 'MEMBER'} onChange={(e) => setSelectedRoles({ ...selectedRoles, [pending.id]: e.target.value as Role })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
                     <option value="MEMBER">일반 성도</option>
                     <option value="LEADER">라브리 리더</option>
@@ -189,7 +189,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                 </div>
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">직분</label>
+                <label className="text-2xs text-gray-400 font-semibold">직분</label>
                 <select value={dutyInputs[pending.id] || '성도'} onChange={(e) => setDutyInputs({ ...dutyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
                   {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
                     <option key={d} value={d}>{d}</option>
@@ -198,7 +198,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
+                  <label className="text-2xs text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
                   <select
                     value={selectedFamilyMember[pending.id] || ''}
                     onChange={(e) => setSelectedFamilyMember({ ...selectedFamilyMember, [pending.id]: e.target.value })}
@@ -213,7 +213,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-400 font-semibold">가족 내 호칭/역할</label>
+                  <label className="text-2xs text-gray-400 font-semibold">가족 내 호칭/역할</label>
                   <select
                     value={selectedFamilyRole[pending.id] || '부'}
                     onChange={(e) => setSelectedFamilyRole({ ...selectedFamilyRole, [pending.id]: e.target.value })}
@@ -227,8 +227,8 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] text-gray-400 font-semibold">자녀 등 미가입 가족 (이름) · 생일은 부모가 마이페이지에서 입력하면 나이대(유아/어린이/학생/청년)가 자동 표시됩니다</label>
-                  <button type="button" onClick={() => addPendingChild(pending.id)} className="text-[10px] font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름) · 생일은 부모가 마이페이지에서 입력하면 나이대(유아/어린이/학생/청년)가 자동 표시됩니다</label>
+                  <button type="button" onClick={() => addPendingChild(pending.id)} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {(pendingChildren[pending.id] || []).map(child => (
@@ -238,7 +238,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                         value={child.name}
                         onChange={e => updatePendingChild(pending.id, child.id, { name: e.target.value })}
                         placeholder="이름"
-                        className="flex-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-[11px]"
+                        className="flex-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
                       />
                       <button type="button" onClick={() => removePendingChild(pending.id, child.id)} className="p-1.5 text-gray-400 hover:text-rose-500">
                         <X size={13} />
@@ -248,7 +248,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                 </div>
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-semibold">기타 가족 메모</label>
+                <label className="text-2xs text-gray-400 font-semibold">기타 가족 메모</label>
                 <input type="text" placeholder="가족현황란에 보이는 내용" value={familyInputs[pending.id] || ''} onChange={(e) => setFamilyInputs({ ...familyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium" />
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
           </button>
           {showRejected && (
             <div className="px-4 pb-4 space-y-2 border-t border-gray-50 pt-3">
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-2xs text-gray-400 leading-relaxed">
                 거절된 분도 본인 화면에서 직접 다시 신청할 수 있습니다.
                 실수로 거절하셨다면 아래에서 바로 되돌릴 수 있습니다.
               </p>
@@ -292,12 +292,12 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                 <div key={u.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-gray-700 truncate">{u.name}</p>
-                    <p className="text-[11px] text-gray-400 truncate">{u.email || '이메일 없음'}</p>
+                    <p className="text-2xs text-gray-400 truncate">{u.email || '이메일 없음'}</p>
                   </div>
                   <button
                     onClick={() => handleRestore(u)}
                     disabled={restoringId !== null}
-                    className="px-3 py-2 bg-white border border-gray-200 text-gray-600 text-[11px] font-bold rounded-lg hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 shrink-0 ml-2"
+                    className="px-3 py-2 bg-white border border-gray-200 text-gray-600 text-2xs font-bold rounded-lg hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 shrink-0 ml-2"
                   >
                     승인 대기로
                   </button>

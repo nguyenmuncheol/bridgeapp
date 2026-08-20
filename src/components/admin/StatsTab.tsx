@@ -405,7 +405,7 @@ export default function StatsTab({
           {labriStats.rows.length > 0 && (
             <div className="pt-2 border-t border-gray-200 space-y-1.5">
               <div className="flex justify-between text-xs">
-                <span className="font-black text-gray-900">전체 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
+                <span className="font-black text-gray-900">전체 합계 <span className="font-normal text-2xs text-gray-400">(기록된 라브리만)</span></span>
                 <span className="font-black text-indigo-600">
                   {labriStats.totalAttend}/{labriStats.totalTotal}명 ({labriStats.totalTotal > 0 ? Math.round((labriStats.totalAttend / labriStats.totalTotal) * 100) : 0}%)
                 </span>
@@ -442,11 +442,11 @@ export default function StatsTab({
                   <td className="p-2 text-gray-500">{normalizeLabriLabel(user.labriId)}</td>
                   <td className="p-2 text-center">
                     {status ? (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-2xs font-bold ${status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                         {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅ 출석'}
                       </span>
                     ) : (
-                      <span className="text-gray-300 text-[10px]">미기록</span>
+                      <span className="text-gray-300 text-2xs">미기록</span>
                     )}
                   </td>
                   <td className="p-2 text-gray-500">{note || '-'}</td>
@@ -462,7 +462,7 @@ export default function StatsTab({
                         })
                       }}
                       disabled={!selectedStatsDate}
-                      className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ml-auto"
+                      className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-2xs font-bold transition-all flex items-center gap-1 ml-auto"
                     >
                       <Edit2 size={11} /> </button>
                   </td>
@@ -477,11 +477,11 @@ export default function StatsTab({
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-xs text-gray-900">🧒 교회학교 출석</h3>
-            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
+            <span className="text-2xs text-gray-400">{rangeLabel}</span>
           </div>
 
           {childStats.rows.length === 0 ? (
-            <p className="py-4 text-center text-[11px] text-gray-400">
+            <p className="py-4 text-center text-2xs text-gray-400">
               이 기간에 입력된 교회학교 출석이 없습니다.
             </p>
           ) : (
@@ -490,7 +490,7 @@ export default function StatsTab({
                 const rate = total > 0 ? Math.round((attend / total) * 100) : 0
                 return (
                   <div key={label} className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
+                    <div className="flex justify-between text-2xs">
                       <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
                       <span className="font-bold text-gray-700">{attend}/{total}명 ({rate}%)</span>
                     </div>
@@ -516,7 +516,7 @@ export default function StatsTab({
           <h3 className="font-bold text-xs text-gray-900">🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단</h3>
 
           {childRosterRows.length === 0 ? (
-            <p className="py-4 text-center text-[11px] text-gray-400">
+            <p className="py-4 text-center text-2xs text-gray-400">
               교회학교 그룹이 지정된 자녀가 없습니다.
             </p>
           ) : (
@@ -537,11 +537,11 @@ export default function StatsTab({
                     <td className="p-2 text-gray-500">{row.child.childLabriId}</td>
                     <td className="p-2 text-center">
                       {row.status ? (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-2xs font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {row.status === 'ABSENT' ? '❌ 결석' : '✅ 출석'}
                         </span>
                       ) : (
-                        <span className="text-gray-300 text-[10px]">미기록</span>
+                        <span className="text-gray-300 text-2xs">미기록</span>
                       )}
                     </td>
                     <td className="p-2 text-gray-500">{row.note || '-'}</td>
@@ -555,7 +555,7 @@ export default function StatsTab({
                           note: row.note || ''
                         })}
                         disabled={!selectedStatsDate}
-                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ml-auto"
+                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-2xs font-bold transition-all flex items-center gap-1 ml-auto"
                       >
                         <Edit2 size={11} /> </button>
                     </td>
@@ -571,7 +571,7 @@ export default function StatsTab({
           <h3 className="font-bold text-xs text-gray-900">🗓️ 기간 출석률</h3>
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">시작일</label>
+              <label className="text-2xs text-gray-400 font-bold block mb-1">시작일</label>
               <input
                 type="date"
                 value={rangeStart}
@@ -581,7 +581,7 @@ export default function StatsTab({
             </div>
             <span className="pb-2.5 text-gray-400 font-bold">~</span>
             <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">종료일</label>
+              <label className="text-2xs text-gray-400 font-bold block mb-1">종료일</label>
               <input
                 type="date"
                 value={rangeEnd}
@@ -603,7 +603,7 @@ export default function StatsTab({
               <button
                 key={q.label}
                 onClick={() => applyQuickRange(q.weeks)}
-                className="flex-1 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-600 transition-all"
+                className="flex-1 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-2xs font-bold text-gray-600 transition-all"
               >
                 {q.label}
               </button>
@@ -618,7 +618,7 @@ export default function StatsTab({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-bold text-xs text-gray-900">기간 합산 결과</h3>
-              <span className="text-[10px] text-gray-400 font-medium">
+              <span className="text-2xs text-gray-400 font-medium">
                 {rangeLabel} · 기록 {rangeLabriStats.sundayCount}주일
               </span>
             </div>
@@ -664,12 +664,12 @@ export default function StatsTab({
               {/* 교회학교 — 기간 전체 (childStats 는 이미 선택한 기간으로 계산되어 있습니다) */}
               {childStats.rows.length > 0 && (
                 <div className="pt-2 border-t border-gray-100 space-y-1.5">
-                  <p className="text-[11px] font-bold text-gray-500">🧒 교회학교</p>
+                  <p className="text-2xs font-bold text-gray-500">🧒 교회학교</p>
                   {childStats.rows.map(({ label, attend, total }) => {
                     const rate = total > 0 ? Math.round((attend / total) * 100) : 0
                     return (
                       <div key={`range-${label}`} className="space-y-1">
-                        <div className="flex justify-between text-[11px]">
+                        <div className="flex justify-between text-2xs">
                           <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
                           <span className="font-bold text-gray-700">{attend}/{total}회 ({rate}%)</span>
                         </div>
@@ -686,7 +686,7 @@ export default function StatsTab({
               {(rangeLabriStats.rows.length > 0 || childStats.rows.length > 0) && (
                 <div className="pt-2 border-t border-gray-200 space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(어른 + 교회학교)</span></span>
+                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-2xs text-gray-400">(어른 + 교회학교)</span></span>
                     <span className="font-black text-indigo-600">
                       {rangeLabriStats.totalAttend + childStats.totalAttend}/{rangeLabriStats.totalTotal + childStats.totalTotal}회 ({(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%)
                     </span>
@@ -715,7 +715,7 @@ export default function StatsTab({
                         ? editingAttendanceUser.user.name
                         : getUserDisplayName(editingAttendanceUser.user)} 출석 수정
                 </h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">
+                <p className="text-2xs text-gray-400 mt-0.5">
                   주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
                     ? (editingAttendanceUser.user.childLabriId || '미지정')
                     : (editingAttendanceUser.user.labriId || '라브리 미정')})
@@ -732,7 +732,7 @@ export default function StatsTab({
 
             {/* 출석 상태 선택 (출석 / 결석 / 미기록) */}
             <div className="space-y-1.5">
-              <label className="text-[10px] text-gray-400 font-bold">출석 상태 선택</label>
+              <label className="text-2xs text-gray-400 font-bold">출석 상태 선택</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {[
                   { id: 'ATTEND', label: '✅ 출석', bg: 'bg-emerald-600 text-white' },
@@ -758,8 +758,8 @@ export default function StatsTab({
             {/* 결석일 때만 사유 입력 */}
             {editingAttendanceUser.status === 'ABSENT' && (
               <div className="space-y-2 pt-1 border-t border-gray-100">
-                <label className="text-[10px] text-gray-400 font-bold">결석 사유 (추천 태그 선택 또는 직접 입력)</label>
-                <div className="flex gap-1 flex-wrap text-[10px]">
+                <label className="text-2xs text-gray-400 font-bold">결석 사유 (추천 태그 선택 또는 직접 입력)</label>
+                <div className="flex gap-1 flex-wrap text-2xs">
                   {['출장', '여행', '병가', '개인사정', '가족행사'].map(tag => (
                     <button
                       key={tag}

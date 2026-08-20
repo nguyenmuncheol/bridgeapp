@@ -239,7 +239,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           <div className="bg-gradient-to-br from-[#335f87] via-[#2c5378] to-[#1d3a54] text-white p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Church size={18} className="text-blue-200" />
-              <span className="text-[11px] font-bold text-blue-200 tracking-wider">더브릿지 공동체</span>
+              <span className="text-2xs font-bold text-blue-200 tracking-wider">더브릿지 공동체</span>
             </div>
             <h1 className="text-base font-black leading-snug">
               {getSimpleUserName(currentUser)} 환영합니다! 🙏
@@ -294,7 +294,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
         {!isGuest && (
           <div className="p-3 bg-gray-50 flex gap-2 items-stretch">
             <button onClick={() => setShowChurchGuideModal(true)}
-              className="basis-4/5 grow-0 py-2 px-2 bg-white border border-gray-200 text-[#335f87] text-[11px] font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1 whitespace-nowrap">
+              className="basis-4/5 grow-0 py-2 px-2 bg-white border border-gray-200 text-[#335f87] text-2xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1 whitespace-nowrap">
               <Info size={14} className="shrink-0" />
               <span className="text-left">교회안내 (비전 · 사역자 · 예배시간)</span>
               <ChevronRight size={14} className="shrink-0" />
@@ -325,7 +325,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           </div>
           {currentUser.role === 'ADMIN' && (
             <button onClick={() => setShowNoticeCreateModal(true)}
-              className="text-[11px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg hover:bg-indigo-100">
+              className="text-2xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg hover:bg-indigo-100">
               + 공지 작성
             </button>
           )}
@@ -337,12 +337,12 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
               className="bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 cursor-pointer hover:border-blue-200 transition-all flex items-center justify-between">
               <div className="space-y-0.5 flex-1 pr-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-[#335f87] bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
+                  <span className="text-2xs font-bold text-[#335f87] bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
                   <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{notice.title}</h3>
                 </div>
-                <p className="text-[11px] text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
+                <p className="text-2xs text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
               </div>
-              <span className="text-[10px] text-gray-400 font-mono shrink-0">{notice.createdAt}</span>
+              <span className="text-2xs text-gray-400 font-mono shrink-0">{notice.createdAt}</span>
             </div>
           ))}
         </div>
@@ -366,12 +366,12 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                 setEditBulletinImages(bulletin?.imageUrls || [])
                 setShowBulletinEditModal(true)
               }}
-                className="text-[11px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-lg hover:bg-amber-200">
+                className="text-2xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-lg hover:bg-amber-200">
                 ✏️ {bulletin ? '주보 수정' : '주보 등록'}
               </button>
             )}
             {bulletin && (
-              <span className="text-[11px] text-gray-400">{formatBulletinDisplay(bulletin.date)}</span>
+              <span className="text-2xs text-gray-400">{formatBulletinDisplay(bulletin.date)}</span>
             )}
           </div>
         </div>
@@ -382,7 +382,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
               <div className="flex items-start justify-between">
                 <h3 className="font-bold text-gray-900 text-sm leading-snug">{bulletin.title}</h3>
                 {bulletin.preacher && (
-                  <span className="text-[11px] text-[#335f87] bg-blue-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
+                  <span className="text-2xs text-[#335f87] bg-blue-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
                 )}
               </div>
               {bulletin.passage && <p className="text-xs text-amber-800 font-semibold">{bulletin.passage}</p>}
@@ -413,7 +413,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
           <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl gap-2">
             <span className="font-mono text-xs font-bold text-gray-800 leading-relaxed">
               우리은행 100-100-299503<br />
-              <span className="text-[11px] font-sans font-semibold text-gray-500">(예금주 : 임혜영 / LimHyeYoung)</span>
+              <span className="text-2xs font-sans font-semibold text-gray-500">(예금주 : 임혜영 / LimHyeYoung)</span>
             </span>
             <button onClick={handleCopyAccount}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${copied ? 'bg-emerald-600 text-white' : 'bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20'}`}>
@@ -455,7 +455,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                   maxHeightClass="max-h-[360px]"
                   bgClass="bg-gray-50"
                 />
-                <p className="text-[11px] text-center text-gray-400">사진을 탭하면 크게 볼 수 있고, 다시 탭하면 닫힙니다</p>
+                <p className="text-2xs text-center text-gray-400">사진을 탭하면 크게 볼 수 있고, 다시 탭하면 닫힙니다</p>
                 {bulletin.imageUrls.length > 1 && (
                   <div className="flex justify-center gap-1.5">
                     {bulletin.imageUrls.map((_, idx) => (
@@ -493,7 +493,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <div className="space-y-3 text-xs">
               {/* 주보 날짜: 향후 1~2주 일요일 버튼 선택 */}
               <div>
-                <label className="text-[10px] text-gray-400 font-bold block mb-1.5">
+                <label className="text-2xs text-gray-400 font-bold block mb-1.5">
                   주보 날짜 선택 (향후 1~2주 일요일)
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -516,7 +516,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
 
               {/* 주보 이미지 파일 업로드 (2~4장) */}
               <div>
-                <label className="text-[10px] text-gray-400 font-bold block mb-1">
+                <label className="text-2xs text-gray-400 font-bold block mb-1">
                   주보 이미지 업로드 (2~4장, 휴대폰 사진 직접 선택)
                 </label>
                 <input
@@ -535,35 +535,35 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                         <button
                           type="button"
                           onClick={() => setEditBulletinImages(prev => prev.filter((_, i) => i !== idx))}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold"
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-2xs rounded-full flex items-center justify-center font-bold"
                         >✕</button>
                       </div>
                     ))}
                   </div>
                 )}
-                <p className="text-[10px] text-gray-400 mt-1">선택된 이미지: {editBulletinImages.length}장</p>
+                <p className="text-2xs text-gray-400 mt-1">선택된 이미지: {editBulletinImages.length}장</p>
               </div>
 
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">설교 제목</label>
+                <label className="text-2xs text-gray-400 font-bold">설교 제목</label>
                 <input type="text" value={editBulletinTitle}
                   onChange={e => setEditBulletinTitle(e.target.value)}
                   className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">성경 구절</label>
+                <label className="text-2xs text-gray-400 font-bold">성경 구절</label>
                 <input type="text" value={editBulletinPassage}
                   onChange={e => setEditBulletinPassage(e.target.value)}
                   className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">설교자</label>
+                <label className="text-2xs text-gray-400 font-bold">설교자</label>
                 <input type="text" value={editBulletinPreacher}
                   onChange={e => setEditBulletinPreacher(e.target.value)}
                   className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">설교 요약</label>
+                <label className="text-2xs text-gray-400 font-bold">설교 요약</label>
                 <textarea rows={3} value={editBulletinSummary}
                   onChange={e => setEditBulletinSummary(e.target.value)}
                   className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium" />
@@ -610,11 +610,11 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-sm text-gray-900">{selectedNoticeModal.title}</h3>
-                <p className="text-[11px] text-gray-400">{selectedNoticeModal.createdAt}</p>
+                <p className="text-2xs text-gray-400">{selectedNoticeModal.createdAt}</p>
               </div>
               {currentUser.role === 'ADMIN' && (
                 <button onClick={() => handleDeleteNotice(selectedNoticeModal.id)}
-                  className="px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg hover:bg-rose-100">
+                  className="px-2 py-1 bg-rose-50 text-rose-600 text-2xs font-bold rounded-lg hover:bg-rose-100">
                   🗑️ 삭제
                 </button>
               )}

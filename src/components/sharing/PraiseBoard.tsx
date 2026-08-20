@@ -126,7 +126,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
   const [editPraiseContent, setEditPraiseContent] = useState('')
 
   // 실시간 아바타 렌더러 헬퍼
-  const renderAvatar = (authorId: string, authorName: string, size = 'w-6 h-6 text-[10px]') => {
+  const renderAvatar = (authorId: string, authorName: string, size = 'w-8 h-8 text-2xs') => {
     const user = allUsers.find(u => u.id === authorId || u.name === authorName)
     return (
       <div className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
@@ -166,10 +166,10 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
           <div className="flex-1">
             <p className="text-xs font-bold text-amber-800">목록을 불러오지 못했습니다</p>
-            <p className="text-[11px] text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
+            <p className="text-2xs text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
           </div>
           {onRetry && (
-            <button onClick={onRetry} className="px-2.5 py-1.5 bg-amber-600 text-white text-[11px] font-bold rounded-lg shrink-0">다시 시도</button>
+            <button onClick={onRetry} className="px-2.5 py-1.5 bg-amber-600 text-white text-2xs font-bold rounded-lg shrink-0">다시 시도</button>
           )}
         </div>
       )}
@@ -185,11 +185,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         >
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              {renderAvatar(praise.authorId, praise.authorName, 'w-6 h-6 text-[10px]')}
+              {renderAvatar(praise.authorId, praise.authorName, 'w-8 h-8 text-2xs')}
               <span className="font-bold text-gray-900">{praise.authorName}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">{praise.createdAt}</span>
+              <span className="text-2xs text-gray-400">{praise.createdAt}</span>
               {(praise.authorId === currentUser.id || isAdmin) && (
                 <button
                   onClick={(e) => {
@@ -218,7 +218,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-[#335f87]">웹페이지 링크</p>
-                    <p className="text-[10px] text-gray-500 truncate">{linkHostOf(praise.youtubeUrl)}</p>
+                    <p className="text-2xs text-gray-500 truncate">{linkHostOf(praise.youtubeUrl)}</p>
                   </div>
                 </div>
               )
@@ -241,11 +241,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               </div>
             )
           })() : (
-            <div className="text-[11px] text-[#335f87] font-semibold flex items-center gap-1 opacity-60">탭하여 전체 내용 보기 →</div>
+            <div className="text-2xs text-[#335f87] font-semibold flex items-center gap-1 opacity-60">탭하여 전체 내용 보기 →</div>
           )}
 
           {/* 좋아요 · 댓글 수 */}
-          <div className="flex items-center gap-3 pt-1.5 border-t border-gray-50 text-[11px]">
+          <div className="flex items-center gap-3 pt-1.5 border-t border-gray-50 text-2xs">
             <button
               onClick={(e) => handleLike(e, praise.id, { likes: praise.likes, likedUserIds: praise.likedUserIds || [] })}
               className={`flex items-center gap-1 font-bold transition-transform active:scale-95 ${
@@ -281,7 +281,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-sm text-gray-900">{selectedPraise.title}</h3>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{selectedPraise.authorName} · {selectedPraise.createdAt}</p>
+                  <p className="text-2xs text-gray-400 mt-0.5">{selectedPraise.authorName} · {selectedPraise.createdAt}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {(selectedPraise.authorId === currentUser.id || isAdmin) && (
@@ -324,7 +324,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                           href={selectedPraise.youtubeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[11px] text-blue-600 hover:underline flex items-center justify-center gap-1 font-semibold py-0.5"
+                          className="text-2xs text-blue-600 hover:underline flex items-center justify-center gap-1 font-semibold py-0.5"
                         >
                           <ExternalLink size={11} /> 유튜브 앱/웹에서 직접 열기
                         </a>
@@ -340,7 +340,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                         <ExternalLink size={14} /> 링크 열기 ({linkHostOf(selectedPraise.youtubeUrl)})
                       </a>
                     ) : (
-                      <p className="text-[11px] text-gray-400 text-center py-2">
+                      <p className="text-2xs text-gray-400 text-center py-2">
                         열 수 없는 주소입니다. (http:// 또는 https:// 로 시작해야 합니다)
                       </p>
                     )}

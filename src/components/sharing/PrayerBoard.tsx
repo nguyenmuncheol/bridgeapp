@@ -218,10 +218,10 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
           <span className="text-base leading-none mt-0.5">📡</span>
           <div className="flex-1">
             <p className="text-xs font-bold text-amber-800">목록을 불러오지 못했습니다</p>
-            <p className="text-[11px] text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
+            <p className="text-2xs text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
           </div>
           {onRetry && (
-            <button onClick={onRetry} className="px-2.5 py-1.5 bg-amber-600 text-white text-[11px] font-bold rounded-lg shrink-0">다시 시도</button>
+            <button onClick={onRetry} className="px-2.5 py-1.5 bg-amber-600 text-white text-2xs font-bold rounded-lg shrink-0">다시 시도</button>
           )}
         </div>
       )}
@@ -294,7 +294,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
               <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100 text-xs">
                 <div>
                   <p className="font-bold text-amber-900 text-xs">기도 응답 상태</p>
-                  <p className="text-[10px] text-amber-700 mt-0.5">
+                  <p className="text-2xs text-amber-700 mt-0.5">
                     {editPrayerIsCompleted ? '현재 응답 완료 상태입니다' : '현재 기도 중 상태입니다'}
                   </p>
                 </div>

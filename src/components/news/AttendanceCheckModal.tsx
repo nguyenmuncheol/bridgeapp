@@ -279,7 +279,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
             <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-[#335f87] text-white">
               <div>
                 <h3 className="font-black text-sm">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
-                <p className="text-[10px] text-blue-200 mt-0.5">
+                <p className="text-2xs text-blue-200 mt-0.5">
                   {selectedGroup} · 출석 {attendedCount}/{targetMembers.length}명
                 </p>
               </div>
@@ -291,8 +291,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
               {showGroupTabs && (
                 <div className="bg-slate-100 p-1.5 rounded-xl space-y-1">
                   <div className="flex justify-between items-center px-1">
-                    <span className="text-[10px] font-bold text-slate-600">🏛️ 그룹 선택</span>
-                    <span className="text-[9px] font-bold text-[#335f87] bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                    <span className="text-2xs font-bold text-slate-600">🏛️ 그룹 선택</span>
+                    <span className="text-2xs font-bold text-[#335f87] bg-white px-1.5 py-0.5 rounded border border-slate-200">
                       {selectedGroup === '미정' ? '미정/새가족' : selectedGroup} ({targetMembers.length}명)
                     </span>
                   </div>
@@ -302,7 +302,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         key={group}
                         type="button"
                         onClick={() => setSelectedGroup(group)}
-                        className={`py-1.5 px-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                        className={`py-1.5 px-0.5 rounded-lg text-2xs font-bold transition-all ${
                           selectedGroup === group
                             ? 'bg-[#335f87] text-white shadow-xs'
                             : isChildGroup(group)
@@ -315,7 +315,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                     ))}
                   </div>
                   {childMode && (
-                    <p className="text-[9px] text-slate-500 px-1 leading-relaxed">
+                    <p className="text-2xs text-slate-500 px-1 leading-relaxed">
                       교회학교 그룹이 지정된 자녀만 나옵니다. 안 보이는 자녀는 부모님 정보에서 그룹을 지정해 주세요.
                     </p>
                   )}
@@ -333,7 +333,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                       return next
                     })
                   }}
-                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700"
+                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-2xs font-bold hover:bg-emerald-700"
                 >⚡ 전원 출석</button>
               </div>
 
@@ -348,7 +348,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-gray-900">{member.name}</span>
-                        <span className="text-[10px] text-gray-400 ml-1.5">
+                        <span className="text-2xs text-gray-400 ml-1.5">
                           {childMode ? member.parentName : member.duty}
                         </span>
                       </div>
@@ -370,7 +370,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
                     {sel === 'ABSENT' && (
                       <div className="space-y-1.5 pt-1">
-                        <div className="flex gap-1 flex-wrap text-[10px]">
+                        <div className="flex gap-1 flex-wrap text-2xs">
                           {ABSENCE_TAGS.map(tag => (
                             <button
                               key={tag}
@@ -403,7 +403,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
               ) : (
                 <div className="space-y-2">
                   {unsetCount > 0 && checkedMembers.length > 0 && (
-                    <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+                    <p className="text-2xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
                       ⚠️ <strong>{unsetCount}명</strong>이 아직 표시되지 않았습니다. 이대로 저장하면 그분들은 <strong>미지정</strong>으로 남고,
                       담당자에게 계속 알림이 갑니다.
                     </p>

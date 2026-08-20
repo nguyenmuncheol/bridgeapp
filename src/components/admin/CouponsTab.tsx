@@ -136,24 +136,24 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
           <h3 className="font-bold text-xs text-gray-900">🎟️ 식사쿠폰 발급 / 차감</h3>
           <button
             onClick={() => setShowQrModal(true)}
-            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold rounded-lg shadow-2xs flex items-center gap-1 transition-all"
+            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-2xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition-all"
           >
             💳 쿠폰구매 (QR/계좌)
           </button>
         </div>
-        <p className="text-[10px] text-gray-400">승인된 가정별 쿠폰 잔액을 관리합니다. +/- 버튼으로 발급/차감하세요.</p>
+        <p className="text-2xs text-gray-400">승인된 가정별 쿠폰 잔액을 관리합니다. +/- 버튼으로 발급/차감하세요.</p>
 
         {/* 방금 한 작업을 한 번에 되돌리는 막대 (1분 뒤 자동으로 사라집니다) */}
         {lastAction && (
           <div className="flex items-center gap-2 bg-slate-800 text-white rounded-xl px-3 py-2 animate-fade-in">
-            <span className="text-[11px] flex-1 leading-snug">
+            <span className="text-2xs flex-1 leading-snug">
               방금 <strong>{lastAction.famName.replace(' 가정', '')}</strong>
               {lastAction.applied > 0 ? ` +${lastAction.applied}장 발급` : ` ${lastAction.applied}장 차감`}
             </span>
             <button
               onClick={handleUndo}
               disabled={isUndoing || pendingFamilyId !== null}
-              className="px-2.5 py-1.5 bg-white text-slate-800 text-[11px] font-bold rounded-lg flex items-center gap-1 shrink-0 disabled:opacity-50 active:scale-95 transition-all"
+              className="px-2.5 py-1.5 bg-white text-slate-800 text-2xs font-bold rounded-lg flex items-center gap-1 shrink-0 disabled:opacity-50 active:scale-95 transition-all"
             >
               <Undo2 size={12} /> {isUndoing ? '되돌리는 중...' : '되돌리기'}
             </button>
@@ -241,7 +241,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                   <div>
                     {/* 발급/차감 날짜 뱃지는 뺐습니다 — 최근 사용순으로 정렬되므로 순서만 보면 됩니다. */}
                     <h4 className="font-bold text-gray-800">{acc.familyName}</h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5">잔여 쿠폰: <strong className="text-[#335f87]">{acc.balance}장</strong></p>
+                    <p className="text-2xs text-gray-400 mt-0.5">잔여 쿠폰: <strong className="text-[#335f87]">{acc.balance}장</strong></p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -264,7 +264,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                     <button
                       onClick={() => handleUpdateCoupon(acc.familyGroupId, acc.familyName, 10)}
                       disabled={pendingFamilyId !== null}
-                      className="px-2.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs active:scale-95 transition-all disabled:opacity-40"
+                      className="px-2.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-2xs rounded-lg shadow-2xs active:scale-95 transition-all disabled:opacity-40"
                       title="10장 일괄 발급"
                     >
                       +10장
@@ -284,7 +284,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm">💳 식사쿠폰 구매 (QR/계좌)</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">QR코드를 스캔하거나 계좌로 입금해 주세요.</p>
+                <p className="text-2xs text-slate-400 mt-0.5">QR코드를 스캔하거나 계좌로 입금해 주세요.</p>
               </div>
               <button onClick={() => setShowQrModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-all text-white font-bold">
                 ✕
@@ -298,7 +298,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                   className="w-full h-auto max-h-[380px] object-contain rounded-lg shadow-2xs"
                 />
               </div>
-              <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+              <p className="text-2xs text-gray-500 text-center leading-relaxed">
                 입금 후 관리자에게 말씀해 주시면 쿠폰이 즉시 발급됩니다.
               </p>
               <button

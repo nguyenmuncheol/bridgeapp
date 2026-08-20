@@ -174,14 +174,14 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
           <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
           <div className="text-center">
             <span className="font-black text-sm">{monthLabel}</span>
-            {isLeaderOrAdmin && <p className="text-[10px] text-blue-200 mt-0.5">날짜 클릭 시 일정 수정/추가 가능</p>}
+            {isLeaderOrAdmin && <p className="text-2xs text-blue-200 mt-0.5">날짜 클릭 시 일정 수정/추가 가능</p>}
           </div>
           <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) } else setCalMonth(m => m + 1) }} className="p-1 hover:bg-white/20 rounded-lg"><ChevronRight size={18} /></button>
         </div>
 
         <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
           {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-            <div key={d} className={`text-center text-[10px] font-bold py-1.5 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>{d}</div>
+            <div key={d} className={`text-center text-2xs font-bold py-1.5 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>{d}</div>
           ))}
         </div>
 
@@ -202,14 +202,14 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
                   isToday ? 'bg-[#335f87]/10 ring-1 ring-[#335f87]/30' : ''
                 } ${isLeaderOrAdmin ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
               >
-                <span className={`text-[11px] font-bold ${
+                <span className={`text-2xs font-bold ${
                   isToday ? 'text-[#335f87]' : isSunday ? 'text-rose-500' : isSat ? 'text-blue-500' : 'text-gray-700'
                 }`}>{day}</span>
                 <div className="flex flex-wrap gap-0.5 justify-center mt-0.5">
                   {dayEvents.map((ev, ei) => (
                     <span key={ei} className={`w-1.5 h-1.5 rounded-full ${ev.type === 'sunday' ? 'bg-blue-400' : 'bg-amber-400'}`} />
                   ))}
-                  {birthdays.length > 0 && <span className="text-[8px] leading-none">🎂</span>}
+                  {birthdays.length > 0 && <span className="text-2xs leading-none">🎂</span>}
                 </div>
               </div>
             )
@@ -226,12 +226,12 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
               <span className={`w-2 h-2 rounded-full shrink-0 ${ev.type === 'sunday' ? 'bg-blue-400' : 'bg-amber-400'}`} />
               <span className="text-xs text-gray-500 font-mono shrink-0">{ev.date.slice(5).replace('-', '/')}</span>
               <span className="text-xs font-bold text-gray-800 flex-1">{ev.title}</span>
-              {ev.type === 'special' && <span className="text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full">특별일정</span>}
+              {ev.type === 'special' && <span className="text-2xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full">특별일정</span>}
             </div>
           ))}
         </div>
 
-        <div className="flex gap-3 pt-2 text-[10px] text-gray-500 border-t border-gray-100">
+        <div className="flex gap-3 pt-2 text-2xs text-gray-500 border-t border-gray-100">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" />주일예배</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />특별일정</span>
           <span className="flex items-center gap-1">🎂 생일</span>
@@ -251,7 +251,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
             {/* 해당 날짜 일정 목록 */}
             <div className="space-y-1.5">
-              <p className="text-[10px] text-gray-400 font-bold">등록된 일정 목록 (클릭하여 수정)</p>
+              <p className="text-2xs text-gray-400 font-bold">등록된 일정 목록 (클릭하여 수정)</p>
               {getEventsForDate(calEditModal.day).map(ev => (
                 <div key={ev.id} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl text-xs">
                   <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
             {/* 일정 이름 수정 또는 추가 */}
             <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-              <p className="text-[10px] text-gray-400 font-bold">{editingEventId ? '✏️ 일정 내용 수정' : '+ 새 일정 추가'}</p>
+              <p className="text-2xs text-gray-400 font-bold">{editingEventId ? '✏️ 일정 내용 수정' : '+ 새 일정 추가'}</p>
               <input
                 type="text"
                 placeholder="일정 이름 입력 (예: 주일 예배 + 세례식)"

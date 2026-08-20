@@ -44,7 +44,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   // 다른 게시판(기도제목/찬양나눔)과 동일하게 작성자를 표시합니다.
   // 🐛 과거 문제: 행사사진만 누가 올렸는지 안 보여서, 사진에 문제가 있어도
   //    누구에게 물어봐야 할지 알 수 없었습니다.
-  const renderAuthor = (authorId?: string, authorName?: string, size = 'w-5 h-5 text-[9px]') => {
+  const renderAuthor = (authorId?: string, authorName?: string, size = 'w-7 h-7 text-2xs') => {
     const user = allUsers.find(u => u.id === authorId || u.name === authorName)
     const displayName = user?.name || authorName || '성도'
     return (
@@ -230,10 +230,10 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
           <span className="text-base leading-none mt-0.5">📡</span>
           <div className="flex-1">
             <p className="text-xs font-bold text-amber-800">사진을 불러오지 못했습니다</p>
-            <p className="text-[11px] text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
+            <p className="text-2xs text-amber-700 mt-0.5">인터넷 상태를 확인한 뒤 다시 시도해 주세요.</p>
           </div>
           {onRetry && (
-            <button onClick={onRetry} className="px-2.5 py-1.5 bg-amber-600 text-white text-[11px] font-bold rounded-lg shrink-0">다시 시도</button>
+            <button onClick={onRetry} className="px-2.5 py-1.5 bg-amber-600 text-white text-2xs font-bold rounded-lg shrink-0">다시 시도</button>
           )}
         </div>
       )}
@@ -271,26 +271,26 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 )
               })()}
               {photo.imageUrls && photo.imageUrls.length > 1 && (
-                <span className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full">+{photo.imageUrls.length - 1}장</span>
+                <span className="absolute top-2 right-2 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full">+{photo.imageUrls.length - 1}장</span>
               )}
             </div>
             <div className="p-3 space-y-1.5">
               <h4 className="font-bold text-xs text-gray-800 line-clamp-1">{photo.title}</h4>
               {photo.content && (
-                <p className="text-[11px] text-gray-500 line-clamp-1 leading-snug">{photo.content}</p>
+                <p className="text-2xs text-gray-500 line-clamp-1 leading-snug">{photo.content}</p>
               )}
 
               {photo.tags && photo.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {photo.tags.filter(t => t !== '전체').map(tag => (
-                    <span key={tag} className="text-[9px] bg-blue-50 text-[#335f87] font-bold px-1.5 py-0.5 rounded-md">
+                    <span key={tag} className="text-2xs bg-blue-50 text-[#335f87] font-bold px-1.5 py-0.5 rounded-md">
                       #{tag}
                     </span>
                   ))}
                 </div>
               )}
 
-              <div className="flex justify-between text-[10px] text-gray-400 items-center pt-1 border-t border-gray-50 gap-1">
+              <div className="flex justify-between text-2xs text-gray-400 items-center pt-1 border-t border-gray-50 gap-1">
                 <span className="flex items-center gap-1 min-w-0">
                   {renderAuthor(photo.authorId, photo.authorName)}
                 </span>
@@ -306,7 +306,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   </button>
                 </span>
               </div>
-              <p className="text-[9px] text-gray-300">{photo.createdAt}</p>
+              <p className="text-2xs text-gray-300">{photo.createdAt}</p>
             </div>
           </div>
         ))}
@@ -345,7 +345,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   alt=""
                   className="w-12 h-12 rounded-lg object-cover shrink-0"
                 />
-                <div className="min-w-0 text-[11px] text-gray-500 leading-snug">
+                <div className="min-w-0 text-2xs text-gray-500 leading-snug">
                   <p className="font-bold text-gray-700 truncate">{editingPhoto.title}</p>
                   <p>사진 {editingPhoto.imageUrls.length}장 · 사진 자체는 바뀌지 않습니다</p>
                 </div>
@@ -353,7 +353,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
             )}
 
             <div>
-              <label className="text-[10px] text-gray-400 font-bold">제목</label>
+              <label className="text-2xs text-gray-400 font-bold">제목</label>
               <input
                 type="text"
                 value={editPhotoTitle}
@@ -363,7 +363,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold">상세 설명 / 나눔 내용</label>
+              <label className="text-2xs text-gray-400 font-bold">상세 설명 / 나눔 내용</label>
               <textarea
                 rows={3}
                 value={editPhotoContent}
@@ -373,7 +373,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold">유튜브 영상 주소 (선택)</label>
+              <label className="text-2xs text-gray-400 font-bold">유튜브 영상 주소 (선택)</label>
               <input
                 type="text"
                 value={editPhotoVideo}
@@ -383,7 +383,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 font-bold">대표 태그</label>
+              <label className="text-2xs text-gray-400 font-bold">대표 태그</label>
               <input
                 type="text"
                 value={editPhotoTag}
@@ -518,12 +518,12 @@ function PhotoDetailModal({
       aria-hidden={isEditing}
     >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-[11px] px-3 py-1.5 rounded-full z-10 font-semibold">{toastMsg}</div>}
+        {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <div className="min-w-0">
             <h3 className="font-bold text-sm text-gray-900">{photo.title}</h3>
             {/* 누가 언제 올렸는지 — 다른 게시판과 동일한 표기 */}
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-0.5">
+            <div className="flex items-center gap-1.5 text-2xs text-gray-400 mt-0.5">
               {renderAuthor(photo.authorId, photo.authorName)}
               <span>·</span>
               <span>{photo.createdAt}</span>
@@ -531,7 +531,7 @@ function PhotoDetailModal({
             {photo.tags && (
               <div className="flex gap-1 mt-0.5">
                 {photo.tags.filter(t => t !== '전체').map(t => (
-                  <span key={t} className="text-[9px] text-[#335f87] font-bold">#{t}</span>
+                  <span key={t} className="text-2xs text-[#335f87] font-bold">#{t}</span>
                 ))}
               </div>
             )}
@@ -604,8 +604,8 @@ function PhotoDetailModal({
           {/* 영상만 올린 글에는 저장할 사진이 없으므로 버튼을 숨깁니다 */}
           {hasImages && (
             <div className="flex gap-1.5">
-              <button onClick={handleDownloadSingle} disabled={isSavingAll} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-[11px] disabled:opacity-50">📷 이 사진 저장</button>
-              <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-[11px] disabled:opacity-50">
+              <button onClick={handleDownloadSingle} disabled={isSavingAll} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-2xs disabled:opacity-50">📷 이 사진 저장</button>
+              <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-2xs disabled:opacity-50">
                 {isSavingAll ? '저장 중...' : `📦 전체 저장 (${images.length}장)`}
               </button>
             </div>

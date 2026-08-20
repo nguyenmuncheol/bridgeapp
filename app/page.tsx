@@ -465,15 +465,15 @@ export default function Home() {
               title="알림 · 내 정보"
               aria-label={unreadCount > 0 ? `알림 ${unreadCount}건` : '알림'}
             >
-              <span className="w-5 h-5 rounded-full bg-[#335f87] text-white flex items-center justify-center text-[9px] font-bold shrink-0 overflow-hidden">
+              <span className="w-6 h-6 rounded-full bg-[#335f87] text-white flex items-center justify-center text-2xs font-bold shrink-0 overflow-hidden">
                 {currentUser.avatarUrl
                   ? <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
                   : currentUser.name.slice(0, 1)
                 }
               </span>
-              <span className="text-[11px]">{getUserDisplayName(currentUser)}</span>
+              <span className="text-2xs">{getUserDisplayName(currentUser)}</span>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -489,8 +489,8 @@ export default function Home() {
           <span className="text-base leading-none mt-0.5">⚠️</span>
           <div className="flex-1 space-y-1">
             <p className="text-xs font-bold text-rose-800">로그인에 실패했습니다</p>
-            <p className="text-[11px] text-rose-700 leading-relaxed break-all">{authError}</p>
-            <p className="text-[11px] text-rose-600/80 leading-relaxed">
+            <p className="text-2xs text-rose-700 leading-relaxed break-all">{authError}</p>
+            <p className="text-2xs text-rose-600/80 leading-relaxed">
               다시 시도해도 같은 문제가 계속되면 교회 관리자에게 이 메시지를 알려주세요.
             </p>
           </div>
@@ -505,7 +505,7 @@ export default function Home() {
             <span className="text-base leading-none mt-0.5">🎉</span>
             <div className="flex-1 space-y-1">
               <p className="text-xs font-bold text-emerald-800">가입이 승인되었습니다</p>
-              <p className="text-[11px] text-emerald-700 leading-relaxed">
+              <p className="text-2xs text-emerald-700 leading-relaxed">
                 이제 소식 · 나눔 · 신청 기능을 모두 이용하실 수 있습니다. 환영합니다!
               </p>
             </div>
@@ -517,7 +517,7 @@ export default function Home() {
             <span className="text-base leading-none mt-0.5">📡</span>
             <div className="flex-1 space-y-1">
               <p className="text-xs font-bold text-amber-800">성도 명단을 불러오지 못했습니다</p>
-              <p className="text-[11px] text-amber-700 leading-relaxed">
+              <p className="text-2xs text-amber-700 leading-relaxed">
                 지금 보이는 목록이 비어 있거나 실제와 다를 수 있습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.
               </p>
             </div>
@@ -528,7 +528,7 @@ export default function Home() {
                   .then(dbUsers => { if (dbUsers && dbUsers.length > 0) setUsers(dbUsers) })
                   .catch(err => setRosterError(err?.message || '성도 명단을 불러오지 못했습니다.'))
               }}
-              className="px-2.5 py-1.5 bg-amber-600 text-white text-[11px] font-bold rounded-lg shrink-0"
+              className="px-2.5 py-1.5 bg-amber-600 text-white text-2xs font-bold rounded-lg shrink-0"
             >다시 시도</button>
           </div>
         )}
@@ -582,7 +582,7 @@ export default function Home() {
                   <p className="text-xs text-gray-500 leading-relaxed">
                     교회 관리자의 가입 승인 완료 후<br />소식, 나눔, 신청 기능을 이용하실 수 있습니다.
                   </p>
-                  <p className="text-[11px] text-[#335f87] font-medium">
+                  <p className="text-2xs text-[#335f87] font-medium">
                     승인되면 이 화면이 자동으로 바뀝니다. 그대로 두셔도 됩니다.
                   </p>
                 </div>
@@ -645,7 +645,7 @@ export default function Home() {
                 >
                   다시 가입 신청하기
                 </button>
-                <p className="text-[11px] text-gray-400">문의: 교회 사무실</p>
+                <p className="text-2xs text-gray-400">문의: 교회 사무실</p>
               </div>
             )}
 

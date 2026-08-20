@@ -233,7 +233,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
             <span className="p-2 bg-[#f1f4fa] text-[#335f87] rounded-xl"><Utensils size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">주일 식사 신청</h2>
           </div>
-          <span className={`text-[10px] font-semibold border px-2 py-0.5 rounded-full flex items-center gap-1 ${
+          <span className={`text-2xs font-semibold border px-2 py-0.5 rounded-full flex items-center gap-1 ${
             isLocked ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-amber-50 text-amber-700 border-amber-200'
           }`}>
             <Clock size={10} /> {remainingText}
@@ -265,7 +265,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                     : '현재 신청: 식사 안 함'}
                 </span>
               </p>
-              <p className="flex items-start gap-1.5 leading-relaxed text-[11px] opacity-80">
+              <p className="flex items-start gap-1.5 leading-relaxed text-2xs opacity-80">
                 <Pencil size={13} className="shrink-0 mt-0.5 opacity-70" />
                 <span>
                   최종 수정 {currentMealData.updatedBy || '성도님'}
@@ -370,7 +370,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                 </div>
               )}
               {upcomingSundays.length > 1 && (
-                <p className="text-[11px] text-gray-400 text-center">
+                <p className="text-2xs text-gray-400 text-center">
                   다음 주일은 위 날짜 탭에서 신청하실 수 있습니다.
                 </p>
               )}
@@ -395,7 +395,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                 setEditManager(eventFormManager)
                 setShowEventEditModal(true)
               }}
-              className="px-2.5 py-1 bg-purple-50 text-purple-700 text-[11px] font-bold rounded-lg hover:bg-purple-100 flex items-center gap-1"
+              className="px-2.5 py-1 bg-purple-50 text-purple-700 text-2xs font-bold rounded-lg hover:bg-purple-100 flex items-center gap-1"
             >
               <Edit size={11} /> 링크 관리
             </button>
@@ -437,7 +437,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
           <div className="py-8 text-center space-y-1.5">
             <p className="text-2xl">📭</p>
             <p className="text-sm font-bold text-gray-500">현재 진행 중인 행사가 없습니다</p>
-            <p className="text-[11px] text-gray-400">행사 일정이 확정되면 신청 안내가 이곳에 게시됩니다.</p>
+            <p className="text-2xs text-gray-400">행사 일정이 확정되면 신청 안내가 이곳에 게시됩니다.</p>
           </div>
         )}
       </section>
@@ -452,7 +452,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
             </div>
             <div className="space-y-2.5 text-xs">
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">행사 이름</label>
+                <label className="text-2xs text-gray-400 font-bold">행사 이름</label>
                 <input
                   type="text"
                   placeholder="예: 2026 여름 수련회"
@@ -462,7 +462,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">내용 (신청 안내사항)</label>
+                <label className="text-2xs text-gray-400 font-bold">내용 (신청 안내사항)</label>
                 <textarea
                   rows={4}
                   placeholder="행사 일시, 장소, 신청 방법 등 안내 내용을 입력하세요..."
@@ -472,7 +472,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">구글 폼 URL (없으면 빈칸)</label>
+                <label className="text-2xs text-gray-400 font-bold">구글 폼 URL (없으면 빈칸)</label>
                 <input
                   type="url"
                   placeholder="https://forms.google.com/..."
@@ -480,10 +480,10 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   onChange={e => setEditUrl(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">URL 미입력 시 "담당자에게 직접 신청" 안내 표시</p>
+                <p className="text-2xs text-gray-400 mt-1">URL 미입력 시 "담당자에게 직접 신청" 안내 표시</p>
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 font-bold">담당자 이름 (선택)</label>
+                <label className="text-2xs text-gray-400 font-bold">담당자 이름 (선택)</label>
                 <input
                   type="text"
                   placeholder="예: 홍길동"
@@ -491,7 +491,7 @@ export default function RequestTab({ currentUser, allUsers }: RequestTabProps) {
                   onChange={e => setEditManager(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">입력하면 "담당자(홍길동)에게 직접 신청해 주세요"로 표시됩니다</p>
+                <p className="text-2xs text-gray-400 mt-1">입력하면 "담당자(홍길동)에게 직접 신청해 주세요"로 표시됩니다</p>
               </div>
               {(eventFormTitle || eventFormUrl) && (
                 <button
