@@ -280,6 +280,13 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                   </>
                 ) : (
                   <>
+                    {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
+                    {member.phone && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <span className="w-3 text-center text-[11px]">📞</span>
+                        <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
+                      </div>
+                    )}
                     {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-[11px]">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
                     {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
                   </>

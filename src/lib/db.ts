@@ -453,6 +453,8 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
   // 기도제목 비밀글 토글(PrayerBoard)이 화면에는 반영되지만 DB에는 저장되지 않던 문제.
   if (updates.tags !== undefined) payload.tags = updates.tags
   if (updates.isSecret !== undefined) payload.is_secret = updates.isSecret
+  // 행사사진·찬양묵상의 영상 주소. 빈 문자열이면 "영상 없음"으로 지웁니다.
+  if (updates.youtubeUrl !== undefined) payload.youtube_url = updates.youtubeUrl || null
   // 🐛 과거 버그(조용한 실패): 권한이 없어 한 줄도 안 바뀌어도 서버는 "성공(204)"으로 답합니다.
   // 그래서 아멘/좋아요/축하응원을 눌러도 화면만 바뀌고 실제로는 저장이 안 됐는데,
   // 앱은 오류가 없으니 성공으로 알고 그대로 뒀습니다. (새로고침하면 원래대로 돌아감)
@@ -533,15 +535,31 @@ export async function dbTogglePostLike(
   return { likes: nextLikes, likedUserIds: nextUsers, error: res.error }
 }
 
+/**
+ * 댓글 등록.
+ *
+ * 🐛 과거 버그: 저장만 하고 **진짜 댓글 번호를 돌려주지 않았습니다.**
+ * 화면은 임시 번호(c_1787...)를 붙여 두는데 그 번호가 그대로 남아서,
+ * **방금 쓴 댓글을 바로 수정하면** 그 임시 번호로 찾으러 갔다가 못 찾고
+ * "수정 권한이 없습니다"가 떴습니다. (새로고침 후에는 정상 동작 → 원인 파악이 어려웠음)
+ *
+ * → 이제 저장된 행의 id와 작성시각을 함께 돌려줍니다. 화면은 이 값으로 갈아끼웁니다.
+ */
 export async function dbAddComment(postId: string, authorId: string, authorName: string, content: string) {
   const res = await supabase.from('post_comments').insert({
     post_id: postId,
     author_id: authorId,
     author_name: authorName,
     content
-  })
-  if (!res.error) invalidateCache('posts:')
-  return res
+  }).select('id, created_at').single()
+
+  if (res.error) return { error: res.error, id: '', createdAt: '' }
+  invalidateCache('posts:')
+  return {
+    error: null,
+    id: String(res.data?.id || ''),
+    createdAt: toLocalDateStr(res.data?.created_at)
+  }
 }
 
 // ==========================================
@@ -596,6 +614,8 @@ export interface EventFormData {
   title: string
   content: string
   url: string
+  /** 신청 담당자 이름. 비어 있으면 "담당자에게 직접 신청해 주세요"로 표시됩니다. */
+  manager: string
 }
 
 export async function dbFetchLatestEventForm(): Promise<EventFormData | null> {
@@ -606,7 +626,8 @@ export async function dbFetchLatestEventForm(): Promise<EventFormData | null> {
     id: data.id,
     title: data.title,
     content: data.content || '',
-    url: data.url || ''
+    url: data.url || '',
+    manager: data.manager || ''
   }
 }
 
@@ -621,6 +642,7 @@ export async function dbUpsertEventForm(eventData: EventFormData) {
     title: eventData.title,
     content: eventData.content,
     url: eventData.url,
+    manager: eventData.manager || null,
     updated_at: new Date().toISOString()
   }
 
@@ -797,6 +819,34 @@ export async function dbDeleteNotification(id: string) {
   const { error } = await supabase.from('notifications').delete().eq('id', id)
   if (!error) invalidateCache('notifications')
   return { error }
+}
+
+/** 관리자가 직접 쓴 알림의 받는 사람 범위 */
+export type NotifyTarget = 'ALL' | 'LABRI' | 'TEACHER' | 'ADMIN' | 'USERS'
+
+/**
+ * 관리자가 직접 쓴 알림을 보냅니다.
+ *
+ * 보낸 사람 이름(senderName)은 화면에 그대로 보입니다.
+ * 교회 명의로 보낼지, 관리자 본인 이름으로 보낼지 관리자가 고릅니다.
+ */
+export async function dbSendManualNotification(params: {
+  title: string
+  body: string
+  target: NotifyTarget
+  labriId?: string
+  userIds?: string[]
+  senderName: string
+}) {
+  const { data, error } = await supabase.rpc('send_manual_notification', {
+    p_title: params.title,
+    p_body: params.body,
+    p_target: params.target,
+    p_labri: params.labriId || null,
+    p_user_ids: params.userIds && params.userIds.length > 0 ? params.userIds : null,
+    p_sender: params.senderName,
+  })
+  return { sent: Number(data ?? 0), error }
 }
 
 /** 자동 알림 종류 (관리자 화면에서 "지금 한 번 실행"으로 시험해 볼 수 있습니다) */
@@ -1108,6 +1158,17 @@ export async function dbFetchChildAttendanceRecords(dateStr?: string) {
   const { data, error } = await query
   throwIfFetchFailed(error, '자녀 출석 기록')
   return (data || []) as any[]
+}
+
+/** 자녀 출석 기록 한 줄 삭제 (관리자가 "미기록"으로 되돌릴 때) */
+export async function dbDeleteChildAttendance(dependentId: string, dateStr: string) {
+  const { error } = await supabase
+    .from('child_attendance_records')
+    .delete()
+    .eq('dependent_id', dependentId)
+    .eq('date_str', dateStr)
+  if (!error) invalidateCache('childAttendanceRecords:')
+  return { error }
 }
 
 export async function dbSaveChildAttendanceRecords(records: {

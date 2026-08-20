@@ -169,7 +169,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       )}
 
       {/* ── 자동 알림 점검 탭 (관리자 전용) ── */}
-      {adminTab === 'alerts' && <NotificationJobsTab showToast={showToast} />}
+      {adminTab === 'alerts' && <NotificationJobsTab showToast={showToast} currentUser={currentUser} allUsers={allUsers} />}
 
       {/* ── 출석 탭 ── */}
       {adminTab === 'stats' && (

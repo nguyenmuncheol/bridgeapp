@@ -4,10 +4,10 @@ import { useState, useMemo } from 'react'
 import { Edit2, X } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
-import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords } from '../../lib/db'
+import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
-import { CHILD_LABRI_OPTIONS } from '../../lib/familyInfo'
+import { CHILD_LABRI_OPTIONS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 
 interface StatsTabProps {
@@ -172,7 +172,7 @@ export default function StatsTab({
 
   // ── 자녀(교회학교) 출석 ──
   // 자녀는 계정이 없어서 어른 출석표에 들어갈 수 없습니다. 별도 표에서 따로 받아옵니다.
-  const { data: childRecords } = useCachedQuery(
+  const { data: childRecords, refetch: refetchChildAttendance } = useCachedQuery(
     'childAttendanceRecords:all',
     () => dbFetchChildAttendanceRecords()
   )
@@ -193,6 +193,30 @@ export default function StatsTab({
       totalTotal: rows.reduce((sum, r) => sum + r.total, 0),
     }
   }, [childRecords, safeStart, safeEnd])
+
+  // 선택한 주일의 교회학교 명단 (부서순 → 이름순, 성인 명단과 같은 구성)
+  const childRosterRows = useMemo(() => {
+    const byId = new Map<string, any>()
+    ;(childRecords || []).forEach((r: any) => {
+      if (String(r.date_str) === selectedStatsDate) byId.set(String(r.dependent_id), r)
+    })
+    const order = new Map<string, number>(CHILD_LABRI_OPTIONS.map((g, i) => [g as string, i]))
+    return buildDependentEntries(allUsers)
+      .filter(c => !!c.childLabriId)
+      .map(child => {
+        const rec = byId.get(child.id.replace(/^dep_/, ''))
+        return {
+          child,
+          status: (rec?.status as 'ATTEND' | 'ABSENT' | undefined) || null,
+          note: rec?.note || '',
+        }
+      })
+      .sort((a, b) => {
+        const ga = order.get(a.child.childLabriId || '') ?? 99
+        const gb = order.get(b.child.childLabriId || '') ?? 99
+        return ga !== gb ? ga - gb : a.child.name.localeCompare(b.child.name, 'ko')
+      })
+  }, [childRecords, selectedStatsDate, allUsers])
 
   const CHILD_BAR: Record<string, string> = {
     '영아부': '#fbcfe8', '유아·유치부': '#fde68a', '초등부': '#a7f3d0', '중고등부': '#bfdbfe',
@@ -220,11 +244,44 @@ export default function StatsTab({
     // 🐛 과거 버그: '미기록'은 그 사람의 출석 기록과 결석 사유를 되돌릴 수 없이 지우는데,
     // 출석/결석 버튼과 똑같이 생긴 채로 나란히 있었고 확인 창도 없었습니다.
     if (status === 'NONE') {
-      if (!confirm(`${getUserDisplayName(user)}님의 ${dateStr} 출석 기록을 삭제할까요?\n결석 사유도 함께 지워지며 되돌릴 수 없습니다.`)) return
+      if (!confirm(`${user.isDependent ? user.name : getUserDisplayName(user)}님의 ${dateStr} 출석 기록을 삭제할까요?\n결석 사유도 함께 지워지며 되돌릴 수 없습니다.`)) return
     }
 
     setIsSavingAttendance(true)
     try {
+    // ── 자녀(교회학교)는 별도 표에 저장됩니다 ──
+    if (user.isDependent) {
+      const depId = user.id.replace(/^dep_/, '')
+      if (status === 'NONE') {
+        const { error } = await dbDeleteChildAttendance(depId, dateStr)
+        if (error) {
+          alert(`출석 기록 삭제 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+          return
+        }
+      } else {
+        const { error } = await dbSaveChildAttendanceRecords([{
+          dependentId: depId,
+          childName: user.name,
+          familyGroupId: user.familyGroupId,
+          labriId: user.childLabriId || '미지정',
+          dateStr,
+          status,
+          note: status === 'ABSENT' ? note : '',
+          recordedBy: currentUser?.id
+        }])
+        if (error) {
+          alert(`출석 정보 저장 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+          return
+        }
+      }
+      refetchChildAttendance()
+      setEditingAttendanceUser(null)
+      showToast(status === 'NONE'
+        ? `${user.name}의 ${dateStr} 출석 기록을 삭제했습니다.`
+        : `✅ ${user.name}의 ${dateStr} 출석 정보가 수정되었습니다.`)
+      return
+    }
+
     if (status === 'NONE') {
       // 출석 기록 삭제 (미기록 처리)
       const { error } = await supabase
@@ -362,45 +419,6 @@ export default function StatsTab({
         </div>
         )}
 
-        {/* ── 자녀(교회학교) 출석 ── */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-xs text-gray-900">🧒 교회학교 출석</h3>
-            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
-          </div>
-
-          {childStats.rows.length === 0 ? (
-            <p className="py-4 text-center text-[11px] text-gray-400">
-              이 기간에 입력된 교회학교 출석이 없습니다.
-            </p>
-          ) : (
-            <>
-              {childStats.rows.map(({ label, attend, total }) => {
-                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
-                return (
-                  <div key={label} className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
-                      <span className="font-bold text-gray-700">{attend}/{total}명 ({rate}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
-                    </div>
-                  </div>
-                )
-              })}
-              <div className="pt-2 border-t border-gray-200 flex justify-between text-xs">
-                <span className="font-black text-gray-900">교회학교 합계</span>
-                <span className="font-black text-indigo-600">
-                  {childStats.totalAttend}/{childStats.totalTotal}명 (
-                  {childStats.totalTotal > 0 ? Math.round((childStats.totalAttend / childStats.totalTotal) * 100) : 0}%)
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-
         {/* 선택한 주일의 출석/결석 명단 (CSV는 아래 기간 카드에 있습니다) */}
         {!isTeacher && (
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
@@ -454,6 +472,99 @@ export default function StatsTab({
           </table>
         </div>
         )}
+
+        {/* ── 자녀(교회학교) 출석 ── */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-xs text-gray-900">🧒 교회학교 출석</h3>
+            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
+          </div>
+
+          {childStats.rows.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-gray-400">
+              이 기간에 입력된 교회학교 출석이 없습니다.
+            </p>
+          ) : (
+            <>
+              {childStats.rows.map(({ label, attend, total }) => {
+                const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                return (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
+                      <span className="font-bold text-gray-700">{attend}/{total}명 ({rate}%)</span>
+                    </div>
+                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
+                    </div>
+                  </div>
+                )
+              })}
+              <div className="pt-2 border-t border-gray-200 flex justify-between text-xs">
+                <span className="font-black text-gray-900">교회학교 합계</span>
+                <span className="font-black text-indigo-600">
+                  {childStats.totalAttend}/{childStats.totalTotal}명 (
+                  {childStats.totalTotal > 0 ? Math.round((childStats.totalAttend / childStats.totalTotal) * 100) : 0}%)
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+        {/* 교회학교 명단 (선택한 주일) — 성인 명단과 같은 구성 */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+          <h3 className="font-bold text-xs text-gray-900">🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단</h3>
+
+          {childRosterRows.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-gray-400">
+              교회학교 그룹이 지정된 자녀가 없습니다.
+            </p>
+          ) : (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th className="p-2">이름</th>
+                  <th className="p-2">부서</th>
+                  <th className="p-2 text-center">출석여부</th>
+                  <th className="p-2">결석사유</th>
+                  <th className="p-2 text-right">수정</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 text-gray-700">
+                {childRosterRows.map(row => (
+                  <tr key={row.child.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="p-2 font-bold text-gray-800">{row.child.name}</td>
+                    <td className="p-2 text-gray-500">{row.child.childLabriId}</td>
+                    <td className="p-2 text-center">
+                      {row.status ? (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {row.status === 'ABSENT' ? '❌ 결석' : '✅ 출석'}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[10px]">미기록</span>
+                      )}
+                    </td>
+                    <td className="p-2 text-gray-500">{row.note || '-'}</td>
+                    <td className="p-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setEditingAttendanceUser({
+                          user: row.child,
+                          dateStr: selectedStatsDate,
+                          status: (row.status as 'ATTEND' | 'ABSENT') || 'NONE',
+                          note: row.note || ''
+                        })}
+                        disabled={!selectedStatsDate}
+                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ml-auto"
+                      >
+                        <Edit2 size={11} /> </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
         {/* ───────── 하단: 기간 통계 ───────── */}
         <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-xs">
@@ -550,17 +661,39 @@ export default function StatsTab({
                   </div>
                 )
               })}
-              {rangeLabriStats.rows.length > 0 && (
+              {/* 교회학교 — 기간 전체 (childStats 는 이미 선택한 기간으로 계산되어 있습니다) */}
+              {childStats.rows.length > 0 && (
+                <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                  <p className="text-[11px] font-bold text-gray-500">🧒 교회학교</p>
+                  {childStats.rows.map(({ label, attend, total }) => {
+                    const rate = total > 0 ? Math.round((attend / total) * 100) : 0
+                    return (
+                      <div key={`range-${label}`} className="space-y-1">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-bold" style={{ color: CHILD_TEXT[label] }}>{label}</span>
+                          <span className="font-bold text-gray-700">{attend}/{total}회 ({rate}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${rate}%`, backgroundColor: CHILD_BAR[label] }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {(rangeLabriStats.rows.length > 0 || childStats.rows.length > 0) && (
                 <div className="pt-2 border-t border-gray-200 space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
+                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(어른 + 교회학교)</span></span>
                     <span className="font-black text-indigo-600">
-                      {rangeLabriStats.totalAttend}/{rangeLabriStats.totalTotal}회 ({rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%)
+                      {rangeLabriStats.totalAttend + childStats.totalAttend}/{rangeLabriStats.totalTotal + childStats.totalTotal}회 ({(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all"
-                      style={{ backgroundColor: TOTAL_BAR, width: `${rangeLabriStats.totalTotal > 0 ? Math.round((rangeLabriStats.totalAttend / rangeLabriStats.totalTotal) * 100) : 0}%` }} />
+                      style={{ backgroundColor: TOTAL_BAR, width: `${(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%` }} />
                   </div>
                 </div>
               )}
@@ -578,10 +711,14 @@ export default function StatsTab({
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-sm text-gray-900">
-                  ✏️ {getUserDisplayName(editingAttendanceUser.user)} 출석 수정
+                  ✏️ {editingAttendanceUser.user.isDependent
+                        ? editingAttendanceUser.user.name
+                        : getUserDisplayName(editingAttendanceUser.user)} 출석 수정
                 </h3>
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.labriId || '라브리 미정'})
+                  주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
+                    ? (editingAttendanceUser.user.childLabriId || '미지정')
+                    : (editingAttendanceUser.user.labriId || '라브리 미정')})
                 </p>
               </div>
               <button

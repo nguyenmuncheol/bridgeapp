@@ -151,8 +151,16 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
       comments: [...(n.comments || []), { id: tempId, authorId: currentUser.id, authorName: getUserDisplayName(currentUser), content: text, createdAt: '방금 전' }]
     } : n))
     try {
-      const { error } = await dbAddComment(newsId, currentUser.id, getUserDisplayName(currentUser), text)
+      const { error, id, createdAt } = await dbAddComment(newsId, currentUser.id, getUserDisplayName(currentUser), text)
       if (error) throw error
+      // 🐛 저장에 성공하면 **임시 번호를 진짜 번호로 갈아끼웁니다.**
+      // 이걸 안 하면 방금 쓴 댓글을 바로 수정·삭제할 때 서버가 그 댓글을 못 찾습니다.
+      if (id) {
+        setMemberNewsList(prev => prev.map(n => n.id === newsId ? {
+          ...n,
+          comments: (n.comments || []).map(c => (c.id === tempId ? { ...c, id, createdAt: createdAt || c.createdAt } : c))
+        } : n))
+      }
     } catch {
       // 실패 시 댓글 롤백
       setMemberNewsList(prev => prev.map(n => n.id === newsId ? {

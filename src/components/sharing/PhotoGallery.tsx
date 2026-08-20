@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction, ReactNode } from 'react'
-import { Heart, Filter, Trash2, X, Edit2 } from 'lucide-react'
-import { PostItem, UserProfile } from '../../lib/mockData'
+import { Heart, Filter, Trash2, X, Edit2, MessageCircle, Play } from 'lucide-react'
+import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 import ImageSlider from '../ImageSlider'
 import { saveImage, openImageViewer } from '../../lib/download'
+import { getYouTubeVideoId } from './youtube'
+import CommentList from '../CommentList'
+import { dbAddComment } from '../../lib/db'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -36,6 +39,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   const [editPhotoTitle, setEditPhotoTitle] = useState('')
   const [editPhotoContent, setEditPhotoContent] = useState('')
   const [editPhotoTag, setEditPhotoTag] = useState('')
+  const [editPhotoVideo, setEditPhotoVideo] = useState('')
 
   // 다른 게시판(기도제목/찬양나눔)과 동일하게 작성자를 표시합니다.
   // 🐛 과거 문제: 행사사진만 누가 올렸는지 안 보여서, 사진에 문제가 있어도
@@ -68,6 +72,45 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   //  ② 이 방식은 "남의 게시글을 수정"하는 것이라, 게시글 수정 권한을 작성자·관리자로
   //     조이면 좋아요가 통째로 고장납니다.
   // → 기도제목/교우소식과 동일하게 서버 함수(dbTogglePostLike)를 거칩니다.
+  // ── 댓글 (다른 게시판과 같은 공용 부품을 씁니다) ──
+  const handleAddComment = async (photoId: string, text: string) => {
+    const tempId = `c_${Date.now()}`
+    const authorName = getUserDisplayName(currentUser)
+    setPhotos(prev => prev.map(p => p.id === photoId ? {
+      ...p,
+      comments: [...(p.comments || []), { id: tempId, authorId: currentUser.id, authorName, content: text, createdAt: '방금 전' }]
+    } : p))
+
+    const { error, id, createdAt } = await dbAddComment(photoId, currentUser.id, authorName, text)
+    if (error) {
+      setPhotos(prev => prev.map(p => p.id === photoId ? {
+        ...p, comments: (p.comments || []).filter(c => c.id !== tempId)
+      } : p))
+      showToast('댓글 등록 중 오류가 발생했습니다.', true)
+      return
+    }
+    // 임시 번호를 진짜 번호로 갈아끼웁니다 (안 하면 방금 쓴 댓글을 못 고칩니다)
+    if (id) {
+      setPhotos(prev => prev.map(p => p.id === photoId ? {
+        ...p,
+        comments: (p.comments || []).map(c => (c.id === tempId ? { ...c, id, createdAt: createdAt || c.createdAt } : c))
+      } : p))
+    }
+  }
+
+  const handleCommentChanged = (photoId: string, commentId: string, nextContent: string | null) => {
+    setPhotos(prev => prev.map(p => {
+      if (p.id !== photoId) return p
+      const comments = p.comments || []
+      return {
+        ...p,
+        comments: nextContent === null
+          ? comments.filter(c => c.id !== commentId)
+          : comments.map(c => (c.id === commentId ? { ...c, content: nextContent } : c)),
+      }
+    }))
+  }
+
   const handlePhotoLike = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
     const target = photos.find(p => p.id === id)
@@ -112,10 +155,23 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
     const tags = ['전체', ...(editedTag ? [editedTag] : []), ...untouchedTags]
       .filter((t, idx, arr) => arr.indexOf(t) === idx)
 
+    // 행사사진은 유튜브 주소만 받습니다.
+    const nextVideo = editPhotoVideo.trim()
+    if (nextVideo && !getYouTubeVideoId(nextVideo)) {
+      showToast('유튜브 주소만 넣을 수 있습니다.', true)
+      return
+    }
+    // 사진도 영상도 없는 글이 되지 않도록 막습니다.
+    if (!nextVideo && !(editingPhoto.imageUrls && editingPhoto.imageUrls.length > 0)) {
+      showToast('사진이 없는 글에서는 영상 주소를 지울 수 없습니다.', true)
+      return
+    }
+
     setIsSavingPhoto(true)
     const { error: saveError } = await dbUpdatePost(editingPhoto.id, {
       title: editPhotoTitle.trim(),
       content: editPhotoContent.trim(),
+      youtubeUrl: nextVideo,
       tags
     })
     setIsSavingPhoto(false)
@@ -125,11 +181,11 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
     }
 
     setPhotos(prev => prev.map(p => p.id === editingPhoto.id
-      ? { ...p, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), tags }
+      ? { ...p, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), youtubeUrl: nextVideo, tags }
       : p
     ))
     if (activePhotoModal?.id === editingPhoto.id) {
-      setActivePhotoModal(prev => prev ? { ...prev, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), tags } : null)
+      setActivePhotoModal(prev => prev ? { ...prev, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), youtubeUrl: nextVideo, tags } : null)
     }
     setEditingPhoto(null)
   }
@@ -195,7 +251,25 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
             className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-2xs cursor-pointer group relative flex flex-col justify-between"
           >
             <div className="h-32 bg-gray-100 overflow-hidden relative">
-              <img src={photo.imageUrls?.[0]} alt={photo.title} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+              {/* 사진이 있으면 사진을, 없으면 유튜브 썸네일을 보여줍니다 */}
+              {(() => {
+                const videoId = getYouTubeVideoId(photo.youtubeUrl)
+                const cover = photo.imageUrls?.[0]
+                  || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : undefined)
+                return (
+                  <>
+                    <img src={cover} alt={photo.title} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                    {/* 영상이 있으면 사진 위에도 ▶ 표시를 얹어 한눈에 구분되게 합니다 */}
+                    {videoId && (
+                      <span className="absolute inset-0 bg-black/25 flex items-center justify-center">
+                        <span className="w-9 h-9 bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg">
+                          <Play size={16} className="ml-0.5 fill-white" />
+                        </span>
+                      </span>
+                    )}
+                  </>
+                )
+              })()}
               {photo.imageUrls && photo.imageUrls.length > 1 && (
                 <span className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full">+{photo.imageUrls.length - 1}장</span>
               )}
@@ -220,12 +294,17 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 <span className="flex items-center gap-1 min-w-0">
                   {renderAuthor(photo.authorId, photo.authorName)}
                 </span>
-                <button
-                  onClick={(e) => handlePhotoLike(photo.id, e)}
-                  className="flex items-center gap-0.5 text-rose-500 font-bold hover:scale-110 transition-transform active:scale-95"
-                >
-                  <Heart size={11} className="fill-rose-500" /> {photo.likes}
-                </button>
+                <span className="flex items-center gap-2 shrink-0">
+                  <span className="flex items-center gap-0.5 text-gray-400 font-bold">
+                    <MessageCircle size={11} /> {(photo.comments || []).length}
+                  </span>
+                  <button
+                    onClick={(e) => handlePhotoLike(photo.id, e)}
+                    className="flex items-center gap-0.5 text-rose-500 font-bold hover:scale-110 transition-transform active:scale-95"
+                  >
+                    <Heart size={11} className="fill-rose-500" /> {photo.likes}
+                  </button>
+                </span>
               </div>
               <p className="text-[9px] text-gray-300">{photo.createdAt}</p>
             </div>
@@ -294,6 +373,16 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               />
             </div>
             <div>
+              <label className="text-[10px] text-gray-400 font-bold">유튜브 영상 주소 (선택)</label>
+              <input
+                type="text"
+                value={editPhotoVideo}
+                onChange={e => setEditPhotoVideo(e.target.value)}
+                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
+                placeholder="https://youtu.be/..."
+              />
+            </div>
+            <div>
               <label className="text-[10px] text-gray-400 font-bold">대표 태그</label>
               <input
                 type="text"
@@ -326,8 +415,14 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
             setEditPhotoTitle(photo.title)
             setEditPhotoContent(photo.content || '')
             setEditPhotoTag((photo.tags || []).filter(t => t !== '전체')[0] || '')
+            setEditPhotoVideo(photo.youtubeUrl || '')
           }}
           onDelete={(id) => handleDeletePhoto(id)}
+          allUsers={allUsers}
+          comments={(photos.find(p => p.id === activePhotoModal.id)?.comments) || []}
+          onAddComment={handleAddComment}
+          onCommentChanged={handleCommentChanged}
+          onCommentError={msg => showToast(msg, true)}
         />
       )}
     </div>
@@ -343,7 +438,12 @@ function PhotoDetailModal({
   onClose,
   onLike,
   onEdit,
-  onDelete
+  onDelete,
+  allUsers,
+  comments,
+  onAddComment,
+  onCommentChanged,
+  onCommentError
 }: {
   photo: PostItem
   currentUser: UserProfile
@@ -355,8 +455,17 @@ function PhotoDetailModal({
   onLike: (id: string) => void
   onEdit: (photo: PostItem) => void
   onDelete: (id: string) => void
+  allUsers: UserProfile[]
+  comments: CommentItem[]
+  onAddComment: (postId: string, text: string) => void
+  onCommentChanged: (postId: string, commentId: string, nextContent: string | null) => void
+  onCommentError: (msg: string) => void
 }) {
-  const images = photo.imageUrls || ['https://images.unsplash.com/photo-1544427920-c49ccfb85579?auto=format&fit=crop&w=800&q=80']
+  const videoId = getYouTubeVideoId(photo.youtubeUrl)
+  const hasImages = !!(photo.imageUrls && photo.imageUrls.length > 0)
+  const images = hasImages
+    ? photo.imageUrls!
+    : ['https://images.unsplash.com/photo-1544427920-c49ccfb85579?auto=format&fit=crop&w=800&q=80']
   const [imgIdx, setImgIdx] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
 
@@ -449,8 +558,21 @@ function PhotoDetailModal({
             <button onClick={onClose} className="text-gray-400 font-bold ml-1"><X size={18} /></button>
           </div>
         </div>
+        {/* 유튜브 영상 — 있으면 앱 안에서 바로 재생됩니다 */}
+        {videoId && (
+          <div className="rounded-xl overflow-hidden bg-black aspect-video">
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}`}
+              title={photo.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        )}
+
         {/* 좌우로 밀거나 화살표로 넘길 수 있습니다 (주보 화면과 같은 부품) */}
-        <ImageSlider
+        {hasImages && <ImageSlider
           images={images}
           index={imgIdx}
           onIndexChange={setImgIdx}
@@ -458,8 +580,8 @@ function PhotoDetailModal({
           //    → 주보처럼 "크게 보기"만 하고, 그 화면에서 다시 누르면 닫힙니다.
           onImageClick={() => openImageViewer(images[imgIdx])}
           alt={photo.title}
-        />
-        {images.length > 1 && (
+        />}
+        {hasImages && images.length > 1 && (
           <div className="flex gap-1 overflow-x-auto pb-1">
             {images.map((img, idx) => (
               <button key={idx} onClick={() => setImgIdx(idx)} className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 ${imgIdx === idx ? 'border-[#335f87]' : 'border-transparent'}`}>
@@ -479,12 +601,30 @@ function PhotoDetailModal({
           <button onClick={() => onLike(photo.id)} className="px-3 py-1.5 bg-rose-50 text-rose-600 font-bold rounded-lg flex items-center gap-1">
             <Heart size={14} className="fill-rose-500" /> 좋아요 {photo.likes}
           </button>
-          <div className="flex gap-1.5">
-            <button onClick={handleDownloadSingle} disabled={isSavingAll} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-[11px] disabled:opacity-50">📷 이 사진 저장</button>
-            <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-[11px] disabled:opacity-50">
-              {isSavingAll ? '저장 중...' : `📦 전체 저장 (${images.length}장)`}
-            </button>
-          </div>
+          {/* 영상만 올린 글에는 저장할 사진이 없으므로 버튼을 숨깁니다 */}
+          {hasImages && (
+            <div className="flex gap-1.5">
+              <button onClick={handleDownloadSingle} disabled={isSavingAll} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-[11px] disabled:opacity-50">📷 이 사진 저장</button>
+              <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-[11px] disabled:opacity-50">
+                {isSavingAll ? '저장 중...' : `📦 전체 저장 (${images.length}장)`}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 댓글 — 기도제목·찬양묵상·가족소식과 같은 공용 부품 */}
+        <div className="pt-1 border-t border-gray-100">
+          <CommentList
+            postId={photo.id}
+            comments={comments}
+            currentUser={currentUser}
+            allUsers={allUsers}
+            isAdmin={isAdmin}
+            onAddComment={onAddComment}
+            onCommentChanged={onCommentChanged}
+            onError={onCommentError}
+            placeholder="사진에 대한 이야기를 남겨보세요..."
+          />
         </div>
       </div>
     </div>
