@@ -1,0 +1,125 @@
+# 푸시 알림 도입 — 기술 설계
+
+작성일 2026-08-20 · 관련 문서: [`Push plan.md`](../../../Push%20plan.md) (기능/정책 기획, 이 문서보다 상위 문서)
+
+## 0. 범위
+
+`Push plan.md`의 5단계 계획 중 **0~3단계(개발)** 만 다룬다. 4~5단계(시험 운영, 전체 공개)는 개발 완료 후 별도로 진행.
+
+- **1차로 푸시를 내보내는 알림 종류: 관리자 직접알림만.**
+  자동 알림 9종(식사·주보·생일·출석 등)은 이번 구현 대상이 아니다. 단, 나중에 쉽게 추가할 수 있도록 발송 트리거를 확장 가능한 형태로 만든다 (§3).
+- Edge Function과 SQL은 **레포 안에 파일로 버전관리**한다 (`supabase/` 디렉토리 신설, Supabase CLI 사용).
+
+## 1. 현재 상태 (조사 결과)
+
+- 앱 안 알림함은 완성되어 있고 (`notifications` 테이블), 생성은 전부 서버 쪽(Postgres 함수/트리거)에서 일어난다 — 앱은 읽기/읽음처리/삭제만 한다 ([`src/lib/db.ts:766`](../../../src/lib/db.ts)).
+- 관리자 직접알림은 `dbSendManualNotification()` → RPC `send_manual_notification` 을 호출해서 생성된다 ([`src/lib/db.ts:833`](../../../src/lib/db.ts), UI: [`NotificationJobsTab.tsx`](../../../src/components/admin/NotificationJobsTab.tsx)).
+- `send_manual_notification` 등 서버 함수의 SQL 정의는 이 레포에 없다 (Supabase 대시보드에서 직접 관리 중) — 이번에 처음으로 `supabase/` 디렉토리를 만든다.
+- `public/sw.js`는 의도적으로 캐시 기능을 꺼둔 상태이며, `push` / `notificationclick` 핸들러가 아직 없다.
+- 푸시 관련 테이블, VAPID 키, Edge Function 모두 아직 없음 (완전히 새로 만드는 기능).
+- Supabase CLI는 `npx supabase` 로 로컬에서 바로 실행 가능 (확인됨, v2.115.0).
+
+## 2. 아키텍처
+
+```
+[관리자가 알림 작성 → 발송 버튼]
+        │
+        ▼
+  RPC send_manual_notification()  (기존 함수 — 알림 저장 로직은 그대로)
+        │  INSERT INTO notifications (기존과 동일)
+        │  + INSERT INTO push_jobs (신규 — 발송할 알림 id만 큐에 적재)
+        ▼
+  pg_cron (1분 간격) 또는 pg_net trigger
+        │  Edge Function 호출: send-push
+        ▼
+  supabase/functions/send-push/index.ts (Deno)
+        1. push_jobs 에서 처리 안 된 항목 조회
+        2. 대상자(user_id)의 push_subscriptions 조회
+        3. web-push 로 각 구독에 전송
+        4. 실패(410/404) 구독 삭제, 성공/실패 push_jobs 에 기록
+        ▼
+  각 사용자 브라우저의 public/sw.js
+        - 'push' 이벤트 → 알림 표시 (교회 로고)
+        - 'notificationclick' 이벤트 → 관련 화면으로 이동
+```
+
+**큐 테이블(`push_jobs`)을 두는 이유**: `send_manual_notification` RPC 안에서 곧바로 `pg_net`으로 Edge Function을 호출하는 방식도 가능하지만, 실패 시 재시도가 어렵고 나중에 자동 알림 9종을 추가할 때마다 각 함수를 일일이 수정해야 한다. 대신 "알림이 저장되면 큐에 발송 대상만 남긴다 → Edge Function이 주기적으로 큐를 비운다" 구조로 만들면:
+- 자동 알림 9종을 나중에 추가할 때, 각 함수의 마지막 줄에 `INSERT INTO push_jobs` 한 줄만 추가하면 된다.
+- Edge Function 실패해도 알림함(`notifications`)은 이미 저장되어 있으므로 영향 없음 (`Push plan.md` §8 "위험과 대비책"의 원칙과 일치).
+- 재시도가 단순해진다 (큐에 남아있으면 다음 주기에 다시 시도).
+
+## 3. 데이터 모델 (신규 테이블 2개)
+
+### `push_subscriptions`
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | uuid pk | |
+| user_id | uuid fk → profiles | |
+| endpoint | text unique | 브라우저가 발급한 구독 주소 |
+| p256dh | text | 구독 공개키 |
+| auth | text | 구독 인증 시크릿 |
+| device_label | text | "iPhone", "Chrome" 등 (표시용, UI에서 직접 지정 안 함 — UA로 추정) |
+| created_at | timestamptz | |
+
+RLS: 본인 `user_id` 행만 select/insert/delete 가능. Edge Function은 service role 키로 우회.
+
+### `push_jobs`
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | uuid pk | |
+| notification_id | uuid fk → notifications | |
+| status | text | `pending` / `sent` / `failed` |
+| created_at | timestamptz | |
+| processed_at | timestamptz | |
+
+`send_manual_notification` 함수 마지막에 `INSERT INTO push_jobs (notification_id) SELECT id FROM notifications WHERE ...` 한 줄 추가.
+
+## 4. VAPID 키
+
+- `npx web-push generate-vapid-keys` 로 1회 생성 (로컬 실행, 레포에 커밋하지 않음).
+- 공개키 → `.env.local`의 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (Vercel 환경변수에도 등록 필요 — 사장님 작업).
+- 비밀키 → `npx supabase secrets set VAPID_PRIVATE_KEY=...` 로 Edge Function 시크릿에 등록.
+
+## 5. 레포 구조 변경
+
+```
+supabase/
+  migrations/
+    20260820000000_push_subscriptions.sql   -- push_subscriptions, push_jobs 테이블 + RLS
+    20260820000001_push_trigger.sql         -- send_manual_notification 함수 수정 (push_jobs insert 추가)
+  functions/
+    send-push/
+      index.ts                              -- 큐 처리 + web-push 전송
+  config.toml
+```
+
+`npx supabase db push` 로 마이그레이션 적용, `npx supabase functions deploy send-push` 로 배포. pg_cron으로 1분마다 Edge Function 호출하도록 `pg_cron` 확장 + `cron.schedule()` 을 마이그레이션에 포함.
+
+## 6. 서비스워커 변경 (`public/sw.js`)
+
+기존 `install`/`activate`/`fetch` 핸들러는 그대로 두고 아래 2개만 추가한다 (기존 "캐시 기능은 계속 꺼둔 채" 원칙 유지):
+
+- `push` 이벤트: payload(JSON: title, body, url) 파싱 → `self.registration.showNotification()` 으로 교회 로고와 함께 표시.
+- `notificationclick` 이벤트: `event.notification.data.url` 로 기존 열린 탭이 있으면 focus, 없으면 새로 열기.
+
+## 7. 클라이언트 변경
+
+- `src/lib/push.ts` (신규): `subscribeToPush()`, `unsubscribeFromPush()`, `getPushPermissionState()` — `Notification.permission`, iOS `navigator.standalone` 체크, `pushManager.subscribe()` 래핑.
+- `src/lib/db.ts`: `dbSavePushSubscription()`, `dbDeletePushSubscription()` 추가.
+- `MyPageTab.tsx`: `📱 휴대폰 알림 받기` 스위치 추가. `Push plan.md` §5 1단계의 상태별 문구(아직 안 켬/켜짐/거부됨/아이폰 홈화면 추가 필요) 그대로 구현.
+
+## 8. 에러 처리
+
+- Edge Function에서 구독 전송 실패 시 HTTP 상태코드로 분기: `410 Gone` / `404` → 죽은 구독으로 판단해 `push_subscriptions`에서 삭제. 그 외 오류는 `push_jobs.status = 'failed'` 로 기록하고 그대로 둔다 (알림함은 이미 정상 저장되어 있으므로 성도님께 영향 없음).
+- 클라이언트: 구독 실패(권한 거부, iOS 홈화면 미추가 등)는 전부 상태 문구로만 안내, 에러를 throw하지 않음 — `Push plan.md`가 강조하는 "권한 창은 누를 때만" 원칙과 "거부해도 앱은 정상 동작" 원칙 유지.
+
+## 9. 테스트 계획
+
+- 로컬: `npx supabase db push`로 스테이징에 마이그레이션 적용 후 관리자 계정으로 직접알림 발송 → 본인 브라우저(Chrome, 알림 권한 허용)로 수신 확인.
+- 아이폰 실기기 테스트는 홈 화면 추가 필수 — 개발 중에는 안드로이드/PC 크롬으로 우선 검증하고, 아이폰은 배포 후 확인.
+- 시험 운영(4단계) 참여자는 개발 완료 후 사용자가 직접 지정하기로 함 (안드로이드·아이폰 섞어서 권장, 아이폰 최소 1명).
+
+## 10. 다음 확장 (이번 구현 범위 아님, 참고용)
+
+- 자동 알림 9종에 `push_jobs` insert 한 줄씩 추가 → 우선순위: 식사 미응답, 새 주보, 출석 리마인더 (`Push plan.md` §4 표 순서).
+- 관리 화면에서 알림 종류별 on/off, 조용한 시간대 보류 등은 `Push plan.md` §5 "나중에 여유 있을 때" 항목 참고.
