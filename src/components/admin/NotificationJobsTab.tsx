@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Bell, Play, RefreshCw, Send } from 'lucide-react'
-import { dbRunNotificationJob, NotificationJob, dbSendManualNotification } from '../../lib/db'
+import { Bell, Send } from 'lucide-react'
+import { dbSendManualNotification } from '../../lib/db'
 import { UserProfile, getUserDisplayName, isChurchMember } from '../../lib/mockData'
 
 interface NotificationJobsTabProps {
@@ -27,7 +27,7 @@ interface QuickGroup {
 }
 
 interface JobRow {
-  id: NotificationJob
+  id: string
   icon: string
   label: string
   when: string
@@ -56,15 +56,12 @@ const JOBS: JobRow[] = [
 ]
 
 /**
- * 자동 알림 점검 화면 (관리자 전용).
+ * 관리자 알림 화면.
  *
- * 금요일 저녁까지 기다리지 않아도, 여기서 **지금 한 번 실행**을 눌러
- * 알림이 제대로 나가는지 바로 확인하실 수 있습니다.
+ * 위: 관리자가 직접 써서 보내는 알림
+ * 아래: 서버가 정해진 시각에 알아서 보내는 알림 목록 (보기 전용)
  */
 export default function NotificationJobsTab({ showToast, currentUser, allUsers }: NotificationJobsTabProps) {
-  const [running, setRunning] = useState('')
-  const [results, setResults] = useState<Record<string, string>>({})
-
   // ── 알림 직접 보내기 ──
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -137,38 +134,8 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
     setTitle(''); setBody(''); setPickedIds([])
   }
 
-  const run = async (job: NotificationJob, force: boolean) => {
-    if (running) return
-    setRunning(job)
-    const { message, error } = await dbRunNotificationJob(job, force)
-    setRunning('')
-    if (error) {
-      const text = error.message || '실행하지 못했습니다.'
-      setResults(prev => ({ ...prev, [job]: `⚠️ ${text}` }))
-      showToast('실행 실패')
-      return
-    }
-    setResults(prev => ({ ...prev, [job]: `✅ ${message}` }))
-    showToast('실행 완료')
-  }
-
   return (
     <div className="space-y-3">
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
-        <div className="flex items-center gap-1.5">
-          <Bell size={14} className="text-[#335f87]" />
-          <h3 className="font-bold text-sm text-gray-900">자동 알림</h3>
-        </div>
-        <p className="text-2xs text-gray-500 leading-relaxed">
-          아래 알림들은 <strong>정해진 시각에 서버가 알아서</strong> 보냅니다. (베트남 시각 기준)<br />
-          잘 도는지 확인하고 싶으실 때 <strong>지금 실행</strong>을 눌러 보세요.
-          이미 보낸 알림은 다시 보내지 않으며, 정말 다시 보내려면 <strong>다시 보내기</strong>를 누르시면 됩니다.
-        </p>
-        <p className="text-2xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
-          ⚠️ 실제로 성도님들 알림함에 알림이 쌓입니다. 시험 삼아 여러 번 누르지 마세요.
-        </p>
-      </div>
-
       {/* ── 알림 직접 보내기 ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-1.5">
@@ -265,44 +232,28 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
         </p>
       </div>
 
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+        <div className="flex items-center gap-1.5">
+          <Bell size={14} className="text-[#335f87]" />
+          <h3 className="font-bold text-sm text-gray-900">자동 알림</h3>
+        </div>
+        <p className="text-2xs text-gray-500 leading-relaxed">
+          아래 알림들은 <strong>정해진 시각에 서버가 알아서</strong> 보냅니다. (시각은 모두 베트남 시각)<br />
+          따로 켜거나 끄실 것은 없고, 조건에 맞을 때만 나갑니다. 보낼 대상이 없으면 조용히 넘어갑니다.<br />
+          같은 알림을 <strong>두 번 보내지 않습니다.</strong>
+        </p>
+      </div>
+
       <div className="space-y-2">
         {JOBS.map(job => (
-          <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-3.5 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-gray-900">
-                  <span className="mr-1">{job.icon}</span>{job.label}
-                  <span className="ml-1.5 text-2xs font-semibold text-[#335f87] bg-[#335f87]/8 px-1.5 py-0.5 rounded">
-                    {job.when}
-                  </span>
-                </p>
-                <p className="text-2xs text-gray-500 leading-relaxed mt-0.5">{job.desc}</p>
-              </div>
-              <div className="flex gap-1 shrink-0">
-                <button
-                  onClick={() => run(job.id, false)}
-                  disabled={!!running}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#335f87] text-white text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
-                >
-                  <Play size={10} />
-                  {running === job.id ? '실행 중' : '지금 실행'}
-                </button>
-                {job.id !== 'cleanup' && (
-                  <button
-                    onClick={() => run(job.id, true)}
-                    disabled={!!running}
-                    className="px-2 py-1.5 rounded-lg bg-gray-100 text-gray-500 text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
-                    title="이미 보냈더라도 다시 보냅니다"
-                  >
-                    <RefreshCw size={10} />
-                    다시
-                  </button>
-                )}
-              </div>
-            </div>
-            {results[job.id] && (
-              <p className="text-2xs text-gray-600 bg-gray-50 rounded-lg px-2.5 py-1.5">{results[job.id]}</p>
-            )}
+          <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-3.5">
+            <p className="text-xs font-bold text-gray-900">
+              <span className="mr-1">{job.icon}</span>{job.label}
+              <span className="ml-1.5 text-2xs font-semibold text-[#335f87] bg-[#335f87]/8 px-1.5 py-0.5 rounded">
+                {job.when}
+              </span>
+            </p>
+            <p className="text-2xs text-gray-500 leading-relaxed mt-0.5">{job.desc}</p>
           </div>
         ))}
       </div>
