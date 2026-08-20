@@ -136,10 +136,12 @@ supabase/
 
 1. `npx supabase login` (최초 1회, 브라우저 인증)
 2. `npx supabase link --project-ref isbwfpokewammwiicxqr`
-3. `npx web-push generate-vapid-keys` → 나온 공개키를 `.env.local`과 Vercel 환경변수에 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 등록
-4. `npx supabase secrets set VAPID_PRIVATE_KEY=<위에서 나온 비밀키>`
-5. `npx supabase db push` (테이블·트리거 반영)
-6. `npx supabase functions deploy send-push` (Edge Function 배포)
+3. ~~VAPID 키 생성~~ → 완료 (공개키는 `.env.local`에 반영됨). **Vercel 환경변수**에도 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 등록 필요 (Vercel 프로젝트 Settings → Environment Variables, 또는 `npx vercel env add NEXT_PUBLIC_VAPID_PUBLIC_KEY`)
+4. `npx supabase secrets set VAPID_PRIVATE_KEY=<비밀키>` (비밀키는 채팅에서 받은 값을 붙여넣기 — 이 파일에는 남기지 않음)
+5. Supabase 대시보드 → SQL editor에서 한 번만 실행 (cron이 함수를 호출할 때 쓸 인증 정보):
+   `select vault.create_secret('<Settings → API → service_role 키>', 'service_role_key');`
+6. `npx supabase db push` (테이블·트리거·cron 반영)
+7. `npx supabase functions deploy send-push` (Edge Function 배포)
 
 이후 실제 테스트(관리자 알림 발송 → 휴대폰 수신 확인)로 넘어가면 된다.
 

@@ -865,6 +865,32 @@ export async function dbRunNotificationJob(job: NotificationJob, force = false) 
   return { message: (data as string) || '', error }
 }
 
+// ==========================================
+// 휴대폰 푸시 알림 구독 (1단계: 관리자 직접알림만)
+// ==========================================
+
+export async function dbSavePushSubscription(
+  userId: string,
+  sub: { endpoint: string; keys?: { p256dh?: string; auth?: string }; deviceLabel?: string }
+) {
+  const { error } = await supabase.from('push_subscriptions').upsert(
+    {
+      user_id: userId,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys?.p256dh || '',
+      auth: sub.keys?.auth || '',
+      device_label: sub.deviceLabel || null,
+    },
+    { onConflict: 'endpoint' }
+  )
+  return { error }
+}
+
+export async function dbDeletePushSubscription(endpoint: string) {
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint)
+  return { error }
+}
+
 export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAccount>> {
   try {
     // 1. 쿠폰 잔액 테이블 조회

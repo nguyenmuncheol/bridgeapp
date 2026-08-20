@@ -57,3 +57,45 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', () => {
   // 의도적으로 비워둠 (위 주석 참고)
 })
+
+// ─────────────────────────────────────────────────────────────────────
+// 푸시 알림 (2026-08-20 추가)
+// ─────────────────────────────────────────────────────────────────────
+
+const CHURCH_NAME = '더브릿지교회'
+
+self.addEventListener('push', (event) => {
+  let data = { title: CHURCH_NAME, body: '', url: '/' }
+  try {
+    if (event.data) data = { ...data, ...event.data.json() }
+  } catch {
+    // payload가 JSON이 아니면 기본값 그대로 보여줍니다.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/logo-square.png',
+      badge: '/logo-square.png',
+      data: { url: data.url || '/' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = event.notification.data?.url || '/'
+
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of clientsList) {
+        if ('navigate' in client && 'focus' in client) {
+          await client.navigate(targetUrl)
+          return client.focus()
+        }
+      }
+      return self.clients.openWindow(targetUrl)
+    })()
+  )
+})

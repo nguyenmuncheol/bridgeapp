@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare, Camera } from 'lucide-react'
+import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare, Camera, Bell } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
-import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons } from '../../lib/db'
+import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
+import { getPushUiState, subscribeToPush, unsubscribeFromPush, type PushUiState } from '../../lib/push'
 import PwaInstallButton from '../PwaInstallButton'
 
 interface MyPageTabProps {
@@ -128,6 +129,13 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   const displayFamilyName = computedFamilyName || couponAccount.familyName || `${currentUser.name}님`
   const [toastMsg, setToastMsg] = useState('')
 
+  // ── 휴대폰 알림(푸시) 스위치 ──
+  const [pushState, setPushState] = useState<PushUiState | 'loading'>('loading')
+  const [pushBusy, setPushBusy] = useState(false)
+  useEffect(() => {
+    getPushUiState().then(setPushState).catch(() => setPushState('unsupported'))
+  }, [])
+
   // Supabase DB에서 내 기도제목 및 쿠폰 로드 (나눔/쿠폰관리 탭과 캐시를 공유해 반복 조회하지 않음)
   const { data: prayerPosts } = useCachedQuery('posts:PRAYER', () => dbFetchPosts('PRAYER'))
   // 🐛 과거 버그: 조회 실패를 확인하지 않아, 네트워크 문제나 권한 문제로 못 불러오면
@@ -145,6 +153,38 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   const showToast = (msg: string) => {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 1500)
+  }
+
+  const handleTogglePush = async () => {
+    if (pushBusy) return
+    setPushBusy(true)
+    try {
+      if (pushState === 'on') {
+        const endpoint = await unsubscribeFromPush()
+        if (endpoint) await dbDeletePushSubscription(endpoint)
+        setPushState('off')
+        showToast('휴대폰 알림을 껐습니다')
+      } else {
+        const sub = await subscribeToPush()
+        await dbSavePushSubscription(currentUser.id, {
+          endpoint: sub.endpoint!,
+          keys: sub.keys,
+          deviceLabel: (sub as unknown as { deviceLabel?: string }).deviceLabel,
+        })
+        setPushState('on')
+        showToast('✅ 휴대폰 알림을 받습니다')
+      }
+    } catch {
+      const state = await getPushUiState().catch(() => 'unsupported' as const)
+      setPushState(state)
+      if (state === 'denied') {
+        showToast('알림이 차단되어 있습니다')
+      } else {
+        showToast('설정을 바꾸지 못했습니다')
+      }
+    } finally {
+      setPushBusy(false)
+    }
   }
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -469,6 +509,35 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           )) : <p className="text-xs text-gray-400 text-center py-4">작성한 기도제목이 없습니다.</p>}
         </div>
       </section>
+
+      {/* ── 휴대폰 알림(푸시) 스위치 ── */}
+      {pushState !== 'unsupported' && pushState !== 'loading' && (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-[#335f87]" />
+              <h3 className="font-bold text-xs text-gray-900">📱 휴대폰 알림 받기</h3>
+            </div>
+            {pushState !== 'ios-not-installed' && (
+              <button
+                type="button"
+                onClick={handleTogglePush}
+                disabled={pushBusy || pushState === 'denied'}
+                aria-pressed={pushState === 'on'}
+                className={`w-11 h-6 rounded-full shrink-0 transition-all relative disabled:opacity-40 ${pushState === 'on' ? 'bg-[#335f87]' : 'bg-gray-200'}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${pushState === 'on' ? 'left-[22px]' : 'left-0.5'}`} />
+              </button>
+            )}
+          </div>
+          <p className="text-2xs text-gray-500 leading-relaxed">
+            {pushState === 'on' && '✅ 이 기기로 알림을 받고 있습니다.'}
+            {pushState === 'off' && '켜시면 관리자 공지를 휴대폰으로 받으실 수 있습니다.'}
+            {pushState === 'denied' && '알림이 차단되어 있습니다. 홈 화면의 앱을 지우고 다시 추가하시면 다시 여쭤봅니다.'}
+            {pushState === 'ios-not-installed' && '아이폰은 먼저 홈 화면에 앱을 추가하셔야 알림을 받을 수 있습니다 (아래 가이드 참고).'}
+          </p>
+        </section>
+      )}
 
       {/* ── PWA 홈화면 추가 가이드 ── */}
       <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
