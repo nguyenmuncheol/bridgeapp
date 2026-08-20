@@ -147,7 +147,8 @@ export default function CommentList({
                         )}
                       </div>
                     </div>
-                    <p className="text-gray-600 break-words leading-relaxed">{c.content}</p>
+                    {/* 아바타(16px) + 간격(6px) = 22px 만큼 밀어, 윗줄 이름과 같은 위치에서 글이 시작합니다 */}
+                    <p className="text-gray-600 break-words leading-relaxed pl-[22px]">{c.content}</p>
                   </div>
                 )}
               </div>
