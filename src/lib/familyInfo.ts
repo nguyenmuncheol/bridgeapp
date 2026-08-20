@@ -31,6 +31,18 @@ export const CHILD_LABRI_NO_ATTENDANCE = '출석 미적용'
 
 export const CHILD_LABRI_OPTIONS = ['영아부', '유아·유치부', '초등부', '중고등부', CHILD_LABRI_NO_ATTENDANCE] as const
 
+/**
+ * 화면에 보여줄 자녀 부서 이름.
+ *
+ * "출석 미적용"은 **부모가 고르는 설정값**이지 부서 이름이 아니라서,
+ * 주소록 같은 곳에 그대로 뜨면 성도님들이 부서로 오해합니다.
+ * → 빈 값으로 돌려주어 부서 칸에 아무것도 안 나오게 합니다.
+ */
+export function getChildGroupLabel(group?: string): string {
+  const g = (group || '').trim()
+  return g === CHILD_LABRI_NO_ATTENDANCE ? '' : g
+}
+
 /** 출석체크·통계 대상이 되는 그룹만 (출석 미적용 제외) */
 export const CHILD_ATTENDANCE_GROUPS = ['영아부', '유아·유치부', '초등부', '중고등부'] as const
 
