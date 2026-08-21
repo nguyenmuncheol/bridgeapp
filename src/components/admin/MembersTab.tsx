@@ -353,7 +353,7 @@ export default function MembersTab({
         m.phone || '',
         m.address || '',
         formatBirthdayDisplay(m.birthday) || '',
-        buildFamilyStatusText(m, allUsers) || '',
+        buildFamilyStatusText(m, allUsers, true) || '',
         m.createdAt || '',
       ].map(csvField).join(',') + '\n'
     })
@@ -430,7 +430,7 @@ export default function MembersTab({
               <span>🏠 {member.address || '미입력'}</span>
               <span>🎂 {formatBirthdayDisplay(member.birthday) || '미입력'}</span>
               <span>⛪ {member.labriId || '라브리 미정'}</span>
-              {buildFamilyStatusText(member, allUsers) && <span className="col-span-2">👨‍👩‍👧 {buildFamilyStatusText(member, allUsers)}</span>}
+              {buildFamilyStatusText(member, allUsers, true) && <span className="col-span-2">👨‍👩‍👧 {buildFamilyStatusText(member, allUsers, true)}</span>}
             </div>
           </div>
         ))}
@@ -640,10 +640,10 @@ export default function MembersTab({
                 <input ref={childFileInputRef} type="file" accept="image/*" onChange={handleChildFileChange} className="hidden" />
               </div>
 
-              {/* 기타 가족 메모 */}
+              {/* 기타 메모 — 관리자만 보는 내부 메모(성도에게는 어디에도 노출되지 않음) */}
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">기타 가족 메모</label>
-                <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="가족현황란에 보이는 내용" />
+                <label className="text-2xs text-gray-400 font-semibold">기타 메모</label>
+                <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
               </div>
 
               {/* 버튼 */}

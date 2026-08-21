@@ -32,6 +32,8 @@ interface JobRow {
   label: string
   when: string
   desc: string
+  /** 이 알림이 휴대폰 푸시로도 나가는지 (2026-08-20 푸시 도입) */
+  push: boolean
 }
 
 /**
@@ -39,19 +41,17 @@ interface JobRow {
  * 시각은 모두 **베트남 시각** 기준입니다.
  */
 const JOBS: JobRow[] = [
-  { id: 'meal1',    icon: '🍚', label: '식사 미응답 1차', when: '금 저녁 8시',
-    desc: '다가오는 주일 식사를 아직 신청하지 않은 가정에게' },
-  { id: 'meal2',    icon: '🍚', label: '식사 미응답 2차', when: '토 낮 12시',
-    desc: '마감 2시간 전 한 번 더' },
-  { id: 'bulletin', icon: '📖', label: '새 주보 알림',    when: '금·토 저녁 8시',
+  { id: 'meal',     icon: '🍚', label: '식사 미응답',     when: '[1차:금 20시][2차:토 12시]', push: true,
+    desc: '다가오는 주일 식사를 아직 신청하지 않은 가정에게 (2차는 마감 2시간 전 한 번 더)' },
+  { id: 'bulletin', icon: '📖', label: '새 주보 알림',    when: '금·토 저녁 8시', push: true,
     desc: '아직 안 보낸 주보가 있으면 전 성도에게 (주보 1건당 딱 한 번)' },
-  { id: 'birthday', icon: '🎂', label: '생일 축하',       when: '매일 아침 8시',
+  { id: 'birthday', icon: '🎂', label: '생일 축하',       when: '매일 아침 8시', push: true,
     desc: '생일자 본인에게 축하 알림 + 우리소식에 교회 명의 축하글' },
-  { id: 'attend1',  icon: '📋', label: '출석 리마인더 1차', when: '주일 저녁 8시',
+  { id: 'attend',   icon: '📋', label: '출석 리마인더',   when: '[1차:일 20시][2차:월 12시][3차:월 20시]', push: true,
     desc: '출석이 아직 입력 안 된 라브리의 리더에게' },
-  { id: 'attend2',  icon: '📋', label: '출석 리마인더 2차', when: '월 낮 12시', desc: '위와 같음' },
-  { id: 'attend3',  icon: '📋', label: '출석 리마인더 3차', when: '월 저녁 8시', desc: '위와 같음' },
-  { id: 'cleanup',  icon: '🧹', label: '오래된 알림 정리',  when: '매일 새벽 4시',
+  { id: 'commentLikeDigest', icon: '💬', label: '댓글·좋아요 요약', when: '[오전 11시][오후 9시]', push: true,
+    desc: '안 읽은 댓글·좋아요가 있는 성도에게 요약 알림 1건 (지난 발송 이후 새로 생긴 게 없으면 건너뜀)' },
+  { id: 'cleanup',  icon: '🧹', label: '오래된 알림 정리', when: '매일 새벽 4시', push: false,
     desc: '60일이 지난 알림을 자동으로 지웁니다' },
 ]
 
@@ -249,6 +249,11 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
           <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-3.5">
             <p className="text-xs font-bold text-gray-900">
               <span className="mr-1">{job.icon}</span>{job.label}
+              {job.push && (
+                <span className="ml-1.5 text-2xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded" title="휴대폰 알림을 켠 성도에게 푸시도 나갑니다">
+                  📱 푸시
+                </span>
+              )}
               <span className="ml-1.5 text-2xs font-semibold text-[#335f87] bg-[#335f87]/8 px-1.5 py-0.5 rounded">
                 {job.when}
               </span>

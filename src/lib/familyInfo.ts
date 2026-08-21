@@ -169,7 +169,11 @@ export function getMissingBirthdayChildren(user: UserProfile, allUsers: UserProf
 }
 
 // 주소록 등에 보여줄 "배우자:xxx / 자녀:xxx/xxx" 형태의 요약 문자열 생성
-export function buildFamilyStatusText(user: UserProfile, allUsers: UserProfile[]): string {
+//
+// "기타 메모"(note)는 관리자만 보는 내부 메모라, 기본값(includeNote=false)에서는
+// 포함하지 않습니다 — 주소록·마이페이지 등 성도에게 노출되는 화면에서 자동으로 빠집니다.
+// 관리자 성도관리 화면처럼 메모를 보여줘야 하는 곳에서만 true로 넘겨서 씁니다.
+export function buildFamilyStatusText(user: UserProfile, allUsers: UserProfile[], includeNote = false): string {
   const parts: string[] = []
   const linked = findLinkedFamilyMembers(user, allUsers)
   if (linked.length > 0) {
@@ -179,8 +183,10 @@ export function buildFamilyStatusText(user: UserProfile, allUsers: UserProfile[]
   if (children.length > 0) {
     parts.push(`자녀:${children.map(c => c.name).join('·')}`)
   }
-  const { note } = parseFamilyInfo(user.familyInfo)
-  if (note) parts.push(note)
+  if (includeNote) {
+    const { note } = parseFamilyInfo(user.familyInfo)
+    if (note) parts.push(note)
+  }
   return parts.join(' / ')
 }
 

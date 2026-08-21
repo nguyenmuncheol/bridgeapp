@@ -227,7 +227,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름) · 생일은 부모가 마이페이지에서 입력하면 나이대(유아/어린이/학생/청년)가 자동 표시됩니다</label>
+                  <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름)</label>
                   <button type="button" onClick={() => addPendingChild(pending.id)} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
@@ -248,8 +248,8 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                 </div>
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">기타 가족 메모</label>
-                <input type="text" placeholder="가족현황란에 보이는 내용" value={familyInputs[pending.id] || ''} onChange={(e) => setFamilyInputs({ ...familyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium" />
+                <label className="text-2xs text-gray-400 font-semibold">기타 메모</label>
+                <input type="text" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" value={familyInputs[pending.id] || ''} onChange={(e) => setFamilyInputs({ ...familyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium" />
               </div>
             </div>
             {/* 승인(주 동작)을 넓게, 거절(되돌리기 어려운 동작)은 좁게 두어 오조작을 줄였습니다 */}
