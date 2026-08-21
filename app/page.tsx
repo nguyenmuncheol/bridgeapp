@@ -20,6 +20,8 @@ import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
+import { isRunningStandalone } from '../src/lib/pwaInstall'
+import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw } from 'lucide-react'
 
 export default function Home() {
@@ -66,6 +68,8 @@ export default function Home() {
   const [showNotifications, setShowNotifications] = useState(false)
   // 승인 후 첫 방문 환영 팝업 (계정에 기록해 딱 한 번만 뜹니다)
   const [showWelcome, setShowWelcome] = useState(false)
+  // 방문자 랜딩 페이지를 이번 세션에서 넘겼는지 (새로고침하면 다시 보입니다)
+  const [landingDismissed, setLandingDismissed] = useState(false)
 
   // 로그아웃/세션만료 시 완전한 비로그인 상태로 되돌립니다.
   const resetToGuest = () => {
@@ -473,6 +477,13 @@ export default function Home() {
   }
 
   const { pullPx, refreshing, threshold } = usePullToRefresh()
+
+  // 비로그인 + 앱 미설치 방문자에게는 랜딩 페이지를 먼저 보여줍니다.
+  // (로딩 중에는 판단을 미뤄 로딩 화면과 랜딩이 번갈아 깜빡이지 않게 합니다)
+  const showLanding = !isLoading && isGuest && !landingDismissed && !isRunningStandalone()
+  if (showLanding) {
+    return <LandingPage onEnter={() => setLandingDismissed(true)} />
+  }
 
   return (
     <div className="bg-[#f7f9ff] min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
