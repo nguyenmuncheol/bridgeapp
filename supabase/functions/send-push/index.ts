@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
     return new Response('Method Not Allowed', { status: 405 })
   }
 
-  if (QUIET_HOURS_ENABLED && isVietnamQuietHours()) {
-    return Response.json({ skipped: 'quiet-hours' })
-  }
+  // 조용한 시간대여도 가입 승인 요청만은 관리자가 바로 알아야 하므로 발송 대상에서 건너뛰지 않습니다
+  // (아래 for 루프에서 알림 타입별로 판단합니다). 여기서는 그 사실만 기억해둡니다.
+  const quietHoursNow = QUIET_HOURS_ENABLED && isVietnamQuietHours()
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
@@ -83,6 +83,11 @@ Deno.serve(async (req) => {
     if (!targetUserId || !payloadSource) {
       await supabase.from('push_jobs').update({ status: 'failed', processed_at: new Date().toISOString() }).eq('id', job.id)
       failed++
+      continue
+    }
+
+    // 조용한 시간대엔 가입 승인 요청 외에는 미뤄둡니다 (pending으로 남겨 다음 실행 때 다시 시도).
+    if (quietHoursNow && notif?.type !== 'SIGNUP_REQUEST') {
       continue
     }
 
