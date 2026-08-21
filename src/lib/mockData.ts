@@ -144,7 +144,8 @@ export interface NotificationItem {
   // COMMENT/LIKE/NOTICE = 성도님이 만든 알림
   // MEAL/ATTENDANCE/BIRTHDAY/BULLETIN = 서버가 시간에 맞춰 자동으로 보내는 알림
   // MANUAL = 관리자가 직접 써서 보낸 알림
-  type: 'COMMENT' | 'LIKE' | 'NOTICE' | 'MEAL' | 'ATTENDANCE' | 'BIRTHDAY' | 'BULLETIN' | 'MANUAL'
+  // SIGNUP_REQUEST = 새 가입 신청이 생기면 관리자에게만 자동으로 가는 알림
+  type: 'COMMENT' | 'LIKE' | 'NOTICE' | 'MEAL' | 'ATTENDANCE' | 'BIRTHDAY' | 'BULLETIN' | 'MANUAL' | 'SIGNUP_REQUEST'
   title: string
   body: string
   actorName: string

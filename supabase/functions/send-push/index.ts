@@ -38,6 +38,7 @@ function urlFor(type: string): string {
   if (type === 'BIRTHDAY') return '/#news'
   if (type === 'NOTICE') return '/#home'
   if (type === 'MANUAL') return '/#home'
+  if (type === 'SIGNUP_REQUEST') return '/#mypage'
   return '/'
 }
 

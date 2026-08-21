@@ -35,6 +35,7 @@ function destinationOf(n: NotificationItem): { tab: string; sub: string } {
   if (n.type === 'BULLETIN') return { tab: 'home', sub: '' }
   if (n.type === 'BIRTHDAY') return { tab: 'news', sub: 'memberNews' }
   if (n.type === 'MANUAL') return { tab: 'home', sub: '' }
+  if (n.type === 'SIGNUP_REQUEST') return { tab: 'mypage', sub: '' }   // 관리자 대시보드는 내 정보에서 들어갑니다
 
   // ② 댓글·좋아요·공지는 그 글이 실제로 있는 게시판으로 보냅니다.
   switch (n.postCategory) {
@@ -58,12 +59,13 @@ function iconOf(type: NotificationItem['type']): string {
   if (type === 'BIRTHDAY') return '🎂'
   if (type === 'BULLETIN') return '📖'
   if (type === 'MANUAL') return '📨'
+  if (type === 'SIGNUP_REQUEST') return '🙋'
   return '📢'
 }
 
 /** 서버가 자동으로 보내는 알림인지 (사람이 만든 알림과 문장 모양이 다릅니다) */
 function isSystemType(type: NotificationItem['type']): boolean {
-  return type === 'MEAL' || type === 'ATTENDANCE' || type === 'BIRTHDAY' || type === 'BULLETIN' || type === 'MANUAL'
+  return type === 'MEAL' || type === 'ATTENDANCE' || type === 'BIRTHDAY' || type === 'BULLETIN' || type === 'MANUAL' || type === 'SIGNUP_REQUEST'
 }
 
 /** '2026-08-19T05:12:00Z' → '방금 전 / 3시간 전 / 8/18 21:30' */
