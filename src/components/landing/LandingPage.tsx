@@ -155,7 +155,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           </Reveal>
           <Reveal from="up" delay={500}>
             <p className="text-xs text-blue-100 leading-relaxed italic">
-              &ldquo;진리를 알지니 진리가 너희를<br />자유롭게 하리라&rdquo; — 요한복음 8:32
+              &ldquo;하나님이 그 아들을 세상에 보내신 것은<br />세상을 심판하려 하심이 아니요<br />그로 말미암아 세상이<br />구원을 받게 하려 하심이라<br />&rdquo; — 요한복음 3:17 —
             </p>
           </Reveal>
         </div>
