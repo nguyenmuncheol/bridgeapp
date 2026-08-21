@@ -20,6 +20,8 @@ import { clearCache } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
+import { isRunningStandalone } from '../src/lib/pwaInstall'
+import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw } from 'lucide-react'
 
 export default function Home() {
@@ -311,6 +313,23 @@ export default function Home() {
 
   const isGuest = currentUserId === 'guest'
 
+  // ── 랜딩페이지 (앱을 설치하지 않은 첫 방문자용) ──
+  // 홈 화면에 설치했거나(standalone) 이미 로그인된 성도는 이 화면을 건너뜁니다.
+  // 서버 렌더링 시점엔 알 수 없는 값이라, 판정 전(null)에는 로딩 화면을 유지합니다.
+  const [pwaStandalone, setPwaStandalone] = useState<boolean | null>(null)
+  const [landingDismissed, setLandingDismissed] = useState(false)
+  useEffect(() => {
+    setPwaStandalone(isRunningStandalone())
+    if (typeof window !== 'undefined' && localStorage.getItem('seenLanding') === '1') {
+      setLandingDismissed(true)
+    }
+  }, [])
+  const dismissLanding = () => {
+    setLandingDismissed(true)
+    if (typeof window !== 'undefined') localStorage.setItem('seenLanding', '1')
+  }
+  const showLanding = !isLoading && isGuest && pwaStandalone === false && !landingDismissed
+
   const currentUser: UserProfile = users.find(u => u.id === currentUserId) || {
     id: 'guest',
     name: '방문자',
@@ -473,6 +492,15 @@ export default function Home() {
   }
 
   const { pullPx, refreshing, threshold } = usePullToRefresh()
+
+  if (showLanding) {
+    return (
+      <LandingPage
+        onLogin={() => { dismissLanding(); setShowAuthModal(true) }}
+        onBrowse={dismissLanding}
+      />
+    )
+  }
 
   return (
     <div className="bg-[#f7f9ff] min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
