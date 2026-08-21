@@ -148,7 +148,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
         <div className="text-center space-y-5">
           <img src="/logo-wide.png" alt="더브릿지교회" className="h-14 w-auto mx-auto brightness-0 invert" />
           <Reveal from="scale" delay={150}>
-            <p className="text-2xs font-bold tracking-[0.25em] text-blue-200 uppercase">The Bridge Church</p>
+            <p className="text-2xs font-bold tracking-[0.25em] text-blue-200 uppercase">Welcome Home</p>
           </Reveal>
           <Reveal from="up" delay={300}>
             <h1 className="text-2xl font-black leading-snug">더브릿지 교회에<br />오신 것을 환영합니다</h1>
@@ -209,14 +209,14 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           <Reveal from="up"><p className="text-2xs font-bold tracking-widest text-blue-200 uppercase text-center">What We Value</p></Reveal>
           {[
             { name: '본질적인 예배', desc: '하나님을 만나는 역동과 자유가 있는 예배' },
-            { name: '역동적인 공동체', desc: '하나님을 닮아가는 일상 속 신앙 나눔과 진심어린 돌봄이 있는 공동체' },
+            { name: '역동적인 공동체', desc: '하나님을 닮아가는 일상 속 신앙 나눔과\n진심어린 돌봄이 있는 공동체' },
             { name: '복음 전도 사역', desc: '제자화 훈련을 통한 복음 전도' },
             { name: '다음세대 신앙잇기', desc: '아이들의 웃음 속 부모의 신앙을 본받는 교회' },
           ].map((v, i) => (
             <Reveal key={v.name} from={i % 2 === 0 ? 'left' : 'right'} delay={i * 150}>
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3.5">
                 <p className="font-black text-sm">{v.name}</p>
-                <p className="text-xs text-blue-50/80 mt-1">{v.desc}</p>
+                <p className="text-xs text-blue-50/80 mt-1 whitespace-pre-line">{v.desc}</p>
               </div>
             </Reveal>
           ))}
@@ -248,7 +248,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
         <div className="text-center space-y-6">
           <Reveal from="scale">
             <h2 className="text-xl font-black leading-snug">
-              따로 또 같이<br />신앙과 일상을 나누는 공동체<br />더브릿지 교회로 초대합니다
+              따로 또 같이,<br />신앙과 일상을 나누는 공동체로<br /><br />당신을 초대합니다
             </h2>
           </Reveal>
           <Reveal from="up" delay={200}>
