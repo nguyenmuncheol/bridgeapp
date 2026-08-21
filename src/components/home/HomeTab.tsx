@@ -19,9 +19,9 @@ interface HomeTabProps {
 }
 
 const CHURCH_INFO = {
-  vision: '"진리를 알지니 진리가 너희를 자유롭게 하리라" (요한복음 8:32)',
-  intro: '더브릿지 교회는 하노이에서 함께 예배하며 말씀 안에서 자라가는 교회 공동체입니다.',
-  address: '미딩 골든펠리스 지하1층 달팽이카페(K-Mart안쪽)',
+  vision: '하나님이 그 아들을 세상에 보내신 것은\n세상을 심판하려 하심이 아니요 그로 말미암아\n세상이 구원을 받게 하려 하심이라\n—요한복음 3:17—',
+  intro: '더브릿지 교회는 하노이에서 함께 예배하며\n말씀 안에서 자라가는 교회 공동체입니다.',
+  address: '골든펠리스 지하1층 달팽이카페(K-Mart 안쪽)',
 }
 
 export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps) {
