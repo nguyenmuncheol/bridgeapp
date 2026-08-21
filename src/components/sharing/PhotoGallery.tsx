@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Dispatch, SetStateAction, ReactNode } from 'react'
+import { useState, useRef, Dispatch, SetStateAction, ReactNode } from 'react'
 import { Heart, Filter, Trash2, X, Edit2, MessageCircle, Play } from 'lucide-react'
 import { PostItem, UserProfile, CommentItem, getUserDisplayName, getInitials } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
@@ -11,6 +11,7 @@ import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
 import { dbAddComment } from '../../lib/db'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -42,6 +43,11 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   const [editPhotoContent, setEditPhotoContent] = useState('')
   const [editPhotoTag, setEditPhotoTag] = useState('')
   const [editPhotoVideo, setEditPhotoVideo] = useState('')
+  // 사진 개별 삭제/추가: 남길 사진 목록(기존 + 새로 올린 것). 저장 시 이 목록으로
+  // image_urls를 통째로 교체하고, 원래 있었는데 빠진 사진만 스토리지에서 지웁니다.
+  const [editPhotoImages, setEditPhotoImages] = useState<string[]>([])
+  const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false)
+  const editPhotoFileInputRef = useRef<HTMLInputElement>(null)
 
   // 다른 게시판(기도제목/찬양나눔)과 동일하게 작성자를 표시합니다.
   // 🐛 과거 문제: 행사사진만 누가 올렸는지 안 보여서, 사진에 문제가 있어도
@@ -164,7 +170,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       return
     }
     // 사진도 영상도 없는 글이 되지 않도록 막습니다.
-    if (!nextVideo && !(editingPhoto.imageUrls && editingPhoto.imageUrls.length > 0)) {
+    if (!nextVideo && editPhotoImages.length === 0) {
       showToast('사진이 없는 글에서는 영상 주소를 지울 수 없습니다.', true)
       return
     }
@@ -174,7 +180,8 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       title: editPhotoTitle.trim(),
       content: editPhotoContent.trim(),
       youtubeUrl: nextVideo,
-      tags
+      tags,
+      imageUrls: editPhotoImages
     })
     setIsSavingPhoto(false)
     if (saveError) {
@@ -182,14 +189,44 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       return
     }
 
+    // 저장에 성공했으면, 원래 있었는데 이번에 뺀 사진만 스토리지에서 정리합니다(고아 파일 방지).
+    const removedUrls = (editingPhoto.imageUrls || []).filter(u => !editPhotoImages.includes(u))
+    if (removedUrls.length > 0) deleteImagesFromStorage(removedUrls).catch(() => {})
+
     setPhotos(prev => prev.map(p => p.id === editingPhoto.id
-      ? { ...p, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), youtubeUrl: nextVideo, tags }
+      ? { ...p, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), youtubeUrl: nextVideo, tags, imageUrls: editPhotoImages }
       : p
     ))
     if (activePhotoModal?.id === editingPhoto.id) {
-      setActivePhotoModal(prev => prev ? { ...prev, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), youtubeUrl: nextVideo, tags } : null)
+      setActivePhotoModal(prev => prev ? { ...prev, title: editPhotoTitle.trim(), content: editPhotoContent.trim(), youtubeUrl: nextVideo, tags, imageUrls: editPhotoImages } : null)
     }
     setEditingPhoto(null)
+  }
+
+  // 수정 창에서 사진을 추가로 골랐을 때 즉시 업로드 후 목록에 붙입니다.
+  const handleAddEditPhotoFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const arr = Array.from(files).slice(0, 10 - editPhotoImages.length)
+    if (arr.length === 0) {
+      showToast('사진은 한 장 이상 뺀 뒤에 추가해 주세요 (최대 10장).', true)
+      return
+    }
+    setIsUploadingEditPhoto(true)
+    showToast('⏳ 사진 업로드 중...')
+    try {
+      const uploaded = await uploadMultipleImagesToStorage(arr, 'photos')
+      setEditPhotoImages(prev => [...prev, ...uploaded])
+    } catch (err: any) {
+      showToast(err?.message || '사진 업로드에 실패했습니다.', true)
+    } finally {
+      setIsUploadingEditPhoto(false)
+      if (editPhotoFileInputRef.current) editPhotoFileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveEditPhotoImage = (url: string) => {
+    setEditPhotoImages(prev => prev.filter(u => u !== url))
   }
 
   const handleDeletePhoto = async (id: string) => {
@@ -342,20 +379,33 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               <button onClick={() => setEditingPhoto(null)} className="text-gray-400 font-bold">✕</button>
             </div>
 
-            {/* 어떤 사진을 수정하는 중인지 보여줍니다 */}
-            {editingPhoto.imageUrls && editingPhoto.imageUrls.length > 0 && (
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl p-2">
-                <img
-                  src={editingPhoto.imageUrls[0]}
-                  alt=""
-                  className="w-12 h-12 rounded-lg object-cover shrink-0"
-                />
-                <div className="min-w-0 text-2xs text-gray-500 leading-snug">
-                  <p className="font-bold text-gray-700 truncate">{editingPhoto.title}</p>
-                  <p>사진 {editingPhoto.imageUrls.length}장 · 사진 자체는 바뀌지 않습니다</p>
-                </div>
+            {/* 사진 개별 삭제/추가 */}
+            <div className="space-y-1.5">
+              <label className="text-2xs text-gray-400 font-bold">사진 ({editPhotoImages.length}장)</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {editPhotoImages.map((url) => (
+                  <div key={url} className="relative shrink-0">
+                    <img src={url} alt="" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEditPhotoImage(url)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center"
+                      aria-label="이 사진 빼기"
+                    >✕</button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => editPhotoFileInputRef.current?.click()}
+                  disabled={isUploadingEditPhoto || editPhotoImages.length >= 10}
+                  className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 shrink-0"
+                  aria-label="사진 추가"
+                >
+                  {isUploadingEditPhoto ? '…' : '+ 추가'}
+                </button>
               </div>
-            )}
+              <input ref={editPhotoFileInputRef} type="file" accept="image/*" multiple onChange={handleAddEditPhotoFiles} className="hidden" />
+            </div>
 
             <div>
               <label className="text-2xs text-gray-400 font-bold">제목</label>
@@ -399,7 +449,13 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => setEditingPhoto(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSavePhotoEdit} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+              <button
+                onClick={handleSavePhotoEdit}
+                disabled={isSavingPhoto || isUploadingEditPhoto}
+                className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-50"
+              >
+                {isSavingPhoto ? '저장 중...' : '저장'}
+              </button>
             </div>
           </div>
         </div>
@@ -421,6 +477,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
             setEditPhotoContent(photo.content || '')
             setEditPhotoTag((photo.tags || []).filter(t => t !== '전체')[0] || '')
             setEditPhotoVideo(photo.youtubeUrl || '')
+            setEditPhotoImages(photo.imageUrls || [])
           }}
           onDelete={(id) => handleDeletePhoto(id)}
           allUsers={allUsers}

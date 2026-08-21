@@ -7,6 +7,7 @@ import { buildFamilyStatusText, getChildGroupLabel } from '../../lib/familyInfo'
 import { formatBirthdayDisplay, calculateAge } from '../../lib/dateUtils'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
+import ProfileImageLightbox from '../ProfileImageLightbox'
 
 // 주소록 편성상태 필터: 라브리1~3 / 자녀(유아·유치·학생 통합, 하단 라벨로 세부 구분 표시) / 라브리 미정(❤️)
 const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => boolean }[] = [
@@ -115,6 +116,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
   const [addressFilter, setAddressFilter] = useState<string>('전체')
   const [expandedMember, setExpandedMember] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [lightboxMember, setLightboxMember] = useState<UserProfile | null>(null)
 
   // 주소록 필터 (검색어 우선, 그 다음 편성상태 필터) + 필터별 정렬 규칙 적용
   const displayedMembers = useMemo(() => {
@@ -252,7 +254,10 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
           >
             <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
               <div className="flex items-center gap-2.5">
-                <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                <div
+                  onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
+                  className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
+                >
                   {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
                 </div>
                 <div>
@@ -299,6 +304,14 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
           </div>
         ))}
       </div>
+
+      {lightboxMember?.avatarUrl && (
+        <ProfileImageLightbox
+          src={lightboxMember.avatarUrl}
+          alt={lightboxMember.name}
+          onClose={() => setLightboxMember(null)}
+        />
+      )}
     </div>
   )
 }

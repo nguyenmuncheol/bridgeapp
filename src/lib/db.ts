@@ -455,6 +455,8 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
   if (updates.isSecret !== undefined) payload.is_secret = updates.isSecret
   // 행사사진·찬양묵상의 영상 주소. 빈 문자열이면 "영상 없음"으로 지웁니다.
   if (updates.youtubeUrl !== undefined) payload.youtube_url = updates.youtubeUrl || null
+  // 행사사진 개별 삭제/추가 반영용. 배열 전체를 통째로 교체합니다.
+  if (updates.imageUrls !== undefined) payload.image_urls = updates.imageUrls
   // 🐛 과거 버그(조용한 실패): 권한이 없어 한 줄도 안 바뀌어도 서버는 "성공(204)"으로 답합니다.
   // 그래서 아멘/좋아요/축하응원을 눌러도 화면만 바뀌고 실제로는 저장이 안 됐는데,
   // 앱은 오류가 없으니 성공으로 알고 그대로 뒀습니다. (새로고침하면 원래대로 돌아감)
@@ -817,6 +819,14 @@ export async function dbMarkAllNotificationsRead(userId: string) {
 
 export async function dbDeleteNotification(id: string) {
   const { error } = await supabase.from('notifications').delete().eq('id', id)
+  if (!error) invalidateCache('notifications')
+  return { error }
+}
+
+/** 내 알림함을 한 번에 비웁니다 (일괄삭제 버튼용). */
+export async function dbDeleteAllNotifications(userId: string) {
+  if (!userId || userId === 'guest') return { error: null }
+  const { error } = await supabase.from('notifications').delete().eq('user_id', userId)
   if (!error) invalidateCache('notifications')
   return { error }
 }

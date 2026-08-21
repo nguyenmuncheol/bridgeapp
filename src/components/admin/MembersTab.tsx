@@ -430,7 +430,14 @@ export default function MembersTab({
               <span>🏠 {member.address || '미입력'}</span>
               <span>🎂 {formatBirthdayDisplay(member.birthday) || '미입력'}</span>
               <span>⛪ {member.labriId || '라브리 미정'}</span>
-              {buildFamilyStatusText(member, allUsers, true) && <span className="col-span-2">👨‍👩‍👧 {buildFamilyStatusText(member, allUsers, true)}</span>}
+              {/* 가족 연계 정보(배우자/자녀)는 좌측 열, 기타 메모는 라브리 바로 아래(우측 열)에
+                  각자 열을 맞춰 따로 표시합니다 — 가족 연계와 무관한 관리자 전용 메모라서 섞으면 헷갈립니다. */}
+              {buildFamilyStatusText(member, allUsers, false) && (
+                <span className="row-start-3 col-start-1">👨‍👩‍👧 {buildFamilyStatusText(member, allUsers, false)}</span>
+              )}
+              {parseFamilyInfo(member.familyInfo).note && (
+                <span className="row-start-3 col-start-2">📝 {parseFamilyInfo(member.familyInfo).note}</span>
+              )}
             </div>
           </div>
         ))}

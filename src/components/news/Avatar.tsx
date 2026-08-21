@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { UserProfile, getInitials } from '../../lib/mockData'
+import ProfileImageLightbox from '../ProfileImageLightbox'
 
 interface AvatarProps {
   allUsers: UserProfile[]
@@ -17,13 +19,23 @@ export default function Avatar({ allUsers, authorId, authorName, size = 'w-8 h-8
   const user = authorId
     ? allUsers.find(u => u.id === authorId)
     : allUsers.find(u => u.name === authorName)
+  const [showLightbox, setShowLightbox] = useState(false)
+
   return (
-    <div className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
-      {user?.avatarUrl ? (
-        <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-      ) : (
-        getInitials(authorName)
+    <>
+      <div
+        onClick={user?.avatarUrl ? (e) => { e.stopPropagation(); setShowLightbox(true) } : undefined}
+        className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden ${user?.avatarUrl ? 'cursor-pointer' : ''}`}
+      >
+        {user?.avatarUrl ? (
+          <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          getInitials(authorName)
+        )}
+      </div>
+      {showLightbox && user?.avatarUrl && (
+        <ProfileImageLightbox src={user.avatarUrl} alt={authorName} onClose={() => setShowLightbox(false)} />
       )}
-    </div>
+    </>
   )
 }

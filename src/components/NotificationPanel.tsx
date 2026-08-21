@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2, Bell } from 'lucide-react'
 import { NotificationItem, UserProfile, getUserDisplayName } from '../lib/mockData'
-import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification } from '../lib/db'
+import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification, dbDeleteAllNotifications } from '../lib/db'
 import { formatDateTimeShort } from '../lib/dateUtils'
 
 /** 교회 명의로 나가는 알림의 보낸 사람 이름 (서버 함수들과 같은 값) */
@@ -131,6 +131,18 @@ export default function NotificationPanel({
     if (delError) setItems(backup)   // 실패하면 되돌립니다
   }
 
+  const [isDeletingAll, setIsDeletingAll] = useState(false)
+  const handleDeleteAll = async () => {
+    if (isDeletingAll || items.length === 0) return
+    if (!confirm('알림을 모두 삭제할까요?\n삭제하면 되돌릴 수 없습니다.')) return
+    const backup = items
+    setIsDeletingAll(true)
+    setItems([])
+    const { error: delError } = await dbDeleteAllNotifications(currentUser.id)
+    setIsDeletingAll(false)
+    if (delError) setItems(backup)   // 실패하면 되돌립니다
+  }
+
   return (
     <div className="fixed inset-0 z-[75]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/25" />
@@ -144,9 +156,20 @@ export default function NotificationPanel({
             <Bell size={14} className="text-[#335f87]" />
             <h3 className="font-bold text-sm text-gray-900">알림</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 -m-1 text-gray-400 hover:text-gray-600" aria-label="닫기">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {!isLoading && !error && items.length > 0 && (
+              <button
+                onClick={handleDeleteAll}
+                disabled={isDeletingAll}
+                className="text-2xs font-bold text-gray-400 hover:text-rose-500 disabled:opacity-50"
+              >
+                전체삭제
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 -m-1 text-gray-400 hover:text-gray-600" aria-label="닫기">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="max-h-[55vh] overflow-y-auto">

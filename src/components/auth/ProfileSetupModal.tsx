@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface ProfileSetupModalProps {
   initialName: string
@@ -34,13 +33,12 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'))
 
-  useModalDismiss(true, onCancel)
+  // 🔒 이 팝업은 실수로 닫히면 승인 신청 절차를 다시 밟아야 해서, 배경 클릭·뒤로가기로는
+  // 닫히지 않게 하고 팝업 안의 X 버튼과 하단 취소 버튼으로만 닫히도록 합니다.
+  // (다른 팝업들이 공용으로 쓰는 useModalDismiss/backdropClose를 여기서만 의도적으로 빼둔 것입니다)
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto"
-      onClick={backdropClose(onCancel)}
-    >
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기/뒤로가기 X 버튼 */}
         <button

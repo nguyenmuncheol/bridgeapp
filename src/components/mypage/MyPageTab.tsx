@@ -12,6 +12,7 @@ import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { getPushUiState, subscribeToPush, unsubscribeFromPush, type PushUiState } from '../../lib/push'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import PwaInstallButton from '../PwaInstallButton'
+import ProfileImageLightbox from '../ProfileImageLightbox'
 
 interface MyPageTabProps {
   currentUser: UserProfile
@@ -23,6 +24,7 @@ interface MyPageTabProps {
 export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin, onUpdateUsers }: MyPageTabProps) {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
 
   // 프로필 수정 상태
   const [editName, setEditName] = useState(currentUser.name)
@@ -352,17 +354,28 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       {/* ── 프로필 카드 ── */}
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4 relative">
         <div className="flex items-center gap-3">
-          <button
-            onClick={openEditModal}
-            className="w-20 h-20 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl shrink-0 border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer relative group"
-            title="프로필 사진 변경"
-          >
-            {currentUser.avatarUrl
-              ? <img src={currentUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" style={{ objectPosition: 'center center' }} />
-              : getInitials(currentUser.name)
-            }
-            <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 text-2xs flex items-center justify-center text-white font-bold transition-all">📷 수정</span>
-          </button>
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => currentUser.avatarUrl ? setShowAvatarLightbox(true) : openEditModal()}
+              className="w-20 h-20 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
+              title={currentUser.avatarUrl ? '프로필 사진 크게 보기' : '프로필 사진 등록'}
+            >
+              {currentUser.avatarUrl
+                ? <img src={currentUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" style={{ objectPosition: 'center center' }} />
+                : getInitials(currentUser.name)
+              }
+            </button>
+            <button
+              type="button"
+              onClick={openEditModal}
+              title="프로필 사진 변경"
+              aria-label="프로필 사진 변경"
+              className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-[#335f87] text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm hover:bg-[#2b5072] transition-all"
+            >
+              <Camera size={13} />
+            </button>
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
@@ -738,6 +751,15 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── 프로필 사진 라이트박스 ── */}
+      {showAvatarLightbox && currentUser.avatarUrl && (
+        <ProfileImageLightbox
+          src={currentUser.avatarUrl}
+          alt={getUserDisplayName(currentUser)}
+          onClose={() => setShowAvatarLightbox(false)}
+        />
       )}
 
       {/* ── 내 기도제목 상세 모달 ── */}

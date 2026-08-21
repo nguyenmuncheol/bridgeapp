@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
-import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbDeletePost } from '../../lib/db'
+import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
@@ -65,6 +65,9 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   useModalDismiss(!!selectedNoticeModal, () => setSelectedNoticeModal(null))
   const [newNoticeTitle, setNewNoticeTitle] = useState('')
   const [newNoticeContent, setNewNoticeContent] = useState('')
+  // 작성 모달을 수정 모달로도 겸용합니다. null이면 새 글 작성, 값이 있으면 그 공지 수정.
+  const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null)
+  const [isSavingNotice, setIsSavingNotice] = useState(false)
 
   // Supabase DB 주보 및 공지사항 로드 (다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용)
   const { data: latestBulletin } = useCachedQuery('bulletin:latest', () => dbFetchLatestBulletin())
@@ -203,6 +206,36 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
     showToast('✅ 신규 공지사항이 등록되었습니다!', 2500)
   }
 
+  const handleUpdateNotice = async () => {
+    if (!editingNoticeId || isSavingNotice) return
+    if (!newNoticeTitle.trim() || !newNoticeContent.trim()) {
+      showToast('⚠️ 제목과 내용을 모두 입력해 주세요.', 3000)
+      return
+    }
+    setIsSavingNotice(true)
+    const { error } = await dbUpdatePost(editingNoticeId, {
+      title: newNoticeTitle.trim(),
+      content: newNoticeContent.trim(),
+    })
+    setIsSavingNotice(false)
+    if (error) {
+      showToast(`⚠️ 저장하지 못했습니다: ${error.message || ''}`, 4000)
+      return
+    }
+    setNotices(prev => prev.map(n => n.id === editingNoticeId
+      ? { ...n, title: newNoticeTitle.trim(), content: newNoticeContent.trim() }
+      : n
+    ))
+    if (selectedNoticeModal?.id === editingNoticeId) {
+      setSelectedNoticeModal(prev => prev ? { ...prev, title: newNoticeTitle.trim(), content: newNoticeContent.trim() } : null)
+    }
+    setEditingNoticeId(null)
+    setNewNoticeTitle('')
+    setNewNoticeContent('')
+    setShowNoticeCreateModal(false)
+    showToast('✅ 공지사항이 수정되었습니다.', 2500)
+  }
+
   // 헌금계좌 숫자만 복사 + 1초 소멸 토스트
   // 🐛 과거 버그: navigator.clipboard는 카카오톡/네이버 인앱 브라우저처럼 보안 조건이
   // 다른 환경에서는 아예 없거나 실패합니다. 그런데 실패를 대비하지 않아서, 오류가 나면
@@ -329,7 +362,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <h2 className="font-bold text-gray-900 text-sm">교회 공지사항</h2>
           </div>
           {currentUser.role === 'ADMIN' && (
-            <button onClick={() => setShowNoticeCreateModal(true)}
+            <button onClick={() => { setEditingNoticeId(null); setNewNoticeTitle(''); setNewNoticeContent(''); setShowNoticeCreateModal(true) }}
               className="text-2xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg hover:bg-indigo-100">
               + 공지 작성
             </button>
@@ -591,14 +624,14 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
         </div>
       )}
 
-      {/* ─── 공지 작성 모달 ─── */}
+      {/* ─── 공지 작성/수정 모달 (공용) ─── */}
       {showNoticeCreateModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowNoticeCreateModal(false))}
         >
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <h3 className="font-bold text-sm text-gray-900">📣 신규 공지 작성 (관리자)</h3>
+            <h3 className="font-bold text-sm text-gray-900">{editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}</h3>
             <div className="space-y-2 text-xs">
               <input type="text" placeholder="공지 제목 입력" value={newNoticeTitle}
                 onChange={e => setNewNoticeTitle(e.target.value)}
@@ -610,14 +643,19 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowNoticeCreateModal(false)}
                 className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleCreateNotice}
-                className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">공지 등록</button>
+              <button
+                onClick={editingNoticeId ? handleUpdateNotice : handleCreateNotice}
+                disabled={isSavingNotice}
+                className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-50"
+              >
+                {isSavingNotice ? '저장 중...' : editingNoticeId ? '수정 저장' : '공지 등록'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── 공지 상세 모달 (관리자: 삭제 버튼 포함) ─── */}
+      {/* ─── 공지 상세 모달 (관리자: 수정/삭제 버튼 포함) ─── */}
       {selectedNoticeModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
@@ -630,10 +668,24 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
                 <p className="text-2xs text-gray-400">{selectedNoticeModal.createdAt}</p>
               </div>
               {currentUser.role === 'ADMIN' && (
-                <button onClick={() => handleDeleteNotice(selectedNoticeModal.id)}
-                  className="px-2 py-1 bg-rose-50 text-rose-600 text-2xs font-bold rounded-lg hover:bg-rose-100">
-                  🗑️ 삭제
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => {
+                      setEditingNoticeId(selectedNoticeModal.id)
+                      setNewNoticeTitle(selectedNoticeModal.title)
+                      setNewNoticeContent(selectedNoticeModal.content || '')
+                      setSelectedNoticeModal(null)
+                      setShowNoticeCreateModal(true)
+                    }}
+                    className="px-2 py-1 bg-indigo-50 text-indigo-700 text-2xs font-bold rounded-lg hover:bg-indigo-100"
+                  >
+                    ✏️ 수정
+                  </button>
+                  <button onClick={() => handleDeleteNotice(selectedNoticeModal.id)}
+                    className="px-2 py-1 bg-rose-50 text-rose-600 text-2xs font-bold rounded-lg hover:bg-rose-100">
+                    🗑️ 삭제
+                  </button>
+                </div>
               )}
             </div>
             <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-700 leading-relaxed border border-gray-100 whitespace-pre-wrap">
