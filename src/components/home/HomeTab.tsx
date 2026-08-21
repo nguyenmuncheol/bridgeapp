@@ -11,12 +11,17 @@ import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
 import { openImageViewer } from '../../lib/download'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
-import { CHURCH_INFO } from '../../lib/churchInfo'
 
 interface HomeTabProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
   isGuest: boolean
+}
+
+const CHURCH_INFO = {
+  vision: '"진리를 알지니 진리가 너희를 자유롭게 하리라" (요한복음 8:32)',
+  intro: '더브릿지 교회는 하노이에서 함께 예배하며 말씀 안에서 자라가는 교회 공동체입니다.',
+  address: '미딩 골든펠리스 지하1층 달팽이카페(K-Mart안쪽)',
 }
 
 export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps) {
