@@ -44,7 +44,11 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     familyInfo: d.family_info,
     birthday: d.birthday,
     avatarUrl: d.avatar_url,
-    createdAt: toLocalDateStr(d.created_at)
+    createdAt: toLocalDateStr(d.created_at),
+    // 🐛 이 매핑이 빠져 있어서, 관리자 화면이 명단을 새로고침할 때마다(로그인 직후 등)
+    // 실제로 신청 완료된 사람도 signupRequestedAt이 undefined로 덮어써져
+    // 승인 대기 목록에서 통째로 사라졌습니다.
+    signupRequestedAt: d.signup_requested_at || undefined,
   }))
 }
 
