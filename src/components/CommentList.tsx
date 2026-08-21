@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { CommentItem, UserProfile, getInitials } from '../lib/mockData'
+import { CommentItem, UserProfile } from '../lib/mockData'
 import { dbUpdateComment, dbDeleteComment } from '../lib/db'
+import Avatar from './news/Avatar'
 
 interface CommentListProps {
   postId: string
@@ -38,17 +39,6 @@ export default function CommentList({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
-
-  const renderAvatar = (authorId: string, authorName: string) => {
-    const user = allUsers.find(u => u.id === authorId || u.name === authorName)
-    return (
-      <span className="w-6 h-6 text-2xs rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden">
-        {user?.avatarUrl
-          ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-          : getInitials(authorName)}
-      </span>
-    )
-  }
 
   const submitComment = () => {
     const text = commentText.trim()
@@ -123,7 +113,7 @@ export default function CommentList({
                         → 첫 줄에 [아바타·이름 | 날짜·수정·삭제], 둘째 줄에 내용을 폭 전체로. */}
                     <div className="flex justify-between items-center gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        {renderAvatar(c.authorId || '', c.authorName)}
+                        <Avatar allUsers={allUsers} authorId={c.authorId || ''} authorName={c.authorName} size="w-6 h-6 text-2xs" />
                         <span className="font-bold text-gray-800 truncate">{c.authorName}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">

@@ -25,7 +25,8 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
   const [selectedFamilyRole, setSelectedFamilyRole] = useState<Record<string, string>>({})
   // 승인 시 자녀 등 미가입 가족 구성원 입력 (이름 + 소속만. 생일은 관리자가 알 수 없으므로 부모가 마이페이지에서 직접 입력)
   const [pendingChildren, setPendingChildren] = useState<Record<string, FamilyChildInfo[]>>({})
-  const pendingUsers = allUsers.filter(u => u.role === 'PENDING')
+  // 로그인만 하고 아직 "가입 완료 및 승인 신청" 버튼을 안 누른 사람은 신청자가 아니므로 제외합니다.
+  const pendingUsers = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt)
   // 거절된 신청 — 실수로 거절했거나 다시 받아주기로 한 경우 여기서 되돌립니다.
   // (거절이 '완전 삭제'에서 '상태 변경'으로 바뀌면서, 이 목록이 없으면 거절된 분이
   //  관리자 화면 어디에도 안 보여 Supabase 대시보드를 직접 열어야 복구할 수 있습니다)
@@ -43,7 +44,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
       showToast(`⚠️ 되돌리지 못했습니다: ${res.error.message || ''}`)
       return
     }
-    onUpdateUsers?.(prev => prev.map(u => u.id === user.id ? { ...u, role: 'PENDING' as Role } : u))
+    onUpdateUsers?.(prev => prev.map(u => u.id === user.id ? { ...u, role: 'PENDING' as Role, signupRequestedAt: new Date().toISOString() } : u))
     showToast(`${user.name}님을 승인 대기로 되돌렸습니다.`)
   }
 

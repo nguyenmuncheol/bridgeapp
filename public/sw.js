@@ -78,6 +78,9 @@ self.addEventListener('push', (event) => {
       icon: '/logo-square.png',
       badge: '/logo-square.png',
       data: { url: data.url || '/' },
+      // 같은 알림이 혹시라도 두 번 전달돼도(드문 FCM 재전송 등) 기기에서 한 개로 합쳐지도록
+      // 알림마다 고유한 tag를 붙입니다. tag가 없으면 매번 새 알림으로 쌓입니다.
+      tag: data.tag || undefined,
     })
   )
 })

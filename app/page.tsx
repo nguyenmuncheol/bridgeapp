@@ -207,6 +207,8 @@ export default function Home() {
         createdAt: toLocalDateStr(profileData.created_at) || toLocalDateStr(new Date()),
         // 환영 팝업을 이미 봤는지 (없으면 승인 후 첫 방문)
         welcomedAt: profileData.welcomed_at || undefined,
+        // "가입 완료 및 승인 신청" 버튼을 실제로 눌렀는지 (없으면 로그인만 한 상태)
+        signupRequestedAt: profileData.signup_requested_at || undefined,
       }
 
       // ── 카톡 프로필 사진을 우리 저장소로 한 번만 옮깁니다 ──
@@ -243,19 +245,22 @@ export default function Home() {
     }
   }
 
-  // OAuth 가입 후 추가정보 저장 (Supabase profiles 업데이트)
+  // OAuth 가입 후 추가정보 저장 + 실제 승인 신청 (Supabase profiles 업데이트)
+  // 이 버튼을 눌러야만 signup_requested_at이 채워지고, 그 순간에만 관리자에게 알림이 갑니다.
   const handleProfileSetupSubmit = async (info: { name: string; phone: string; address: string; birthday: string }) => {
     if (!supabaseUser) return
+    const requestedAt = new Date().toISOString()
     await supabase.from('profiles').update({
       name: info.name,
       phone: info.phone,
       address: info.address,
       birthday: info.birthday,
+      signup_requested_at: requestedAt,
     }).eq('id', supabaseUser.id)
     setShowProfileSetup(false)
     // 로컬 상태에도 즉시 반영
     setUsers(prev => prev.map(u => u.id === supabaseUser.id
-      ? { ...u, name: info.name, phone: info.phone, address: info.address, birthday: info.birthday }
+      ? { ...u, name: info.name, phone: info.phone, address: info.address, birthday: info.birthday, signupRequestedAt: requestedAt }
       : u
     ))
   }
@@ -325,14 +330,18 @@ export default function Home() {
     createdAt: ''
   }
 
-  const isPending = !isGuest && currentUser.role === 'PENDING'
+  // role='PENDING'은 두 가지 상태를 함께 나타냅니다: ① 로그인만 하고 아직 "가입 완료 및
+  // 승인 신청" 버튼을 안 누른 상태, ② 실제로 신청해서 관리자 승인을 기다리는 상태.
+  // signupRequestedAt으로 이 둘을 구분해, ①일 때는 "승인 대기 중" 문구 대신 기본 화면을 보여줍니다.
+  const isPending = !isGuest && currentUser.role === 'PENDING' && !!currentUser.signupRequestedAt
+  const isUnrequestedPending = !isGuest && currentUser.role === 'PENDING' && !currentUser.signupRequestedAt
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
 
   // ── 안 읽은 알림 개수 확인 ──
   // 폰이 울리는 푸시가 아니라 앱 안 알림이므로, 앱을 보고 있을 때만 가볍게 확인합니다.
   // (승인 대기·거절 상태에서는 알림이 올 일이 없어 건너뜁니다)
   useEffect(() => {
-    if (isGuest || isPending || isRejected) return
+    if (isGuest || isPending || isUnrequestedPending || isRejected) return
     let stopped = false
 
     const check = () => {
@@ -352,7 +361,7 @@ export default function Home() {
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [isGuest, isPending, isRejected, currentUserId])
+  }, [isGuest, isPending, isUnrequestedPending, isRejected, currentUserId])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
@@ -360,12 +369,12 @@ export default function Home() {
   // 승인이 끝난 성도인데 아직 환영 인사를 못 받았으면 딱 한 번 띄웁니다.
   // (추가정보 입력 모달이 떠 있는 동안에는 겹치지 않게 기다립니다)
   useEffect(() => {
-    if (isGuest || isPending || isRejected) return
+    if (isGuest || isPending || isUnrequestedPending || isRejected) return
     if (showProfileSetup) return
     if (!currentUser || currentUser.id === 'guest') return
     if (currentUser.welcomedAt) return
     setShowWelcome(true)
-  }, [isGuest, isPending, isRejected, showProfileSetup, currentUser])
+  }, [isGuest, isPending, isUnrequestedPending, isRejected, showProfileSetup, currentUser])
 
   const handleCloseWelcome = () => {
     setShowWelcome(false)
@@ -618,7 +627,7 @@ export default function Home() {
           <>
             {/* 1. 홈 탭 (누구나 열람 가능) */}
             {currentTab === 'home' && (
-              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isRejected} />
+              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isUnrequestedPending || isRejected} />
             )}
 
             {/* 2. 비회원(isGuest) 접근 차단 카드 */}
@@ -634,6 +643,28 @@ export default function Home() {
                   className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all"
                 >
                   로그인 / 회원가입 신청하기
+                </button>
+              </div>
+            )}
+
+            {/* 2-1. 로그인은 했지만 아직 "가입 완료 및 승인 신청"을 안 누른 사람 —
+                이때는 아직 신청서를 낸 게 아니므로 "승인 대기 중"이 아니라 신청을 이어가라고 안내합니다. */}
+            {currentTab !== 'home' && isUnrequestedPending && (
+              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
+                <div className="text-4xl">📝</div>
+                <div className="space-y-1.5">
+                  <h3 className="font-bold text-sm text-gray-900">가입 신청이 아직 완료되지 않았습니다</h3>
+                  <p className="text-xs text-gray-500">추가 정보를 입력하고 승인 신청을 완료하시면 이용하실 수 있습니다.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setOauthName(currentUser.name || '')
+                    setOauthEmail(currentUser.email || '')
+                    setShowProfileSetup(true)
+                  }}
+                  className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                >
+                  가입 신청 이어하기
                 </button>
               </div>
             )}
@@ -705,7 +736,7 @@ export default function Home() {
                       alert('다시 신청하지 못했습니다. 잠시 후 시도하거나 교회 사무실로 문의해 주세요.')
                       return
                     }
-                    setUsers(prev => prev.map(u => u.id === currentUserId ? { ...u, role: 'PENDING' as Role } : u))
+                    setUsers(prev => prev.map(u => u.id === currentUserId ? { ...u, role: 'PENDING' as Role, signupRequestedAt: new Date().toISOString() } : u))
                     alert('가입 신청이 다시 접수되었습니다. 관리자 승인을 기다려 주세요.')
                   }}
                   className="w-full py-3 bg-[#335f87] text-white text-xs font-bold rounded-xl hover:bg-[#2b5072] transition-all"
@@ -717,7 +748,7 @@ export default function Home() {
             )}
 
             {/* 4. 정회원 이상 승인 완료자만 접근 가능한 탭들 */}
-            {currentTab !== 'home' && !isGuest && !isPending && !isRejected && (
+            {currentTab !== 'home' && !isGuest && !isPending && !isUnrequestedPending && !isRejected && (
               <>
                 {/* 우리소식 탭 */}
                 {currentTab === 'news' && (
@@ -813,7 +844,9 @@ export default function Home() {
           initialEmail={oauthEmail}
           onSubmit={handleProfileSetupSubmit}
           onCancel={() => {
-            handleLogout()
+            // 🐛 과거 버그: 여기서 곧바로 로그아웃시켰습니다. 아직 신청서를 제출하지 않았을
+            // 뿐인데 로그인 자체가 풀려버려, 나중에 이어서 신청하려면 다시 로그인해야 했습니다.
+            // → 로그인은 유지하고 기본(홈) 화면으로 보냅니다. 신청은 마이페이지 등에서 이어할 수 있습니다.
             setShowProfileSetup(false)
           }}
         />

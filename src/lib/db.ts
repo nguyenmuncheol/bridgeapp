@@ -163,7 +163,8 @@ export async function dbRejectUser(userId: string) {
  * 영영 다시 신청할 수 없고 관리자 목록에도 안 보여서 복구가 불가능해집니다.
  */
 export async function dbReapplyUser(userId: string) {
-  const res = await supabase.from('profiles').update({ role: 'PENDING' }).eq('id', userId)
+  // signup_requested_at도 함께 새로 채워야 관리자 알림 트리거가 다시 발동합니다.
+  const res = await supabase.from('profiles').update({ role: 'PENDING', signup_requested_at: new Date().toISOString() }).eq('id', userId)
   if (!res.error) invalidateCache('profiles', { exact: true })
   return res
 }

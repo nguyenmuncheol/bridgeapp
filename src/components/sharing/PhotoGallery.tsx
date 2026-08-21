@@ -2,7 +2,7 @@
 
 import { useState, useRef, Dispatch, SetStateAction, ReactNode } from 'react'
 import { Heart, Filter, Trash2, X, Edit2, MessageCircle, Play } from 'lucide-react'
-import { PostItem, UserProfile, CommentItem, getUserDisplayName, getInitials } from '../../lib/mockData'
+import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 import ImageSlider from '../ImageSlider'
@@ -12,6 +12,7 @@ import CommentList from '../CommentList'
 import { dbAddComment } from '../../lib/db'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
+import Avatar from '../news/Avatar'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -57,11 +58,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
     const displayName = user?.name || authorName || '성도'
     return (
       <span className="flex items-center gap-1 min-w-0">
-        <span className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
-          {user?.avatarUrl
-            ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-            : getInitials(displayName)}
-        </span>
+        <Avatar allUsers={allUsers} authorId={authorId || ''} authorName={displayName} size={size} />
         <span className="truncate">{displayName}</span>
       </span>
     )

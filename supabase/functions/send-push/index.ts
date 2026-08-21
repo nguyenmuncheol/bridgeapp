@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
   const { data: jobs, error: jobsError } = await supabase
     .from('push_jobs')
-    .select('id, notification_id, user_id, payload, notifications(user_id, type, title, body, actor_name)')
+    .select('id, notification_id, user_id, payload, notifications(id, user_id, type, title, body, actor_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
     .limit(50)
@@ -74,10 +74,11 @@ Deno.serve(async (req) => {
     const notif = Array.isArray(job.notifications) ? job.notifications[0] : job.notifications
     // 알림 1건짜리 발송이면 그 알림에서, 요약(digest) 발송이면 push_jobs에 직접 담긴 값에서 가져옵니다.
     const targetUserId = notif?.user_id ?? job.user_id
+    // tag: 같은 알림이 혹시라도 두 번 전달돼도 기기에서 하나로 합쳐지도록 알림/작업마다 고유값을 줍니다.
     const payloadSource = notif
-      ? { title: notif.title || CHURCH_NAME, body: notif.body || '', url: urlFor(notif.type) }
+      ? { title: notif.title || CHURCH_NAME, body: notif.body || '', url: urlFor(notif.type), tag: job.notification_id }
       : job.payload
-        ? { title: job.payload.title || CHURCH_NAME, body: job.payload.body || '', url: job.payload.url || '/' }
+        ? { title: job.payload.title || CHURCH_NAME, body: job.payload.body || '', url: job.payload.url || '/', tag: job.id }
         : null
 
     if (!targetUserId || !payloadSource) {

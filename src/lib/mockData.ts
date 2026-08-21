@@ -52,6 +52,9 @@ export interface UserProfile {
   createdAt: string
   /** 가입 환영 팝업을 본 시각. 비어 있으면 승인 후 첫 방문이라는 뜻입니다. */
   welcomedAt?: string
+  /** "가입 완료 및 승인 신청" 버튼을 실제로 누른 시각. 비어 있으면 로그인만 하고
+   *  아직 신청서를 제출하지 않은 상태 — 이때는 관리자에게 알림을 보내지 않습니다. */
+  signupRequestedAt?: string
   // 아래 두 필드는 실제 계정이 없는 자녀 등 가족 구성원을 주소록에 표시하기 위한
   // 가상 항목(dependent entry)에만 설정됩니다. 실제 성도 프로필에는 사용되지 않습니다.
   isDependent?: boolean

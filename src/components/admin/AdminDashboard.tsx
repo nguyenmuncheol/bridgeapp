@@ -30,7 +30,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
   const defaultTab = isCouponManager ? 'coupons' : isTeacher ? 'stats' : 'meals'
   const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts'>(defaultTab)
 
-  const pendingCount = allUsers.filter(u => u.role === 'PENDING').length
+  const pendingCount = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt).length
 
   // 식수 복사 등 여러 탭에서 공통으로 쓰는 토스트 (alert 대체)
   const [toastMsg, setToastMsg] = useState('')

@@ -2,10 +2,11 @@
 
 import { useState, Dispatch, SetStateAction } from 'react'
 import { Play, Trash2, X, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
-import { PostItem, UserProfile, getSimpleUserName, getInitials } from '../../lib/mockData'
+import { PostItem, UserProfile, getSimpleUserName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
+import Avatar from '../news/Avatar'
 import { SkeletonList } from '../SkeletonCard'
 import { todayLocalDateStr } from '../../lib/dateUtils'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
@@ -128,20 +129,6 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
   const [editPraiseTitle, setEditPraiseTitle] = useState('')
   const [editPraiseContent, setEditPraiseContent] = useState('')
 
-  // 실시간 아바타 렌더러 헬퍼
-  const renderAvatar = (authorId: string, authorName: string, size = 'w-8 h-8 text-2xs') => {
-    const user = allUsers.find(u => u.id === authorId || u.name === authorName)
-    return (
-      <div className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
-        {user?.avatarUrl ? (
-          <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          getInitials(authorName)
-        )}
-      </div>
-    )
-  }
-
   const handleDeletePraise = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return
     await dbDeletePost(id)
@@ -188,7 +175,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         >
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              {renderAvatar(praise.authorId, praise.authorName, 'w-8 h-8 text-2xs')}
+              <Avatar allUsers={allUsers} authorId={praise.authorId || ''} authorName={praise.authorName} size="w-8 h-8 text-2xs" />
               <span className="font-bold text-gray-900">{praise.authorName}</span>
             </div>
             <div className="flex items-center gap-2">

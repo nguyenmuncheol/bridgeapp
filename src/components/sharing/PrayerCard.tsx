@@ -2,8 +2,9 @@
 
 import { memo } from 'react'
 import { Heart, Lock, Trash2, Pin, CheckCircle2, Edit2 } from 'lucide-react'
-import { PostItem, UserProfile, getInitials } from '../../lib/mockData'
+import { PostItem, UserProfile } from '../../lib/mockData'
 import CommentList from '../CommentList'
+import Avatar from '../news/Avatar'
 
 interface PrayerCardProps {
   prayer: PostItem
@@ -28,24 +29,11 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
 
   const canViewSecret = !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
 
-  const renderAvatar = (authorId: string, authorName: string, size = 'w-8 h-8 text-2xs') => {
-    const user = allUsers.find(u => u.id === authorId || u.name === authorName)
-    return (
-      <div className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden`}>
-        {user?.avatarUrl ? (
-          <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          getInitials(authorName)
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className={`bg-white rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${prayer.isCompleted ? 'bg-gray-50/70 border-gray-100 opacity-80' : 'border-blue-50'}`}>
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2">
-          {renderAvatar(prayer.authorId, prayer.authorName, 'w-8 h-8 text-2xs')}
+          <Avatar allUsers={allUsers} authorId={prayer.authorId} authorName={prayer.authorName} size="w-8 h-8 text-2xs" />
           <span className="font-bold text-xs text-gray-900">{prayer.authorName}</span>
           {prayer.isSecret && <span className="text-2xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Lock size={10} /> 비밀글</span>}
         </div>
