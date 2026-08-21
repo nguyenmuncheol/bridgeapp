@@ -34,7 +34,7 @@
         │  1. INSERT INTO push_jobs (발송할 알림 id만 큐에 적재)
         │  2. 곧바로 Edge Function 호출 시도 (지연 없이 바로 발송)
         ▼
-  pg_cron (10초 간격, 안전장치) — 방금 즉시호출이 실패했을 때만 여기서 다시 잡힘
+  pg_cron (1분 간격, 안전장치) — 방금 즉시호출이 실패했을 때만 여기서 다시 잡힘
         │  Edge Function 호출: send-push
         ▼
   supabase/functions/send-push/index.ts (Deno)
@@ -100,6 +100,7 @@ supabase/
     20260820000001_push_trigger.sql         -- notifications 트리거 신설 (기존 함수는 손대지 않음)
     20260820130000_push_trigger_immediate.sql -- 트리거에서 Edge Function 즉시 호출 추가 (지연 개선)
     20260820130100_faster_cron.sql          -- 안전장치 주기 1분 → 10초로 단축
+    20260821080000_cron_back_to_1min.sql    -- 10초 cron이 무료 함수 실행 한도를 너무 많이 써서 1분으로 되돌림
   functions/
     send-push/
       index.ts                              -- 큐 처리 + web-push 전송
