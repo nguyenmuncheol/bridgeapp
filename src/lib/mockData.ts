@@ -198,6 +198,7 @@ export interface PostItem {
   isSecret?: boolean
   isCompleted?: boolean
   isPinned?: boolean
+  pinnedAt?: string
   youtubeUrl?: string
   imageUrls?: string[]
   tags?: string[]

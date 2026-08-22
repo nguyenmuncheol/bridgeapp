@@ -9,13 +9,26 @@ import { SkeletonList } from '../SkeletonCard'
 import PrayerCard from './PrayerCard'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
-// 고정글 우선, 그 다음 미완료(기도 중)를 완료보다 위로 정렬 (최신 작성순 유지)
+// 고정글 우선(최근 고정순), 그 다음 미완료(기도 중)를 완료보다 위로 정렬 (최신 작성순 유지)
 export const sortPrayers = (list: PostItem[]) =>
   [...list].sort((a, b) => {
+    // 1. 핀 고정 여부
     if (a.isPinned && !b.isPinned) return -1
     if (!a.isPinned && b.isPinned) return 1
+
+    // 2. 핀 고정된 글끼리는 "최근 핀 고정된 시각(pinnedAt)" 최신순으로 정렬
+    if (a.isPinned && b.isPinned) {
+      const aPinned = a.pinnedAt || a.createdAt || ''
+      const bPinned = b.pinnedAt || b.createdAt || ''
+      const cmp = bPinned.localeCompare(aPinned)
+      if (cmp !== 0) return cmp
+    }
+
+    // 3. 미완료(기도 중) 우선
     if (!a.isCompleted && b.isCompleted) return -1
     if (a.isCompleted && !b.isCompleted) return 1
+
+    // 4. 일반 글은 최신 작성순
     if (a.createdAt && b.createdAt) {
       return b.createdAt.localeCompare(a.createdAt)
     }
@@ -99,15 +112,19 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
   const handlePin = useCallback(async (id: string) => {
     if (!canPin) return
     let newPin: boolean | null = null
+    const nowIso = new Date().toISOString()
     setPrayers(prev => prev.map(p => {
       if (p.id !== id) return p
       newPin = !p.isPinned
-      return { ...p, isPinned: newPin }
+      return { ...p, isPinned: newPin, pinnedAt: newPin ? nowIso : undefined }
     }))
     if (newPin === null) return
-    const { error } = await dbUpdatePost(id, { isPinned: newPin })
+    const { error } = await dbUpdatePost(id, {
+      isPinned: newPin,
+      pinnedAt: newPin ? nowIso : undefined
+    })
     if (error) {
-      setPrayers(prev => prev.map(p => p.id === id ? { ...p, isPinned: !newPin } : p))
+      setPrayers(prev => prev.map(p => p.id === id ? { ...p, isPinned: !newPin, pinnedAt: !newPin ? nowIso : undefined } : p))
       showToast('고정 처리 중 오류가 발생했습니다.', true)
     } else {
       showToast(newPin ? '📌 기도제목이 상단에 고정되었습니다.' : '📌 상단 고정이 해제되었습니다.')

@@ -338,6 +338,10 @@ export async function dbUpsertBulletin(bulletin: BulletinData) {
 // posts 테이블 한 행을 화면용 PostItem으로 변환하는 공용 매핑 함수.
 // dbFetchPosts(전체 조회)와 dbFetchPostsPage(페이지 단위 조회)가 함께 재사용합니다.
 function mapPostRow(d: PostRow): PostItem {
+  const pinnedTag = (d.tags || []).find((t: string) => typeof t === 'string' && t.startsWith('__pinnedAt:'))
+  const pinnedAt = pinnedTag ? pinnedTag.replace('__pinnedAt:', '') : undefined
+  const cleanTags = (d.tags || []).filter((t: string) => typeof t === 'string' && !t.startsWith('__pinnedAt:'))
+
   return {
     id: d.id,
     authorId: d.author_id,
@@ -353,9 +357,10 @@ function mapPostRow(d: PostRow): PostItem {
     isSecret: d.is_secret,
     isCompleted: d.is_completed,
     isPinned: d.is_pinned,
+    pinnedAt,
     youtubeUrl: d.youtube_url || undefined,
     imageUrls: d.image_urls || [],
-    tags: d.tags || [],
+    tags: cleanTags,
     // 댓글은 PostgREST가 순서를 보장하지 않으므로 작성순(오래된 것 → 최근)으로 직접 정렬합니다.
     // (정렬 후 날짜만 잘라야 하므로, 원본 타임스탬프로 정렬한 뒤 표시용으로 변환)
     comments: (d.post_comments || [])
@@ -516,7 +521,18 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
   if (updates.likedUserIds !== undefined) payload.liked_user_ids = updates.likedUserIds
   // 🐛 버그 수정: tags/isSecret가 누락되어 있어 행사사진 태그 수정(PhotoGallery)과
   // 기도제목 비밀글 토글(PrayerBoard)이 화면에는 반영되지만 DB에는 저장되지 않던 문제.
-  if (updates.tags !== undefined) payload.tags = updates.tags
+  if (updates.tags !== undefined) {
+    payload.tags = updates.tags
+  } else if (updates.pinnedAt !== undefined || updates.isPinned === false) {
+    // 핀 고정 시각이 변경되거나 해제될 때 tags 안의 __pinnedAt 태그를 동기화
+    const currentPost = await supabase.from('posts').select('tags').eq('id', id).maybeSingle()
+    const baseTags = (currentPost.data?.tags || []).filter((t: string) => typeof t === 'string' && !t.startsWith('__pinnedAt:'))
+    if (updates.isPinned && updates.pinnedAt) {
+      payload.tags = [...baseTags, `__pinnedAt:${updates.pinnedAt}`]
+    } else if (updates.isPinned === false) {
+      payload.tags = baseTags
+    }
+  }
   if (updates.isSecret !== undefined) payload.is_secret = updates.isSecret
   // 행사사진·찬양묵상의 영상 주소. 빈 문자열이면 "영상 없음"으로 지웁니다.
   if (updates.youtubeUrl !== undefined) payload.youtube_url = updates.youtubeUrl || null
