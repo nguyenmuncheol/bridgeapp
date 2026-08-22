@@ -1436,28 +1436,42 @@ export async function dbFetchUserAccessLogs(): Promise<AccessLogItem[]> {
 export async function dbFetchMemberActivityCounts(): Promise<{
   postsByAuthor: Record<string, number>
   commentsByAuthor: Record<string, number>
+  lastActivityByAuthor: Record<string, string>
 }> {
-  const postsRes = await supabase.from('posts').select('author_id')
-  const commentsRes = await supabase.from('post_comments').select('author_id')
+  const postsRes = await supabase.from('posts').select('author_id, created_at')
+  const commentsRes = await supabase.from('post_comments').select('author_id, created_at')
 
   const postsByAuthor: Record<string, number> = {}
   const commentsByAuthor: Record<string, number> = {}
+  const lastActivityByAuthor: Record<string, string> = {}
 
   if (postsRes.data) {
-    postsRes.data.forEach((p: { author_id?: string | null }) => {
+    postsRes.data.forEach((p: { author_id?: string | null; created_at?: string }) => {
       if (p.author_id) {
         postsByAuthor[p.author_id] = (postsByAuthor[p.author_id] || 0) + 1
+        if (p.created_at) {
+          const prev = lastActivityByAuthor[p.author_id]
+          if (!prev || new Date(p.created_at) > new Date(prev)) {
+            lastActivityByAuthor[p.author_id] = p.created_at
+          }
+        }
       }
     })
   }
 
   if (commentsRes.data) {
-    commentsRes.data.forEach((c: { author_id?: string | null }) => {
+    commentsRes.data.forEach((c: { author_id?: string | null; created_at?: string }) => {
       if (c.author_id) {
         commentsByAuthor[c.author_id] = (commentsByAuthor[c.author_id] || 0) + 1
+        if (c.created_at) {
+          const prev = lastActivityByAuthor[c.author_id]
+          if (!prev || new Date(c.created_at) > new Date(prev)) {
+            lastActivityByAuthor[c.author_id] = c.created_at
+          }
+        }
       }
     })
   }
 
-  return { postsByAuthor, commentsByAuthor }
+  return { postsByAuthor, commentsByAuthor, lastActivityByAuthor }
 }

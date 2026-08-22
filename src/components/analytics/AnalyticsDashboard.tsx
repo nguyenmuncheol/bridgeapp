@@ -45,9 +45,14 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [pushSubs, setPushSubs] = useState<PushSubscriptionInfo[]>([])
   const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([])
-  const [activityCounts, setActivityCounts] = useState<{ postsByAuthor: Record<string, number>; commentsByAuthor: Record<string, number> }>({
+  const [activityCounts, setActivityCounts] = useState<{
+    postsByAuthor: Record<string, number>
+    commentsByAuthor: Record<string, number>
+    lastActivityByAuthor: Record<string, string>
+  }>({
     postsByAuthor: {},
     commentsByAuthor: {},
+    lastActivityByAuthor: {},
   })
 
   const [isLoading, setIsLoading] = useState(true)
@@ -65,13 +70,13 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         dbFetchProfiles().catch(() => []),
         dbFetchAllPushSubscriptions().catch(() => []),
         dbFetchUserAccessLogs().catch(() => []),
-        dbFetchMemberActivityCounts().catch(() => ({ postsByAuthor: {}, commentsByAuthor: {} })),
+        dbFetchMemberActivityCounts().catch(() => ({ postsByAuthor: {}, commentsByAuthor: {}, lastActivityByAuthor: {} })),
       ])
 
       setProfiles(pList || [])
       setPushSubs(pSubs || [])
       setAccessLogs(aLogs || [])
-      setActivityCounts(actCounts || { postsByAuthor: {}, commentsByAuthor: {} })
+      setActivityCounts(actCounts || { postsByAuthor: {}, commentsByAuthor: {}, lastActivityByAuthor: {} })
       setLastRefreshedAt(new Date().toLocaleTimeString('ko-KR'))
     } finally {
       setIsLoading(false)
@@ -215,14 +220,17 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       }
 
       // 탭 필터
+      const memberTime = p.lastActiveAt || activityCounts.lastActivityByAuthor[p.id] || p.createdAt
+      const memberTimeMs = memberTime ? new Date(memberTime).getTime() : 0
+
       if (filterType === 'pwa') return p.isPwa === true
       if (filterType === 'push') return pushSubUserMap.has(p.id)
       if (filterType === 'today') {
-        return p.lastActiveAt && (now - new Date(p.lastActiveAt).getTime() <= oneDayMs)
+        return memberTimeMs > 0 && (now - memberTimeMs <= oneDayMs)
       }
       if (filterType === 'inactive14') {
-        if (!p.lastActiveAt) return true
-        return (now - new Date(p.lastActiveAt).getTime() >= 14 * oneDayMs)
+        if (memberTimeMs === 0) return true
+        return (now - memberTimeMs >= 14 * oneDayMs)
       }
       if (filterType === 'pending') return p.role === 'PENDING'
       if (filterType === 'labri1') return p.labriId === '라브리1'
@@ -235,8 +243,8 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     // 정렬
     return list.sort((a, b) => {
       if (sortBy === 'recent') {
-        const timeA = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0
-        const timeB = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0
+        const timeA = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : (activityCounts.lastActivityByAuthor[a.id] ? new Date(activityCounts.lastActivityByAuthor[a.id]).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0))
+        const timeB = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : (activityCounts.lastActivityByAuthor[b.id] ? new Date(activityCounts.lastActivityByAuthor[b.id]).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0))
         return timeB - timeA
       }
       if (sortBy === 'name') {
@@ -604,7 +612,16 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                 </tr>
               ) : (
                 filteredMembers.map(member => {
-                  const rel = formatRelativeTime(member.lastActiveAt)
+                  const lastPostOrCommentTime = activityCounts.lastActivityByAuthor[member.id]
+                  const isRealtime = Boolean(member.lastActiveAt)
+                  const rel = member.lastActiveAt
+                    ? formatRelativeTime(member.lastActiveAt)
+                    : lastPostOrCommentTime
+                    ? { text: `${formatRelativeTime(lastPostOrCommentTime).text} (글/댓글)`, level: 'week' as const }
+                    : member.createdAt
+                    ? { text: `${formatRelativeTime(member.createdAt).text} (가입일)`, level: 'old' as const }
+                    : { text: '기록 없음', level: 'none' as const }
+
                   const pushCount = pushSubUserMap.get(member.id) || 0
                   const postsCount = activityCounts.postsByAuthor[member.id] || 0
                   const commentsCount = activityCounts.commentsByAuthor[member.id] || 0
