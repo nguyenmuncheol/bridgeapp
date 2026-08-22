@@ -214,8 +214,9 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
     try {
       const uploaded = await uploadMultipleImagesToStorage(arr, 'photos')
       setEditPhotoImages(prev => [...prev, ...uploaded])
-    } catch (err: any) {
-      showToast(err?.message || '사진 업로드에 실패했습니다.', true)
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || '사진 업로드에 실패했습니다.'
+      showToast(msg, true)
     } finally {
       setIsUploadingEditPhoto(false)
       if (editPhotoFileInputRef.current) editPhotoFileInputRef.current.value = ''

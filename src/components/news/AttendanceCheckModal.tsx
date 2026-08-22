@@ -33,13 +33,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   useModalDismiss(showAttendanceModal, () => setShowAttendanceModal(false))
-  const [checkSelections, setCheckSelections] = useState<Record<string, 'ATTEND' | 'ABSENT'>>({})
-  const [checkNotes, setCheckNotes] = useState<Record<string, string>>({})
   const [checkSubmitted, setCheckSubmitted] = useState(false)
-  // 🔧 이전에는 이 날짜에 "어떤 라브리든" 한 명이라도 출석기록이 있으면 무조건 완료로
-  // 표시되는 버그가 있었습니다. 현재 담당 그룹 전원의 기록이 실제로 DB에 존재할 때만
-  // true로 설정합니다.
-  const [hasSubmittedAttendance, setHasSubmittedAttendance] = useState(false)
 
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
@@ -68,14 +62,13 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     return []
   }, [isTeacher, isAdmin, isLeader, currentUser.teachGroup, currentUser.labriId, childEntries])
 
-  const [selectedGroup, setSelectedGroup] = useState('')
-  // 그룹 목록이 만들어지면 첫 번째 그룹을 자동 선택합니다.
-  useEffect(() => {
-    if (availableGroups.length === 0) return
-    if (!selectedGroup || !availableGroups.includes(selectedGroup)) {
-      setSelectedGroup(availableGroups[0])
-    }
-  }, [availableGroups, selectedGroup])
+  const [selectedGroupOverride, setSelectedGroupOverride] = useState<string | null>(null)
+  // 그룹 목록이 만들어지면 첫 번째 그룹을 자동 선택합니다 (렌더 시점에 파생).
+  const selectedGroup =
+    selectedGroupOverride && availableGroups.includes(selectedGroupOverride)
+      ? selectedGroupOverride
+      : availableGroups[0] ?? ''
+  const setSelectedGroup = setSelectedGroupOverride
 
   const childMode = isChildGroup(selectedGroup)
 
@@ -148,31 +141,42 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     { enabled: canCheck }
   )
 
-  // 현재 담당 그룹 전원의 기록이 실제로 있을 때만 "완료"로 표시
-  useEffect(() => {
+  // DB 기록에서 선택 상태·메모를 파생 (rawRecords/rawChildRecords가 바뀔 때 자동 갱신)
+  interface AttendanceRow { user_id?: string; dependent_id?: string; status: string; note?: string }
+  const derivedFromDB = useMemo(() => {
     const selections: Record<string, 'ATTEND' | 'ABSENT'> = {}
     const notes: Record<string, string> = {}
-    ;(rawRecords || []).forEach((r: any) => {
+    ;(rawRecords || []).forEach((r: AttendanceRow) => {
+      if (!r.user_id) return
       selections[r.user_id] = r.status as 'ATTEND' | 'ABSENT'
       if (r.note) notes[r.user_id] = r.note
     })
-    // 자녀 기록은 dependent_id로 저장되므로 화면 id(dep_...)에 맞춰 붙입니다.
-    ;(rawChildRecords || []).forEach((r: any) => {
+    ;(rawChildRecords || []).forEach((r: AttendanceRow) => {
+      if (!r.dependent_id) return
       selections[`dep_${r.dependent_id}`] = r.status as 'ATTEND' | 'ABSENT'
       if (r.note) notes[`dep_${r.dependent_id}`] = r.note
     })
-    setCheckSelections(selections)
-    setCheckNotes(notes)
-    const relevantIds = targetMembers.map(m => m.id)
-    setHasSubmittedAttendance(relevantIds.length > 0 && relevantIds.every(id => !!selections[id]))
-    // targetMembers는 selectedGroup에 따라 파생되므로, 그룹이 바뀔 때도 완료 여부를 다시 계산합니다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawRecords, rawChildRecords, selectedGroup])
+    return { selections, notes }
+  }, [rawRecords, rawChildRecords])
+
+  // 제출 후 즉시 화면에 반영할 override (캐시 갱신 전 낙관적 업데이트)
+  const [selectionsOverride, setSelectionsOverride] = useState<Record<string, 'ATTEND' | 'ABSENT'> | null>(null)
+  const [notesOverride, setNotesOverride] = useState<Record<string, string> | null>(null)
+
+  const checkSelections = selectionsOverride ?? derivedFromDB.selections
+  const checkNotes = notesOverride ?? derivedFromDB.notes
+  const setCheckSelections = setSelectionsOverride
+  const setCheckNotes = setNotesOverride
+
+  const relevantIds = targetMembers.map(m => m.id)
+  const hasSubmittedAttendance =
+    relevantIds.length > 0 && relevantIds.every(id => !!checkSelections[id])
 
   // 이미 선택된 상태(출석/결석)를 다시 누르면 "미지정" 상태로 되돌립니다.
   const toggleCheckSelection = (memberId: string, status: 'ATTEND' | 'ABSENT') => {
     setCheckSelections(prev => {
-      const next = { ...prev }
+      const base = prev ?? derivedFromDB.selections
+      const next = { ...base }
       if (next[memberId] === status) {
         delete next[memberId]
       } else {
@@ -184,8 +188,9 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     // 사유가 그대로 남아 저장됐습니다. 나중에 보고서에는 "출석했는데 아팠음"으로 나옵니다.
     if (status === 'ATTEND') {
       setCheckNotes(prev => {
-        if (!prev[memberId]) return prev
-        const next = { ...prev }
+        const base = prev ?? derivedFromDB.notes
+        if (!base[memberId]) return prev
+        const next = { ...base }
         delete next[memberId]
         return next
       })
@@ -195,8 +200,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false)
 
   const handleSubmitAttendance = async () => {
-    // 🐛 과거 버그: 제출 중 표시도, 중복 방지도 없어서 느린 연결에서 두 번 누르면
-    // 같은 사람/같은 날짜 기록이 두 줄 생길 수 있었습니다(통계가 두 배로 잡힘).
     if (isSubmittingAttendance) return
 
     if (!canSubmit) {
@@ -205,7 +208,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     }
 
     setIsSubmittingAttendance(true)
-    let error: any = null
+    let submitError: { message?: string } | null = null
 
     if (childMode) {
       const records = checkedMembers.map(m => ({
@@ -219,7 +222,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
         recordedBy: currentUser.id,
       }))
       const res = await dbSaveChildAttendanceRecords(records)
-      error = res.error
+      submitError = res.error
     } else {
       const records = checkedMembers.map(m => ({
         userId: m.id,
@@ -230,15 +233,14 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
         recordedBy: currentUser.id,
       }))
       const res = await dbSaveAttendanceRecords(records)
-      error = res.error
+      submitError = res.error
     }
 
     setIsSubmittingAttendance(false)
-    if (error) {
+    if (submitError) {
       showToast('출석체크 저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
       return
     }
-    setHasSubmittedAttendance(true)
     setCheckSubmitted(true)
     setTimeout(() => {
       setCheckSubmitted(false)
@@ -327,7 +329,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                   type="button"
                   onClick={() => {
                     setCheckSelections(prev => {
-                      const next = { ...prev }
+                      const next = { ...(prev ?? derivedFromDB.selections) }
                       targetMembers.forEach(m => { next[m.id] = 'ATTEND' })
                       return next
                     })
@@ -375,7 +377,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                             <button
                               key={tag}
                               type="button"
-                              onClick={() => setCheckNotes(p => ({ ...p, [member.id]: checkNotes[member.id] === tag ? '' : tag }))}
+                              onClick={() => setCheckNotes(p => ({ ...(p ?? derivedFromDB.notes), [member.id]: checkNotes[member.id] === tag ? '' : tag }))}
                               className={`px-2 py-0.5 rounded-md border ${checkNotes[member.id] === tag ? 'bg-rose-100 border-rose-300 text-rose-800 font-bold' : 'bg-white border-gray-200 text-gray-500'}`}
                             >#{tag}</button>
                           ))}
@@ -384,7 +386,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                           type="text"
                           placeholder="결석 사유 직접 입력 (선택사항)..."
                           value={checkNotes[member.id] || ''}
-                          onChange={e => setCheckNotes(p => ({ ...p, [member.id]: e.target.value }))}
+                          onChange={e => setCheckNotes(p => ({ ...(p ?? derivedFromDB.notes), [member.id]: e.target.value }))}
                           className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none text-gray-900 font-medium"
                         />
                       </div>

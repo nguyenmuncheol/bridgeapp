@@ -123,7 +123,7 @@ export default function NotificationPanel({
     onClose()
   }
 
-  const handleDelete = async (e: any, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     const backup = items
     setItems(items.filter(x => x.id !== id))

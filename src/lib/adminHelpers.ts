@@ -42,7 +42,7 @@ export function getFamilyGroupOptions(allUsers: UserProfile[], excludeUserId?: s
   const options: { key: string; label: string; isGroup: boolean }[] = []
 
   // 1. 이미 묶여있는 가족 그룹들
-  Object.entries(groupMap).forEach(([fid, members]) => {
+  Object.entries(groupMap).forEach(([, members]) => {
     const sorted = [...members].sort((a, b) => {
       const orderA = FAMILY_ROLE_ORDER[a.familyRole || ''] || 10
       const orderB = FAMILY_ROLE_ORDER[b.familyRole || ''] || 10

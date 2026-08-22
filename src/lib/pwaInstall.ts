@@ -64,7 +64,7 @@ export function canInstall(): boolean {
 /** 이미 홈 화면 앱으로 실행 중인지 (그렇다면 설치 안내 자체가 불필요) */
 export function isRunningStandalone(): boolean {
   if (typeof window === 'undefined') return false
-  const iosStandalone = (window.navigator as any).standalone === true
+  const iosStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true
   return iosStandalone || window.matchMedia('(display-mode: standalone)').matches
 }
 

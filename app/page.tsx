@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import type { User } from '@supabase/supabase-js'
 import BottomNav from '../src/components/BottomNav'
 import HomeTab from '../src/components/home/HomeTab'
 import NewsTab from '../src/components/news/NewsTab'
@@ -35,9 +36,7 @@ export default function Home() {
     const raw = (window.location.hash || '').replace(/^#/, '')
     return VALID_TABS.includes(raw) ? raw : 'home'
   }
-  // 서버에서 그릴 때와 브라우저에서 그릴 때가 달라지면 안 되므로, 초기값은 항상 'home'으로
-  // 두고 화면이 뜬 직후(useEffect)에 주소를 읽어 맞춥니다.
-  const [currentTab, setCurrentTab] = useState('home')
+  const [currentTab, setCurrentTab] = useState<string>(() => (typeof window !== 'undefined' ? readTabFromHash() : 'home'))
 
   // ── 알림을 눌렀을 때 "그 글이 있는 서브탭"까지 열어 주기 위한 요청값 ──
   // 큰 탭만 바꾸면 나눔은 늘 기도제목이, 우리소식은 늘 교회일정이 먼저 보입니다.
@@ -53,21 +52,34 @@ export default function Home() {
   const [isAdminViewMode, setIsAdminViewMode] = useState<boolean>(false)
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false)
   useModalDismiss(showAuthModal, () => setShowAuthModal(false))
-  const [supabaseUser, setSupabaseUser] = useState<any>(null)
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null)
   const [showProfileSetup, setShowProfileSetup] = useState<boolean>(false)
   const [oauthName, setOauthName] = useState<string>('')
   const [oauthEmail, setOauthEmail] = useState<string>('')
   // 성도 명단 조회 실패 메시지. "명단이 비어 있음"과 반드시 구분해서 보여줍니다.
   const [rosterError, setRosterError] = useState<string | null>(null)
   // OAuth 콜백에서 로그인 교환이 실패했을 때 표시할 안내
-  const [authError, setAuthError] = useState<string>('')
+  const [authError, setAuthError] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const err = params.get('auth_error')
+      if (err) {
+        params.delete('auth_error')
+        const rest = params.toString()
+        window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''))
+        return err
+      }
+    } catch { /* 주소 파싱 실패는 무시 */ }
+    return ''
+  })
   // 대기 중에 관리자가 승인하면 화면이 저절로 바뀌는데, 왜 바뀌었는지 알 수 있도록 띄우는 축하 안내
   const [justApproved, setJustApproved] = useState(false)
   // ── 앱 안 알림함 ── (헤더의 내 이름 버튼에서 열립니다)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
-  // 승인 후 첫 방문 환영 팝업 (계정에 기록해 딱 한 번만 뜹니다)
-  const [showWelcome, setShowWelcome] = useState(false)
+  // 승인 후 첫 방문 환영 팝업 닫힘 여부
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
   // 방문자 랜딩 페이지를 이번 세션에서 넘겼는지 (새로고침하면 다시 보입니다)
   const [landingDismissed, setLandingDismissed] = useState(false)
 
@@ -86,87 +98,6 @@ export default function Home() {
     setRosterError(null)
     clearCache()       // 가족이 함께 쓰는 폰에서 이전 사용자 데이터가 남지 않도록
   }
-
-  // Supabase 세션 및 전체 profiles 동기화
-  // 🔒 개인정보 보호: 전화번호/주소/생일/가족정보가 담긴 성도 전체 명단(dbFetchProfiles)은
-  // 로그인이 확인된 사용자에게만 불러옵니다. 비로그인 방문자에게는 절대 로드하지 않습니다.
-  useEffect(() => {
-    const loadFullRoster = () => {
-      dbFetchProfiles().then(dbUsers => {
-        if (dbUsers && dbUsers.length > 0) {
-          // 목록을 통째로 갈아끼우면, 방금 fetchProfile이 만들어 넣은 내 프로필이
-          // (아직 서버 목록에 없을 수 있어서) 사라질 수 있습니다. 병합 방식으로 반영합니다.
-          setUsers(prev => {
-            const byId = new Map(dbUsers.map(u => [u.id, u]))
-            prev.forEach(u => { if (!byId.has(u.id)) byId.set(u.id, u) })
-            return Array.from(byId.values())
-          })
-          setRosterError(null)
-        }
-      }).catch(err => {
-        // 🐛 과거 버그: 오류를 통째로 삼켜서, 명단 조회에 실패하면 users가 빈 배열로 남고
-        // 화면은 "승인 대기 중"이나 "대기자 없음" 같은 정상 상태로 보였습니다.
-        setRosterError(err?.message || '성도 명단을 불러오지 못했습니다.')
-      })
-    }
-
-    // 1. 현재 로그인 세션 감지 (최초 1회)
-    // 로그인 콜백에서 실패 사유를 넘겨줬다면 화면에 안내하고 주소창은 정리합니다.
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const err = params.get('auth_error')
-      if (err) {
-        setAuthError(err)
-        params.delete('auth_error')
-        const rest = params.toString()
-        window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''))
-      }
-    } catch { /* 주소 파싱 실패는 무시 */ }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSupabaseUser(session.user)
-        const uMeta = session.user.user_metadata || {}
-        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
-        // 내 프로필을 먼저 확정한 뒤 전체 명단을 불러와야, 둘이 경쟁하면서
-        // 방금 만든 내 프로필이 덮여 사라지는 일이 없습니다.
-        fetchProfile(session.user.id, session.user.email || '', name)
-          .then(() => loadFullRoster())
-          .finally(() => setIsLoading(false))
-      } else {
-        // 비로그인 방문자: 성도 개인정보 명단을 불러오지 않고 바로 로딩 종료
-        setIsLoading(false)
-      }
-    })
-
-    // 2. 로그인/로그아웃 상태 변화 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // ⚠️ Supabase 권고: 이 콜백 안에서 곧바로 supabase 조회를 호출하면 내부 잠금과
-      // 얽혀 멈출 수 있습니다. setTimeout(0)으로 잠금 밖에서 실행합니다.
-      // 또 이벤트 종류를 가리지 않으면 최초 진입 시(INITIAL_SESSION) 위 getSession과
-      // 겹쳐 모든 조회가 두 번씩 나가고, 한 시간마다 오는 토큰 갱신(TOKEN_REFRESHED)에도
-      // 다시 실행되면서 열려 있던 로그인 창이 닫히는 문제가 있었습니다.
-      if (event === 'SIGNED_IN') {
-        if (!session?.user) return
-        const user = session.user
-        setSupabaseUser(user)
-        const uMeta = user.user_metadata || {}
-        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
-        setTimeout(() => {
-          fetchProfile(user.id, user.email || '', name).then(() => loadFullRoster())
-        }, 0)
-      } else if (event === 'SIGNED_OUT') {
-        // 🐛 과거 버그: 여기서 currentUserId를 초기화하지 않아, 세션이 만료되면
-        // "로그인은 안 됐는데 누군가이긴 한" 애매한 상태가 됐습니다. 그 결과 앱이
-        // 이름을 "방문자"로 바꾸고 모든 탭에 "가입 승인 대기 중"을 띄우면서
-        // **로그인 버튼은 보여주지 않아** 성도가 빠져나갈 방법이 없었습니다.
-        resetToGuest()
-      }
-    })
-
-    return () => subscription.unsubscribe()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Supabase profiles 조회 → 신규면 추가정보 입력 모달 표시
   const fetchProfile = async (id: string, email: string, name: string) => {
@@ -245,6 +176,75 @@ export default function Home() {
     }
   }
 
+  // Supabase 세션 및 전체 profiles 동기화
+  // 🔒 개인정보 보호: 전화번호/주소/생일/가족정보가 담긴 성도 전체 명단(dbFetchProfiles)은
+  // 로그인이 확인된 사용자에게만 불러옵니다. 비로그인 방문자에게는 절대 로드하지 않습니다.
+  useEffect(() => {
+    const loadFullRoster = () => {
+      dbFetchProfiles().then(dbUsers => {
+        if (dbUsers && dbUsers.length > 0) {
+          // 목록을 통째로 갈아끼우면, 방금 fetchProfile이 만들어 넣은 내 프로필이
+          // (아직 서버 목록에 없을 수 있어서) 사라질 수 있습니다. 병합 방식으로 반영합니다.
+          setUsers(prev => {
+            const byId = new Map(dbUsers.map(u => [u.id, u]))
+            prev.forEach(u => { if (!byId.has(u.id)) byId.set(u.id, u) })
+            return Array.from(byId.values())
+          })
+          setRosterError(null)
+        }
+      }).catch(err => {
+        // 🐛 과거 버그: 오류를 통째로 삼켜서, 명단 조회에 실패하면 users가 빈 배열로 남고
+        // 화면은 "승인 대기 중"이나 "대기자 없음" 같은 정상 상태로 보였습니다.
+        setRosterError(err?.message || '성도 명단을 불러오지 못했습니다.')
+      })
+    }
+
+    // 1. 현재 로그인 세션 감지 (최초 1회)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setSupabaseUser(session.user)
+        const uMeta = session.user.user_metadata || {}
+        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
+        // 내 프로필을 먼저 확정한 뒤 전체 명단을 불러와야, 둘이 경쟁하면서
+        // 방금 만든 내 프로필이 덮여 사라지는 일이 없습니다.
+        fetchProfile(session.user.id, session.user.email || '', name)
+          .then(() => loadFullRoster())
+          .finally(() => setIsLoading(false))
+      } else {
+        // 비로그인 방문자: 성도 개인정보 명단을 불러오지 않고 바로 로딩 종료
+        setIsLoading(false)
+      }
+    })
+
+    // 2. 로그인/로그아웃 상태 변화 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // ⚠️ Supabase 권고: 이 콜백 안에서 곧바로 supabase 조회를 호출하면 내부 잠금과
+      // 얽혀 멈출 수 있습니다. setTimeout(0)으로 잠금 밖에서 실행합니다.
+      // 또 이벤트 종류를 가리지 않으면 최초 진입 시(INITIAL_SESSION) 위 getSession과
+      // 겹쳐 모든 조회가 두 번씩 나가고, 한 시간마다 오는 토큰 갱신(TOKEN_REFRESHED)에도
+      // 다시 실행되면서 열려 있던 로그인 창이 닫히는 문제가 있었습니다.
+      if (event === 'SIGNED_IN') {
+        if (!session?.user) return
+        const user = session.user
+        setSupabaseUser(user)
+        const uMeta = user.user_metadata || {}
+        const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
+        setTimeout(() => {
+          fetchProfile(user.id, user.email || '', name).then(() => loadFullRoster())
+        }, 0)
+      } else if (event === 'SIGNED_OUT') {
+        // 🐛 과거 버그: 여기서 currentUserId를 초기화하지 않아, 세션이 만료되면
+        // "로그인은 안 됐는데 누군가이긴 한" 애매한 상태가 됐습니다. 그 결과 앱이
+        // 이름을 "방문자"로 바꾸고 모든 탭에 "가입 승인 대기 중"을 띄우면서
+        // **로그인 버튼은 보여주지 않아** 성도가 빠져나갈 방법이 없었습니다.
+        resetToGuest()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // OAuth 가입 후 추가정보 저장 + 실제 승인 신청 (Supabase profiles 업데이트)
   // 이 버튼을 눌러야만 signup_requested_at이 채워지고, 그 순간에만 관리자에게 알림이 갑니다.
   const handleProfileSetupSubmit = async (info: { name: string; phone: string; address: string; birthday: string }) => {
@@ -320,15 +320,17 @@ export default function Home() {
 
   const isGuest = currentUserId === 'guest'
 
-  const currentUser: UserProfile = users.find(u => u.id === currentUserId) || {
-    id: 'guest',
-    name: '방문자',
-    email: '',
-    phone: '',
-    role: 'PENDING' as Role,
-    duty: '',
-    createdAt: ''
-  }
+  const currentUser: UserProfile = useMemo(() => {
+    return users.find(u => u.id === currentUserId) || {
+      id: 'guest',
+      name: '방문자',
+      email: '',
+      phone: '',
+      role: 'PENDING' as Role,
+      duty: '',
+      createdAt: ''
+    }
+  }, [users, currentUserId])
 
   // role='PENDING'은 두 가지 상태를 함께 나타냅니다: ① 로그인만 하고 아직 "가입 완료 및
   // 승인 신청" 버튼을 안 누른 상태, ② 실제로 신청해서 관리자 승인을 기다리는 상태.
@@ -368,16 +370,19 @@ export default function Home() {
   // ── 가입 환영 팝업 ──
   // 승인이 끝난 성도인데 아직 환영 인사를 못 받았으면 딱 한 번 띄웁니다.
   // (추가정보 입력 모달이 떠 있는 동안에는 겹치지 않게 기다립니다)
-  useEffect(() => {
-    if (isGuest || isPending || isUnrequestedPending || isRejected) return
-    if (showProfileSetup) return
-    if (!currentUser || currentUser.id === 'guest') return
-    if (currentUser.welcomedAt) return
-    setShowWelcome(true)
-  }, [isGuest, isPending, isUnrequestedPending, isRejected, showProfileSetup, currentUser])
+  const showWelcome =
+    !welcomeDismissed &&
+    !isGuest &&
+    !isPending &&
+    !isUnrequestedPending &&
+    !isRejected &&
+    !showProfileSetup &&
+    !!currentUser &&
+    currentUser.id !== 'guest' &&
+    !currentUser.welcomedAt
 
   const handleCloseWelcome = () => {
-    setShowWelcome(false)
+    setWelcomeDismissed(true)
     // 화면에서도 즉시 "본 것"으로 바꿔, 명단이 다시 로드돼도 또 뜨지 않게 합니다.
     const now = new Date().toISOString()
     setUsers(prev => prev.map(u => (u.id === currentUserId ? { ...u, welcomedAt: now } : u)))
@@ -386,11 +391,7 @@ export default function Home() {
 
   // ── 주소창(#해시)과 현재 탭 맞추기 ──
   useEffect(() => {
-    // ① 처음 들어올 때 주소에 적힌 탭으로 이동
-    const initial = readTabFromHash()
-    if (initial !== 'home') setCurrentTab(initial)
-
-    // ② 뒤로가기/앞으로가기로 주소가 바뀌면 화면도 따라갑니다
+    // 뒤로가기/앞으로가기로 주소가 바뀌면 화면도 따라갑니다
     const onHashChange = () => setCurrentTab(readTabFromHash())
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -463,7 +464,7 @@ export default function Home() {
     familyInfo: string = '',
     familyGroupId: string = '',
     familyRole: string = ''
-  ): Promise<{ error: any }> => {
+  ): Promise<{ error: { message?: string } | null }> => {
     // 🐛 과거 버그: 결과를 확인하지 않고 화면에서 카드를 지우고 "승인 완료"를 띄웠습니다.
     // 저장이 실패하면 관리자 목록에서는 사라지는데 성도는 계속 대기 화면을 보게 되고,
     // 관리자는 이미 처리한 줄 알아서 아무도 문제를 모릅니다.
@@ -476,7 +477,7 @@ export default function Home() {
     return { error: null }
   }
 
-  const handleRejectUser = async (userId: string): Promise<{ error: any }> => {
+  const handleRejectUser = async (userId: string): Promise<{ error: { message?: string } | null }> => {
     const res = await dbRejectUser(userId)
     if (res.error) return { error: res.error }
     // 거절된 계정은 삭제하지 않고 role만 'REJECTED'로 바뀝니다(되돌릴 수 있도록).

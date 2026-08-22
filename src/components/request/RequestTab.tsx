@@ -18,31 +18,43 @@ interface RequestTabProps {
   openToken?: number
 }
 
+interface MealSlotData {
+  submitted: boolean
+  attending: boolean
+  adultCount: number
+  childCount: number
+  updatedBy: string
+  updatedAt: string
+}
+
 export default function RequestTab({ currentUser, allUsers, openSubTab = '', openToken = 0 }: RequestTabProps) {
   const isAdmin = currentUser.role === 'ADMIN'
 
   // ── 서브탭: 주일식사 | 교회행사 (다른 메뉴와 같은 모양) ──
-  // 신청 화면을 열면 가장 자주 쓰는 "주일식사"가 먼저 보입니다.
-  // 탭을 바꿔도 입력 중이던 내용이 사라지지 않도록, 지우는 대신 CSS로 숨깁니다.
-  const [subTab, setSubTab] = useState<'meal' | 'event'>('meal')
+  const [subTab, setSubTab] = useState<'meal' | 'event'>(() => {
+    if (openSubTab === 'meal' || openSubTab === 'event') return openSubTab
+    return 'meal'
+  })
+
+  const [prevToken, setPrevToken] = useState(openToken)
+  if (openToken !== prevToken) {
+    setPrevToken(openToken)
+    if (openSubTab === 'meal' || openSubTab === 'event') {
+      setSubTab(openSubTab)
+    }
+  }
+
   const goSubTab = (next: 'meal' | 'event') => {
     setSubTab(next)
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
   }
-  useEffect(() => {
-    if (openSubTab === 'meal' || openSubTab === 'event') goSubTab(openSubTab)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openToken, openSubTab])
 
   // ── 식사 신청 ──
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
-  const sundayDates = upcomingSundays.map(s => s.displayStr)
+  const sundayDates = useMemo(() => upcomingSundays.map(s => s.displayStr), [upcomingSundays])
   const [selectedWeek, setSelectedWeek] = useState(0)
   const selectedSundayObj = upcomingSundays[selectedWeek]?.dateObj || new Date()
-  // 🐛 과거 버그: 마감 여부를 화면이 그려질 때 딱 한 번만 계산했습니다. 홈 화면 앱을
-  // 켜둔 채로 시간이 지나면(토요일 아침에 열어두고 오후에 다시 보는 경우) 이미 마감된
-  // 시간인데도 "마감까지 3시간" 표시가 그대로였고, 저장 버튼도 그대로 눌렸습니다.
-  // → 1분마다, 그리고 앱을 다시 볼 때마다 다시 계산합니다.
+
   const [clockTick, setClockTick] = useState(0)
   useEffect(() => {
     const timer = setInterval(() => setClockTick(t => t + 1), 60_000)
@@ -56,7 +68,6 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
 
   const { isLocked, remainingText } = useMemo(
     () => isMealRegistrationLocked(selectedSundayObj),
-    // clockTick이 바뀔 때마다 다시 계산합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedSundayObj, clockTick]
   )
@@ -66,19 +77,61 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
     u.id !== currentUser.id &&
     currentUser.familyGroupId
   )
-  // 가정 키는 familyKey.ts 한 곳에서만 만듭니다(화면·주방 집계가 같은 기준을 쓰도록).
   const familyId = familyKeyOf(currentUser)
 
-  const [familyMealStore, setFamilyMealStore] = useState<Record<string, Record<number, {
-    submitted: boolean; attending: boolean; adultCount: number; childCount: number; updatedBy: string; updatedAt: string
-  }>>>({})
+  const mealDateStrs = useMemo(() => upcomingSundays.map(s => s.dateStr), [upcomingSundays])
+  const { data: mealRegistrations } = useCachedQuery(
+    `mealRegistrations:${mealDateStrs[0] || ''}`,
+    () => dbFetchMealRegistrations(mealDateStrs)
+  )
 
-  const currentMealData = familyMealStore[familyId]?.[selectedWeek] || {
+  const derivedMealStore = useMemo(() => {
+    if (!mealRegistrations || mealRegistrations.length === 0) return {}
+    const newStore: Record<string, Record<number, MealSlotData>> = {}
+    const stamp: Record<string, string> = {}
+    mealRegistrations.forEach(r => {
+      const wIdx = upcomingSundays.findIndex(s => s.dateStr === r.date_str)
+      if (wIdx === -1) return
+      const key = resolveFamilyKey(r.family_group_id, allUsers)
+      const seenAt = String(r.updated_at || r.created_at || '')
+      const slot = `${key}#${wIdx}`
+      if (stamp[slot] !== undefined && stamp[slot] >= seenAt) return
+      stamp[slot] = seenAt
+      if (!newStore[key]) newStore[key] = {}
+      newStore[key][wIdx] = {
+        submitted: true,
+        attending: r.attending,
+        adultCount: r.adult_count,
+        childCount: r.child_count,
+        updatedBy: simplifyStoredName(r.registered_by_user_name),
+        updatedAt: String(r.updated_at || r.created_at || '')
+      }
+    })
+    return newStore
+  }, [mealRegistrations, upcomingSundays, allUsers])
+
+  const [familyMealStoreOverride, setFamilyMealStoreOverride] = useState<Record<string, Record<number, MealSlotData>>>({})
+
+  const familyMealStore = useMemo(() => {
+    const res: Record<string, Record<number, MealSlotData>> = {}
+    Object.keys(derivedMealStore).forEach(k => {
+      res[k] = { ...derivedMealStore[k] }
+    })
+    Object.keys(familyMealStoreOverride).forEach(k => {
+      res[k] = { ...(res[k] || {}), ...familyMealStoreOverride[k] }
+    })
+    return res
+  }, [derivedMealStore, familyMealStoreOverride])
+
+  const currentMealData: MealSlotData = familyMealStore[familyId]?.[selectedWeek] || {
     submitted: false, attending: true, adultCount: 1, childCount: 0, updatedBy: '', updatedAt: ''
   }
-  const [tempAttending, setTempAttending] = useState(true)
-  const [tempAdult, setTempAdult] = useState(1)
-  const [tempChild, setTempChild] = useState(0)
+
+  // 사용자 편집 임시 상태 (주차 전환 시 자동 초기화)
+  const [customDraft, setCustomDraft] = useState<{ attending: boolean; adult: number; child: number } | null>(null)
+  const tempAttending = customDraft !== null ? customDraft.attending : (currentMealData.submitted ? currentMealData.attending : true)
+  const tempAdult = customDraft !== null ? customDraft.adult : (currentMealData.submitted ? currentMealData.adultCount : 1)
+  const tempChild = customDraft !== null ? customDraft.child : (currentMealData.submitted ? currentMealData.childCount : 0)
 
   // ── 토스트 (alert 대체) ──
   const [toastMsg, setToastMsg] = useState('')
@@ -88,10 +141,14 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
   }
 
   // ── 행사 신청 (제목 + 내용 + URL 3필드) ──
-  const [eventFormUrl, setEventFormUrl] = useState('')
-  const [eventFormTitle, setEventFormTitle] = useState('')
-  const [eventFormContent, setEventFormContent] = useState('')
-  const [eventFormManager, setEventFormManager] = useState('')
+  const { data: latestEventForm } = useCachedQuery('eventForm:latest', () => dbFetchLatestEventForm())
+  const [eventFormOverride, setEventFormOverride] = useState<{ title: string; content: string; url: string; manager: string } | null>(null)
+
+  const eventFormTitle = eventFormOverride?.title ?? latestEventForm?.title ?? ''
+  const eventFormContent = eventFormOverride?.content ?? latestEventForm?.content ?? ''
+  const eventFormUrl = eventFormOverride?.url ?? latestEventForm?.url ?? ''
+  const eventFormManager = eventFormOverride?.manager ?? latestEventForm?.manager ?? ''
+
   const [showEventEditModal, setShowEventEditModal] = useState(false)
   useModalDismiss(showEventEditModal, () => setShowEventEditModal(false))
   const [editUrl, setEditUrl] = useState('')
@@ -99,71 +156,9 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
   const [editContent, setEditContent] = useState('')
   const [editManager, setEditManager] = useState('')
 
-  // Supabase DB에서 식사 신청 및 행사 신청 로드 (관리자 "식사" 탭과 캐시를 공유해 반복 조회하지 않음)
-  // 화면에서 쓰는 4주치만 받아옵니다(과거 기록은 쓰지 않습니다).
-  // 캐시 키에 첫 주일을 넣어, 주가 넘어가면 자동으로 새로 받아옵니다.
-  const mealDateStrs = useMemo(() => upcomingSundays.map(s => s.dateStr), [upcomingSundays])
-  const { data: mealRegistrations } = useCachedQuery(
-    `mealRegistrations:${mealDateStrs[0] || ''}`,
-    () => dbFetchMealRegistrations(mealDateStrs)
-  )
-  const { data: latestEventForm } = useCachedQuery('eventForm:latest', () => dbFetchLatestEventForm())
-
-  useEffect(() => {
-    if (!mealRegistrations || mealRegistrations.length === 0) return
-    const newStore: Record<string, Record<number, any>> = {}
-    const stamp: Record<string, string> = {}
-    mealRegistrations.forEach(r => {
-      const wIdx = upcomingSundays.findIndex(s => s.dateStr === r.date_str)
-      if (wIdx === -1) return
-      // 옛날 키로 저장된 줄도 지금 이 가정의 것으로 인식되게 변환합니다.
-      const key = resolveFamilyKey(r.family_group_id, allUsers)
-      const seenAt = String(r.updated_at || r.created_at || '')
-      const slot = `${key}#${wIdx}`
-      // 같은 가정에 옛/새 줄이 둘 다 있으면 가장 최근에 저장한 것만 씁니다.
-      if (stamp[slot] !== undefined && stamp[slot] >= seenAt) return
-      stamp[slot] = seenAt
-      if (!newStore[key]) newStore[key] = {}
-      newStore[key][wIdx] = {
-        submitted: true,
-        attending: r.attending,
-        adultCount: r.adult_count,
-        childCount: r.child_count,
-        // 예전 기록은 '임진재 성도님'처럼 직분이 붙어 있어, 화면 표기를 '임진재님'으로 통일합니다.
-        updatedBy: simplifyStoredName(r.registered_by_user_name),
-        updatedAt: String(r.updated_at || r.created_at || '')
-      }
-    })
-    setFamilyMealStore(prev => ({ ...prev, ...newStore }))
-  }, [mealRegistrations, upcomingSundays, allUsers])
-
-  useEffect(() => {
-    if (!latestEventForm) return
-    setEventFormTitle(latestEventForm.title)
-    setEventFormContent(latestEventForm.content)
-    setEventFormUrl(latestEventForm.url)
-    setEventFormManager(latestEventForm.manager || '')
-    setEditTitle(latestEventForm.title)
-    setEditContent(latestEventForm.content)
-    setEditUrl(latestEventForm.url)
-  }, [latestEventForm])
-
-  // 🐛 과거 버그(가장 심각): 저장된 인원을 화면 입력칸에 넣어주는 코드가
-  // "주차 탭을 손으로 눌렀을 때"에만 실행됐습니다. 앱을 열면 이번 주 탭이 기본 선택인데
-  // 그 경로로는 실행되지 않아서, 이미 성인 2 / 어린이 3으로 신청해둔 가정도 화면에는
-  // 항상 "성인 1, 어린이 0"으로 보였습니다.
-  // 배우자가 그걸 보고 "한 명만 신청했네" 하며 고쳐서 저장하면 **어린이 3명이 사라졌습니다.**
-  // ("식사 안 함"으로 신청한 가정도 화면에는 "식사함"이 선택된 것처럼 보였습니다.)
-  // → 주차가 바뀌거나 서버 데이터가 도착하면 항상 저장값을 화면에 반영합니다.
-  useEffect(() => {
-    const d = familyMealStore[familyId]?.[selectedWeek]
-    setTempAttending(d ? d.attending : true)
-    setTempAdult(d ? d.adultCount : 1)
-    setTempChild(d ? d.childCount : 0)
-  }, [familyMealStore, familyId, selectedWeek])
-
   const handleSelectWeek = (idx: number) => {
     setSelectedWeek(idx)
+    setCustomDraft(null)
   }
 
   const [isSavingMeal, setIsSavingMeal] = useState(false)
@@ -172,14 +167,11 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
     if (isLocked || isSavingMeal) return
     const targetSunday = upcomingSundays[selectedWeek]?.dateStr || ''
     if (!targetSunday) {
-      showToast('\u26a0\ufe0f \ub0a0\uc9dc\ub97c \ud655\uc778\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4. \uc0c8\ub85c\uace0\uce68 \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.')
+      showToast('⚠️ 날짜를 확인하지 못했습니다. 새로고침 후 다시 시도해 주세요.')
       return
     }
 
     setIsSavingMeal(true)
-    // \ud83d\udc1b \uacfc\uac70 \ubc84\uadf8: \uc800\uc7a5 \uacb0\uacfc\ub97c \ud655\uc778\ud558\uc9c0 \uc54a\uace0 \ubb34\uc870\uac74 "\u2705 \uc2e0\uccad \uc644\ub8cc" \ud1a0\uc2a4\ud2b8\ub97c \ub744\uc6e0\uc2b5\ub2c8\ub2e4.
-    // \uad50\ud68c \uc9c0\ud558\uc2e4 \uc640\uc774\ud30c\uac00 \ub04a\uae30\uac70\ub098 \uad8c\ud55c \uc124\uc815\uc774 \ub9de\uc9c0 \uc54a\uc73c\uba74, \uc131\ub3c4\ub294 \uc2e0\uccad\ub41c \uc904 \uc54c\uace0
-    // \ub3cc\uc544\uac00\uc9c0\ub9cc \uc8fc\ubc29 \uba85\ub2e8\uc5d0\ub294 \uc5c6\ub294 \uc0c1\ud669\uc774 \ub429\ub2c8\ub2e4.
     const res = await dbSaveMealRegistration({
       familyGroupId: familyId,
       dateStr: targetSunday,
@@ -192,15 +184,13 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
     setIsSavingMeal(false)
 
     if (res.error) {
-      showToast('\u26a0\ufe0f \uc800\uc7a5\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4. \uc778\ud130\ub137 \uc0c1\ud0dc\ub97c \ud655\uc778\ud558\uace0 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.')
+      showToast('⚠️ 저장하지 못했습니다. 인터넷 상태를 확인하고 다시 시도해 주세요.')
       return
     }
 
-    // 가족 연결 전에 혼자 신청해둔 옛날 줄이 남아 있으면 주방 집계가 두 배로 잡힙니다.
-    // 저장이 성공한 뒤 같은 날짜의 옛날 줄을 정리합니다. (실패해도 신청 자체는 유효)
     void dbCleanupStaleMealRegistrations(staleFamilyKeys(currentUser, allUsers), targetSunday)
 
-    setFamilyMealStore(prev => ({
+    setFamilyMealStoreOverride(prev => ({
       ...prev,
       [familyId]: {
         ...(prev[familyId] || {}),
@@ -214,10 +204,11 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
         }
       }
     }))
+    setCustomDraft(null)
     showToast(
       tempAttending
-        ? `\u2705 \uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4 \u2014 \uc131\uc778 ${tempAdult}\uba85, \uc5b4\ub9b0\uc774 ${tempChild}\uba85`
-        : '\u2705 \uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4 \u2014 \uc774\ubc88 \uc8fc\ub294 \uc2dd\uc0ac\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4'
+        ? `✅ 저장되었습니다 — 성인 ${tempAdult}명, 어린이 ${tempChild}명`
+        : '✅ 저장되었습니다 — 이번 주는 식사하지 않습니다'
     )
   }
 
@@ -228,10 +219,12 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       url: editUrl.trim(),
       manager: editManager.trim()
     })
-    setEventFormUrl(editUrl.trim())
-    setEventFormTitle(editTitle.trim())
-    setEventFormContent(editContent.trim())
-    setEventFormManager(editManager.trim())
+    setEventFormOverride({
+      title: editTitle.trim(),
+      content: editContent.trim(),
+      url: editUrl.trim(),
+      manager: editManager.trim()
+    })
     setShowEventEditModal(false)
     showToast(editUrl.trim() ? '✅ 행사 신청 링크가 등록되었습니다!' : '행사 신청 링크가 삭제되었습니다.')
   }
@@ -272,8 +265,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
           </span>
         </div>
 
-        {/* 안내 카드 — 예전에는 "배우자 연동 안내"와 "현재 신청 상태"가 따로 두 칸이라
-            화면을 많이 차지하고 눈이 두 번 이동해야 했습니다. 한 칸으로 합쳤습니다. */}
+        {/* 안내 카드 */}
         <div className={`p-3 rounded-xl border text-xs space-y-1 ${
           currentMealData.submitted
             ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
@@ -286,7 +278,6 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
             </p>
           )}
 
-          {/* 아이콘 폭(13px)을 모든 줄에 맞춰, 글이 같은 열에서 시작하도록 했습니다 */}
           {currentMealData.submitted ? (
             <>
               <p className="flex items-start gap-1.5 leading-relaxed font-bold">
@@ -328,8 +319,14 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
             <span className="text-xs font-semibold text-gray-700">{sundayDates[selectedWeek]} 식사 여부</span>
             {!isLocked ? (
               <div className="flex bg-[#f1f4fa] p-1 rounded-xl text-xs font-bold">
-                <button onClick={() => setTempAttending(true)} className={`px-4 py-1.5 rounded-lg transition-all ${tempAttending ? 'bg-[#335f87] text-white shadow-xs' : 'text-gray-500'}`}>식사함</button>
-                <button onClick={() => setTempAttending(false)} className={`px-4 py-1.5 rounded-lg transition-all ${!tempAttending ? 'bg-gray-400 text-white shadow-xs' : 'text-gray-500'}`}>안함</button>
+                <button
+                  onClick={() => setCustomDraft({ attending: true, adult: tempAdult, child: tempChild })}
+                  className={`px-4 py-1.5 rounded-lg transition-all ${tempAttending ? 'bg-[#335f87] text-white shadow-xs' : 'text-gray-500'}`}
+                >식사함</button>
+                <button
+                  onClick={() => setCustomDraft({ attending: false, adult: tempAdult, child: tempChild })}
+                  className={`px-4 py-1.5 rounded-lg transition-all ${!tempAttending ? 'bg-gray-400 text-white shadow-xs' : 'text-gray-500'}`}
+                >안함</button>
               </div>
             ) : (
               <span className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> 마감됨</span>
@@ -338,24 +335,33 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
 
           {tempAttending && (
             <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-1.5 text-xs">
-              {[{ label: '성인', val: tempAdult, set: setTempAdult, min: 1 }, { label: '어린이', val: tempChild, set: setTempChild, min: 0 }].map(({ label, val, set, min }) => (
-                // 🐛 화면 깨짐: 좁은 휴대폰에서 한 칸에 "어린이" + 버튼 3개가 다 안 들어가
-                //    글자가 아래로 밀리거나 줄바꿈됐습니다. 여백·간격을 줄이고
-                //    글자는 줄바꿈되지 않도록 고정했습니다.
+              {[
+                {
+                  label: '성인',
+                  val: tempAdult,
+                  onChange: (v: number) => setCustomDraft({ attending: true, adult: v, child: tempChild }),
+                  min: 1
+                },
+                {
+                  label: '어린이',
+                  val: tempChild,
+                  onChange: (v: number) => setCustomDraft({ attending: true, adult: tempAdult, child: v }),
+                  min: 0
+                }
+              ].map(({ label, val, onChange, min }) => (
                 <div key={label} className="flex items-center justify-between gap-1 bg-white px-2 py-1.5 rounded-lg border border-gray-100">
                   <span className="text-gray-600 font-bold whitespace-nowrap shrink-0">{label}</span>
-                  {/* 버튼 크기: 원래 20px로 너무 작아 오조작이 잦았고, 44px는 휴대폰에서 과했습니다 → 28px */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       disabled={isLocked}
-                      onClick={() => set(Math.max(min, val - 1))}
+                      onClick={() => onChange(Math.max(min, val - 1))}
                       aria-label={`${label} 인원 줄이기`}
                       className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >−</button>
                     <span className="font-bold text-[#335f87] w-6 text-center text-sm tabular-nums">{val}</span>
                     <button
                       disabled={isLocked}
-                      onClick={() => set(val + 1)}
+                      onClick={() => onChange(val + 1)}
                       aria-label={`${label} 인원 늘리기`}
                       className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >+</button>
@@ -373,8 +379,6 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 currentMealData.submitted ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-[#335f87] hover:bg-[#2b5072] text-white'
               }`}
             >
-              {/* 🐛 과거 버그: "안 함"을 골라도 버튼이 계속 "식사 신청하기"였습니다(정반대 의미).
-                  또 저장 중 표시가 없어서 반응이 없어 보이면 여러 번 누르게 됐습니다. */}
               {isSavingMeal
                 ? '저장 중...'
                 : !tempAttending
@@ -385,10 +389,6 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
             </button>
           ) : (
             <div className="w-full space-y-1.5">
-              {/* 🐛 과거 버그: 마감된 주에는 신청 여부와 관계없이 무조건
-                  "신청 완료 (마감시간 경과)"가 떴습니다. 토요일 오후 2시부터 월요일 새벽까지
-                  약 34시간 동안, 신청을 깜빡한 분에게도 "신청 완료"라고 알려준 셈입니다.
-                  그분은 식사하러 오시는데 밥이 없습니다. */}
               {currentMealData.submitted ? (
                 <div className="w-full py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1">
                   <Lock size={12} />
@@ -406,7 +406,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   다음 주일은 위 날짜 탭에서 신청하실 수 있습니다.
                 </p>
               )}
-                        </div>
+            </div>
           )}
         </div>
       </section>
@@ -438,19 +438,16 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
 
         {eventFormTitle || eventFormContent || eventFormUrl ? (
           <div className="space-y-2.5">
-            {/* 행사 제목 */}
             {eventFormTitle && (
               <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl text-xs">
                 <p className="font-bold text-purple-800 text-sm">📌 {eventFormTitle}</p>
               </div>
             )}
-            {/* 행사 내용 */}
             {eventFormContent && (
               <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-700 leading-relaxed border border-gray-100 whitespace-pre-wrap">
                 {eventFormContent}
               </div>
             )}
-            {/* URL 있을 때: 구글폼 버튼 */}
             {eventFormUrl ? (
               <a
                 href={eventFormUrl}
@@ -461,7 +458,6 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 <ExternalLink size={14} /> 구글 폼 신청하러 가기
               </a>
             ) : (
-              // URL 없을 때: 신청안내 amber 강조 버튼
               <div className="w-full py-3 bg-amber-50 border border-amber-200 rounded-xl text-center text-xs text-amber-800 font-bold">
                 📢 {eventFormManager ? `담당자(${eventFormManager})에게 직접 신청해 주세요` : '담당자에게 직접 신청해 주세요'}
               </div>
@@ -477,7 +473,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       </section>
       </div>
 
-      {/* 관리자: 행사 등록/수정 모달 (제목 + 내용 + URL 3필드) */}
+      {/* 관리자: 행사 등록/수정 모달 */}
       {showEventEditModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
@@ -518,7 +514,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   onChange={e => setEditUrl(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 mt-1">URL 미입력 시 "담당자에게 직접 신청" 안내 표시</p>
+                <p className="text-2xs text-gray-400 mt-1">URL 미입력 시 &quot;담당자에게 직접 신청&quot; 안내 표시</p>
               </div>
               <div>
                 <label className="text-2xs text-gray-400 font-bold">담당자 이름 (선택)</label>
@@ -529,7 +525,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   onChange={e => setEditManager(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 mt-1">입력하면 "담당자(홍길동)에게 직접 신청해 주세요"로 표시됩니다</p>
+                <p className="text-2xs text-gray-400 mt-1">입력하면 &quot;담당자(홍길동)에게 직접 신청해 주세요&quot;로 표시됩니다</p>
               </div>
               {(eventFormTitle || eventFormUrl) && (
                 <button

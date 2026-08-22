@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import { birthdayMatchesCalendarDay } from '../../lib/dateUtils'
@@ -28,8 +28,11 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
   const today = new Date()
   const [calYear, setCalYear] = useState(today.getFullYear())
   const [calMonth, setCalMonth] = useState(today.getMonth())
+  // 다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용
+  const { data: churchEvents } = useCachedQuery('churchEvents', () => dbFetchChurchEvents())
+  const [customEventsOverride, setCustomEventsOverride] = useState<ChurchEvent[] | null>(null)
+  const customEvents = useMemo(() => customEventsOverride ?? (churchEvents || []), [customEventsOverride, churchEvents])
 
-  const [customEvents, setCustomEvents] = useState<ChurchEvent[]>([])
   const [calEditModal, setCalEditModal] = useState<{ day: number; dateStr: string } | null>(null)
   useModalDismiss(!!calEditModal, () => setCalEditModal(null))
   const [editEventTitle, setEditEventTitle] = useState('')
@@ -41,12 +44,6 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
     setToastMsg((isErr ? '⚠️ ' : '') + msg)
     setTimeout(() => setToastMsg(''), 2500)
   }
-
-  // 다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용
-  const { data: churchEvents } = useCachedQuery('churchEvents', () => dbFetchChurchEvents())
-  useEffect(() => {
-    if (churchEvents && churchEvents.length > 0) setCustomEvents(churchEvents)
-  }, [churchEvents])
 
   const firstDay = new Date(calYear, calMonth, 1).getDay()
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
@@ -76,14 +73,6 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
   }
 
   // 생일 매칭 (입력 형식이 무엇이든 관대하게 파싱해서 비교). 자녀(미가입) 생일도 함께 표시.
-  // 🐛 과거 버그: 2월 29일생 성도는 평년(2월이 28일까지)에는 달력에 🎂가 영영 안 떴습니다.
-  // "이달의 생일" 목록에는 2월로 뜨는데 달력에는 없어서 누락된 것처럼 보였습니다.
-  // → birthdayMatchesCalendarDay가 평년에는 2월 28일로 접어서 표시해 줍니다.
-  //
-  // 성능: 예전에는 날짜 칸마다(월 31칸 + 목록 재계산) 모든 성도의 생일을 다시 파싱해서
-  // 200명 기준 월 6,000회 이상 파싱이 일어났습니다. 한 달치를 한 번만 계산해 재사용합니다.
-  // 교회학교 그룹이 지정되지 않은 자녀는 생일 달력·생일 목록에서 뺍니다.
-  // (생일을 안 적어도 되는 자녀라서, 빈 생일이 계속 재촉거리가 되지 않도록)
   const birthdayEntries = useMemo(
     () => addressBookEntries.filter(u => !u.isDependent || !!u.childLabriId),
     [addressBookEntries]
@@ -104,7 +93,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
   const getBirthdaysForDate = (day: number): string[] => birthdaysByDay[day] || []
 
   // 달력 날짜 클릭 모달
-  const handleDateClick = (day: number) => {
+  const handleOpenEditModal = (day: number) => {
     if (!isLeaderOrAdmin) return
     const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     setCalEditModal({ day, dateStr })
@@ -115,27 +104,21 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
   const handleSaveEvent = async () => {
     if (!editEventTitle.trim() || !calEditModal) return
-    // 🐛 과거 버그: 달력의 "주일 예배"는 DB에 없는 자동 생성 항목인데(id가 auto_sunday_...),
-    // 연필 아이콘으로 이름을 바꾸면 존재하지 않는 행을 수정하려 해서 저장이 되지 않았습니다.
-    // 화면상 오류만 나거나(또는 조용히 아무 일도 안 일어나고) 이름은 그대로였습니다.
-    // → 자동 항목이면 수정 대신 새로 만듭니다.
     if (editingEventId && editingEventId.startsWith('auto_sunday_')) {
       const res = await dbCreateChurchEvent(calEditModal.dateStr, editEventTitle.trim(), 'sunday')
       if (res.error || !res.data?.id) {
         showToast('일정 저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
         return
       }
-      setCustomEvents(prev => [...prev, { id: res.data.id, date: calEditModal.dateStr, title: editEventTitle.trim(), type: 'sunday' }])
+      setCustomEventsOverride(prev => [...(prev ?? (churchEvents || [])), { id: res.data.id, date: calEditModal.dateStr, title: editEventTitle.trim(), type: 'sunday' }])
     } else if (editingEventId) {
-      // 기존 일정 수정 (DB)
       const { error } = await dbUpdateChurchEvent(editingEventId, editEventTitle.trim())
       if (error) {
         showToast('일정 저장 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
         return
       }
-      setCustomEvents(prev => prev.map(e => e.id === editingEventId ? { ...e, title: editEventTitle.trim() } : e))
+      setCustomEventsOverride(prev => (prev ?? (churchEvents || [])).map(e => e.id === editingEventId ? { ...e, title: editEventTitle.trim() } : e))
     } else {
-      // 신규 일정 등록 (DB)
       const res = await dbCreateChurchEvent(calEditModal.dateStr, editEventTitle.trim(), editEventType)
       if (res.error) {
         showToast('일정 등록 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
@@ -147,7 +130,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
         title: editEventTitle.trim(),
         type: editEventType,
       }
-      setCustomEvents(prev => [...prev, newEv])
+      setCustomEventsOverride(prev => [...(prev ?? (churchEvents || [])), newEv])
     }
     setEditEventTitle('')
     setEditingEventId(null)
@@ -160,7 +143,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
       showToast('일정 삭제 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
       return
     }
-    setCustomEvents(prev => prev.filter(e => e.id !== evId))
+    setCustomEventsOverride(prev => (prev ?? (churchEvents || [])).filter(e => e.id !== evId))
   }
 
   return (
@@ -199,7 +182,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
             return (
               <div
                 key={day}
-                onClick={() => handleDateClick(day)}
+                onClick={() => handleOpenEditModal(day)}
                 className={`aspect-square flex flex-col items-center justify-start pt-0.5 rounded-lg transition-all ${
                   isToday ? 'bg-[#335f87]/10 ring-1 ring-[#335f87]/30' : ''
                 } ${isLeaderOrAdmin ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}

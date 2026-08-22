@@ -22,9 +22,6 @@ export interface UsePaginatedPostsResult {
  * "더보기" 버튼으로 게시글을 20개씩 끊어 불러오는 훅.
  * 게시글이 많이 쌓이는 화면(교우소식/기도제목/행사사진 등)에서, 카테고리 전체를 한 번에
  * 불러오던 기존 방식(dbFetchPosts) 대신 사용합니다.
- *
- * 사용 예:
- *   const { items, setItems, isLoading, hasMore, isLoadingMore, error, loadMore, retry } = usePaginatedPosts('MEMBER_NEWS')
  */
 export function usePaginatedPosts(
   category: string,
@@ -34,8 +31,6 @@ export function usePaginatedPosts(
   // 태그가 바뀌면 서버에 다시 물어봅니다('전체'는 필터 없음).
   const tag = opts.tag && opts.tag !== '전체' ? opts.tag : null
   const [items, setItems] = useState<PostItem[]>([])
-  // 🐛 과거 버그: hasMore가 true로 시작해서, 첫 로딩 중에 스켈레톤 아래 "더보기" 버튼이
-  // 같이 떴습니다. 눌러도 커서가 없어 아무 일도 안 일어나서 앱이 멈춘 것처럼 보였습니다.
   const [hasMore, setHasMore] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -47,7 +42,6 @@ export function usePaginatedPosts(
   const inFlightRef = useRef(false)
 
   // 이미 목록에 있는 글은 다시 넣지 않습니다.
-  // (같은 시각에 등록된 글이 페이지 경계에 걸리면 중복될 수 있어서)
   const appendUnique = (prev: PostItem[], incoming: PostItem[]) => {
     const seen = new Set(prev.map(p => p.id))
     return [...prev, ...incoming.filter(p => !seen.has(p.id))]
@@ -68,15 +62,12 @@ export function usePaginatedPosts(
         setIsLoading(false)
       })
       .catch(err => {
-        // 🐛 과거 버그: .catch가 없어서 조회에 실패하면 로딩 스켈레톤이 영원히 돌았습니다.
         if (cancelled) return
         setError(err?.message || '목록을 불러오지 못했습니다.')
         setIsLoading(false)
       })
 
     return () => { cancelled = true }
-    // category가 바뀌면 처음부터 다시 불러옵니다(이전에는 최초 1회만 불러와서,
-    // 카테고리를 바꿔도 이전 목록이 그대로 남는 구조였습니다).
   }, [category, limit, tag, reloadToken])
 
   const loadMore = () => {
@@ -100,7 +91,11 @@ export function usePaginatedPosts(
       })
   }
 
-  const retry = () => setReloadToken(t => t + 1)
+  const retry = () => {
+    setIsLoading(true)
+    setError(null)
+    setReloadToken(t => t + 1)
+  }
 
   return { items, setItems, isLoading, isLoadingMore, hasMore, error, loadMore, retry }
 }

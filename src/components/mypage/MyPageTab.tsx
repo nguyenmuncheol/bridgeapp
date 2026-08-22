@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, Settings, MapPin, Ticket, Edit, X, CheckCircle2, Circle, MessageSquare, Camera, Bell } from 'lucide-react'
-import { UserProfile, getUserDisplayName, PostItem, MealCouponAccount, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
+import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell } from 'lucide-react'
+import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
@@ -34,9 +34,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   // 자녀 정보(배우자와 공유) 수정 상태: 모달을 열 때마다 최신 공유 목록으로 초기화
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
-  // 🐛 과거 버그: 모달을 열 때 자녀 목록만 초기화하고 이름/연락처/주소/사진은
-  // 그대로 뒀습니다. 그래서 반쯤 입력하다 "취소"를 눌러도 뒤쪽 카드에는 입력하던 값이
-  // 그대로 보였고(카드가 저장값이 아닌 입력값을 표시했음), 저장된 것처럼 오해했습니다.
   const openEditModal = () => {
     setEditName(currentUser.name || '')
     setEditPhone(currentUser.phone || '')
@@ -56,8 +53,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     setEditChildren(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
   }
   const removeEditChild = (id: string) => {
-    // 🐛 과거 버그: 확인 없이 바로 삭제됐고, 저장하면 배우자 계정에서도 함께 지워졌습니다.
-    // (25px짜리 작은 ✕가 생년월일 입력칸 바로 옆에 붙어 있어 오조작하기 쉬웠습니다)
     const child = editChildren.find(c => c.id === id)
     const label = child?.name?.trim() || '이 자녀'
     if (!confirm(`${label} 정보를 목록에서 지울까요?\n저장하면 배우자 계정에서도 함께 지워집니다.`)) return
@@ -70,12 +65,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   // 생일 파싱 (YYYY-MM-DD 또는 MM-DD)
   const currentYear = new Date().getFullYear()
-  // 🐛 과거 버그: 이 파서가 '-'로 나뉜 형식만 이해했습니다. 그런데 앱의 다른 곳
-  // (주소록/생일 목록/나이 표시)은 750322, 1990/01/01 같은 형식도 읽습니다.
-  // 그래서 생일이 '750322'로 저장된 성도가 **주소만 고치려고** 수정 창을 열면
-  // 생일 칸이 조용히 1980/01/01로 표시되고, 저장하면 그대로 덮어써졌습니다.
-  // 그분은 그 뒤로 '이달의 생일'에서 사라집니다.
-  // → 공용 파서(parseBirthdayFlexible)를 쓰고, 원래 비어 있었으면 '미입력'을 유지합니다.
   const parseBirthday = (bStr?: string) => {
     const parsed = parseBirthdayFlexible(bStr)
     if (!parsed) return { year: '', month: '', day: '' }
@@ -93,9 +82,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => String(currentYear - i))
   const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
-  // 선택한 연/월에 실제로 있는 날짜만 보여줍니다.
-  // (이전에는 항상 1~31일이라 2월 31일 같은 값을 고를 수 있었고, 그런 생일은
-  //  DB가 거부하거나 달력에 영영 안 떴습니다)
   const days = useMemo(() => {
     const y = editBirthYear ? Number(editBirthYear) : null
     const m = editBirthMonth ? Number(editBirthMonth) : 1
@@ -107,11 +93,22 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   // 기도제목 상세 모달
   const [selectedPrayer, setSelectedPrayer] = useState<PostItem | null>(null)
-  const [prayers, setPrayers] = useState<PostItem[]>([])
+  const [prayerOverrides, setPrayerOverrides] = useState<Record<string, boolean>>({})
+
+  // Supabase DB에서 내 기도제목 및 쿠폰 로드 (나눔/쿠폰관리 탭과 캐시를 공유해 반복 조회하지 않음)
+  const { data: prayerPosts } = useCachedQuery('posts:PRAYER', () => dbFetchPosts('PRAYER'))
+  const { data: mealCoupons, error: couponError } = useCachedQuery('mealCoupons', () => dbFetchMealCoupons())
+
+  const prayers = useMemo(() => {
+    return (prayerPosts || []).map(p =>
+      prayerOverrides[p.id] !== undefined ? { ...p, isCompleted: prayerOverrides[p.id] } : p
+    )
+  }, [prayerPosts, prayerOverrides])
+
+  const couponAccounts = useMemo(() => mealCoupons || {}, [mealCoupons])
 
   // 쿠폰 (DB에서만 로드, 초기값 빈 객체)
   const familyId = currentUser.familyGroupId || `fam_single_${currentUser.id}`
-  const [couponAccounts, setCouponAccounts] = useState<Record<string, MealCouponAccount>>({})
 
   // 실시간 가족 구성원 기반 가정 명칭 계산 (조부/조모/부/모/자녀 순 정렬)
   const familyMembers = (currentUser.familyGroupId && allUsers.length > 0)
@@ -138,20 +135,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   useEffect(() => {
     getPushUiState().then(setPushState).catch(() => setPushState('unsupported'))
   }, [])
-
-  // Supabase DB에서 내 기도제목 및 쿠폰 로드 (나눔/쿠폰관리 탭과 캐시를 공유해 반복 조회하지 않음)
-  const { data: prayerPosts } = useCachedQuery('posts:PRAYER', () => dbFetchPosts('PRAYER'))
-  // 🐛 과거 버그: 조회 실패를 확인하지 않아, 네트워크 문제나 권한 문제로 못 불러오면
-  // 모든 가정이 "잔여 0장"으로 보였습니다. 식권을 산 성도가 식권을 못 받고 실랑이하게 됩니다.
-  const { data: mealCoupons, error: couponError } = useCachedQuery('mealCoupons', () => dbFetchMealCoupons())
-
-  useEffect(() => {
-    if (prayerPosts && prayerPosts.length > 0) setPrayers(prayerPosts)
-  }, [prayerPosts])
-
-  useEffect(() => {
-    if (mealCoupons && Object.keys(mealCoupons).length > 0) setCouponAccounts(mealCoupons)
-  }, [mealCoupons])
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
@@ -200,10 +183,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       const uploadedUrl = await uploadImageToStorage(file, 'avatars')
       setAvatarPreview(uploadedUrl)
       showToast('✅ 프로필 사진이 업로드되었습니다!')
-    } catch (err: any) {
-      // 🐛 과거 버그: 업로드 실패 시 조용히 base64 글자 덩어리(약 400KB~수 MB)를 돌려줬고,
-      // 그게 프로필에 저장되면 **모든 성도가 앱을 켤 때마다** 그걸 내려받게 됐습니다.
-      showToast(`⚠️ ${err?.message || '사진 업로드에 실패했습니다.'}`)
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || '사진 업로드에 실패했습니다.'
+      showToast(`⚠️ ${msg}`)
     } finally {
       setIsUploadingAvatar(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -211,8 +193,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   }
 
   // ── 자녀 프로필 사진 ──
-  // 자녀는 자기 계정이 없으므로 부모가 대신 올려 줍니다.
-  // 동그라미를 누른 자녀가 누구인지 기억해 두었다가, 사진을 고르면 그 자녀에게 넣습니다.
   const childFileInputRef = useRef<HTMLInputElement>(null)
   const [photoChildId, setPhotoChildId] = useState('')
   const pickChildPhoto = (childId: string) => {
@@ -229,8 +209,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       const uploadedUrl = await uploadImageToStorage(file, 'avatars')
       updateEditChild(childId, { avatarUrl: uploadedUrl })
       showToast('✅ 자녀 사진이 업로드되었습니다!')
-    } catch (err: any) {
-      showToast(`⚠️ ${err?.message || '사진 업로드에 실패했습니다.'}`)
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || '사진 업로드에 실패했습니다.'
+      showToast(`⚠️ ${msg}`)
     } finally {
       setIsUploadingAvatar(false)
       setPhotoChildId('')
@@ -242,7 +223,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     const target = prayers.find(p => p.id === prayerId)
     if (!target) return
     const newCompleted = !target.isCompleted
-    setPrayers(prev => prev.map(p => p.id === prayerId ? { ...p, isCompleted: newCompleted } : p))
+    setPrayerOverrides(prev => ({ ...prev, [prayerId]: newCompleted }))
     if (selectedPrayer) setSelectedPrayer(prev => prev ? { ...prev, isCompleted: newCompleted } : null)
     await dbUpdatePost(prayerId, { isCompleted: newCompleted })
   }

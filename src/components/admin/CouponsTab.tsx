@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Minus, Undo2 } from 'lucide-react'
 import { UserProfile, MealCouponAccount, isChurchMember } from '../../lib/mockData'
 import { dbFetchMealCoupons, dbUpdateMealCoupon } from '../../lib/db'
@@ -16,13 +16,10 @@ interface CouponsTabProps {
 
 export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
   // ── 쿠폰 (DB에서만 로드, 초기값 빈 객체) ──
-  const [couponAccounts, setCouponAccounts] = useState<Record<string, MealCouponAccount>>({})
-
   // 마이페이지 탭과 캐시를 공유해 반복 조회하지 않음
   const { data: mealCoupons } = useCachedQuery('mealCoupons', () => dbFetchMealCoupons())
-  useEffect(() => {
-    if (mealCoupons && Object.keys(mealCoupons).length > 0) setCouponAccounts(mealCoupons)
-  }, [mealCoupons])
+  const [couponAccountsOverride, setCouponAccountsOverride] = useState<Record<string, MealCouponAccount> | null>(null)
+  const couponAccounts = useMemo(() => couponAccountsOverride ?? (mealCoupons || {}), [couponAccountsOverride, mealCoupons])
 
   // 진행 중인 가정 id (같은 가정 버튼 중복 클릭 방지)
   const [pendingFamilyId, setPendingFamilyId] = useState<string | null>(null)
@@ -74,8 +71,9 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
     const applied = res.applied
     const newBal = res.balance
 
-    setCouponAccounts(prev => {
-      const prevAcc = prev[famId]
+    setCouponAccountsOverride(prev => {
+      const current = prev ?? (mealCoupons || {})
+      const prevAcc = current[famId]
       const prevHist = prevAcc?.history || []
       // 실제로 반영된 수량(applied)만 내역에 기록합니다.
       // (잔액이 부족해 일부만 차감된 경우 요청값과 다를 수 있습니다)
@@ -93,7 +91,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
           }]
         : prevHist
       return {
-        ...prev,
+        ...current,
         [famId]: {
           familyGroupId: famId,
           familyName: famName,

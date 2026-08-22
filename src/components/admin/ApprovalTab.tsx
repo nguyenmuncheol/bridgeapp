@@ -9,8 +9,8 @@ import { getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelp
 
 interface ApprovalTabProps {
   allUsers: UserProfile[]
-  onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) => Promise<{ error: any }>
-  onRejectUser: (userId: string) => Promise<{ error: any }>
+  onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) => Promise<{ error: { message?: string } | null }>
+  onRejectUser: (userId: string) => Promise<{ error: { message?: string } | null }>
   onUpdateUsers?: React.Dispatch<React.SetStateAction<UserProfile[]>>
   showToast: (msg: string) => void
 }

@@ -51,14 +51,14 @@ export default function ImageSlider({
   const touchStartY = useRef<number | null>(null)
   const [moved, setMoved] = useState(false)
 
-  const handleTouchStart = (e: any) => {
+  const handleTouchStart = (e: React.TouchEvent) => {
     const t = e.touches?.[0]
     if (!t) return
     touchStartX.current = t.clientX
     touchStartY.current = t.clientY
     setMoved(false)
   }
-  const handleTouchEnd = (e: any) => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     const startX = touchStartX.current
     const startY = touchStartY.current
     touchStartX.current = null
@@ -77,7 +77,7 @@ export default function ImageSlider({
   // ── 컴퓨터에서 키보드 좌우 ──
   useEffect(() => {
     if (total <= 1) return
-    const onKey = (e: any) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') go(safeIndex - 1)
       else if (e.key === 'ArrowRight') go(safeIndex + 1)
     }

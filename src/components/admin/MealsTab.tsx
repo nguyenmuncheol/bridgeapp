@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { getUpcomingSundays } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -12,11 +12,22 @@ interface MealsTabProps {
   allUsers: UserProfile[]
 }
 
+interface MealRegistrationRow {
+  id: string
+  date_str: string
+  family_group_id?: string
+  attending: boolean
+  adult_count?: number
+  child_count?: number
+  registered_by_user_name?: string
+  updated_at?: string
+  created_at?: string
+}
+
 export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
   // ── 식사 집계 (DB 실시간 연동) ──
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
   const [forecastWeek, setForecastWeek] = useState(0)
-  const [dbMealRegistrations, setDbMealRegistrations] = useState<any[]>([])
   // 미응답 가정 목록은 길어질 수 있어 기본은 접어 둡니다(숫자는 접힌 상태에서도 보입니다).
   const [showPending, setShowPending] = useState(false)
 
@@ -26,9 +37,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
     `mealRegistrations:${mealDateStrs[0] || ''}`,
     () => dbFetchMealRegistrations(mealDateStrs)
   )
-  useEffect(() => {
-    if (mealRegistrations) setDbMealRegistrations(mealRegistrations)
-  }, [mealRegistrations])
+  const dbMealRegistrations: MealRegistrationRow[] = useMemo(() => mealRegistrations || [], [mealRegistrations])
 
   // 교회 전체 가정 목록 (승인된 성도 기준)
   const familyUnits = useMemo(() => buildFamilyUnits(allUsers), [allUsers])
@@ -39,17 +48,15 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
       const targetDate = sun.dateStr
       const sameDay = dbMealRegistrations.filter(r => r.date_str === targetDate)
 
-      // 🐛 과거 버그: 여기서 신청 줄을 그냥 전부 더했습니다.
-      // 그런데 같은 가정이 "가족 연결 전 혼자 신청"과 "연결 후 신청"을 각각 남기면
-      // 서로 다른 키로 두 줄이 되어 **같은 가정이 두 번 집계**됐습니다.
-      // → 가정 키를 현재 기준으로 통일하고, 가정당 가장 최근 신청 1건만 셉니다.
-      const byFamily = new Map<string, any>()
+      // 가정 키를 현재 기준으로 통일하고, 가정당 가장 최근 신청 1건만 셉니다.
+      const byFamily = new Map<string, MealRegistrationRow>()
       sameDay.forEach(r => {
         const key = resolveFamilyKey(r.family_group_id, allUsers) || `row_${r.id}`
         const prev = byFamily.get(key)
         const cur = String(r.updated_at || r.created_at || '')
         if (!prev || String(prev.updated_at || prev.created_at || '') <= cur) byFamily.set(key, r)
       })
+
 
       const labelOf = (key: string, fallback: string) =>
         familyUnits.find(u => u.key === key)?.label || fallback
@@ -68,7 +75,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
       const child = attendingRows.reduce((sum, r) => sum + r.child, 0)
 
       // "식사 안 함"으로 응답한 가정 — 응답은 했으므로 미응답과 반드시 구분합니다.
-      const absentUnits = familyUnits.filter(u => byFamily.get(u.key) && !byFamily.get(u.key).attending)
+      const absentUnits = familyUnits.filter(u => byFamily.get(u.key)?.attending === false)
 
       // 아직 아무 응답도 없는 가정
       const pendingUnits = familyUnits.filter(u => !byFamily.has(u.key))
@@ -278,7 +285,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 text-gray-700">
-              {currentWeekStat.rows.map((row: any, idx: number) => (
+              {currentWeekStat.rows.map((row: { name: string; adult: number; child: number; updater: string }, idx: number) => (
                 <tr key={idx}>
                   <td className="p-2 font-bold text-gray-800">{row.name}</td>
                   <td className="p-2 text-center font-bold text-[#335f87]">{row.adult}명</td>

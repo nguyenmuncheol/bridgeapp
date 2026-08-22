@@ -15,10 +15,31 @@ import { toLocalDateStr, bulletinDateToSortable } from './dateUtils'
 //   error 로 노출하고, 화면은 "불러오지 못했습니다 · 다시 시도"를 보여줍니다.
 //   (빈 상태와 실패 상태를 반드시 구분해서 보여줘야 합니다.)
 // ────────────────────────────────────────────────────────────────
-function throwIfFetchFailed(error: any, what: string): void {
+function throwIfFetchFailed(error: { message?: string } | Error | null | unknown, what: string): void {
   if (error) {
-    throw new Error(`[${what}] 데이터를 불러오지 못했습니다: ${error.message || error}`)
+    const msg = error instanceof Error ? error.message : (error as { message?: string })?.message || String(error)
+    throw new Error(`[${what}] 데이터를 불러오지 못했습니다: ${msg}`)
   }
+}
+
+interface ProfileRow {
+  id: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  role: string | null
+  labri_id?: string
+  duty: string | null
+  family_group_id?: string | null
+  welcomed_at?: string | null
+  family_role?: string | null
+  teach_group?: string | null
+  family_info?: string | null
+  birthday?: string | null
+  avatar_url?: string | null
+  created_at: string
+  signup_requested_at?: string | null
 }
 
 // ==========================================
@@ -28,22 +49,22 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
   const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
   throwIfFetchFailed(error, '성도 명단')
   if (!data) return []
-  return data.map((d: any) => ({
+  return (data as unknown as ProfileRow[]).map(d => ({
     id: d.id,
     name: d.name || '',
     email: d.email || '',
     phone: d.phone || '',
     address: d.address || '',
     role: (d.role || 'PENDING') as Role,
-    labriId: d.labri_id,
+    labriId: d.labri_id || undefined,
     duty: d.duty || '',
-    familyGroupId: d.family_group_id,
+    familyGroupId: d.family_group_id || undefined,
     welcomedAt: d.welcomed_at || undefined,
-    familyRole: d.family_role,
+    familyRole: d.family_role || undefined,
     teachGroup: d.teach_group || '',
-    familyInfo: d.family_info,
-    birthday: d.birthday,
-    avatarUrl: d.avatar_url,
+    familyInfo: d.family_info || undefined,
+    birthday: d.birthday || undefined,
+    avatarUrl: d.avatar_url || undefined,
     createdAt: toLocalDateStr(d.created_at),
     // 🐛 이 매핑이 빠져 있어서, 관리자 화면이 명단을 새로고침할 때마다(로그인 직후 등)
     // 실제로 신청 완료된 사람도 signupRequestedAt이 undefined로 덮어써져
@@ -66,7 +87,7 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   familyGroupId: string
   teachGroup: string
 }>) {
-  const payload: any = {}
+  const payload: Record<string, unknown> = {}
   if (updates.name !== undefined) payload.name = updates.name
   if (updates.phone !== undefined) payload.phone = updates.phone
   if (updates.address !== undefined) payload.address = updates.address
@@ -102,7 +123,7 @@ export async function dbFetchMyRole(userId: string): Promise<Role | null> {
 }
 
 export async function dbApproveUser(userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) {
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     role,
     labri_id: labriId,
     duty,
@@ -209,9 +230,9 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
   if (!data || data.length === 0) return null
 
   // updated_at 내림차순으로 이미 정렬돼 있으므로, 날짜가 같으면 먼저 나온 행(더 최근 수정)이 이깁니다.
-  let best: any = null
+  let best: BulletinRow | null = null
   let bestKey = ''
-  for (const row of data) {
+  for (const row of data as unknown as BulletinRow[]) {
     const key = bulletinDateToSortable(row.date_str)
     if (!key) continue
     if (key > bestKey) {
@@ -219,7 +240,7 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
       best = row
     }
   }
-  if (!best) best = data[0]
+  if (!best) best = (data as unknown as BulletinRow[])[0]
 
   return {
     id: best.id,
@@ -230,6 +251,45 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
     summary: best.summary || '',
     imageUrls: best.image_urls || []
   }
+}
+
+interface BulletinRow {
+  id?: string
+  date_str: string
+  title: string
+  preacher: string
+  passage: string
+  summary?: string | null
+  image_urls?: string[] | null
+  updated_at?: string
+}
+
+interface PostCommentRow {
+  id: string
+  post_id?: string
+  author_id: string
+  author_name: string
+  content: string
+  created_at: string
+}
+
+interface PostRow {
+  id: string
+  author_id: string
+  author_name: string | null
+  title: string
+  content: string
+  category: PostItem['category']
+  created_at: string
+  likes: number | null
+  liked_user_ids: string[] | null
+  is_secret?: boolean
+  is_completed?: boolean
+  is_pinned?: boolean
+  youtube_url?: string | null
+  image_urls: string[] | null
+  tags: string[] | null
+  post_comments?: PostCommentRow[]
 }
 
 /**
@@ -277,7 +337,7 @@ export async function dbUpsertBulletin(bulletin: BulletinData) {
 // ==========================================
 // posts 테이블 한 행을 화면용 PostItem으로 변환하는 공용 매핑 함수.
 // dbFetchPosts(전체 조회)와 dbFetchPostsPage(페이지 단위 조회)가 함께 재사용합니다.
-function mapPostRow(d: any): PostItem {
+function mapPostRow(d: PostRow): PostItem {
   return {
     id: d.id,
     authorId: d.author_id,
@@ -293,15 +353,15 @@ function mapPostRow(d: any): PostItem {
     isSecret: d.is_secret,
     isCompleted: d.is_completed,
     isPinned: d.is_pinned,
-    youtubeUrl: d.youtube_url,
+    youtubeUrl: d.youtube_url || undefined,
     imageUrls: d.image_urls || [],
     tags: d.tags || [],
     // 댓글은 PostgREST가 순서를 보장하지 않으므로 작성순(오래된 것 → 최근)으로 직접 정렬합니다.
     // (정렬 후 날짜만 잘라야 하므로, 원본 타임스탬프로 정렬한 뒤 표시용으로 변환)
     comments: (d.post_comments || [])
       .slice()
-      .sort((a: any, b: any) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
-      .map((c: any) => ({
+      .sort((a: PostCommentRow, b: PostCommentRow) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+      .map((c: PostCommentRow) => ({
         id: c.id,
         authorId: c.author_id,
         authorName: c.author_name,
@@ -325,7 +385,7 @@ export async function dbFetchPosts(category?: string): Promise<PostItem[]> {
   throwIfFetchFailed(error, '게시글')
   if (!data) return []
 
-  return data.map(mapPostRow)
+  return (data as unknown as PostRow[]).map(mapPostRow)
 }
 
 export interface PostsPageResult {
@@ -371,8 +431,8 @@ export async function dbFetchPostsPage(
   throwIfFetchFailed(error, '게시글')
   if (!data) return { items: [], nextCursor: null }
 
-  const items = data.map(mapPostRow)
-  const lastRow: any = data[data.length - 1]
+  const items = (data as unknown as PostRow[]).map(mapPostRow)
+  const lastRow = (data as unknown as PostRow[])[data.length - 1]
   // 이번에 받은 개수가 limit과 같으면 다음 페이지가 더 있을 가능성이 있다고 보고 커서를 내려줌
   const nextCursor = data.length === limit && lastRow?.created_at ? lastRow.created_at : null
 
@@ -393,7 +453,7 @@ export async function dbFetchPostsPage(
 
     if (!pinnedRes.error && pinnedRes.data && pinnedRes.data.length > 0) {
       const alreadyLoaded = new Set(items.map(i => i.id))
-      const missingPinned = pinnedRes.data
+      const missingPinned = (pinnedRes.data as unknown as PostRow[])
         .map(mapPostRow)
         .filter(p => !alreadyLoaded.has(p.id))
       if (missingPinned.length > 0) items.unshift(...missingPinned)
@@ -413,8 +473,8 @@ export async function dbFetchDistinctTags(category: string): Promise<string[]> {
   const { data, error } = await supabase.from('posts').select('tags').eq('category', category)
   throwIfFetchFailed(error, '태그 목록')
   if (!data) return []
-  const tagSet = new Set<string>()
-  data.forEach((d: any) => {
+  const tagSet = new Set<string>();
+  (data as unknown as { tags: string[] | null }[]).forEach(d => {
     (d.tags || []).forEach((t: string) => {
       const clean = (t || '').trim()
       if (clean && clean !== '전체') tagSet.add(clean)
@@ -447,7 +507,7 @@ export async function dbCreatePost(post: Partial<PostItem>) {
 }
 
 export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
-  const payload: any = {}
+  const payload: Record<string, unknown> = {}
   if (updates.title !== undefined) payload.title = updates.title
   if (updates.content !== undefined) payload.content = updates.content
   if (updates.isCompleted !== undefined) payload.is_completed = updates.isCompleted
@@ -518,11 +578,11 @@ export async function dbTogglePostLike(
   postId: string,
   userId: string,
   fallback: { likes: number; likedUserIds: string[] }
-): Promise<{ likes: number; likedUserIds: string[]; error: any }> {
+): Promise<{ likes: number; likedUserIds: string[]; error: Error | { message?: string } | null }> {
   const rpc = await supabase.rpc('toggle_post_like', { p_post_id: postId, p_user_id: userId })
 
   if (!rpc.error && rpc.data) {
-    const row: any = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data
+    const row = (Array.isArray(rpc.data) ? rpc.data[0] : rpc.data) as { likes?: number; liked_user_ids?: string[] } | null
     if (row && typeof row.likes === 'number') {
       invalidateCache('posts:')
       return { likes: row.likes, likedUserIds: row.liked_user_ids || [], error: null }
@@ -579,11 +639,18 @@ export interface ChurchEventItem {
   type: 'sunday' | 'special'
 }
 
+interface ChurchEventRow {
+  id: string
+  date_str: string
+  title: string
+  type: 'sunday' | 'special'
+}
+
 export async function dbFetchChurchEvents(): Promise<ChurchEventItem[]> {
   const { data, error } = await supabase.from('church_events').select('*').order('date_str', { ascending: true })
   throwIfFetchFailed(error, '교회 일정')
   if (!data) return []
-  return data.map((d: any) => ({
+  return (data as unknown as ChurchEventRow[]).map(d => ({
     id: d.id,
     date: d.date_str,
     title: d.title,
@@ -787,6 +854,18 @@ export async function dbMarkWelcomed(userId: string) {
   return { error }
 }
 
+interface NotificationRow {
+  id: string
+  type: NotificationItem['type']
+  title: string | null
+  body: string | null
+  actor_name: string | null
+  post_id?: string | null
+  post_category?: string | null
+  is_read: boolean | null
+  created_at: string | null
+}
+
 export async function dbFetchNotifications(userId: string, limit = 30): Promise<NotificationItem[]> {
   if (!userId || userId === 'guest') return []
   const { data, error } = await supabase
@@ -797,7 +876,7 @@ export async function dbFetchNotifications(userId: string, limit = 30): Promise<
     .limit(limit)
   throwIfFetchFailed(error, '알림')
   if (!data) return []
-  return data.map((n: any) => ({
+  return (data as unknown as NotificationRow[]).map(n => ({
     id: n.id,
     type: n.type,
     title: n.title || '',
@@ -906,6 +985,21 @@ export async function dbDeletePushSubscription(endpoint: string) {
   return { error }
 }
 
+interface MealCouponRow {
+  family_group_id: string
+  family_name: string | null
+  balance: number | null
+}
+
+interface MealCouponHistoryRow {
+  id: string
+  family_group_id: string
+  created_at: string
+  type: 'GRANT' | 'USE' | 'DEDUCT'
+  amount: number
+  note: string | null
+}
+
 export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAccount>> {
   try {
     // 1. 쿠폰 잔액 테이블 조회
@@ -929,13 +1023,9 @@ export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAcc
       console.warn('dbFetchMealCoupons histError (테이블 미생성 가능성):', histError.message)
     }
 
-    // 계정별 이력을 한 번의 순회로 그룹핑 (기존: 계정마다 전체 이력을 filter →
-    // O(계정 수 × 이력 수). 이력이 쌓일수록 계정이 많아질수록 느려지는 구조였음.
-    // 개선: historyList를 한 번만 순회해 family_group_id별로 묶어두고 O(1) 조회.
-    // → 전체 O(계정 수 + 이력 수)로 개선. historyList가 이미 created_at 오름차순
-    // 정렬 상태로 조회되므로, 그룹별 순서도 기존과 동일하게 오름차순 유지됨.
+    // 계정별 이력을 한 번의 순회로 그룹핑
     const histByFamily = new Map<string, MealCouponAccount['history']>()
-    ;(historyList || []).forEach((h: any) => {
+    ;((historyList as unknown as MealCouponHistoryRow[]) || []).forEach(h => {
       const item = {
         id: h.id,
         dateStr: toLocalDateStr(h.created_at),
@@ -951,7 +1041,7 @@ export async function dbFetchMealCoupons(): Promise<Record<string, MealCouponAcc
     })
 
     const result: Record<string, MealCouponAccount> = {}
-    coupons.forEach((c: any) => {
+    ;(coupons as unknown as MealCouponRow[]).forEach(c => {
       result[c.family_group_id] = {
         familyGroupId: c.family_group_id,
         familyName: c.family_name || '가정',
@@ -972,29 +1062,11 @@ export interface CouponUpdateResult {
   balance: number | null
   /** 실제로 반영된 증감량. 잔액이 부족해 일부만 차감된 경우 요청값과 다를 수 있습니다. */
   applied: number
-  error: any
+  error: Error | { message?: string } | null
 }
 
 /**
  * 식권 발급/차감.
- *
- * 🐛 과거 버그 3가지를 한 번에 고칩니다.
- *
- * 1) **실패해도 성공으로 보고했습니다.** select 오류를 받아놓고 한 번도 확인하지 않았고,
- *    update/insert 실패는 console에만 찍고 잔액을 그대로 반환했습니다. 그래서 저장이
- *    실패해도 화면에는 "🎟️ +10장 발급 (잔여: 10장)"이 떴습니다.
- *    특히 select가 실패하면 "이 가정은 계정이 없다"고 오판해서 기존 잔액을 0으로 보고
- *    새 행을 만들어, 8장이던 가정이 1장이 되는 일이 생길 수 있었습니다.
- *
- * 2) **잔액과 내역이 안 맞았습니다.** 잔액은 0에서 멈추는데(Math.max) 내역에는 요청한
- *    양이 그대로 기록돼서, 1장 남은 가정에 -1을 세 번 하면 내역엔 "1장 사용" 3줄이
- *    남고 잔액은 1만 줄었습니다. 나중에 잔액 문의가 오면 내역으로 검증이 안 됩니다.
- *
- * 3) **동시 조작 시 유실.** 두 봉사자가 같은 가정을 동시에 조작하면 나중 사람이
- *    앞사람 것을 덮어썼습니다.
- *
- * → Supabase 함수(RPC) `adjust_meal_coupon` 이 있으면 서버에서 한 번에 처리합니다(권장).
- *   없으면 아래 대체 경로로 동작하되, 이제는 오류를 정확히 돌려주고 잔액/내역도 일치시킵니다.
  */
 export async function dbUpdateMealCoupon(
   familyGroupId: string,
@@ -1012,7 +1084,7 @@ export async function dbUpdateMealCoupon(
     p_note: defaultNote
   })
   if (!rpc.error && rpc.data !== null && rpc.data !== undefined) {
-    const row: any = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data
+    const row = (Array.isArray(rpc.data) ? rpc.data[0] : rpc.data) as { balance?: number; applied?: number } | null
     if (row && typeof row.balance === 'number') {
       invalidateCache('mealCoupons', { exact: true })
       return { balance: row.balance, applied: row.applied ?? delta, error: null }
@@ -1114,12 +1186,6 @@ export async function dbMergeCouponsIntoFamily(
     const mergedBalance = famBalance + singleTotal
 
     // 4. 가족 그룹 쿠폰 행을 **항상 먼저** 만들어 둡니다.
-    //
-    // ⚠️ 순서가 중요합니다: meal_coupon_history.family_group_id 에는
-    // meal_coupons(family_group_id)를 가리키는 외래키가 걸려 있습니다.
-    // 아래 6번에서 내역을 새 가족 ID로 옮기려면 그 행이 **이미 존재해야** 합니다.
-    // (이전 버전은 `if (singleTotal > 0)` 안에서만 행을 만들어서, 잔액이 0인 상태로
-    //  가정을 합치면 내역 이관이 외래키 위반으로 실패했습니다.)
     if (famExists) {
       if (mergedBalance !== famBalance || newFamilyName) {
         const { error: updateError } = await supabase.from('meal_coupons').update({
@@ -1140,11 +1206,6 @@ export async function dbMergeCouponsIntoFamily(
     }
 
     // 5. 기존 개인 쿠폰 내역을 가족 ID로 이관
-    //
-    // 🐛 과거 버그: 여기에 더해 "개인 쿠폰 가정 통합 (N장)"이라는 GRANT 내역을 **새로 추가**했습니다.
-    // 기존 내역도 그대로 옮기면서 합성 기록까지 만들어서, 내역 합계가 실제 잔액의 두 배가 됐습니다.
-    // → 합성 기록은 만들지 않습니다. (통합 시점은 이관된 내역으로 충분히 확인됩니다.
-    //    'MERGE' 같은 새 type 값은 meal_coupon_history_type_check 제약에 걸려 실패합니다.)
     const { error: historyError } = await supabase
       .from('meal_coupon_history')
       .update({ family_group_id: newFamilyGroupId })
@@ -1153,11 +1214,6 @@ export async function dbMergeCouponsIntoFamily(
     if (historyError) throw new Error(`쿠폰 내역 이관 실패: ${historyError.message}`)
 
     // 6. 개인 쿠폰 행 삭제
-    //
-    // 🐛 과거 버그: 이 정리 작업이 `if (singleTotal > 0)` 안에 있어서, 잔액이 0인 상태로
-    // 가정을 합치면 개인 쿠폰 행이 영영 안 지워졌습니다. 그 행은 식권 화면에 "유령 가정"
-    // 카드로 남고, 나중에 거기에 발급된 쿠폰은 아무도 못 봅니다.
-    // → 잔액과 무관하게 항상 정리합니다. (내역을 먼저 옮겼으므로 외래키 위반도 없습니다)
     const { error: deleteError } = await supabase
       .from('meal_coupons')
       .delete()
@@ -1175,14 +1231,6 @@ export async function dbMergeCouponsIntoFamily(
 // ==========================================
 // 8. 출석체크 (attendance_records)
 // ==========================================
-// ==========================================
-// 자녀(교회학교) 출석 — 어른 출석표와 **완전히 분리된 별도 표**입니다.
-//
-// 자녀는 로그인 계정이 없어서 어른 출석표에 넣을 수 없습니다.
-// (어른 출석표는 "계정이 있는 사람"만 넣을 수 있게 되어 있습니다)
-// 그래서 자녀 전용 표를 따로 두고, 부모의 가족현황에 적힌 자녀 id로 구분합니다.
-// ==========================================
-
 export interface ChildAttendanceRow {
   dependent_id: string
   child_name: string
@@ -1198,7 +1246,7 @@ export async function dbFetchChildAttendanceRecords(dateStr?: string) {
   if (dateStr) query = query.eq('date_str', dateStr)
   const { data, error } = await query
   throwIfFetchFailed(error, '자녀 출석 기록')
-  return (data || []) as any[]
+  return (data || []) as unknown as ChildAttendanceRow[]
 }
 
 /** 자녀 출석 기록 한 줄 삭제 (관리자가 "미기록"으로 되돌릴 때) */

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus } from 'lucide-react'
-import { PostItem, UserProfile } from '../../lib/mockData'
+import { UserProfile } from '../../lib/mockData'
 import { dbFetchDistinctTags } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { usePaginatedPosts } from '../../lib/usePaginatedPosts'
@@ -31,20 +31,25 @@ interface SharingTabProps {
 // 행사사진의 태그 필터는 이 컴포넌트가 소유합니다 — 선택된 태그가 곧 서버 조회 조건이라
 // (이미 불러온 사진 안에서 거르는 게 아니라) 여기서 관리해야 페이지네이션과 맞물립니다.
 export default function SharingTab({ currentUser, allUsers = [], openSubTab = '', openToken = 0 }: SharingTabProps) {
-  const [subTab, setSubTab] = useState<'prayer' | 'photo' | 'praise'>('prayer')
+  const [subTab, setSubTab] = useState<'prayer' | 'photo' | 'praise'>(() => {
+    if (openSubTab === 'prayer' || openSubTab === 'photo' || openSubTab === 'praise') return openSubTab
+    return 'prayer'
+  })
+
+  // 알림에서 들어온 경우 그 글이 있는 서브탭을 열어 줍니다 (React 공식 권장 렌더 단계 동기화 패턴).
+  const [prevToken, setPrevToken] = useState(openToken)
+  if (openToken !== prevToken) {
+    setPrevToken(openToken)
+    if (openSubTab === 'prayer' || openSubTab === 'photo' || openSubTab === 'praise') {
+      setSubTab(openSubTab)
+    }
+  }
 
   // 서브탭을 바꿀 때도 화면 맨 위에서 시작합니다(큰 탭과 동일한 규칙).
   const goSubTab = (next: 'prayer' | 'photo' | 'praise') => {
     setSubTab(next)
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
   }
-  // 알림에서 들어온 경우 그 글이 있는 서브탭을 열어 줍니다.
-  useEffect(() => {
-    if (openSubTab === 'prayer' || openSubTab === 'photo' || openSubTab === 'praise') {
-      goSubTab(openSubTab)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openToken, openSubTab])
 
   const isAdmin = currentUser.role === 'ADMIN'
 
@@ -169,8 +174,6 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
         onPraiseCreated={(item) => setPraises(prev => [item, ...prev])}
         onPhotoCreated={(item) => {
           setPhotos(prev => [item, ...prev])
-          // 🐛 과거 버그: 새로 만든 태그가 필터 칩 목록에 바로 안 떴습니다.
-          // (캐시를 stale로만 표시할 뿐, 이미 떠 있는 화면은 갱신하지 않기 때문)
           refetchTags().catch(() => {})
         }}
       />

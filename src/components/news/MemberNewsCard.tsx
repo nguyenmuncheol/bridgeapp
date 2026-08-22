@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { Heart, Edit2, Trash2 } from 'lucide-react'
 import { UserProfile, PostItem } from '../../lib/mockData'
 import Avatar from './Avatar'

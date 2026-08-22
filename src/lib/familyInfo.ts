@@ -77,11 +77,11 @@ export function parseFamilyInfo(raw?: string | null): FamilyInfoData {
       return {
         note: typeof parsed.note === 'string' ? parsed.note : '',
         children: parsed.children
-          .filter((c: any) => c && typeof c.name === 'string' && c.name.trim())
-          .map((c: any) => ({
-            id: c.id || `child_${Math.random().toString(36).slice(2, 9)}`,
-            name: c.name.trim(),
-            birthday: c.birthday || '',
+          .filter((c: unknown): c is Record<string, unknown> => typeof c === 'object' && c !== null && typeof (c as Record<string, unknown>).name === 'string' && !!((c as Record<string, unknown>).name as string).trim())
+          .map((c: Record<string, unknown>) => ({
+            id: typeof c.id === 'string' && c.id ? c.id : `child_${Math.random().toString(36).slice(2, 9)}`,
+            name: ((c.name as string) || '').trim(),
+            birthday: typeof c.birthday === 'string' ? c.birthday : '',
             labriId: typeof c.labriId === 'string' ? c.labriId : '',
             avatarUrl: typeof c.avatarUrl === 'string' ? c.avatarUrl : ''
           })),

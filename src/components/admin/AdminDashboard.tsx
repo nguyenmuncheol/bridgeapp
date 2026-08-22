@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { UserProfile, Role } from '../../lib/mockData'
 import { dbFetchAttendanceRecords } from '../../lib/db'
@@ -16,8 +16,8 @@ interface AdminDashboardProps {
   currentUser?: UserProfile
   allUsers: UserProfile[]
   // 저장 실패를 화면에서 구분해 보여줄 수 있도록 결과를 돌려받습니다.
-  onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) => Promise<{ error: any }>
-  onRejectUser: (userId: string) => Promise<{ error: any }>
+  onApproveUser: (userId: string, labriId: string, role: Role, duty: string, familyInfo: string, familyGroupId?: string, familyRole?: string) => Promise<{ error: { message?: string } | null }>
+  onRejectUser: (userId: string) => Promise<{ error: { message?: string } | null }>
   onUpdateUsers?: React.Dispatch<React.SetStateAction<UserProfile[]>>
   onBack: () => void
 }
@@ -40,34 +40,29 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
   }
 
   // ── 출석 데이터: "성도" 탭(장기결석자 정렬)과 "출석" 탭이 함께 사용하므로 이 상위 컴포넌트에서 관리 ──
-  const [dbAttendanceData, setDbAttendanceData] = useState<Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]>>({})
-
-  // 전체 출석 이력을 캐시로 가져옵니다. 예전에는 관리자 탭을 전환할 때마다("식사"/"쿠폰" 탭으로만
-  // 옮겨도) 매번 전체 이력을 다시 조회했는데, 캐시 도입으로 짧은 시간 내 탭 전환은 재조회를 건너뜁니다.
+  // 전체 출석 이력을 캐시로 가져옵니다.
   const { data: rawAttendanceRecords, refetch: loadAttendanceStats } = useCachedQuery(
     'attendanceRecords:all',
     () => dbFetchAttendanceRecords()
   )
 
-  useEffect(() => {
-    if (rawAttendanceRecords && rawAttendanceRecords.length > 0) {
-      const grouped: Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]> = {}
-      rawAttendanceRecords.forEach(r => {
-        if (!grouped[r.date_str]) grouped[r.date_str] = []
-        grouped[r.date_str].push({
-          userId: r.user_id,
-          status: r.status,
-          note: r.note || ''
-        })
+  const dbAttendanceData = useMemo(() => {
+    const grouped: Record<string, { userId: string; status: 'ATTEND' | 'ABSENT'; note: string }[]> = {}
+    if (!rawAttendanceRecords || rawAttendanceRecords.length === 0) return grouped
+    rawAttendanceRecords.forEach(r => {
+      if (!grouped[r.date_str]) grouped[r.date_str] = []
+      grouped[r.date_str].push({
+        userId: r.user_id,
+        status: r.status,
+        note: r.note || ''
       })
-      setDbAttendanceData(grouped)
-    } else {
-      setDbAttendanceData({})
-    }
+    })
+    return grouped
   }, [rawAttendanceRecords])
 
   // 출석기록이 존재하는 모든 주일 날짜(월 구분 없이 전체 이력, 최신순) — 연속 결석 주수 계산용
   const attendanceDateKeysDesc = useMemo(() => Object.keys(dbAttendanceData).sort().reverse(), [dbAttendanceData])
+
 
   // fromDate(포함)부터 과거로 거슬러 올라가며 연속으로 결석(ABSENT)한 주 수를 셉니다.
   // 출석(ATTEND)을 만나거나 그 주에 기록 자체가 없으면(미기록) 거기서 멈춥니다.

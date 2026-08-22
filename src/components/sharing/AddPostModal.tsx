@@ -138,10 +138,11 @@ export default function AddPostModal({
               'photos',
               (completed, total) => setUploadProgress({ current: completed, total, isUploading: true })
             )
-          } catch (err: any) {
+          } catch (err: unknown) {
             // 🐛 과거 버그: 업로드가 실패해도 조용히 base64 글자 덩어리를 넣어 저장했습니다.
             setUploadProgress(null)
-            setErrorMsg(err?.message || '사진 업로드에 실패했습니다.')
+            const msg = (err as { message?: string })?.message || '사진 업로드에 실패했습니다.'
+            setErrorMsg(msg)
             return
           }
           setUploadProgress(null)

@@ -84,7 +84,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
   // 좋아요 — 아멘/축하응원과 같은 방식입니다.
   // 카드가 지금 화면에 보이는 값을 넘겨주고, 서버가 돌려준 값으로 마지막에 맞춥니다.
   // (setState 안에서 값을 읽으면 React가 즉시 실행하지 않아 저장이 통째로 건너뛰어집니다)
-  const handleLike = async (e: any, id: string, current: { likes: number; likedUserIds: string[] }) => {
+  const handleLike = async (e: React.MouseEvent, id: string, current: { likes: number; likedUserIds: string[] }) => {
     e.stopPropagation()
     const before = { likes: current.likes, likedUserIds: current.likedUserIds || [] }
     const liked = before.likedUserIds.includes(currentUser.id)
@@ -150,6 +150,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   return (
     <div className="space-y-4">
+      {toastMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
+          {toastMsg}
+        </div>
+      )}
       {/* error 는 어떤 형태로든 올 수 있으므로(unknown) 반드시 참/거짓으로 바꿔서 씁니다.
           그냥 {error && ...} 로 쓰면 error 자체를 화면에 그리려는 코드가 되어 빌드가 실패합니다. */}
       {!!error && (

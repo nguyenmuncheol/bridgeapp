@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { UserProfile, isApprovedMember } from '../../lib/mockData'
 import { buildDependentEntries } from '../../lib/familyInfo'
 import MemberNewsBoard from './MemberNewsBoard'
@@ -22,25 +22,33 @@ interface NewsTabProps {
 // 탭 전환 시 상태(작성 중인 글, 펼친 항목 등)가 유지되도록 언마운트 대신 CSS로 숨김 처리합니다.
 export default function NewsTab({ currentUser, allUsers, openSubTab = '', openToken = 0 }: NewsTabProps) {
   // 우리소식을 열면 교회일정이 먼저 보이게 합니다(가장 자주 확인하는 화면).
-  const [subTab, setSubTab] = useState<'memberNews' | 'schedule' | 'members'>('schedule')
+  const [subTab, setSubTab] = useState<'memberNews' | 'schedule' | 'members'>(() => {
+    if (openSubTab === 'memberNews' || openSubTab === 'schedule' || openSubTab === 'members') return openSubTab
+    return 'schedule'
+  })
+
+  // 알림에서 들어온 경우 그 글이 있는 서브탭을 열어 줍니다 (React 공식 권장 렌더 단계 동기화 패턴).
+  const [prevToken, setPrevToken] = useState(openToken)
+  if (openToken !== prevToken) {
+    setPrevToken(openToken)
+    if (openSubTab === 'memberNews' || openSubTab === 'schedule' || openSubTab === 'members') {
+      setSubTab(openSubTab)
+    }
+  }
 
   // 서브탭을 바꿀 때도 화면 맨 위에서 시작합니다(큰 탭과 동일한 규칙).
   const goSubTab = (next: 'memberNews' | 'schedule' | 'members') => {
     setSubTab(next)
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
   }
-  // 알림에서 들어온 경우 그 글이 있는 서브탭을 열어 줍니다.
-  useEffect(() => {
-    if (openSubTab === 'memberNews' || openSubTab === 'schedule' || openSubTab === 'members') {
-      goSubTab(openSubTab)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openToken, openSubTab])
 
   const isLeaderOrAdmin = currentUser.role === 'LEADER' || currentUser.role === 'ADMIN'
 
   // 주소록/일정용 대상: 승인대기자·쿠폰관리자 제외 + 미가입 자녀 등 가상 항목 포함 (생일 달력에도 사용)
-  const members = allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON')
+  const members = useMemo(
+    () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON'),
+    [allUsers]
+  )
   const addressBookEntries = useMemo(() => [...members, ...buildDependentEntries(members)], [members])
 
   return (

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Edit2, X } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
-import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance } from '../../lib/db'
+import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, ChildAttendanceRow } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
@@ -188,13 +188,13 @@ export default function StatsTab({
   )
 
   const childStats = useMemo(() => {
-    const inRange = (childRecords || []).filter((r: any) => {
+    const inRange = (childRecords || []).filter((r: ChildAttendanceRow) => {
       const d = String(r.date_str || '')
       return d >= safeStart && d <= safeEnd
     })
     const rows = CHILD_ATTENDANCE_GROUPS.map(group => {
-      const list = inRange.filter((r: any) => r.labri_id === group)
-      const attend = list.filter((r: any) => r.status === 'ATTEND').length
+      const list = inRange.filter((r: ChildAttendanceRow) => r.labri_id === group)
+      const attend = list.filter((r: ChildAttendanceRow) => r.status === 'ATTEND').length
       return { label: group, attend, total: list.length }
     }).filter(r => r.total > 0)
     return {
@@ -206,8 +206,8 @@ export default function StatsTab({
 
   // 선택한 주일의 교회학교 명단 (부서순 → 이름순, 성인 명단과 같은 구성)
   const childRosterRows = useMemo(() => {
-    const byId = new Map<string, any>()
-    ;(childRecords || []).forEach((r: any) => {
+    const byId = new Map<string, ChildAttendanceRow>()
+    ;(childRecords || []).forEach((r: ChildAttendanceRow) => {
       if (String(r.date_str) === selectedStatsDate) byId.set(String(r.dependent_id), r)
     })
     const order = new Map<string, number>(CHILD_ATTENDANCE_GROUPS.map((g, i) => [g as string, i]))
@@ -756,7 +756,7 @@ export default function StatsTab({
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setEditingAttendanceUser(prev => prev ? { ...prev, status: opt.id as any } : null)}
+                    onClick={() => setEditingAttendanceUser(prev => prev ? { ...prev, status: opt.id as 'ATTEND' | 'ABSENT' | 'NONE' } : null)}
                     className={`py-2 rounded-xl text-[12px] font-bold transition-all border ${
                       editingAttendanceUser.status === opt.id
                         ? `${opt.bg} border-transparent shadow-xs scale-102`

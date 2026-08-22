@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
@@ -14,7 +14,7 @@ import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface HomeTabProps {
   currentUser: UserProfile
-  allUsers: UserProfile[]
+  allUsers?: UserProfile[]
   isGuest: boolean
 }
 
@@ -24,7 +24,7 @@ const CHURCH_INFO = {
   address: '미딩 골든펠리스 지하1층 달팽이카페(K-Mart안쪽)',
 }
 
-export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps) {
+export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   const [showChurchGuideModal, setShowChurchGuideModal] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [copied, setCopied] = useState(false)
@@ -32,14 +32,24 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   // 향후 1~2주 일요일 날짜 동적 계산
   const upcomingSundays = useMemo(() => getUpcomingSundays(2), [])
 
+  // Supabase DB 주보 및 공지사항 로드 (다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용)
+  const { data: latestBulletin } = useCachedQuery('bulletin:latest', () => dbFetchLatestBulletin())
+  const { data: noticePosts } = useCachedQuery('posts:NOTICE', () => dbFetchPosts('NOTICE'))
+
   // 주보 상태 (imageUrls 배열 기반)
-  // 🐛 과거 버그: 개발용 예시 데이터(INITIAL_BULLETIN)로 초기화되어 있었습니다.
-  // 주보를 아직 한 번도 안 올렸거나 조회에 실패하면, 홈 화면에 실제로 존재하지 않는
-  // "김목사" 목사님의 8/9 설교와 외국 스톡 사진이 떴습니다. 로그인 안 한 방문자에게도요.
-  // → 데이터가 없으면 null로 두고 "아직 등록된 주보가 없습니다"를 보여줍니다.
-  const [bulletin, setBulletin] = useState<{
+  const [bulletinOverride, setBulletinOverride] = useState<{
     date: string; title: string; preacher: string; passage: string; summary: string; imageUrls: string[]
   } | null>(null)
+
+  const bulletin = bulletinOverride ?? (latestBulletin ? {
+    date: latestBulletin.date,
+    title: latestBulletin.title,
+    preacher: latestBulletin.preacher,
+    passage: latestBulletin.passage,
+    summary: latestBulletin.summary,
+    imageUrls: latestBulletin.imageUrls
+  } : null)
+
   const [showBulletinModal, setShowBulletinModal] = useState(false)
   useModalDismiss(showBulletinModal, () => setShowBulletinModal(false))
   const [activeBulletinImgIdx, setActiveBulletinImgIdx] = useState(0)
@@ -58,7 +68,9 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 공지 상태
-  const [notices, setNotices] = useState<PostItem[]>([])
+  const [noticeOverrides, setNoticeOverrides] = useState<PostItem[] | null>(null)
+  const notices = useMemo(() => noticeOverrides ?? (noticePosts || []), [noticeOverrides, noticePosts])
+
   const [showNoticeCreateModal, setShowNoticeCreateModal] = useState(false)
   useModalDismiss(showNoticeCreateModal, () => setShowNoticeCreateModal(false))
   const [selectedNoticeModal, setSelectedNoticeModal] = useState<PostItem | null>(null)
@@ -68,33 +80,6 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
   // 작성 모달을 수정 모달로도 겸용합니다. null이면 새 글 작성, 값이 있으면 그 공지 수정.
   const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null)
   const [isSavingNotice, setIsSavingNotice] = useState(false)
-
-  // Supabase DB 주보 및 공지사항 로드 (다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용)
-  const { data: latestBulletin } = useCachedQuery('bulletin:latest', () => dbFetchLatestBulletin())
-  const { data: noticePosts } = useCachedQuery('posts:NOTICE', () => dbFetchPosts('NOTICE'))
-
-  useEffect(() => {
-    if (!latestBulletin) return
-    setBulletin({
-      date: latestBulletin.date,
-      title: latestBulletin.title,
-      preacher: latestBulletin.preacher,
-      passage: latestBulletin.passage,
-      summary: latestBulletin.summary,
-      imageUrls: latestBulletin.imageUrls
-    })
-    // 구버전("8/17(일)")으로 저장된 값도 신형('YYYY-MM-DD')으로 바꿔서 편집칸에 넣습니다.
-    setEditBulletinDate(bulletinDateToSortable(latestBulletin.date) || latestBulletin.date)
-    setEditBulletinTitle(latestBulletin.title)
-    setEditBulletinPassage(latestBulletin.passage)
-    setEditBulletinPreacher(latestBulletin.preacher)
-    setEditBulletinSummary(latestBulletin.summary)
-    setEditBulletinImages(latestBulletin.imageUrls)
-  }, [latestBulletin])
-
-  useEffect(() => {
-    if (noticePosts && noticePosts.length > 0) setNotices(noticePosts)
-  }, [noticePosts])
 
   const showToast = (msg: string, duration = 1000) => {
     setToastMsg(msg)
@@ -111,10 +96,9 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
       const uploadedUrls = await uploadMultipleImagesToStorage(selectedFiles, 'bulletins')
       setEditBulletinImages(uploadedUrls)
       showToast('✅ 주보 이미지가 업로드되었습니다!', 2500)
-    } catch (err: any) {
-      // 🐛 과거 버그: 업로드가 실패해도 조용히 "이미지를 글자로 바꿔" 넣어버려서
-      // DB에 수 MB짜리 덩어리가 저장되고, 사용자는 실패 사실도 몰랐습니다.
-      showToast(`⚠️ ${err?.message || '이미지 업로드에 실패했습니다.'}`, 4000)
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || '이미지 업로드에 실패했습니다.'
+      showToast(`⚠️ ${msg}`, 4000)
     } finally {
       // 같은 파일을 다시 선택할 수 있도록 초기화
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -139,14 +123,12 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
     const res = await dbUpsertBulletin(newBul)
     setIsSavingBulletin(false)
 
-    // 🐛 과거 버그: 저장 결과를 확인하지 않아, 실패해도 화면만 바뀌고
-    // "✅ 저장되었습니다"가 떴습니다. 새로고침하면 원래대로 돌아갑니다.
     if (res.error) {
       showToast(`⚠️ 저장하지 못했습니다: ${res.error.message || ''}`, 4000)
       return
     }
 
-    setBulletin(newBul)
+    setBulletinOverride(newBul)
     setActiveBulletinImgIdx(0)
     setShowBulletinEditModal(false)
     showToast('✅ 주보가 저장되었습니다!', 2500)
@@ -162,7 +144,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
       showToast(`⚠️ 삭제하지 못했습니다: ${res.error.message || ''}`, 4000)
       return
     }
-    setNotices(prev => prev.filter(n => n.id !== noticeId))
+    setNoticeOverrides((noticeOverrides ?? (noticePosts || [])).filter(n => n.id !== noticeId))
     setSelectedNoticeModal(null)
     showToast('공지가 삭제되었습니다.', 2500)
   }
@@ -199,7 +181,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
       createdAt: todayLocalDateStr(),
       likes: 0,
     }
-    setNotices(prev => [newNotice, ...prev])
+    setNoticeOverrides([newNotice, ...(noticeOverrides ?? (noticePosts || []))])
     setNewNoticeTitle('')
     setNewNoticeContent('')
     setShowNoticeCreateModal(false)
@@ -222,7 +204,7 @@ export default function HomeTab({ currentUser, allUsers, isGuest }: HomeTabProps
       showToast(`⚠️ 저장하지 못했습니다: ${error.message || ''}`, 4000)
       return
     }
-    setNotices(prev => prev.map(n => n.id === editingNoticeId
+    setNoticeOverrides((noticeOverrides ?? (noticePosts || [])).map(n => n.id === editingNoticeId
       ? { ...n, title: newNoticeTitle.trim(), content: newNoticeContent.trim() }
       : n
     ))

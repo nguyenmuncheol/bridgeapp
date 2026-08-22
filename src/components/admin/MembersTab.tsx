@@ -59,8 +59,9 @@ export default function MembersTab({
       const uploadedUrl = await uploadImageToStorage(file, 'avatars')
       setEditChildren(prev => prev.map(c => c.id === childId ? { ...c, avatarUrl: uploadedUrl } : c))
       showToast('✅ 자녀 사진이 업로드되었습니다!')
-    } catch (err: any) {
-      showToast(`⚠️ ${err?.message || '사진 업로드에 실패했습니다.'}`)
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || '사진 업로드에 실패했습니다.'
+      showToast(`⚠️ ${msg}`)
     } finally {
       setIsUploadingChildPhoto(false)
       setPhotoChildId('')
@@ -225,9 +226,10 @@ export default function MembersTab({
       })()
       try {
         await dbMergeCouponsIntoFamily(familyMemberIds, resolvedFid, newFamilyName)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('쿠폰 병합 실패:', err)
-        alert(`가족 연결은 완료되었으나, 개인 쿠폰 통합 중 오류가 발생했습니다: ${err?.message || err}`)
+        const msg = (err as { message?: string })?.message || String(err)
+        alert(`가족 연결은 완료되었으나, 개인 쿠폰 통합 중 오류가 발생했습니다: ${msg}`)
       }
 
       // 로컬 상태 동기화
