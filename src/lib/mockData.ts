@@ -63,6 +63,14 @@ export interface UserProfile {
   childLabriId?: string
   /** 선생님(TEACHER)이 담당하는 자녀 그룹. 비워두면 모든 자녀 그룹 담당입니다. */
   teachGroup?: string
+  /** 최근 접속 및 활동 일시 (ISO 문자열) */
+  lastActiveAt?: string
+  /** 홈화면 앱(PWA Standalone)으로 실행 중인지 */
+  isPwa?: boolean
+  /** 기기 플랫폼 (iOS, Android, Windows, Mac 등) */
+  devicePlatform?: string
+  /** 브라우저 이름 (Safari, Chrome, Samsung Internet 등) */
+  browserName?: string
 }
 
 /**

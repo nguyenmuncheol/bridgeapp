@@ -40,6 +40,10 @@ interface ProfileRow {
   avatar_url?: string | null
   created_at: string
   signup_requested_at?: string | null
+  last_active_at?: string | null
+  is_pwa?: boolean | null
+  device_platform?: string | null
+  browser_name?: string | null
 }
 
 // ==========================================
@@ -70,6 +74,10 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     // 실제로 신청 완료된 사람도 signupRequestedAt이 undefined로 덮어써져
     // 승인 대기 목록에서 통째로 사라졌습니다.
     signupRequestedAt: d.signup_requested_at || undefined,
+    lastActiveAt: d.last_active_at || undefined,
+    isPwa: d.is_pwa === true,
+    devicePlatform: d.device_platform || undefined,
+    browserName: d.browser_name || undefined,
   }))
 }
 
@@ -1374,9 +1382,82 @@ export async function dbSaveAttendanceRecords(records: {
     .eq('date_str', dateStr)
     .in('user_id', userIds)
 
-  if (deleteError) return { error: deleteError }
-
   const insertRes = await supabase.from('attendance_records').insert(payload)
   if (!insertRes.error) invalidateCache('attendanceRecords:')
   return insertRes
+}
+
+// ==========================================
+// 10. 이용 현황 분석 (Analytics)
+// ==========================================
+export interface PushSubscriptionInfo {
+  userId: string
+  deviceLabel?: string
+  createdAt: string
+}
+
+export async function dbFetchAllPushSubscriptions(): Promise<PushSubscriptionInfo[]> {
+  const { data, error } = await supabase.from('push_subscriptions').select('user_id, device_label, created_at')
+  if (error || !data) return []
+  return data.map((d: { user_id: string; device_label?: string | null; created_at: string }) => ({
+    userId: d.user_id,
+    deviceLabel: d.device_label || undefined,
+    createdAt: d.created_at,
+  }))
+}
+
+export interface AccessLogItem {
+  userId: string
+  hourOfDay: number
+  dayOfWeek: number
+  isPwa: boolean
+  devicePlatform?: string
+  accessedAt: string
+}
+
+export async function dbFetchUserAccessLogs(): Promise<AccessLogItem[]> {
+  const { data, error } = await supabase
+    .from('user_access_logs')
+    .select('user_id, hour_of_day, day_of_week, is_pwa, device_platform, accessed_at')
+    .order('accessed_at', { ascending: false })
+    .limit(1000)
+
+  if (error || !data) return []
+  return data.map((d: { user_id: string; hour_of_day: number; day_of_week: number; is_pwa: boolean; device_platform?: string | null; accessed_at: string }) => ({
+    userId: d.user_id,
+    hourOfDay: d.hour_of_day,
+    dayOfWeek: d.day_of_week,
+    isPwa: d.is_pwa,
+    devicePlatform: d.device_platform || undefined,
+    accessedAt: d.accessed_at,
+  }))
+}
+
+export async function dbFetchMemberActivityCounts(): Promise<{
+  postsByAuthor: Record<string, number>
+  commentsByAuthor: Record<string, number>
+}> {
+  const postsRes = await supabase.from('posts').select('author_id')
+  const commentsRes = await supabase.from('post_comments').select('author_id')
+
+  const postsByAuthor: Record<string, number> = {}
+  const commentsByAuthor: Record<string, number> = {}
+
+  if (postsRes.data) {
+    postsRes.data.forEach((p: { author_id?: string | null }) => {
+      if (p.author_id) {
+        postsByAuthor[p.author_id] = (postsByAuthor[p.author_id] || 0) + 1
+      }
+    })
+  }
+
+  if (commentsRes.data) {
+    commentsRes.data.forEach((c: { author_id?: string | null }) => {
+      if (c.author_id) {
+        commentsByAuthor[c.author_id] = (commentsByAuthor[c.author_id] || 0) + 1
+      }
+    })
+  }
+
+  return { postsByAuthor, commentsByAuthor }
 }

@@ -22,6 +22,7 @@ import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
 import { isRunningStandalone } from '../src/lib/pwaInstall'
+import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw } from 'lucide-react'
 
@@ -164,6 +165,9 @@ export default function Home() {
       })
       setCurrentUserId(spUser.id)
       setShowAuthModal(false)
+
+      // 성도 접속 환경 및 최근 활동 일시 비동기 기록 (15분 Throttled)
+      trackUserActivity(spUser.id)
 
       // 연락처 미입력 = 추가정보를 아직 입력하지 않은 신규 성도 → 세부정보 입력 모달 강제 팝업
       if (!profileData.phone) {
