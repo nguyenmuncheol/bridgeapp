@@ -1,13 +1,21 @@
-﻿// ── 교회 공식 계정 상수 (DB에 실제 계정 없음 — UI 표시 전용) ──
+﻿// ── 교회 공식 계정 / 명의 관련 상수 및 헬퍼 ──
 //
-// 관리자가 "교회 이름으로 올리기"를 선택하면 authorId/authorName/authorAvatar에
-// 아래 값이 설정됩니다. allUsers에서 이 ID를 찾으려 할 때 없어도 Avatar 컴포넌트가
-// 교회 로고를 직접 렌더링하므로 문제없습니다.
+// DB의 posts.author_id 컬럼은 UUID 타입이므로 실제 작성자(관리자)의 currentUser.id가 저장되어야
+// 외래키 및 RLS 정책을 정상 통과합니다.
 //
-// 수정/삭제 권한: authorId === CHURCH_AUTHOR_ID 일 때는 isAdmin 조건으로만 체크합니다.
-// (이미 모든 게시판에 `post.authorId === currentUser.id || isAdmin` 형태로 되어 있어
-//  별도 추가 작업 없이 관리자가 수정/삭제 가능합니다.)
+// 관리자가 "더브릿지 교회 이름으로 올리기"를 선택하면:
+// - authorId: currentUser.id (실제 관리자 UUID)
+// - authorName: CHURCH_AUTHOR_NAME ('더브릿지 교회')
+//
+// UI(아바타, 카드, 목록)에서는 isChurchAuthor()로 감지하여 교회 로고와 이름을 일관되게 표시합니다.
 
 export const CHURCH_AUTHOR_ID = 'CHURCH'
 export const CHURCH_AUTHOR_NAME = '더브릿지 교회'
 export const CHURCH_AVATAR_URL = '/logo-square.png'
+
+/** 글이나 댓글의 작성자가 교회 공식 명의인지 확인 */
+export function isChurchAuthor(authorId?: string | null, authorName?: string | null): boolean {
+  if (authorId === CHURCH_AUTHOR_ID) return true
+  const name = (authorName || '').trim()
+  return name === CHURCH_AUTHOR_NAME || name === '더브릿지교회' || name === '더브릿지 교회'
+}

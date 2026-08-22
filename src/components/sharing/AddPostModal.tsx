@@ -71,8 +71,8 @@ export default function AddPostModal({
     resetAndClose()
   }
 
-  // ── 교회 이름으로 올리기: 저자 정보 결정 ──
-  const resolvedAuthorId   = postAsChurch ? CHURCH_AUTHOR_ID   : currentUser.id
+  // ── 교회 이름으로 올리기: 저자 정보 결정 (DB author_id는 UUID이므로 currentUser.id 유지) ──
+  const resolvedAuthorId   = currentUser.id
   const resolvedAuthorName = postAsChurch ? CHURCH_AUTHOR_NAME : getUserDisplayName(currentUser)
   const resolvedAuthorAvatar = postAsChurch ? CHURCH_AVATAR_URL : undefined
 

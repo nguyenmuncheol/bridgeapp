@@ -14,6 +14,7 @@ import { dbAddComment } from '../../lib/db'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 import Avatar from '../news/Avatar'
+import { isChurchAuthor, CHURCH_AUTHOR_NAME } from '../../lib/churchIdentity'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -63,6 +64,14 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   // 🐛 과거 문제: 행사사진만 누가 올렸는지 안 보여서, 사진에 문제가 있어도
   //    누구에게 물어봐야 할지 알 수 없었습니다.
   const renderAuthor = (authorId?: string, authorName?: string, size = 'w-7 h-7 text-2xs') => {
+    if (isChurchAuthor(authorId, authorName)) {
+      return (
+        <span className="flex items-center gap-1 min-w-0">
+          <Avatar allUsers={allUsers} authorId={authorId || ''} authorName={CHURCH_AUTHOR_NAME} size={size} />
+          <span className="truncate font-semibold">{CHURCH_AUTHOR_NAME}</span>
+        </span>
+      )
+    }
     const user = allUsers.find(u => u.id === authorId || u.name === authorName)
     const displayName = user?.name || authorName || '성도'
     return (

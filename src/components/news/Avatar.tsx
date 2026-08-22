@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { UserProfile, getInitials } from '../../lib/mockData'
-import { CHURCH_AUTHOR_ID, CHURCH_AVATAR_URL, CHURCH_AUTHOR_NAME } from '../../lib/churchIdentity'
+import { isChurchAuthor, CHURCH_AVATAR_URL, CHURCH_AUTHOR_NAME } from '../../lib/churchIdentity'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 
 interface AvatarProps {
@@ -16,8 +16,8 @@ interface AvatarProps {
 export default function Avatar({ allUsers, authorId, authorName, size = 'w-8 h-8 text-2xs' }: AvatarProps) {
   const [showLightbox, setShowLightbox] = useState(false)
 
-  // ── 교회 공식 계정: allUsers에 없으므로 교회 로고를 직접 렌더링합니다.
-  if (authorId === CHURCH_AUTHOR_ID) {
+  // ── 교회 공식 명의: 교회 로고를 직접 렌더링합니다.
+  if (isChurchAuthor(authorId, authorName)) {
     return (
       <>
         <div

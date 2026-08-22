@@ -103,8 +103,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
       return
     }
 
-    // 교회 이름으로 올리기 여부에 따라 저자 정보 결정
-    const authorId   = postAsChurch ? CHURCH_AUTHOR_ID   : currentUser.id
+    // 교회 이름으로 올리기 여부에 따라 저자 정보 결정 (DB author_id는 UUID이므로 currentUser.id 유지)
+    const authorId   = currentUser.id
     const authorName = postAsChurch ? CHURCH_AUTHOR_NAME : getUserDisplayName(currentUser)
     const authorAvatar = postAsChurch ? CHURCH_AVATAR_URL : undefined
 
