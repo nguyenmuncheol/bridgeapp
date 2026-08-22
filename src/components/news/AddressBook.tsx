@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
 import { buildFamilyStatusText, getChildGroupLabel, FAMILY_ROLE_ORDER } from '../../lib/familyInfo'
-import { formatBirthdayDisplay, calculateAge } from '../../lib/dateUtils'
+import { formatBirthdayMonthDayOnly, calculateAge } from '../../lib/dateUtils'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 
@@ -139,10 +139,21 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       })
     }
 
-    // ② "전체" 필터: 목사님 → 사모님 부부를 반드시 이 순서로 최상단에 고정, 나머지는 나이순(부부는 묶어서)
+    // ② "전체" 필터: 담임목사님(정제호) → 사모님(임혜영) 부부를 최상단에 고정, 나머지는 나이순(부부는 묶어서)
     if (addressFilter === '전체') {
-      const pastor = filtered.filter(m => !m.isDependent && m.duty === '목사')
-      const pastorWife = filtered.filter(m => !m.isDependent && m.duty === '사모')
+      const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
+      const isPastorsWife = (m: UserProfile) => !m.isDependent && (m.name === '임혜영' || m.duty?.includes('사모'))
+
+      const pastor = filtered.filter(isSeniorPastor).sort((a, b) => {
+        if (a.name === '정제호') return -1
+        if (b.name === '정제호') return 1
+        return 0
+      })
+      const pastorWife = filtered.filter(isPastorsWife).sort((a, b) => {
+        if (a.name === '임혜영') return -1
+        if (b.name === '임혜영') return 1
+        return 0
+      })
       const pinnedAdults = [...pastor, ...pastorWife]
       const pinnedIds = new Set(pinnedAdults.map(m => m.id))
       const claimed = new Set<string>()
@@ -156,12 +167,15 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       return [...pinnedBlock, ...restSorted, ...orphanKids]
     }
 
-    // ③ 라브리1/2/3/미정 필터: 관리자 또는 라브리리더 부부를 최상단에 고정
-    //    (리더가 있으면 리더 우선, 리더와 관리자가 함께 있으면 관리자는 일반 성도처럼 취급)
-    //    나머지는 나이순(부부는 같은 필터 안에 함께 있을 때만 묶음 — 라브리가 다르면 억지로 묶지 않음)
+    // ③ 라브리1/2/3/미정 필터:
+    //    1. 해당 라브리 리더(LEADER) 부부 최상단 고정
+    //    2. 리더가 없으면 목사님(정제호) 부부 최상단 고정
+    //    (Tester 등 일반 관리자/성도는 나이순으로 자연스럽게 배치)
     if (LABRI_FILTER_KEYS.includes(addressFilter)) {
+      const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
       const leaders = filtered.filter(m => !m.isDependent && m.role === 'LEADER')
-      const pinnedBase = leaders.length > 0 ? leaders : filtered.filter(m => !m.isDependent && m.role === 'ADMIN')
+      const pastors = filtered.filter(isSeniorPastor)
+      const pinnedBase = leaders.length > 0 ? leaders : pastors
 
       const pinnedIds = new Set<string>()
       const pinnedBlock: UserProfile[] = []
@@ -295,7 +309,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                 {member.isDependent ? (
                   <>
                     <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
+                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
                   </>
                 ) : (
                   <>
@@ -306,7 +320,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                         <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
                       </div>
                     )}
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayDisplay(member.birthday)}</span></div>}
+                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
                     {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
                   </>
                 )}

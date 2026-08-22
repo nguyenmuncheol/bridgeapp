@@ -253,6 +253,14 @@ export function formatBirthdayDisplay(raw?: string | null): string {
     : `${parsed.month}월 ${parsed.day}일`
 }
 
+/** 화면 표시용: 생년(연도)을 제외한 "9월 9일" 형태 (주소록 생년 비공개용) */
+export function formatBirthdayMonthDayOnly(raw?: string | null): string {
+  if (!raw) return ''
+  const parsed = parseBirthdayFlexible(raw)
+  if (!parsed) return raw
+  return `${parsed.month}월 ${parsed.day}일`
+}
+
 // 달력/이달의 생일 매칭용: "MM-DD" 정규화. 파싱 실패 시 null.
 export function getBirthdayMonthDay(raw?: string | null): string | null {
   const parsed = parseBirthdayFlexible(raw)
