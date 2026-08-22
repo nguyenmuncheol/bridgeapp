@@ -10,7 +10,7 @@ import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
 import { openImageViewer } from '../../lib/download'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -38,16 +38,18 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
 
   // 주보 상태 (imageUrls 배열 기반)
   const [bulletinOverride, setBulletinOverride] = useState<{
-    date: string; title: string; preacher: string; passage: string; summary: string; imageUrls: string[]
+    id?: string
+    date: string; title: string; preacher: string; passage: string; summary?: string; imageUrls: string[]
   } | null>(null)
 
   const bulletin = bulletinOverride ?? (latestBulletin ? {
+    id: latestBulletin.id,
     date: latestBulletin.date,
     title: latestBulletin.title,
     preacher: latestBulletin.preacher,
     passage: latestBulletin.passage,
     summary: latestBulletin.summary,
-    imageUrls: latestBulletin.imageUrls
+    imageUrls: latestBulletin.imageUrls || []
   } : null)
 
   const [showBulletinModal, setShowBulletinModal] = useState(false)
@@ -56,7 +58,6 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
 
   // 주보 편집 모달 상태
   const [showBulletinEditModal, setShowBulletinEditModal] = useState(false)
-  useModalDismiss(showBulletinEditModal, () => setShowBulletinEditModal(false))
   // 주보 날짜는 이제 'YYYY-MM-DD'로 저장합니다(화면 표시는 formatBulletinDisplay 사용).
   const [editBulletinDate, setEditBulletinDate] = useState('')
   const [editBulletinTitle, setEditBulletinTitle] = useState('')
@@ -67,12 +68,16 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   const [isSavingBulletin, setIsSavingBulletin] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const hasUnsavedBulletin = Boolean(
+    editBulletinTitle.trim() || editBulletinPassage.trim() || editBulletinPreacher.trim() || editBulletinSummary.trim() || editBulletinImages.length > 0
+  )
+  useWriteModalGuard(showBulletinEditModal, hasUnsavedBulletin, () => setShowBulletinEditModal(false))
+
   // 공지 상태
   const [noticeOverrides, setNoticeOverrides] = useState<PostItem[] | null>(null)
   const notices = useMemo(() => noticeOverrides ?? (noticePosts || []), [noticeOverrides, noticePosts])
 
   const [showNoticeCreateModal, setShowNoticeCreateModal] = useState(false)
-  useModalDismiss(showNoticeCreateModal, () => setShowNoticeCreateModal(false))
   const [selectedNoticeModal, setSelectedNoticeModal] = useState<PostItem | null>(null)
   useModalDismiss(!!selectedNoticeModal, () => setSelectedNoticeModal(null))
   const [newNoticeTitle, setNewNoticeTitle] = useState('')
@@ -80,6 +85,9 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   // 작성 모달을 수정 모달로도 겸용합니다. null이면 새 글 작성, 값이 있으면 그 공지 수정.
   const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null)
   const [isSavingNotice, setIsSavingNotice] = useState(false)
+
+  const hasUnsavedNotice = Boolean(newNoticeTitle.trim() || newNoticeContent.trim())
+  useWriteModalGuard(showNoticeCreateModal, hasUnsavedNotice, () => setShowNoticeCreateModal(false))
 
   const showToast = (msg: string, duration = 1000) => {
     setToastMsg(msg)
@@ -647,7 +655,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <h3 className="font-bold text-sm sm:text-base text-gray-900">
@@ -656,8 +664,8 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               <button
                 type="button"
                 onClick={() => {
-                  if (newNoticeTitle.trim() || newNoticeContent.trim()) {
-                    if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?')) return
+                  if (hasUnsavedNotice) {
+                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
                   }
                   setShowNoticeCreateModal(false)
                 }}
@@ -684,11 +692,11 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               <div className="flex-1 flex flex-col">
                 <label className="block text-2xs font-bold text-gray-500 mb-1">공지 상세 내용</label>
                 <textarea
-                  rows={10}
+                  rows={6}
                   placeholder="공지 상세 내용 입력..."
                   value={newNoticeContent}
                   onChange={e => setNewNoticeContent(e.target.value)}
-                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
             </div>
@@ -698,8 +706,8 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               <button
                 type="button"
                 onClick={() => {
-                  if (newNoticeTitle.trim() || newNoticeContent.trim()) {
-                    if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?')) return
+                  if (hasUnsavedNotice) {
+                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
                   }
                   setShowNoticeCreateModal(false)
                 }}

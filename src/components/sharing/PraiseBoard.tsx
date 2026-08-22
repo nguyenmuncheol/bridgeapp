@@ -9,7 +9,7 @@ import CommentList from '../CommentList'
 import Avatar from '../news/Avatar'
 import { SkeletonList } from '../SkeletonCard'
 import { todayLocalDateStr } from '../../lib/dateUtils'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 
 interface PraiseBoardProps {
   currentUser: UserProfile
@@ -35,6 +35,20 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
     setToastMsg((isErr ? '⚠️ ' : '') + msg)
     setTimeout(() => setToastMsg(''), 2500)
   }
+
+  // ── 찬양/묵상 상세 & 수정 모달 상태 ──
+  const [selectedPraise, setSelectedPraise] = useState<PostItem | null>(null)
+  const [editingPraise, setEditingPraise] = useState<PostItem | null>(null)
+  useModalDismiss(Boolean(selectedPraise && !editingPraise), () => setSelectedPraise(null))
+
+  const [editPraiseTitle, setEditPraiseTitle] = useState('')
+  const [editPraiseContent, setEditPraiseContent] = useState('')
+
+  const hasUnsavedPraiseEdit = Boolean(
+    editingPraise &&
+    (editPraiseTitle !== editingPraise.title || editPraiseContent !== editingPraise.content)
+  )
+  useWriteModalGuard(Boolean(editingPraise), hasUnsavedPraiseEdit, () => setEditingPraise(null))
 
   // ── 링크 종류 판별 ──
   // 🐛 과거 문제: 유튜브가 아닌 주소(교회 홈페이지, 블로그 등)를 넣으면 영상 자리에
@@ -121,13 +135,6 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
     }))
     setSelectedPraise(prev => (prev && prev.id === postId ? { ...prev } : prev))
   }
-
-  const [selectedPraise, setSelectedPraise] = useState<PostItem | null>(null)
-  const [editingPraise, setEditingPraise] = useState<PostItem | null>(null)
-  useModalDismiss(!!selectedPraise && !editingPraise, () => setSelectedPraise(null))
-  useModalDismiss(!!editingPraise, () => setEditingPraise(null))
-  const [editPraiseTitle, setEditPraiseTitle] = useState('')
-  const [editPraiseContent, setEditPraiseContent] = useState('')
 
   const handleDeletePraise = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return
@@ -374,13 +381,18 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 찬양/묵상 수정</h3>
               <button
                 type="button"
-                onClick={() => setEditingPraise(null)}
+                onClick={() => {
+                  if (hasUnsavedPraiseEdit) {
+                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                  }
+                  setEditingPraise(null)
+                }}
                 className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
@@ -404,10 +416,10 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <div className="flex-1 flex flex-col">
                 <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
                 <textarea
-                  rows={10}
+                  rows={6}
                   value={editPraiseContent}
                   onChange={e => setEditPraiseContent(e.target.value)}
-                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="내용"
                 />
               </div>
@@ -417,7 +429,12 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setEditingPraise(null)}
+                onClick={() => {
+                  if (hasUnsavedPraiseEdit) {
+                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                  }
+                  setEditingPraise(null)
+                }}
                 className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
               >
                 취소

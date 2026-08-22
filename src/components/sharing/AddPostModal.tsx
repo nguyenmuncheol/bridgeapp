@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
-import { useModalDismiss } from '../../lib/useModalDismiss'
+import { useWriteModalGuard } from '../../lib/useModalDismiss'
 
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
@@ -18,7 +18,7 @@ interface AddPostModalProps {
   onPhotoCreated: (item: PostItem) => void
 }
 
-// ── 나눔 작성 모달 (기도제목/찬양·묵상/행사사진 공용, 사진 업로드 진행률 및 압축 안내 포함) ──
+// ── 나눔 작성 모달 (기도제목/찬양·묵상/행사사진 공용, 모달별 최적 비율 레이아웃 및 새로고침/이탈 완벽 방지) ──
 export default function AddPostModal({
   subTab,
   currentUser,
@@ -42,25 +42,9 @@ export default function AddPostModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  useModalDismiss(isOpen, onClose)
-
-  // ── 글 작성 중 새로고침/이탈 방지 (beforeunload) ──
-  useEffect(() => {
-    if (!isOpen) return
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (newTitle.trim() || newContent.trim() || photoFiles.length > 0) {
-        e.preventDefault()
-        e.returnValue = ''
-      }
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isOpen, newTitle, newContent, photoFiles.length])
-
-  if (!isOpen) return null
+  const hasUnsaved = Boolean(newTitle.trim() || newContent.trim() || photoFiles.length > 0)
 
   const resetAndClose = () => {
-    // 미리보기용 임시 주소를 정리하지 않으면 브라우저 메모리가 계속 쌓입니다.
     photoPreviews.forEach(url => { try { URL.revokeObjectURL(url) } catch { /* 무시 */ } })
     setNewTitle(''); setNewContent(''); setIsSecret(false); setYoutubeUrl(''); setSelectedTagChip(''); setCustomTag(''); setPhotoFiles([]); setPhotoPreviews([])
     setUploadProgress(null)
@@ -68,9 +52,14 @@ export default function AddPostModal({
     onClose()
   }
 
+  // 모바일 풀-투-리프레시 차단, 뒤로가기 안전 차단, 브라우저 새로고침 경고
+  useWriteModalGuard(isOpen, hasUnsaved, resetAndClose)
+
+  if (!isOpen) return null
+
   const handleCloseRequest = () => {
-    if (newTitle.trim() || newContent.trim() || photoFiles.length > 0) {
-      if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?\n작성 중인 내용은 저장되지 않습니다.')) {
+    if (hasUnsaved) {
+      if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?\n작성 중인 내용은 저장되지 않습니다.')) {
         return
       }
     }
@@ -227,7 +216,9 @@ export default function AddPostModal({
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
       onClick={e => e.stopPropagation()}
     >
-      <div className="bg-white rounded-3xl max-w-lg w-full h-[92vh] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+      <div className={`bg-white rounded-3xl w-full flex flex-col shadow-2xl overflow-hidden overscroll-contain max-h-[85vh] ${
+        subTab === 'photo' ? 'max-w-lg' : 'max-w-md'
+      }`}>
         {/* 상단 고정 헤더 (제목 + 명시적 닫기 버튼) */}
         <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
           <h3 className="font-bold text-sm sm:text-base text-gray-900">
@@ -244,7 +235,7 @@ export default function AddPostModal({
           </button>
         </div>
 
-        {/* 본문 스크롤 영역 (세로길이 확대 및 쾌적한 입력 환경) */}
+        {/* 본문 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
           <div>
             <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
@@ -262,12 +253,12 @@ export default function AddPostModal({
               {subTab === 'photo' ? '상세 설명 (선택사항)' : '상세 내용'}
             </label>
             <textarea
-              rows={subTab === 'photo' ? 5 : 12}
+              rows={subTab === 'photo' ? 4 : 7}
               placeholder={subTab === 'photo' ? '사진에 대한 이야기나 설명을 적어주세요...' : '내용을 자유롭고 편안하게 작성해 주세요...'}
               value={newContent}
               onChange={e => setNewContent(e.target.value)}
               className={`w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed ${
-                subTab === 'photo' ? 'min-h-[120px]' : 'min-h-[220px] sm:min-h-[300px]'
+                subTab === 'photo' ? 'min-h-[90px] max-h-[160px]' : 'min-h-[140px] max-h-[260px]'
               }`}
             />
           </div>

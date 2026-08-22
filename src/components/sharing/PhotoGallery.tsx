@@ -10,7 +10,7 @@ import { saveImage, openImageViewer } from '../../lib/download'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
 import { dbAddComment } from '../../lib/db'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 import Avatar from '../news/Avatar'
 
@@ -39,7 +39,6 @@ interface PhotoGalleryProps {
 export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, setPhotos, dynamicTags, selectedTag, onTagChange, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
   const [activePhotoModal, setActivePhotoModal] = useState<PostItem | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<PostItem | null>(null)
-  useModalDismiss(!!editingPhoto, () => setEditingPhoto(null))
   const [editPhotoTitle, setEditPhotoTitle] = useState('')
   const [editPhotoContent, setEditPhotoContent] = useState('')
   const [editPhotoTag, setEditPhotoTag] = useState('')
@@ -49,6 +48,15 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
   const [editPhotoImages, setEditPhotoImages] = useState<string[]>([])
   const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false)
   const editPhotoFileInputRef = useRef<HTMLInputElement>(null)
+
+  const hasUnsavedPhotoEdit = Boolean(
+    editingPhoto &&
+    (editPhotoTitle !== editingPhoto.title ||
+      editPhotoContent !== editingPhoto.content ||
+      editPhotoVideo !== (editingPhoto.youtubeUrl || '') ||
+      editPhotoImages.length !== (editingPhoto.imageUrls || []).length)
+  )
+  useWriteModalGuard(Boolean(editingPhoto), hasUnsavedPhotoEdit, () => setEditingPhoto(null))
 
   // 다른 게시판(기도제목/찬양나눔)과 동일하게 작성자를 표시합니다.
   // 🐛 과거 문제: 행사사진만 누가 올렸는지 안 보여서, 사진에 문제가 있어도
