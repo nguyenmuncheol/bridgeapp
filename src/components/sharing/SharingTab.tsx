@@ -167,6 +167,7 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
       <AddPostModal
         subTab={subTab}
         currentUser={currentUser}
+        isAdmin={isAdmin}
         dynamicTags={dynamicTags}
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}

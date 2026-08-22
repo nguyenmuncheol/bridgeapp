@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
+import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
 import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
@@ -10,6 +11,7 @@ import { useWriteModalGuard } from '../../lib/useModalDismiss'
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
   currentUser: UserProfile
+  isAdmin?: boolean
   dynamicTags: string[]
   isOpen: boolean
   onClose: () => void
@@ -22,6 +24,7 @@ interface AddPostModalProps {
 export default function AddPostModal({
   subTab,
   currentUser,
+  isAdmin = false,
   dynamicTags,
   isOpen,
   onClose,
@@ -38,6 +41,7 @@ export default function AddPostModal({
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; isUploading: boolean } | null>(null)
+  const [postAsChurch, setPostAsChurch] = useState(false) // 교회 이름으로 올리기
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -49,6 +53,7 @@ export default function AddPostModal({
     setNewTitle(''); setNewContent(''); setIsSecret(false); setYoutubeUrl(''); setSelectedTagChip(''); setCustomTag(''); setPhotoFiles([]); setPhotoPreviews([])
     setUploadProgress(null)
     setErrorMsg('')
+    setPostAsChurch(false)
     onClose()
   }
 
@@ -65,6 +70,11 @@ export default function AddPostModal({
     }
     resetAndClose()
   }
+
+  // ── 교회 이름으로 올리기: 저자 정보 결정 ──
+  const resolvedAuthorId   = postAsChurch ? CHURCH_AUTHOR_ID   : currentUser.id
+  const resolvedAuthorName = postAsChurch ? CHURCH_AUTHOR_NAME : getUserDisplayName(currentUser)
+  const resolvedAuthorAvatar = postAsChurch ? CHURCH_AVATAR_URL : undefined
 
   // ── 새 게시물 작성 (진행률 및 압축 지원) ──
   const handleCreate = async () => {
@@ -87,8 +97,9 @@ export default function AddPostModal({
     try {
       if (subTab === 'prayer') {
         const res = await dbCreatePost({
-          authorId: currentUser.id,
-          authorName: getUserDisplayName(currentUser),
+          authorId: resolvedAuthorId,
+          authorName: resolvedAuthorName,
+          authorAvatar: resolvedAuthorAvatar,
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PRAYER',
@@ -102,8 +113,9 @@ export default function AddPostModal({
         }
         onPrayerCreated({
           id: res.data.id,
-          authorId: currentUser.id,
-          authorName: getUserDisplayName(currentUser),
+          authorId: resolvedAuthorId,
+          authorName: resolvedAuthorName,
+          authorAvatar: resolvedAuthorAvatar,
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PRAYER',
@@ -115,8 +127,9 @@ export default function AddPostModal({
         })
       } else if (subTab === 'praise') {
         const res = await dbCreatePost({
-          authorId: currentUser.id,
-          authorName: getUserDisplayName(currentUser),
+          authorId: resolvedAuthorId,
+          authorName: resolvedAuthorName,
+          authorAvatar: resolvedAuthorAvatar,
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PRAISE',
@@ -128,8 +141,9 @@ export default function AddPostModal({
         }
         onPraiseCreated({
           id: res.data.id,
-          authorId: currentUser.id,
-          authorName: getUserDisplayName(currentUser),
+          authorId: resolvedAuthorId,
+          authorName: resolvedAuthorName,
+          authorAvatar: resolvedAuthorAvatar,
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PRAISE',
@@ -175,8 +189,9 @@ export default function AddPostModal({
         }
 
         const res = await dbCreatePost({
-          authorId: currentUser.id,
-          authorName: getUserDisplayName(currentUser),
+          authorId: resolvedAuthorId,
+          authorName: resolvedAuthorName,
+          authorAvatar: resolvedAuthorAvatar,
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PHOTO',
@@ -192,8 +207,9 @@ export default function AddPostModal({
         }
         onPhotoCreated({
           id: res.data.id,
-          authorId: currentUser.id,
-          authorName: getUserDisplayName(currentUser),
+          authorId: resolvedAuthorId,
+          authorName: resolvedAuthorName,
+          authorAvatar: resolvedAuthorAvatar,
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PHOTO',
@@ -234,6 +250,32 @@ export default function AddPostModal({
             ✕
           </button>
         </div>
+
+        {/* ── 관리자 전용: 교회 이름으로 올리기 토글 ── */}
+        {isAdmin && (
+          <div
+            className={`px-5 py-2.5 flex items-center gap-3 cursor-pointer select-none border-b transition-colors ${
+              postAsChurch
+                ? 'bg-blue-50 border-blue-100'
+                : 'bg-gray-50/60 border-gray-100'
+            }`}
+            onClick={() => setPostAsChurch(v => !v)}
+          >
+            <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${postAsChurch ? 'bg-[#335f87]' : 'bg-gray-300'}`}>
+              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${postAsChurch ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              {postAsChurch ? (
+                <>
+                  <img src="/logo-square.png" alt="" className="w-5 h-5 rounded-full border border-gray-200 shrink-0" />
+                  <span className="text-2xs font-bold text-[#335f87] truncate">더브릿지 교회 이름으로 올리기</span>
+                </>
+              ) : (
+                <span className="text-2xs font-semibold text-gray-400">교회 이름으로 올리기 (현재: 내 이름)</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 본문 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">

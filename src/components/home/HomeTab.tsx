@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
+import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -10,7 +11,6 @@ import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
 import ImageViewerModal from '../ImageViewerModal'
-import { openImageViewer } from '../../lib/download'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 
 interface HomeTabProps {
@@ -165,9 +165,11 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
       showToast('⚠️ 제목과 내용을 모두 입력해 주세요.', 3000)
       return
     }
+    // 공지사항은 항상 교회 이름으로 등록합니다.
     const newNoticeData: Partial<PostItem> = {
-      authorId: currentUser.id,
-      authorName: getUserDisplayName(currentUser),
+      authorId: CHURCH_AUTHOR_ID,
+      authorName: CHURCH_AUTHOR_NAME,
+      authorAvatar: CHURCH_AVATAR_URL,
       title: newNoticeTitle.trim(),
       content: newNoticeContent.trim(),
       category: 'NOTICE',
@@ -183,8 +185,9 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
 
     const newNotice: PostItem = {
       id: res.data.id,
-      authorId: currentUser.id,
-      authorName: getUserDisplayName(currentUser),
+      authorId: CHURCH_AUTHOR_ID,
+      authorName: CHURCH_AUTHOR_NAME,
+      authorAvatar: CHURCH_AVATAR_URL,
       title: newNoticeTitle.trim(),
       content: newNoticeContent.trim(),
       category: 'NOTICE',

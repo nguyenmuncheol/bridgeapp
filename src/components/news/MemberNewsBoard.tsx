@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Plus } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem } from '../../lib/mockData'
+import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
 import { dbCreatePost, dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { usePaginatedPosts } from '../../lib/usePaginatedPosts'
 import { todayLocalDateStr } from '../../lib/dateUtils'
@@ -24,6 +25,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
   const [editingNews, setEditingNews] = useState<PostItem | null>(null)
   const [editNewsTitle, setEditNewsTitle] = useState('')
   const [editNewsContent, setEditNewsContent] = useState('')
+  const [postAsChurch, setPostAsChurch] = useState(false) // 교회 이름으로 올리기 (관리자 전용)
 
   const hasUnsavedAdd = Boolean(newNewsTitle.trim() || newNewsContent.trim())
   useWriteModalGuard(showAddNewsModal, hasUnsavedAdd, () => setShowAddNewsModal(false))
@@ -101,10 +103,16 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
       return
     }
 
+    // 교회 이름으로 올리기 여부에 따라 저자 정보 결정
+    const authorId   = postAsChurch ? CHURCH_AUTHOR_ID   : currentUser.id
+    const authorName = postAsChurch ? CHURCH_AUTHOR_NAME : getUserDisplayName(currentUser)
+    const authorAvatar = postAsChurch ? CHURCH_AVATAR_URL : undefined
+
     setIsCreatingNews(true)
     const res = await dbCreatePost({
-      authorId: currentUser.id,
-      authorName: getUserDisplayName(currentUser),
+      authorId,
+      authorName,
+      authorAvatar,
       title: newNewsTitle.trim(),
       content: newNewsContent.trim(),
       category: 'MEMBER_NEWS',
@@ -121,8 +129,9 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
 
     const newItem: PostItem = {
       id: res.data.id,
-      authorId: currentUser.id,
-      authorName: getUserDisplayName(currentUser),
+      authorId,
+      authorName,
+      authorAvatar,
       title: newNewsTitle.trim(),
       content: newNewsContent.trim(),
       category: 'MEMBER_NEWS',
@@ -133,6 +142,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
     setMemberNewsList(prev => [newItem, ...prev])
     setNewNewsTitle('')
     setNewNewsContent('')
+    setPostAsChurch(false)
     setShowAddNewsModal(false)
     showToast('소식을 등록했습니다.')
   }
@@ -304,6 +314,30 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
                 ✕
               </button>
             </div>
+
+            {/* ── 관리자 전용: 교회 이름으로 올리기 토글 ── */}
+            {isLeaderOrAdmin && (
+              <div
+                className={`px-5 py-2.5 flex items-center gap-3 cursor-pointer select-none border-b transition-colors ${
+                  postAsChurch ? 'bg-blue-50 border-blue-100' : 'bg-gray-50/60 border-gray-100'
+                }`}
+                onClick={() => setPostAsChurch(v => !v)}
+              >
+                <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${postAsChurch ? 'bg-[#335f87]' : 'bg-gray-300'}`}>
+                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${postAsChurch ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  {postAsChurch ? (
+                    <>
+                      <img src="/logo-square.png" alt="" className="w-5 h-5 rounded-full border border-gray-200 shrink-0" />
+                      <span className="text-2xs font-bold text-[#335f87] truncate">더브릿지 교회 이름으로 올리기</span>
+                    </>
+                  ) : (
+                    <span className="text-2xs font-semibold text-gray-400">교회 이름으로 올리기 (현재: 내 이름)</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* 본문 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
