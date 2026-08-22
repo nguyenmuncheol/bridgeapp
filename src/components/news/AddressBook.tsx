@@ -3,9 +3,8 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
-import { buildFamilyStatusText, getChildGroupLabel } from '../../lib/familyInfo'
+import { buildFamilyStatusText, getChildGroupLabel, FAMILY_ROLE_ORDER } from '../../lib/familyInfo'
 import { formatBirthdayDisplay, calculateAge } from '../../lib/dateUtils'
-import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 

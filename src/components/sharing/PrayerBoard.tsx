@@ -9,13 +9,16 @@ import { SkeletonList } from '../SkeletonCard'
 import PrayerCard from './PrayerCard'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
-// 고정글 우선, 그 다음 미완료(기도 중)를 완료보다 위로 정렬
+// 고정글 우선, 그 다음 미완료(기도 중)를 완료보다 위로 정렬 (최신 작성순 유지)
 export const sortPrayers = (list: PostItem[]) =>
   [...list].sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1
     if (!a.isPinned && b.isPinned) return 1
     if (!a.isCompleted && b.isCompleted) return -1
     if (a.isCompleted && !b.isCompleted) return 1
+    if (a.createdAt && b.createdAt) {
+      return b.createdAt.localeCompare(a.createdAt)
+    }
     return 0
   })
 
@@ -42,6 +45,8 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
   const [editPrayerContent, setEditPrayerContent] = useState('')
   const [editPrayerIsSecret, setEditPrayerIsSecret] = useState(false)
   const [editPrayerIsCompleted, setEditPrayerIsCompleted] = useState(false)
+
+  const canPin = isAdmin || currentUser.role === 'LEADER'
 
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
@@ -92,7 +97,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
   }, [currentUser.id, setPrayers])
 
   const handlePin = useCallback(async (id: string) => {
-    if (!isAdmin) return
+    if (!canPin) return
     let newPin: boolean | null = null
     setPrayers(prev => prev.map(p => {
       if (p.id !== id) return p
@@ -100,14 +105,15 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
       return { ...p, isPinned: newPin }
     }))
     if (newPin === null) return
-    // 🐛 과거 버그: 결과를 확인하지 않아, 고정 실패해도 화면에는 고정된 것처럼 보였습니다.
     const { error } = await dbUpdatePost(id, { isPinned: newPin })
     if (error) {
       setPrayers(prev => prev.map(p => p.id === id ? { ...p, isPinned: !newPin } : p))
       showToast('고정 처리 중 오류가 발생했습니다.', true)
+    } else {
+      showToast(newPin ? '📌 기도제목이 상단에 고정되었습니다.' : '📌 상단 고정이 해제되었습니다.')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, setPrayers])
+  }, [canPin, setPrayers])
 
   // 댓글이 수정되거나(내용) 삭제되면(null) 화면 목록도 같이 맞춰줍니다.
   // 이걸 안 하면 다른 탭에 갔다 돌아왔을 때 지운 댓글이 다시 보입니다.
@@ -264,61 +270,98 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
       {/* ── 기도제목 수정 모달 ── */}
       {editingPrayer && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setEditingPrayer(null))}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-gray-900">✏️ 기도제목 수정</h3>
-              <button onClick={() => setEditingPrayer(null)} className="text-gray-400"><X size={16} /></button>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            {/* 상단 고정 헤더 */}
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 기도제목 수정</h3>
+              <button
+                type="button"
+                onClick={() => setEditingPrayer(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
             </div>
-            <input
-              type="text"
-              value={editPrayerTitle}
-              onChange={e => setEditPrayerTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-              placeholder="기도제목"
-            />
-            <textarea
-              rows={4}
-              value={editPrayerContent}
-              onChange={e => setEditPrayerContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
-              placeholder="내용"
-            />
-            <label className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-              <input
-                type="checkbox"
-                checked={editPrayerIsSecret}
-                onChange={e => setEditPrayerIsSecret(e.target.checked)}
-              />
-              비밀글로 등록 (목회자/리더만 열람)
-            </label>
-            {/* 작성자 / 관리자 전용 응답 완료 처리 버튼 */}
-            {(editingPrayer.authorId === currentUser.id || isAdmin) && (
-              <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100 text-xs">
-                <div>
-                  <p className="font-bold text-amber-900 text-xs">기도 응답 상태</p>
-                  <p className="text-2xs text-amber-700 mt-0.5">
-                    {editPrayerIsCompleted ? '현재 응답 완료 상태입니다' : '현재 기도 중 상태입니다'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditPrayerIsCompleted(prev => !prev)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs ${
-                    editPrayerIsCompleted
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {editPrayerIsCompleted ? '✅ 응답 완료됨' : '🙏 응답 완료로 변경'}
-                </button>
+
+            {/* 본문 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+              <div>
+                <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={editPrayerTitle}
+                  onChange={e => setEditPrayerTitle(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  placeholder="기도제목"
+                />
               </div>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setEditingPrayer(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSavePrayerEdit} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
+                <textarea
+                  rows={10}
+                  value={editPrayerContent}
+                  onChange={e => setEditPrayerContent(e.target.value)}
+                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  placeholder="내용"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-purple-50/50 p-2.5 rounded-xl border border-purple-100/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editPrayerIsSecret}
+                  onChange={e => setEditPrayerIsSecret(e.target.checked)}
+                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                />
+                <span>🔒 비밀글로 등록 (목회자/리더만 열람)</span>
+              </label>
+
+              {/* 작성자 / 관리자 전용 응답 완료 처리 버튼 */}
+              {(editingPrayer.authorId === currentUser.id || isAdmin) && (
+                <div className="flex items-center justify-between p-3.5 bg-amber-50/80 rounded-2xl border border-amber-100 text-xs">
+                  <div>
+                    <p className="font-bold text-amber-900 text-xs">기도 응답 상태</p>
+                    <p className="text-2xs text-amber-700 mt-0.5">
+                      {editPrayerIsCompleted ? '현재 응답 완료 상태입니다' : '현재 기도 중 상태입니다'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditPrayerIsCompleted(prev => !prev)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                      editPrayerIsCompleted
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {editPrayerIsCompleted ? '✅ 응답 완료됨' : '🙏 응답 완료로 변경'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 하단 고정 버튼 */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingPrayer(null)}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={handleSavePrayerEdit}
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
+              >
+                {isSavingEdit ? '저장 중...' : '저장하기'}
+              </button>
             </div>
           </div>
         </div>

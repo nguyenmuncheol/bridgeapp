@@ -371,31 +371,64 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
       {/* ── 찬양/묵상 수정 모달 ── */}
       {editingPraise && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setEditingPraise(null))}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-gray-900">✏️ 찬양/묵상 수정</h3>
-              <button onClick={() => setEditingPraise(null)} className="text-gray-400"><X size={16} /></button>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            {/* 상단 고정 헤더 */}
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 찬양/묵상 수정</h3>
+              <button
+                type="button"
+                onClick={() => setEditingPraise(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
             </div>
-            <input
-              type="text"
-              value={editPraiseTitle}
-              onChange={e => setEditPraiseTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-              placeholder="제목"
-            />
-            <textarea
-              rows={4}
-              value={editPraiseContent}
-              onChange={e => setEditPraiseContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
-              placeholder="내용"
-            />
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setEditingPraise(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSavePraiseEdit} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+
+            {/* 본문 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+              <div>
+                <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={editPraiseTitle}
+                  onChange={e => setEditPraiseTitle(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  placeholder="제목"
+                />
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
+                <textarea
+                  rows={10}
+                  value={editPraiseContent}
+                  onChange={e => setEditPraiseContent(e.target.value)}
+                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  placeholder="내용"
+                />
+              </div>
+            </div>
+
+            {/* 하단 고정 버튼 */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingPraise(null)}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePraiseEdit}
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                저장하기
+              </button>
             </div>
           </div>
         </div>

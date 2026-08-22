@@ -510,16 +510,27 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
       {/* ─── 관리자 주보 편집 모달 (날짜 픽커 + 파일 업로드 2~4장) ─── */}
       {showBulletinEditModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowBulletinEditModal(false))}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-sm text-gray-900">✏️ 주보 수정 (관리자)</h3>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[90vh] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            {/* 상단 고정 헤더 */}
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 주보 수정 (관리자)</h3>
+              <button
+                type="button"
+                onClick={() => setShowBulletinEditModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               {/* 주보 날짜: 향후 1~2주 일요일 버튼 선택 */}
               <div>
-                <label className="text-2xs text-gray-400 font-bold block mb-1.5">
+                <label className="text-2xs text-gray-500 font-bold block mb-1.5">
                   주보 날짜 선택 (향후 1~2주 일요일)
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -528,7 +539,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
                       key={s.dateStr}
                       type="button"
                       onClick={() => setEditBulletinDate(s.dateStr)}
-                      className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${
+                      className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all cursor-pointer ${
                         editBulletinDate === s.dateStr
                           ? 'bg-[#335f87] text-white border-[#335f87] shadow-sm'
                           : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
@@ -541,9 +552,9 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               </div>
 
               {/* 주보 이미지 파일 업로드 (2~4장) */}
-              <div>
-                <label className="text-2xs text-gray-400 font-bold block mb-1">
-                  주보 이미지 업로드 (2~4장, 휴대폰 사진 직접 선택)
+              <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-200/60">
+                <label className="text-2xs text-gray-600 font-bold block mb-1">
+                  📸 주보 이미지 업로드 (2~4장, 휴대폰 사진 직접 선택)
                 </label>
                 <input
                   ref={fileInputRef}
@@ -554,14 +565,15 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
                   className="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
                 />
                 {editBulletinImages.length > 0 && (
-                  <div className="flex gap-1.5 mt-2 overflow-x-auto">
+                  <div className="flex gap-2 mt-2 overflow-x-auto py-1">
                     {editBulletinImages.map((url, idx) => (
                       <div key={idx} className="relative shrink-0">
-                        <img src={url} alt={`미리보기 ${idx+1}`} className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+                        <img src={url} alt={`미리보기 ${idx+1}`} className="w-14 h-14 object-cover rounded-xl border border-gray-200" />
                         <button
                           type="button"
                           onClick={() => setEditBulletinImages(prev => prev.filter((_, i) => i !== idx))}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-2xs rounded-full flex items-center justify-center font-bold"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white text-2xs rounded-full flex items-center justify-center font-bold cursor-pointer"
+                          aria-label="이 사진 삭제"
                         >✕</button>
                       </div>
                     ))}
@@ -571,36 +583,59 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               </div>
 
               <div>
-                <label className="text-2xs text-gray-400 font-bold">설교 제목</label>
-                <input type="text" value={editBulletinTitle}
+                <label className="block text-2xs font-bold text-gray-500 mb-1">설교 제목</label>
+                <input
+                  type="text"
+                  value={editBulletinTitle}
                   onChange={e => setEditBulletinTitle(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-bold">성경 구절</label>
-                <input type="text" value={editBulletinPassage}
+                <label className="block text-2xs font-bold text-gray-500 mb-1">성경 구절</label>
+                <input
+                  type="text"
+                  value={editBulletinPassage}
                   onChange={e => setEditBulletinPassage(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-bold">설교자</label>
-                <input type="text" value={editBulletinPreacher}
+                <label className="block text-2xs font-bold text-gray-500 mb-1">설교자</label>
+                <input
+                  type="text"
+                  value={editBulletinPreacher}
                   onChange={e => setEditBulletinPreacher(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
               </div>
-              <div>
-                <label className="text-2xs text-gray-400 font-bold">설교 요약</label>
-                <textarea rows={3} value={editBulletinSummary}
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs font-bold text-gray-500 mb-1">설교 요약 / 본문 메모</label>
+                <textarea
+                  rows={6}
+                  value={editBulletinSummary}
                   onChange={e => setEditBulletinSummary(e.target.value)}
-                  className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium" />
+                  className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                />
               </div>
             </div>
 
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setShowBulletinEditModal(false)}
-                className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSaveBulletin}
-                className="flex-1 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl hover:bg-amber-700">저장</button>
+            {/* 하단 고정 버튼 */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowBulletinEditModal(false)}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveBulletin}
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                저장하기
+              </button>
             </div>
           </div>
         </div>
@@ -609,26 +644,74 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
       {/* ─── 공지 작성/수정 모달 (공용) ─── */}
       {showNoticeCreateModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowNoticeCreateModal(false))}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <h3 className="font-bold text-sm text-gray-900">{editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}</h3>
-            <div className="space-y-2 text-xs">
-              <input type="text" placeholder="공지 제목 입력" value={newNoticeTitle}
-                onChange={e => setNewNoticeTitle(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium" />
-              <textarea rows={4} placeholder="공지 상세 내용 입력..." value={newNoticeContent}
-                onChange={e => setNewNoticeContent(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium" />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setShowNoticeCreateModal(false)}
-                className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            {/* 상단 고정 헤더 */}
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">
+                {editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}
+              </h3>
               <button
+                type="button"
+                onClick={() => {
+                  if (newNoticeTitle.trim() || newNoticeContent.trim()) {
+                    if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?')) return
+                  }
+                  setShowNoticeCreateModal(false)
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 본문 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+              <div>
+                <label className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
+                <input
+                  type="text"
+                  placeholder="공지 제목 입력"
+                  value={newNoticeTitle}
+                  onChange={e => setNewNoticeTitle(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs font-bold text-gray-500 mb-1">공지 상세 내용</label>
+                <textarea
+                  rows={10}
+                  placeholder="공지 상세 내용 입력..."
+                  value={newNoticeContent}
+                  onChange={e => setNewNoticeContent(e.target.value)}
+                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* 하단 고정 버튼 */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (newNoticeTitle.trim() || newNoticeContent.trim()) {
+                    if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?')) return
+                  }
+                  setShowNoticeCreateModal(false)
+                }}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
                 onClick={editingNoticeId ? handleUpdateNotice : handleCreateNotice}
                 disabled={isSavingNotice}
-                className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-50"
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSavingNotice ? '저장 중...' : editingNoticeId ? '수정 저장' : '공지 등록'}
               </button>

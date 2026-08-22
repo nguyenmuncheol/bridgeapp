@@ -1,22 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { UserProfile, isApprovedMember } from './mockData'
 import { dbUpdateProfile } from './db'
-import { parseFamilyInfo, buildAddressRequestUpdate } from './familyInfo'
+import { parseFamilyInfo, buildAddressRequestUpdate, FAMILY_ROLE_ORDER } from './familyInfo'
+export { FAMILY_ROLE_ORDER }
 
 // AdminDashboard의 여러 탭(성도관리/가입승인/출석통계)에서 공통으로 쓰는 헬퍼 모음입니다.
-// (파일 분리 전 AdminDashboard.tsx에 있던 로직을 그대로 옮긴 것으로, 동작은 동일합니다.)
-
-export const FAMILY_ROLE_ORDER: Record<string, number> = {
-  '조부': 1,
-  '조모': 2,
-  '부': 3,
-  '모': 4,
-  '자녀1': 5,
-  '자녀2': 6,
-  '자녀3': 7,
-  '자녀': 8,
-  '기타': 9,
-}
 
 // 라브리 값이 없거나(빈 문자열) 승인 시 저장된 '미정' 문자열이거나 모두 "라브리 미정"으로 통일
 export function normalizeLabriLabel(labriId?: string) {

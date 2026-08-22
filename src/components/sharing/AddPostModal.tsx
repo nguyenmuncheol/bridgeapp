@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
@@ -43,6 +43,20 @@ export default function AddPostModal({
   const [errorMsg, setErrorMsg] = useState('')
 
   useModalDismiss(isOpen, onClose)
+
+  // ── 글 작성 중 새로고침/이탈 방지 (beforeunload) ──
+  useEffect(() => {
+    if (!isOpen) return
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (newTitle.trim() || newContent.trim() || photoFiles.length > 0) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isOpen, newTitle, newContent, photoFiles.length])
+
   if (!isOpen) return null
 
   const resetAndClose = () => {
@@ -52,6 +66,15 @@ export default function AddPostModal({
     setUploadProgress(null)
     setErrorMsg('')
     onClose()
+  }
+
+  const handleCloseRequest = () => {
+    if (newTitle.trim() || newContent.trim() || photoFiles.length > 0) {
+      if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?\n작성 중인 내용은 저장되지 않습니다.')) {
+        return
+      }
+    }
+    resetAndClose()
   }
 
   // ── 새 게시물 작성 (진행률 및 압축 지원) ──
@@ -201,175 +224,217 @@ export default function AddPostModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-      onClick={backdropClose(onClose)}
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+      onClick={e => e.stopPropagation()}
     >
-      <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto">
-        <h3 className="font-bold text-sm text-gray-900">
-          {subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
-        </h3>
-        <input
-          type="text"
-          placeholder={subTab === 'photo' ? '행사/사진 제목 입력' : '제목 입력'}
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-        />
-        <textarea
-          rows={3}
-          placeholder={subTab === 'photo' ? '사진에 대한 이야기나 설명을 적어주세요...' : '상세 내용 입력'}
-          value={newContent}
-          onChange={e => setNewContent(e.target.value)}
-          className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
-        />
-        {subTab === 'prayer' && <label className="flex items-center gap-2 text-xs text-gray-600 font-medium"><input type="checkbox" checked={isSecret} onChange={e => setIsSecret(e.target.checked)} /> 비밀글로 등록 (목회자/리더만 열람)</label>}
-        {subTab === 'praise' && (
-          <div className="space-y-1">
+      <div className="bg-white rounded-3xl max-w-lg w-full h-[92vh] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+        {/* 상단 고정 헤더 (제목 + 명시적 닫기 버튼) */}
+        <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+          <h3 className="font-bold text-sm sm:text-base text-gray-900">
+            {subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
+          </h3>
+          <button
+            type="button"
+            onClick={handleCloseRequest}
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+            title="닫기"
+            aria-label="닫기"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 본문 스크롤 영역 (세로길이 확대 및 쾌적한 입력 환경) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+          <div>
+            <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
             <input
               type="text"
-              placeholder="영상 또는 웹페이지 주소 (선택)"
-              value={youtubeUrl}
-              onChange={e => setYoutubeUrl(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
+              placeholder={subTab === 'photo' ? '행사/사진 제목 입력' : '제목을 입력해 주세요'}
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
             />
-            {/* 예전에는 "유튜브 URL"이라고만 되어 있어서, 블로그·교회홈페이지 주소를 넣으면
-                검은 상자만 뜨고 아무것도 안 보였습니다. 이제 둘 다 됩니다. */}
-            <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
-              유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
-            </p>
           </div>
-        )}
-        {subTab === 'photo' && (
-          <div className="space-y-2 text-xs">
-            <div className="space-y-1">
-              <label className="block text-gray-700 font-semibold">🎬 유튜브 영상 주소 (선택)</label>
+
+          <div className="flex-1 flex flex-col">
+            <label className="block text-2xs font-bold text-gray-500 mb-1">
+              {subTab === 'photo' ? '상세 설명 (선택사항)' : '상세 내용'}
+            </label>
+            <textarea
+              rows={subTab === 'photo' ? 5 : 12}
+              placeholder={subTab === 'photo' ? '사진에 대한 이야기나 설명을 적어주세요...' : '내용을 자유롭고 편안하게 작성해 주세요...'}
+              value={newContent}
+              onChange={e => setNewContent(e.target.value)}
+              className={`w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed ${
+                subTab === 'photo' ? 'min-h-[120px]' : 'min-h-[220px] sm:min-h-[300px]'
+              }`}
+            />
+          </div>
+
+          {subTab === 'prayer' && (
+            <label className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-purple-50/50 p-2.5 rounded-xl border border-purple-100/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSecret}
+                onChange={e => setIsSecret(e.target.checked)}
+                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+              />
+              <span>🔒 비밀글로 등록 (목회자/리더만 열람 가능)</span>
+            </label>
+          )}
+
+          {subTab === 'praise' && (
+            <div className="space-y-1 bg-gray-50/70 p-3 rounded-xl border border-gray-200/60">
+              <label className="block text-2xs font-bold text-gray-600">영상 또는 웹페이지 주소 (선택)</label>
               <input
                 type="text"
-                placeholder="https://youtu.be/..."
+                placeholder="https://youtu.be/... 또는 웹페이지 URL"
                 value={youtubeUrl}
                 onChange={e => setYoutubeUrl(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
+                className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
               />
               <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
-                유튜브 주소만 됩니다. 사진 없이 영상만 올려도 괜찮습니다.
+                유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
               </p>
             </div>
-            <div>
-              <label className="block text-gray-700 font-semibold mb-1">📸 사진 파일 선택 (최대 10장)</label>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={e => {
-                  const files = e.target.files
-                  if (!files) return
-                  // 🐛 과거 버그: "최대 10장"은 안내 문구일 뿐 실제 제한이 없어서,
-                  // 수련회 사진 60장을 고르면 모바일 데이터로 몇 분간 앱이 멈췄습니다.
-                  const all = Array.from(files)
-                  const arr = all.slice(0, 10)
-                  if (all.length > 10) setErrorMsg('사진은 한 번에 최대 10장까지 올릴 수 있어 앞의 10장만 선택했습니다.')
-                  // 이전 미리보기 주소 정리 (메모리 누수 방지)
-                  photoPreviews.forEach(url => { try { URL.revokeObjectURL(url) } catch { /* 무시 */ } })
-                  setPhotoFiles(arr)
-                  setPhotoPreviews(arr.map(f => URL.createObjectURL(f)))
-                }}
-                className="w-full text-xs p-2 bg-gray-50 rounded-xl border border-gray-200"
-              />
-            </div>
-            {photoPreviews.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto py-1">
-                {photoPreviews.map((src, i) => (
-                  <div key={i} className="relative shrink-0">
-                    <img src={src} alt="preview" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
-                    {/* 잘못 고른 사진을 뺄 방법이 없었습니다 — 처음부터 다시 골라야 했습니다 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try { URL.revokeObjectURL(src) } catch { /* 무시 */ }
-                        setPhotoFiles(prev => prev.filter((_, idx) => idx !== i))
-                        setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i))
-                      }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center"
-                      aria-label="이 사진 빼기"
-                    >✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {(() => {
-              const availableTags = dynamicTags.filter(t => t !== '전체')
-              if (availableTags.length === 0) return null
-              return (
-                <div>
-                  <p className="text-gray-600 font-semibold mb-1">기존 태그 추천 (선택사항)</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {availableTags.map(tag => {
-                      const isSelected = selectedTagChip === tag
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => setSelectedTagChip(isSelected ? '' : tag)}
-                          className={`px-2.5 py-1 rounded-lg border text-2xs font-semibold transition-all ${
-                            isSelected ? 'bg-[#335f87] text-white shadow-2xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          #{tag} {isSelected && '✓'}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })()}
-            <div>
-              <label className="block text-gray-700 font-semibold mb-1">태그 직접 입력</label>
-              <input
-                type="text"
-                placeholder="예: 크리스마스, 라브리, 유아부, 수련회"
-                value={customTag}
-                onChange={e => setCustomTag(e.target.value)}
-                className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
-              />
-              <p className="text-2xs text-gray-400 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
-            </div>
+          )}
 
-            {/* 실시간 업로드 진행률 바 */}
-            {uploadProgress?.isUploading && (
-              <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl space-y-2 mt-2">
-                <div className="flex justify-between items-center text-xs font-bold text-[#335f87]">
-                  <span>🖼️ 사진 압축 및 업로드 중...</span>
-                  <span>{uploadProgress.current} / {uploadProgress.total}장</span>
-                </div>
-                <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-[#335f87] h-full transition-all duration-300 rounded-full"
-                    style={{ width: `${uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%` }}
-                  />
-                </div>
-                <p className="text-2xs text-gray-500">고화질 사진을 최적 용량으로 자동 압축하고 있습니다.</p>
+          {subTab === 'photo' && (
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1 bg-gray-50/70 p-3 rounded-xl border border-gray-200/60">
+                <label className="block text-gray-700 font-semibold">🎬 유튜브 영상 주소 (선택)</label>
+                <input
+                  type="text"
+                  placeholder="https://youtu.be/..."
+                  value={youtubeUrl}
+                  onChange={e => setYoutubeUrl(e.target.value)}
+                  className="w-full p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
+                <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
+                  유튜브 주소만 됩니다. 사진 없이 영상만 올려도 괜찮습니다.
+                </p>
               </div>
-            )}
-          </div>
-        )}
-        {/* 입력 오류/실패 안내: 예전에는 아무 메시지 없이 버튼이 반응만 안 했습니다 */}
-        {errorMsg && (
-          <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5">
-            <p className="text-2xs text-rose-700 font-semibold">{errorMsg}</p>
-          </div>
-        )}
-        <div className="flex gap-2 pt-2">
+
+              <div>
+                <label className="block text-gray-700 font-semibold mb-1">📸 사진 파일 선택 (최대 10장)</label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={e => {
+                    const files = e.target.files
+                    if (!files) return
+                    const all = Array.from(files)
+                    const arr = all.slice(0, 10)
+                    if (all.length > 10) setErrorMsg('사진은 한 번에 최대 10장까지 올릴 수 있어 앞의 10장만 선택했습니다.')
+                    photoPreviews.forEach(url => { try { URL.revokeObjectURL(url) } catch { /* 무시 */ } })
+                    setPhotoFiles(arr)
+                    setPhotoPreviews(arr.map(f => URL.createObjectURL(f)))
+                  }}
+                  className="w-full text-xs p-2 bg-gray-50 rounded-xl border border-gray-200"
+                />
+              </div>
+
+              {photoPreviews.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto py-1">
+                  {photoPreviews.map((src, i) => (
+                    <div key={i} className="relative shrink-0">
+                      <img src={src} alt="preview" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try { URL.revokeObjectURL(src) } catch { /* 무시 */ }
+                          setPhotoFiles(prev => prev.filter((_, idx) => idx !== i))
+                          setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i))
+                        }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center cursor-pointer"
+                        aria-label="이 사진 빼기"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(() => {
+                const availableTags = dynamicTags.filter(t => t !== '전체')
+                if (availableTags.length === 0) return null
+                return (
+                  <div>
+                    <p className="text-gray-600 font-semibold mb-1">기존 태그 추천 (선택사항)</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {availableTags.map(tag => {
+                        const isSelected = selectedTagChip === tag
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => setSelectedTagChip(isSelected ? '' : tag)}
+                            className={`px-2.5 py-1 rounded-lg border text-2xs font-semibold transition-all ${
+                              isSelected ? 'bg-[#335f87] text-white shadow-2xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            #{tag} {isSelected && '✓'}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              <div>
+                <label className="block text-gray-700 font-semibold mb-1">태그 직접 입력</label>
+                <input
+                  type="text"
+                  placeholder="예: 크리스마스, 라브리, 유아부, 수련회"
+                  value={customTag}
+                  onChange={e => setCustomTag(e.target.value)}
+                  className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
+                />
+                <p className="text-2xs text-gray-400 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
+              </div>
+
+              {uploadProgress?.isUploading && (
+                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl space-y-2 mt-2">
+                  <div className="flex justify-between items-center text-xs font-bold text-[#335f87]">
+                    <span>🖼️ 사진 압축 및 업로드 중...</span>
+                    <span>{uploadProgress.current} / {uploadProgress.total}장</span>
+                  </div>
+                  <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-[#335f87] h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <p className="text-2xs text-gray-500">고화질 사진을 최적 용량으로 자동 압축하고 있습니다.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+              <p className="text-xs text-rose-700 font-semibold">{errorMsg}</p>
+            </div>
+          )}
+        </div>
+
+        {/* 하단 고정 액션 버튼 영역 */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
           <button
+            type="button"
             disabled={isSubmitting || uploadProgress?.isUploading}
-            onClick={resetAndClose}
-            className="flex-1 py-3 bg-gray-100 text-gray-600 text-xs font-semibold rounded-xl disabled:opacity-50"
+            onClick={handleCloseRequest}
+            className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl disabled:opacity-50 transition-all cursor-pointer"
           >
             취소
           </button>
           <button
+            type="button"
             disabled={isSubmitting || uploadProgress?.isUploading}
             onClick={handleCreate}
-            className="flex-1 py-3 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
           >
             {uploadProgress?.isUploading ? '업로드 중...' : isSubmitting ? '등록 중...' : '등록하기'}
           </button>

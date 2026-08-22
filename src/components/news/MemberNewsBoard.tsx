@@ -276,28 +276,75 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
       {/* ── 교우소식 작성 모달 ── */}
       {showAddNewsModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowAddNewsModal(false))}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <h3 className="font-bold text-sm text-gray-900">📣 교우소식 작성</h3>
-            <input
-              type="text"
-              placeholder="소식 제목 (예: 박성도 성도님 득남 축하)"
-              value={newNewsTitle}
-              onChange={e => setNewNewsTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-            />
-            <textarea
-              rows={4}
-              placeholder="상세 내용을 작성해 주세요..."
-              value={newNewsContent}
-              onChange={e => setNewNewsContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
-            />
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setShowAddNewsModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleCreateNews} disabled={isCreatingNews} className="flex-1 py-3 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-60">{isCreatingNews ? '등록 중...' : '등록하기'}</button>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            {/* 상단 고정 헤더 */}
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">📣 교우소식 작성</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (newNewsTitle.trim() || newNewsContent.trim()) {
+                    if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?')) return
+                  }
+                  setShowAddNewsModal(false)
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 본문 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+              <div>
+                <label className="block text-2xs font-bold text-gray-500 mb-1">소식 제목</label>
+                <input
+                  type="text"
+                  placeholder="소식 제목 (예: 박성도 성도님 득남 축하)"
+                  value={newNewsTitle}
+                  onChange={e => setNewNewsTitle(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs font-bold text-gray-500 mb-1">상세 내용</label>
+                <textarea
+                  rows={10}
+                  placeholder="축하, 기도, 소식 등 성도들과 함께 나눌 상세 내용을 작성해 주세요..."
+                  value={newNewsContent}
+                  onChange={e => setNewNewsContent(e.target.value)}
+                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* 하단 고정 버튼 */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (newNewsTitle.trim() || newNewsContent.trim()) {
+                    if (!confirm('작성 중인 내용이 있습니다. 창을 닫으시겠습니까?')) return
+                  }
+                  setShowAddNewsModal(false)
+                }}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateNews}
+                disabled={isCreatingNews}
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl disabled:opacity-60 shadow-md transition-all cursor-pointer"
+              >
+                {isCreatingNews ? '등록 중...' : '등록하기'}
+              </button>
             </div>
           </div>
         </div>
@@ -306,31 +353,64 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
       {/* ── 교우소식 수정 모달 ── */}
       {editingNews && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setEditingNews(null))}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-gray-900">✏️ 교우소식 수정</h3>
-              <button onClick={() => setEditingNews(null)} className="text-gray-400 font-bold">✕</button>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[88vh] max-h-[88vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            {/* 상단 고정 헤더 */}
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 교우소식 수정</h3>
+              <button
+                type="button"
+                onClick={() => setEditingNews(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
             </div>
-            <input
-              type="text"
-              value={editNewsTitle}
-              onChange={e => setEditNewsTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-              placeholder="제목"
-            />
-            <textarea
-              rows={4}
-              value={editNewsContent}
-              onChange={e => setEditNewsContent(e.target.value)}
-              className="w-full text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
-              placeholder="내용"
-            />
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setEditingNews(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSaveNewsEdit} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+
+            {/* 본문 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+              <div>
+                <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={editNewsTitle}
+                  onChange={e => setEditNewsTitle(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  placeholder="제목"
+                />
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
+                <textarea
+                  rows={10}
+                  value={editNewsContent}
+                  onChange={e => setEditNewsContent(e.target.value)}
+                  className="w-full min-h-[220px] sm:min-h-[280px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  placeholder="내용"
+                />
+              </div>
+            </div>
+
+            {/* 하단 고정 버튼 */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingNews(null)}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNewsEdit}
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                저장하기
+              </button>
             </div>
           </div>
         </div>

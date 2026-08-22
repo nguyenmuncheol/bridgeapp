@@ -26,21 +26,41 @@ interface PrayerCardProps {
 // (예전에는 입력값이 PrayerBoard 하나가 통째로 들고 있어서, 한 글자 칠 때마다 전체 목록이
 // 다시 그려졌습니다. 카드마다 독립적인 로컬 상태로 분리하면 그 카드만 다시 그려집니다.)
 function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin, onEdit, onDelete, onAddComment, onCommentChanged, onError }: PrayerCardProps) {
-
   const canViewSecret = !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
+  const canPin = isAdmin || currentUser.role === 'LEADER'
 
   return (
-    <div className={`bg-white rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${prayer.isCompleted ? 'bg-gray-50/70 border-gray-100 opacity-80' : 'border-blue-50'}`}>
+    <div className={`bg-white rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${
+      prayer.isPinned
+        ? 'border-amber-300/80 bg-amber-50/20 shadow-xs'
+        : prayer.isCompleted
+          ? 'bg-gray-50/70 border-gray-100 opacity-80'
+          : 'border-blue-50'
+    }`}>
       <div className="flex justify-between items-start">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Avatar allUsers={allUsers} authorId={prayer.authorId} authorName={prayer.authorName} size="w-8 h-8 text-2xs" />
           <span className="font-bold text-xs text-gray-900">{prayer.authorName}</span>
-          {prayer.isSecret && <span className="text-2xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Lock size={10} /> 비밀글</span>}
+          {prayer.isPinned && (
+            <span className="text-2xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 border border-amber-200">
+              <Pin size={10} className="fill-amber-700 text-amber-700" /> 고정됨
+            </span>
+          )}
+          {prayer.isSecret && (
+            <span className="text-2xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5">
+              <Lock size={10} /> 비밀글
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
-          {isAdmin && (
-            <button onClick={() => onPin(prayer.id)} className={`p-1 rounded hover:bg-gray-100 ${prayer.isPinned ? 'text-amber-500 font-bold' : 'text-gray-300'}`} title="상단 고정">
-              <Pin size={13} className={prayer.isPinned ? 'fill-amber-500' : ''} />
+          {canPin && (
+            <button
+              onClick={() => onPin(prayer.id)}
+              className={`p-1.5 rounded-lg hover:bg-amber-50 transition-all ${prayer.isPinned ? 'text-amber-600 font-bold bg-amber-50' : 'text-gray-300 hover:text-amber-500'}`}
+              title={prayer.isPinned ? "상단 고정 해제" : "상단 고정"}
+              aria-label={prayer.isPinned ? "상단 고정 해제" : "상단 고정"}
+            >
+              <Pin size={14} className={prayer.isPinned ? 'fill-amber-600 text-amber-600' : ''} />
             </button>
           )}
           {(prayer.authorId === currentUser.id || isAdmin) && (

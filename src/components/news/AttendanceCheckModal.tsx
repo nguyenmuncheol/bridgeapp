@@ -116,18 +116,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     return members.filter(u => u.labriId === selectedGroup)
   }, [selectedGroup, childMode, childEntries, members])
 
-  const attendedCount = targetMembers.filter(m => checkSelections[m.id] === 'ATTEND').length
-  // 표시한 사람만 저장합니다. 표시하지 않은 사람은 "미지정"으로 남습니다.
-  //
-  // 예전에는 **전원 표시해야만** 제출할 수 있었습니다. 그런데 늦게 오신 분이나
-  // 확인이 안 되는 분 때문에 한 명이라도 비면 아무것도 저장하지 못하고,
-  // 리더가 앱을 닫으면 그 주 출석이 통째로 날아갔습니다.
-  // → 이제 아는 것부터 저장하고 나중에 채울 수 있습니다.
-  //   (미지정이 남아 있으면 서버가 담당자에게 계속 알려줍니다)
-  const checkedMembers = targetMembers.filter(m => !!checkSelections[m.id])
-  const unsetCount = targetMembers.length - checkedMembers.length
-  const canSubmit = checkedMembers.length > 0
-
   // ── DB에서 출석 기록 로드 ──
   // 어른 출석표와 자녀 출석표는 완전히 다른 표라서 따로 불러옵니다.
   const { data: rawRecords, refetch: refetchAttendance } = useCachedQuery(
@@ -167,6 +155,18 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const checkNotes = notesOverride ?? derivedFromDB.notes
   const setCheckSelections = setSelectionsOverride
   const setCheckNotes = setNotesOverride
+
+  const attendedCount = targetMembers.filter(m => checkSelections[m.id] === 'ATTEND').length
+  // 표시한 사람만 저장합니다. 표시하지 않은 사람은 "미지정"으로 남습니다.
+  //
+  // 예전에는 **전원 표시해야만** 제출할 수 있었습니다. 그런데 늦게 오신 분이나
+  // 확인이 안 되는 분 때문에 한 명이라도 비면 아무것도 저장하지 못하고,
+  // 리더가 앱을 닫으면 그 주 출석이 통째로 날아갔습니다.
+  // → 이제 아는 것부터 저장하고 나중에 채울 수 있습니다.
+  //   (미지정이 남아 있으면 서버가 담당자에게 계속 알려줍니다)
+  const checkedMembers = targetMembers.filter(m => !!checkSelections[m.id])
+  const unsetCount = targetMembers.length - checkedMembers.length
+  const canSubmit = checkedMembers.length > 0
 
   const relevantIds = targetMembers.map(m => m.id)
   const hasSubmittedAttendance =

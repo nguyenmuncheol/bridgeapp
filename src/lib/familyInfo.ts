@@ -18,7 +18,19 @@
  * 예전 방식으로 입력된 일반 텍스트(JSON이 아닌 값)는 자동으로 note로 인식되어
  * 데이터가 사라지지 않고 그대로 보존됩니다.
  */
-import { UserProfile } from './mockData'
+import type { UserProfile } from './mockData'
+
+export const FAMILY_ROLE_ORDER: Record<string, number> = {
+  '조부': 1,
+  '조모': 2,
+  '부': 3,
+  '모': 4,
+  '자녀1': 5,
+  '자녀2': 6,
+  '자녀3': 7,
+  '자녀': 8,
+  '기타': 9,
+}
 
 /**
  * 자녀가 속한 교회학교 그룹. 빈 값이면 "미지정"입니다.

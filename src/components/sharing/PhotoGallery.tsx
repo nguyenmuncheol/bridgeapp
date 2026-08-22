@@ -360,99 +360,111 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
         </button>
       )}
 
-      {/* ── 행사사진 수정 모달 ──
-          🐛 과거 버그: 이 창과 사진 상세 창이 둘 다 z-[70]이었습니다. 층이 같으면
-          나중에 그려지는 쪽(사진 상세)이 위로 올라오기 때문에, 수정 버튼을 눌러도
-          수정 창이 사진 뒤에 가려져 글자를 칠 수 없었습니다.
-          → 수정 창을 z-[90]으로 올리고, 뒤의 사진 창은 흐리게 + 클릭 차단합니다.
-          → 무엇을 고치는 중인지 알 수 있게 사진 미리보기를 수정 창 안에 넣었습니다. */}
+      {/* ── 행사사진 수정 모달 ── */}
       {editingPhoto && (
         <div
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setEditingPhoto(null))}
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
+          onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-gray-900">✏️ 행사사진 정보 수정</h3>
-              <button onClick={() => setEditingPhoto(null)} className="text-gray-400 font-bold">✕</button>
-            </div>
-
-            {/* 사진 개별 삭제/추가 */}
-            <div className="space-y-1.5">
-              <label className="text-2xs text-gray-400 font-bold">사진 ({editPhotoImages.length}장)</label>
-              <div className="flex gap-1.5 flex-wrap">
-                {editPhotoImages.map((url) => (
-                  <div key={url} className="relative shrink-0">
-                    <img src={url} alt="" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveEditPhotoImage(url)}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center"
-                      aria-label="이 사진 빼기"
-                    >✕</button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => editPhotoFileInputRef.current?.click()}
-                  disabled={isUploadingEditPhoto || editPhotoImages.length >= 10}
-                  className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 shrink-0"
-                  aria-label="사진 추가"
-                >
-                  {isUploadingEditPhoto ? '…' : '+ 추가'}
-                </button>
-              </div>
-              <input ref={editPhotoFileInputRef} type="file" accept="image/*" multiple onChange={handleAddEditPhotoFiles} className="hidden" />
-            </div>
-
-            <div>
-              <label className="text-2xs text-gray-400 font-bold">제목</label>
-              <input
-                type="text"
-                value={editPhotoTitle}
-                onChange={e => setEditPhotoTitle(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-                placeholder="제목"
-              />
-            </div>
-            <div>
-              <label className="text-2xs text-gray-400 font-bold">상세 설명 / 나눔 내용</label>
-              <textarea
-                rows={3}
-                value={editPhotoContent}
-                onChange={e => setEditPhotoContent(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none resize-none text-gray-900 font-medium"
-                placeholder="사진 설명이나 나눔 내용을 적어주세요..."
-              />
-            </div>
-            <div>
-              <label className="text-2xs text-gray-400 font-bold">유튜브 영상 주소 (선택)</label>
-              <input
-                type="text"
-                value={editPhotoVideo}
-                onChange={e => setEditPhotoVideo(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-                placeholder="https://youtu.be/..."
-              />
-            </div>
-            <div>
-              <label className="text-2xs text-gray-400 font-bold">대표 태그</label>
-              <input
-                type="text"
-                value={editPhotoTag}
-                onChange={e => setEditPhotoTag(e.target.value)}
-                className="w-full mt-1 text-xs p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none text-gray-900 font-medium"
-                placeholder="예: 부활절, 수련회"
-              />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setEditingPhoto(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+          <div className="bg-white rounded-3xl max-w-lg w-full h-[90vh] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 행사사진 정보 수정</h3>
               <button
+                type="button"
+                onClick={() => setEditingPhoto(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
+              {/* 사진 개별 삭제/추가 */}
+              <div className="space-y-1.5 bg-gray-50/70 p-3 rounded-2xl border border-gray-200/60">
+                <label className="text-2xs text-gray-500 font-bold">등록된 사진 ({editPhotoImages.length}장 / 최대 10장)</label>
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {editPhotoImages.map((url) => (
+                    <div key={url} className="relative shrink-0">
+                      <img src={url} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-200" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEditPhotoImage(url)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center cursor-pointer"
+                        aria-label="이 사진 빼기"
+                      >✕</button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => editPhotoFileInputRef.current?.click()}
+                    disabled={isUploadingEditPhoto || editPhotoImages.length >= 10}
+                    className="w-14 h-14 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 shrink-0 cursor-pointer"
+                    aria-label="사진 추가"
+                  >
+                    {isUploadingEditPhoto ? '…' : '+ 추가'}
+                  </button>
+                </div>
+                <input ref={editPhotoFileInputRef} type="file" accept="image/*" multiple onChange={handleAddEditPhotoFiles} className="hidden" />
+              </div>
+
+              <div>
+                <label className="block text-2xs text-gray-500 font-bold mb-1">제목</label>
+                <input
+                  type="text"
+                  value={editPhotoTitle}
+                  onChange={e => setEditPhotoTitle(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  placeholder="제목"
+                />
+              </div>
+              <div className="flex-1 flex flex-col">
+                <label className="block text-2xs text-gray-500 font-bold mb-1">상세 설명 / 나눔 내용</label>
+                <textarea
+                  rows={6}
+                  value={editPhotoContent}
+                  onChange={e => setEditPhotoContent(e.target.value)}
+                  className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  placeholder="사진 설명이나 나눔 내용을 적어주세요..."
+                />
+              </div>
+              <div className="bg-gray-50/70 p-3 rounded-2xl border border-gray-200/60 space-y-1">
+                <label className="block text-2xs text-gray-600 font-bold">유튜브 영상 주소 (선택)</label>
+                <input
+                  type="text"
+                  value={editPhotoVideo}
+                  onChange={e => setEditPhotoVideo(e.target.value)}
+                  className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  placeholder="https://youtu.be/..."
+                />
+              </div>
+              <div>
+                <label className="block text-2xs text-gray-500 font-bold mb-1">대표 태그</label>
+                <input
+                  type="text"
+                  value={editPhotoTag}
+                  onChange={e => setEditPhotoTag(e.target.value)}
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  placeholder="예: 부활절, 수련회"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingPhoto(null)}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
                 onClick={handleSavePhotoEdit}
                 disabled={isSavingPhoto || isUploadingEditPhoto}
-                className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-50"
+                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl disabled:opacity-50 shadow-md transition-all cursor-pointer"
               >
-                {isSavingPhoto ? '저장 중...' : '저장'}
+                {isSavingPhoto ? '저장 중...' : '저장하기'}
               </button>
             </div>
           </div>
