@@ -6,7 +6,8 @@ import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../li
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
 import ImageSlider from '../ImageSlider'
-import { saveImage, openImageViewer } from '../../lib/download'
+import ImageViewerModal from '../ImageViewerModal'
+import { saveImage } from '../../lib/download'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
 import { dbAddComment } from '../../lib/db'
@@ -547,6 +548,7 @@ function PhotoDetailModal({
     ? photo.imageUrls!
     : ['https://images.unsplash.com/photo-1544427920-c49ccfb85579?auto=format&fit=crop&w=800&q=80']
   const [imgIdx, setImgIdx] = useState(0)
+  const [showEnlargedViewer, setShowEnlargedViewer] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
 
   // 🐛 과거 버그: 사진이 저장되지 않고 그냥 새 탭에 열리기만 했습니다.
@@ -659,9 +661,7 @@ function PhotoDetailModal({
           images={images}
           index={imgIdx}
           onIndexChange={setImgIdx}
-          // 🐛 과거 문제: 사진을 누르면 곧바로 다운로드가 시작됐습니다(주보와 동작이 달랐습니다).
-          //    → 주보처럼 "크게 보기"만 하고, 그 화면에서 다시 누르면 닫힙니다.
-          onImageClick={() => openImageViewer(images[imgIdx])}
+          onImageClick={() => setShowEnlargedViewer(true)}
           alt={photo.title}
         />}
         {hasImages && images.length > 1 && (
@@ -710,6 +710,17 @@ function PhotoDetailModal({
           />
         </div>
       </div>
+
+      {/* ─── 행사사진 전체화면 확대 뷰어 (클릭 투과 및 고스트 클릭 완벽 차단) ─── */}
+      {showEnlargedViewer && (
+        <ImageViewerModal
+          isOpen={showEnlargedViewer}
+          images={images}
+          initialIndex={imgIdx}
+          onClose={() => setShowEnlargedViewer(false)}
+          alt={photo.title}
+        />
+      )}
     </div>
   )
 }

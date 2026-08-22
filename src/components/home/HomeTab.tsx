@@ -9,6 +9,7 @@ import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
+import ImageViewerModal from '../ImageViewerModal'
 import { openImageViewer } from '../../lib/download'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 
@@ -55,6 +56,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   const [showBulletinModal, setShowBulletinModal] = useState(false)
   useModalDismiss(showBulletinModal, () => setShowBulletinModal(false))
   const [activeBulletinImgIdx, setActiveBulletinImgIdx] = useState(0)
+  const [isEnlargedBulletinOpen, setIsEnlargedBulletinOpen] = useState(false)
 
   // 주보 편집 모달 상태
   const [showBulletinEditModal, setShowBulletinEditModal] = useState(false)
@@ -481,7 +483,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
                   images={bulletin.imageUrls}
                   index={activeBulletinImgIdx}
                   onIndexChange={setActiveBulletinImgIdx}
-                  onImageClick={() => openImageViewer(bulletin.imageUrls[activeBulletinImgIdx])}
+                  onImageClick={() => setIsEnlargedBulletinOpen(true)}
                   alt="주보"
                   maxHeightClass="max-h-[360px]"
                   bgClass="bg-gray-50"
@@ -768,6 +770,17 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl">닫기</button>
           </div>
         </div>
+      )}
+
+      {/* ─── 주보 전체화면 확대 뷰어 (클릭 투과 및 고스트 클릭 완벽 차단) ─── */}
+      {isEnlargedBulletinOpen && bulletin && (
+        <ImageViewerModal
+          isOpen={isEnlargedBulletinOpen}
+          images={bulletin.imageUrls}
+          initialIndex={activeBulletinImgIdx}
+          onClose={() => setIsEnlargedBulletinOpen(false)}
+          alt="주보 크게 보기"
+        />
       )}
     </div>
   )
