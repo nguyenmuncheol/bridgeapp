@@ -14,11 +14,11 @@ import { useWriteModalGuard } from '../../lib/useModalDismiss'
 interface MemberNewsBoardProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
-  isLeaderOrAdmin: boolean
+  isAdmin: boolean
 }
 
 // ── 교우소식 게시판 (작성/수정/삭제/좋아요/댓글) ──
-export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin }: MemberNewsBoardProps) {
+export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: MemberNewsBoardProps) {
   const [showAddNewsModal, setShowAddNewsModal] = useState(false)
   const [newNewsTitle, setNewNewsTitle] = useState('')
   const [newNewsContent, setNewNewsContent] = useState('')
@@ -269,7 +269,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
           item={item}
           currentUser={currentUser}
           allUsers={allUsers}
-          isLeaderOrAdmin={isLeaderOrAdmin}
+          isAdmin={isAdmin}
           onLike={handleNewsLike}
           onEdit={openEditModal}
           onDelete={handleDeleteNews}
@@ -316,7 +316,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isLeaderOrAdmin
             </div>
 
             {/* ── 관리자 전용: 교회 이름으로 올리기 토글 ── */}
-            {isLeaderOrAdmin && (
+            {isAdmin && (
               <div
                 className={`px-5 py-2.5 flex items-center gap-3 cursor-pointer select-none border-b transition-colors ${
                   postAsChurch ? 'bg-blue-50 border-blue-100' : 'bg-gray-50/60 border-gray-100'

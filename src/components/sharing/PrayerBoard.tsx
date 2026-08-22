@@ -64,7 +64,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
   )
   useWriteModalGuard(Boolean(editingPrayer), hasUnsavedEdit, () => setEditingPrayer(null))
 
-  const canPin = isAdmin || currentUser.role === 'LEADER'
+  const canPin = isAdmin
 
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {

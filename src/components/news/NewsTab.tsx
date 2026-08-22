@@ -76,7 +76,7 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
       </div>
 
       <div className={subTab === 'memberNews' ? '' : 'hidden'}>
-        <MemberNewsBoard currentUser={currentUser} allUsers={allUsers} isLeaderOrAdmin={isLeaderOrAdmin} />
+        <MemberNewsBoard currentUser={currentUser} allUsers={allUsers} isAdmin={currentUser.role === 'ADMIN'} />
       </div>
       <div className={subTab === 'schedule' ? '' : 'hidden'}>
         <ScheduleCalendar isLeaderOrAdmin={isLeaderOrAdmin} addressBookEntries={addressBookEntries} allUsers={allUsers} />

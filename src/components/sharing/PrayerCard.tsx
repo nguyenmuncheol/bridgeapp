@@ -27,7 +27,7 @@ interface PrayerCardProps {
 // 다시 그려졌습니다. 카드마다 독립적인 로컬 상태로 분리하면 그 카드만 다시 그려집니다.)
 function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin, onEdit, onDelete, onAddComment, onCommentChanged, onError }: PrayerCardProps) {
   const canViewSecret = !prayer.isSecret || prayer.authorId === currentUser.id || isAdmin || currentUser.role === 'LEADER'
-  const canPin = isAdmin || currentUser.role === 'LEADER'
+  const canPin = isAdmin
 
   return (
     <div className={`bg-white rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${

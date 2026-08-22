@@ -10,7 +10,7 @@ interface MemberNewsCardProps {
   item: PostItem
   currentUser: UserProfile
   allUsers: UserProfile[]
-  isLeaderOrAdmin: boolean
+  isAdmin: boolean
   onLike: (id: string, current: { likes: number; likedUserIds: string[] }) => void
   onEdit: (item: PostItem) => void
   onDelete: (id: string) => void
@@ -22,7 +22,7 @@ interface MemberNewsCardProps {
 
 // 교우소식 카드 한 장. React.memo + 댓글 입력값을 로컬 상태로 분리해서,
 // 댓글 입력 중 다른 카드들까지 함께 리렌더링되는 걸 막습니다(PrayerCard와 동일한 패턴).
-function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLike, onEdit, onDelete, onAddComment, onCommentChanged, onError }: MemberNewsCardProps) {
+function MemberNewsCardImpl({ item, currentUser, allUsers, isAdmin, onLike, onEdit, onDelete, onAddComment, onCommentChanged, onError }: MemberNewsCardProps) {
   return (
     <div className="bg-white rounded-2xl border border-blue-50 p-4 shadow-2xs space-y-3">
       <div className="flex justify-between items-start">
@@ -32,7 +32,7 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLi
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-2xs text-gray-400">{item.createdAt}</span>
-          {(item.authorId === currentUser.id || isLeaderOrAdmin) && (
+          {(item.authorId === currentUser.id || isAdmin) && (
             <>
               <button onClick={() => onEdit(item)} className="p-1 text-gray-400 hover:text-blue-600 rounded" title="수정">
                 <Edit2 size={12} />
@@ -68,7 +68,7 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isLeaderOrAdmin, onLi
         comments={item.comments || []}
         currentUser={currentUser}
         allUsers={allUsers}
-        isAdmin={isLeaderOrAdmin}
+        isAdmin={isAdmin}
         onAddComment={onAddComment}
         onCommentChanged={onCommentChanged}
         onError={onError}
