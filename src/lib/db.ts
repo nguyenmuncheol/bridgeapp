@@ -1437,16 +1437,18 @@ export async function dbFetchMemberActivityCounts(): Promise<{
   postsByAuthor: Record<string, number>
   commentsByAuthor: Record<string, number>
   lastActivityByAuthor: Record<string, string>
+  reactionsByUser: Record<string, number>
 }> {
-  const postsRes = await supabase.from('posts').select('author_id, created_at')
+  const postsRes = await supabase.from('posts').select('author_id, created_at, liked_user_ids')
   const commentsRes = await supabase.from('post_comments').select('author_id, created_at')
 
   const postsByAuthor: Record<string, number> = {}
   const commentsByAuthor: Record<string, number> = {}
   const lastActivityByAuthor: Record<string, string> = {}
+  const reactionsByUser: Record<string, number> = {}
 
   if (postsRes.data) {
-    postsRes.data.forEach((p: { author_id?: string | null; created_at?: string }) => {
+    postsRes.data.forEach((p: { author_id?: string | null; created_at?: string; liked_user_ids?: string[] | null }) => {
       if (p.author_id) {
         postsByAuthor[p.author_id] = (postsByAuthor[p.author_id] || 0) + 1
         if (p.created_at) {
@@ -1455,6 +1457,13 @@ export async function dbFetchMemberActivityCounts(): Promise<{
             lastActivityByAuthor[p.author_id] = p.created_at
           }
         }
+      }
+      if (Array.isArray(p.liked_user_ids)) {
+        p.liked_user_ids.forEach((uid: string) => {
+          if (uid) {
+            reactionsByUser[uid] = (reactionsByUser[uid] || 0) + 1
+          }
+        })
       }
     })
   }
@@ -1473,5 +1482,6 @@ export async function dbFetchMemberActivityCounts(): Promise<{
     })
   }
 
-  return { postsByAuthor, commentsByAuthor, lastActivityByAuthor }
+  return { postsByAuthor, commentsByAuthor, lastActivityByAuthor, reactionsByUser }
 }
+
