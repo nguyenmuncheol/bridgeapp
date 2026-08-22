@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "../src/components/PwaRegister";
+import UserActivityTracker from "../src/components/UserActivityTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,6 +63,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-gray-100 text-gray-900 selection:bg-[#335f87] selection:text-white">
         <PwaRegister />
+        <UserActivityTracker />
         {children}
       </body>
     </html>

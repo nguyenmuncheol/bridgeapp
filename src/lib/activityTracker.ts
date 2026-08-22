@@ -55,7 +55,7 @@ export function detectDeviceInfo(): UserDeviceInfo {
 
 /**
  * 성도의 접속 일시, PWA 설치 여부, 기기 환경을 자동 기록합니다.
- * DB 부하를 방지하기 위해 15분 단위로 Throttling(중복 방지)합니다.
+ * DB 부하를 방지하기 위해 2분 단위로 Throttling(중복 방지)합니다.
  */
 export async function trackUserActivity(userId?: string | null) {
   if (!userId || typeof window === 'undefined') return
@@ -64,8 +64,8 @@ export async function trackUserActivity(userId?: string | null) {
   const lastTracked = sessionStorage.getItem(sessionKey)
   const now = Date.now()
 
-  // 15분 내 이미 기록했으면 스킵
-  if (lastTracked && now - Number(lastTracked) < 15 * 60 * 1000) {
+  // 2분 내 이미 기록했으면 스킵
+  if (lastTracked && now - Number(lastTracked) < 2 * 60 * 1000) {
     return
   }
 
@@ -78,12 +78,16 @@ export async function trackUserActivity(userId?: string | null) {
     sessionStorage.setItem(sessionKey, String(now))
     
     // 1. profiles 테이블 업데이트
-    await supabase.from('profiles').update({
+    const { error: profileErr } = await supabase.from('profiles').update({
       last_active_at: nowIso,
       is_pwa: info.isPwa,
       device_platform: info.platform,
       browser_name: info.browser,
     }).eq('id', userId)
+
+    if (profileErr) {
+      console.warn('[ActivityTracker] profiles 테이블 업데이트 실패 (SQL 마이그레이션 필요):', profileErr.message)
+    }
 
     // 2. 시간대별 통계 로그 테이블 (테이블 존재 시 삽입)
     try {
@@ -97,7 +101,7 @@ export async function trackUserActivity(userId?: string | null) {
     } catch {
       // 무시
     }
-  } catch {
-    // 무시 (오프라인이거나 컬럼 미존재 시에도 사용자 경험 영향 없음)
+  } catch (err: any) {
+    console.warn('[ActivityTracker] 트래킹 오류:', err?.message || err)
   }
 }

@@ -1,16 +1,18 @@
-﻿'use client'
+'use client'
 
 import { useState, useMemo, useEffect } from 'react'
 import {
   Users, Smartphone, Bell, BellOff, Clock, Search, RefreshCw,
   Home, Shield, TrendingUp, AlertTriangle, Monitor, ExternalLink,
-  CheckCircle2, Flame, Calendar, Laptop, ChevronDown, Filter
+  CheckCircle2, Flame, Calendar, Laptop, ChevronDown, Filter,
+  Copy, Check, Database
 } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember } from '../../lib/mockData'
 import {
   dbFetchProfiles, dbFetchAllPushSubscriptions, dbFetchUserAccessLogs,
   dbFetchMemberActivityCounts, PushSubscriptionInfo, AccessLogItem
 } from '../../lib/db'
+import { trackUserActivity } from '../../lib/activityTracker'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import Avatar from '../news/Avatar'
 
@@ -53,6 +55,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'posts' | 'created'>('recent')
+  const [copiedSql, setCopiedSql] = useState(false)
 
   // 데이터 로딩
   const loadData = async () => {
@@ -76,8 +79,11 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   }
 
   useEffect(() => {
+    if (currentUser?.id) {
+      trackUserActivity(currentUser.id)
+    }
     loadData()
-  }, [])
+  }, [currentUser])
 
   // 푸시 구독자 Map (userId -> 구독 수)
   const pushSubUserMap = useMemo(() => {
@@ -290,6 +296,36 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
           )}
         </div>
       </div>
+
+      {/* ─── DB 컬럼 미생성 안내 배너 (최초 1회 설정 안내) ─── */}
+      {!isLoading && actualMembers.length > 0 && actualMembers.every(p => !p.lastActiveAt) && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Database size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-300">💡 Supabase 데이터베이스 접속 분석 컬럼 생성이 필요합니다</h3>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                Supabase의 <code className="bg-slate-800 px-1.5 py-0.5 rounded text-amber-200">profiles</code> 테이블에 <code className="text-amber-200">last_active_at</code> 등의 분석 컬럼이 아직 생성되지 않았습니다.<br />
+                아래 버튼을 눌러 SQL 명령어를 복사한 후, Supabase 대시보드 <strong>SQL Editor</strong>에서 1회 실행(Run)해 주세요!
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const sql = `-- 1. profiles 테이블에 접속 및 환경 정보 컬럼 추가\nALTER TABLE public.profiles\n  ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ,\n  ADD COLUMN IF NOT EXISTS is_pwa BOOLEAN DEFAULT FALSE,\n  ADD COLUMN IF NOT EXISTS device_platform TEXT,\n  ADD COLUMN IF NOT EXISTS browser_name TEXT;\n\n-- 2. 시간대별/요일별 접속 통계 집계용 테이블 생성\nCREATE TABLE IF NOT EXISTS public.user_access_logs (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,\n  hour_of_day INT NOT NULL CHECK (hour_of_day >= 0 AND hour_of_day <= 23),\n  day_of_week INT NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),\n  is_pwa BOOLEAN DEFAULT FALSE,\n  device_platform TEXT,\n  accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\n\nALTER TABLE public.user_access_logs ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS "모든 로그인 사용자 접속 로그 등록" ON public.user_access_logs;\nCREATE POLICY "모든 로그인 사용자 접속 로그 등록" ON public.user_access_logs\n  FOR INSERT WITH CHECK (auth.uid() = user_id);\n\nDROP POLICY IF EXISTS "관리자 접속 로그 조회" ON public.user_access_logs;\nCREATE POLICY "관리자 접속 로그 조회" ON public.user_access_logs\n  FOR SELECT USING (\n    EXISTS (\n      SELECT 1 FROM public.profiles\n      WHERE profiles.id = auth.uid() AND profiles.role = 'ADMIN'\n    )\n  );`
+              navigator.clipboard.writeText(sql)
+              setCopiedSql(true)
+              setTimeout(() => setCopiedSql(false), 3000)
+            }}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-md"
+          >
+            {copiedSql ? <Check size={14} className="text-emerald-950" /> : <Copy size={14} />}
+            <span>{copiedSql ? 'SQL 복사 완료!' : '📋 SQL 마이그레이션 복사'}</span>
+          </button>
+        </div>
+      )}
 
       {/* ─── 2. 핵심 요약 카드 (KPI Cards) ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
