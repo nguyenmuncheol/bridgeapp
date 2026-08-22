@@ -148,14 +148,14 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
         <div className="text-center space-y-5">
           <img src="/logo-wide.png" alt="더브릿지교회" className="h-14 w-auto mx-auto brightness-0 invert" />
           <Reveal from="scale" delay={150}>
-            <p className="text-2xs font-bold tracking-[0.25em] text-blue-200 uppercase">The Bridge Church</p>
+            <p className="text-2xs font-bold tracking-[0.25em] text-blue-200 uppercase">Welcome Home</p>
           </Reveal>
           <Reveal from="up" delay={300}>
             <h1 className="text-2xl font-black leading-snug">더브릿지 교회에<br />오신 것을 환영합니다</h1>
           </Reveal>
           <Reveal from="up" delay={500}>
             <p className="text-xs text-blue-100 leading-relaxed italic">
-              &ldquo;진리를 알지니 진리가 너희를<br />자유롭게 하리라&rdquo; — 요한복음 8:32
+              하나님이 그 아들을 세상에 보내신 것은<br />세상을 심판하려 하심이 아니요<br />그로 말미암아 세상이<br />구원을 받게 하려 하심이라<br />— 요한복음 3:17 —
             </p>
           </Reveal>
         </div>
@@ -187,9 +187,10 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           <Reveal from="right"><p className="text-2xs font-bold tracking-widest text-blue-200 uppercase">Our Purpose</p></Reveal>
           <div className="space-y-4">
             {[
-              '새신자를 진심으로 환영합니다',
+              '20~40 세대와 새신자를 대상으로',
               '복음을 전하며 이웃의 구원에 집중합니다',
-              '다음세대가 오고 싶은 교회를 만듭니다',
+              '성령께서 만드신 진실한 공동체로',
+              '다음세대가 오고 싶은 교회를 그립니다',
             ].map((text, i) => (
               <Reveal key={text} from="right" delay={150 + i * 150}>
                 <p className="text-lg font-bold leading-snug flex items-start gap-2">
@@ -207,14 +208,15 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
         <div className="space-y-5">
           <Reveal from="up"><p className="text-2xs font-bold tracking-widest text-blue-200 uppercase text-center">What We Value</p></Reveal>
           {[
-            { name: '본질적인 예배', desc: '하나님을 만나는 자유가 있는 예배' },
-            { name: '역동적인 공동체', desc: '일상 속 신앙 나눔과 진심어린 돌봄' },
-            { name: '다음세대 신앙잇기', desc: '아이들의 웃음이 있는 교회' },
+            { name: '본질적인 예배', desc: '하나님을 만나는 역동과 자유가 있는 예배' },
+            { name: '역동적인 공동체', desc: '하나님을 닮아가는 일상 속 신앙 나눔과\n진심어린 돌봄이 있는 공동체' },
+            { name: '복음 전도 사역', desc: '제자화 훈련을 통한 복음 전도' },
+            { name: '다음세대 신앙잇기', desc: '아이들의 웃음 속 부모의 신앙을 본받는 교회' },
           ].map((v, i) => (
             <Reveal key={v.name} from={i % 2 === 0 ? 'left' : 'right'} delay={i * 150}>
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3.5">
                 <p className="font-black text-sm">{v.name}</p>
-                <p className="text-xs text-blue-50/80 mt-1">{v.desc}</p>
+                <p className="text-xs text-blue-50/80 mt-1 whitespace-pre-line">{v.desc}</p>
               </div>
             </Reveal>
           ))}
@@ -224,11 +226,13 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
       {/* 5. 예배시간 · 위치 */}
       <PhotoSection gradient={GRADIENTS[4]}>
         <div className="text-center space-y-6">
-          <Reveal from="up"><p className="text-2xs font-bold tracking-widest text-blue-200 uppercase">Join Us</p></Reveal>
+          <Reveal from="up"><p className="text-2xs font-bold tracking-widest text-blue-200 uppercase">Grow with Us</p></Reveal>
           <Reveal from="scale" delay={150}>
             <div className="space-y-1">
-              <p className="text-3xl font-black">주일 오전 11:00</p>
-              <p className="text-xs text-blue-100">매주 일요일 · 대예배</p>
+              <p className="text-3xl font-black">일요일 오전 11:00</p>
+              <p className="text-xs text-blue-100">열린 주일 예배</p>
+              <p className="text-xs text-blue-100">중고등부</p>
+              <p className="text-xs text-blue-100">유아 & 유치부</p>
             </div>
           </Reveal>
           <Reveal from="up" delay={300}>
@@ -244,7 +248,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
         <div className="text-center space-y-6">
           <Reveal from="scale">
             <h2 className="text-xl font-black leading-snug">
-              이제, 더브릿지 교회를<br />직접 만나보세요
+              따로 또 같이,<br />신앙과 일상을 나누는 공동체로<br /><br />당신을 초대합니다
             </h2>
           </Reveal>
           <Reveal from="up" delay={200}>

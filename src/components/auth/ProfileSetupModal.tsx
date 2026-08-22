@@ -54,7 +54,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
           <div className="text-2xl">🙌</div>
           <h2 className="font-black text-base">환영합니다!</h2>
           <p className="text-2xs text-blue-200 leading-relaxed">
-            더브릿지교회 앱 사용을 위해<br />추가 정보를 입력해 주세요.
+            더브릿지교회 앱 가입을 위해<br />추가 정보를 입력해 주세요.
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
-            <p className="text-2xs text-gray-500 mt-1">💡 교인 확인을 위해 실명을 입력해 주세요.</p>
+            <p className="text-2xs text-gray-500 mt-1">💡 더브릿지 가족 확인을 위해 실명을 입력해 주세요.</p>
           </div>
 
           {/* 연락처 */}
@@ -134,7 +134,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 flex items-start gap-1.5">
             <span className="text-2xs mt-px">🔒</span>
-            <p className="text-2xs text-blue-800 leading-relaxed">전화번호/주소는 교인관리 목적으로만 사용되며<br />공개되지 않습니다.</p>
+            <p className="text-2xs text-blue-800 leading-relaxed">전화번호/주소는 내부 교류 및 관리 목적에만 사용되며<br />교회 외부로 공개되지 않습니다.</p>
           </div>
 
           {/* 생년월일 (연도 | 월 | 일 드롭다운) */}
