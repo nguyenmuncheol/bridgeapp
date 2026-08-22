@@ -206,18 +206,23 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       {/* 검색 중에도 필터 칩을 유지합니다. 예전에는 검색창에 글자를 넣는 순간
           칩 줄이 통째로 사라져서 화면이 손가락 밑에서 재구성됐습니다. */}
       {(
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl text-2xs font-bold">
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl text-2xs font-bold w-full">
           {ADDRESS_FILTERS.map(opt => {
-            // 라브리1·2·3은 글자가 많으므로 넉넉하게, 전체/자녀는 보통, ❤️는 최소폭
-            const widthClass =
-              opt.key === '미정' ? 'w-8' :
-              opt.key === '전체' || opt.key === '자녀' ? 'w-10' :
-              'flex-1'
+            // 글자 수 비율에 따른 flex weight: 라브리1~3(4자) > 전체/자녀(2자) > ❤️(1자)
+            // 고정 px 대신 유동 비율을 사용하여 모바일/태블릿/PC 어디서나 자연스럽게 비례 확장됩니다.
+            const flexRatio =
+              opt.key === '미정' ? 1.0 :
+              opt.key === '전체' || opt.key === '자녀' ? 1.3 :
+              1.9
+
             return (
               <button
                 key={opt.key}
                 onClick={() => setAddressFilter(opt.key)}
-                className={`${widthClass} py-2 rounded-lg transition-all whitespace-nowrap ${addressFilter === opt.key ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+                style={{ flex: `${flexRatio} ${flexRatio} 0%` }}
+                className={`py-2 px-1 rounded-lg transition-all whitespace-nowrap text-center truncate ${
+                  addressFilter === opt.key ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 {opt.label}
               </button>
