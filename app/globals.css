@@ -30,6 +30,8 @@
   body {
     background: var(--background);
     color: var(--foreground);
+    word-break: keep-all;
+    overflow-wrap: break-word;
     /* font-family는 layout.tsx가 지정하는 --font-sans(한글 포함 시스템 폰트로 대체)를
        쓰도록 두고, Arial 하드코딩은 제거합니다. */
   }
