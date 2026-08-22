@@ -104,10 +104,14 @@ export function useWriteModalGuard(
   }, [isOpen])
 }
 
-/** 팝업 바깥 배경(backdrop)을 눌렀을 때만 닫히는 클릭 핸들러 (안쪽 내용 클릭은 무시). */
+/** 팝업 바깥 배경(backdrop)을 눌렀을 때만 닫히는 클릭 핸들러 (안쪽 내용 클릭은 무시, 이벤트 전파 차단). */
 export function backdropClose(onClose: () => void) {
   return (e: React.MouseEvent<HTMLElement>) => {
-    if (e.target === e.currentTarget) onClose()
+    e.stopPropagation()
+    if (e.target === e.currentTarget) {
+      e.preventDefault()
+      onClose()
+    }
   }
 }
 
