@@ -763,7 +763,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <Clock size={14} className="text-blue-400" />
-                <h2 className="text-xs font-bold text-white">시간대별 접속 피크 (0~23시)</h2>
+                <h2 className="text-2xs font-bold text-white">시간대별 접속 피크 (0~23시)</h2>
               </div>
               <span className="text-3xs text-slate-400">자주 찾는 시간대</span>
             </div>
@@ -771,7 +771,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             {/* 24시간 바 차트 */}
             <div className="flex items-end gap-1 sm:gap-1.5 h-24 pt-3 pb-1.5 px-1 bg-slate-900/60 rounded-xl border border-slate-700/40 overflow-x-auto">
               {hourlyStats.hours.map(h => {
-                const heightPercent = Math.round((h.count / hourlyStats.maxCount) * 100)
+                const heightPercent = hourlyStats.maxCount > 0 ? Math.round((h.count / hourlyStats.maxCount) * 100) : 0
                 const isPeak = h.count > 0 && h.count === hourlyStats.maxCount
                 return (
                   <div key={h.hour} className="flex-1 flex flex-col items-center gap-1 min-w-[10px] sm:min-w-[12px] group relative">
@@ -813,7 +813,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <CalendarCheck size={14} className="text-teal-400" />
-                <h2 className="text-xs font-bold text-white">주일 예배 출석 & 식사 통계</h2>
+                <h2 className="text-2xs font-bold text-white">주일 예배 출석 & 식사 통계</h2>
               </div>
               <span className="text-3xs text-slate-400">최근 4주 현황</span>
             </div>
@@ -873,13 +873,13 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <Smartphone size={14} className="text-emerald-400" />
-                <h2 className="text-xs font-bold text-white">기기 및 실행 환경 점유율</h2>
+                <h2 className="text-2xs font-bold text-white">기기 및 실행 환경 점유율</h2>
               </div>
               <span className="text-3xs text-slate-400">PWA vs 웹</span>
             </div>
 
             {/* 실행 방식 (앱 vs 웹) */}
-            <div className="flex items-center gap-2 text-2xs font-bold mb-2.5">
+            <div className="flex items-center gap-2 text-3xs font-bold mb-2.5">
               <div className="flex-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 p-2 rounded-xl text-center">
                 📱 홈화면 앱 {platformStats.pwa.app.rate}% ({platformStats.pwa.app.count}명)
               </div>
@@ -1015,7 +1015,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                 placeholder="이름/직분/라브리 검색..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-xl text-2xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-medium"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-medium"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">✕</button>
@@ -1026,7 +1026,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className="bg-slate-900/80 border border-slate-700 text-2xs text-slate-200 font-semibold px-2.5 py-1.5 rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
+              className="bg-slate-900/80 border border-slate-700 text-xs text-slate-200 font-semibold px-2.5 py-1.5 rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="recent">⏱️ 최근 접속순</option>
               <option value="name">🔤 이름 가나다순</option>
@@ -1071,7 +1071,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         {/* ─── 5-A. 개인별 성도 목록 테이블 ─── */}
         {viewMode === 'individual' && (
           <div className="overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-900/40">
-            <table className="w-full text-left text-2xs">
+            <table className="w-full text-left text-xs">
               <thead className="bg-slate-900/90 text-slate-400 text-2xs font-bold border-b border-slate-700/80">
                 <tr>
                   <th className="p-3">성도 정보</th>
@@ -1267,7 +1267,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                       <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
                         <div className="flex items-center gap-2">
                           <Users2 size={16} className="text-blue-400" />
-                          <h3 className="font-bold text-xs text-white">{unit.label}</h3>
+                          <h3 className="font-bold text-sm text-white">{unit.label}</h3>
                         </div>
                         <span className={`text-3xs font-bold px-2 py-0.5 rounded-full border ${
                           isAllActive ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
@@ -1290,7 +1290,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                           const hasPush = pushSubUserMap.has(m.id)
 
                           return (
-                            <div key={m.id} className="flex items-center justify-between text-2xs bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
+                            <div key={m.id} className="flex items-center justify-between text-xs bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
                               <div className="flex items-center gap-2 min-w-0">
                                 <Avatar allUsers={profiles} authorId={m.id} authorName={m.name} size="w-6 h-6 text-3xs" />
                                 <div className="truncate">
