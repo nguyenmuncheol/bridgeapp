@@ -1015,7 +1015,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                 placeholder="이름/직분/라브리 검색..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-medium"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-xl text-2xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-medium"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">✕</button>
@@ -1026,7 +1026,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className="bg-slate-900/80 border border-slate-700 text-xs text-slate-200 font-semibold px-2.5 py-1.5 rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
+              className="bg-slate-900/80 border border-slate-700 text-2xs text-slate-200 font-semibold px-2.5 py-1.5 rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="recent">⏱️ 최근 접속순</option>
               <option value="name">🔤 이름 가나다순</option>
@@ -1071,7 +1071,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         {/* ─── 5-A. 개인별 성도 목록 테이블 ─── */}
         {viewMode === 'individual' && (
           <div className="overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-900/40">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-2xs">
               <thead className="bg-slate-900/90 text-slate-400 text-2xs font-bold border-b border-slate-700/80">
                 <tr>
                   <th className="p-3">성도 정보</th>
@@ -1267,7 +1267,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                       <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
                         <div className="flex items-center gap-2">
                           <Users2 size={16} className="text-blue-400" />
-                          <h3 className="font-bold text-sm text-white">{unit.label}</h3>
+                          <h3 className="font-bold text-xs text-white">{unit.label}</h3>
                         </div>
                         <span className={`text-3xs font-bold px-2 py-0.5 rounded-full border ${
                           isAllActive ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
@@ -1290,7 +1290,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                           const hasPush = pushSubUserMap.has(m.id)
 
                           return (
-                            <div key={m.id} className="flex items-center justify-between text-xs bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
+                            <div key={m.id} className="flex items-center justify-between text-2xs bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
                               <div className="flex items-center gap-2 min-w-0">
                                 <Avatar allUsers={profiles} authorId={m.id} authorName={m.name} size="w-6 h-6 text-3xs" />
                                 <div className="truncate">
