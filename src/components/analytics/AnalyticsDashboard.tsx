@@ -685,91 +685,91 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       )}
 
       {/* ─── 2. 핵심 요약 카드 (KPI Cards - 6종) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {/* 총 성도 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl space-y-1.5 shadow-lg">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3 sm:p-3.5 rounded-2xl space-y-1 shadow-md">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-2xs font-semibold">총 등록 성도</span>
-            <Users size={16} className="text-blue-400" />
+            <span className="text-3xs sm:text-2xs font-semibold">총 등록 성도</span>
+            <Users size={14} className="text-blue-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-white">{metrics.total}<span className="text-xs font-normal text-slate-400 ml-1">명</span></div>
-          <div className="text-2xs text-slate-400">승인 {metrics.approved} · 대기 {metrics.pending}</div>
+          <div className="text-base sm:text-lg font-bold text-white">{metrics.total}<span className="text-3xs sm:text-2xs font-normal text-slate-400 ml-1">명</span></div>
+          <div className="text-3xs text-slate-400">승인 {metrics.approved} · 대기 {metrics.pending}</div>
         </div>
 
         {/* 7일 활성 성도 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl space-y-1.5 shadow-lg">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3 sm:p-3.5 rounded-2xl space-y-1 shadow-md">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-2xs font-semibold">7일 내 앱 활동</span>
-            <TrendingUp size={16} className="text-emerald-400" />
+            <span className="text-3xs sm:text-2xs font-semibold">7일 내 앱 활동</span>
+            <TrendingUp size={14} className="text-emerald-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-emerald-400">{metrics.active7DaysCount}<span className="text-xs font-normal text-slate-400 ml-1">명</span></div>
-          <div className="text-2xs text-emerald-400/80 font-semibold">활성률 {metrics.active7DaysRate}%</div>
+          <div className="text-base sm:text-lg font-bold text-emerald-400">{metrics.active7DaysCount}<span className="text-3xs sm:text-2xs font-normal text-slate-400 ml-1">명</span></div>
+          <div className="text-3xs text-emerald-400/80 font-semibold">활성률 {metrics.active7DaysRate}%</div>
         </div>
 
         {/* 주일 출석 현황 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl space-y-1.5 shadow-lg">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3 sm:p-3.5 rounded-2xl space-y-1 shadow-md">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-2xs font-semibold">최근 주일 출석</span>
-            <CalendarCheck size={16} className="text-teal-400" />
+            <span className="text-3xs sm:text-2xs font-semibold">최근 주일 출석</span>
+            <CalendarCheck size={14} className="text-teal-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-teal-300">
-            {metrics.latestAttendCount}<span className="text-xs font-normal text-slate-400 ml-1">명</span>
+          <div className="text-base sm:text-lg font-bold text-teal-300">
+            {metrics.latestAttendCount}<span className="text-3xs sm:text-2xs font-normal text-slate-400 ml-1">명</span>
           </div>
-          <div className="text-2xs text-teal-400/80 font-semibold">출석률 {metrics.latestAttendanceRate}%</div>
+          <div className="text-3xs text-teal-400/80 font-semibold">출석률 {metrics.latestAttendanceRate}%</div>
         </div>
 
         {/* 이번주 식사 신청 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl space-y-1.5 shadow-lg">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3 sm:p-3.5 rounded-2xl space-y-1 shadow-md">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-2xs font-semibold">이번주 식사 신청</span>
-            <Utensils size={16} className="text-amber-400" />
+            <span className="text-3xs sm:text-2xs font-semibold">이번주 식사</span>
+            <Utensils size={14} className="text-amber-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-amber-300">
-            {mealStats.totalMeals}<span className="text-xs font-normal text-slate-400 ml-1">명</span>
+          <div className="text-base sm:text-lg font-bold text-amber-300">
+            {mealStats.totalMeals}<span className="text-3xs sm:text-2xs font-normal text-slate-400 ml-1">명</span>
           </div>
-          <div className="text-2xs text-amber-400/80 font-semibold">
+          <div className="text-3xs text-amber-400/80 font-semibold truncate">
             {mealStats.attendingFamilyCount}가정 (어른{mealStats.adultCount}+아이{mealStats.childCount})
           </div>
         </div>
 
         {/* PWA 앱 설치율 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl space-y-1.5 shadow-lg">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3 sm:p-3.5 rounded-2xl space-y-1 shadow-md">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-2xs font-semibold">홈화면 앱(PWA)</span>
-            <Smartphone size={16} className="text-indigo-400" />
+            <span className="text-3xs sm:text-2xs font-semibold">홈화면 앱(PWA)</span>
+            <Smartphone size={14} className="text-indigo-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-indigo-300">{metrics.pwaInstalledCount}<span className="text-xs font-normal text-slate-400 ml-1">명</span></div>
-          <div className="text-2xs text-indigo-400/80 font-semibold">설치율 {metrics.pwaInstalledRate}%</div>
+          <div className="text-base sm:text-lg font-bold text-indigo-300">{metrics.pwaInstalledCount}<span className="text-3xs sm:text-2xs font-normal text-slate-400 ml-1">명</span></div>
+          <div className="text-3xs text-indigo-400/80 font-semibold">설치율 {metrics.pwaInstalledRate}%</div>
         </div>
 
         {/* 목회 관심 성도 / 2주+ 결석 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl space-y-1.5 shadow-lg">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3 sm:p-3.5 rounded-2xl space-y-1 shadow-md">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-2xs font-semibold">관심 돌봄 성도</span>
-            <AlertTriangle size={16} className="text-rose-400" />
+            <span className="text-3xs sm:text-2xs font-semibold">관심 돌봄 성도</span>
+            <AlertTriangle size={14} className="text-rose-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-rose-300">
-            {metrics.careNeededCount}<span className="text-xs font-normal text-slate-400 ml-1">명</span>
+          <div className="text-base sm:text-lg font-bold text-rose-300">
+            {metrics.careNeededCount}<span className="text-3xs sm:text-2xs font-normal text-slate-400 ml-1">명</span>
           </div>
-          <div className="text-2xs text-rose-400/80">앱 접속 중 2주+ 결석</div>
+          <div className="text-3xs text-rose-400/80">앱 접속 중 2주+ 결석</div>
         </div>
       </div>
 
       {/* ─── 3. 통계 시각화 섹션 (시간대 피크 + 출석/식사 트렌드 + 기기 점유율) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* 시간대별 접속 피크 (24시간 막대 차트) */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 sm:p-5 rounded-2xl space-y-4 shadow-xl flex flex-col justify-between">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3.5 sm:p-4 rounded-2xl space-y-3 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Clock size={16} className="text-blue-400" />
-                <h2 className="text-sm font-bold text-white">시간대별 접속 피크 (0~23시)</h2>
+              <div className="flex items-center gap-1.5">
+                <Clock size={14} className="text-blue-400" />
+                <h2 className="text-xs font-bold text-white">시간대별 접속 피크 (0~23시)</h2>
               </div>
-              <span className="text-2xs text-slate-400">자주 찾는 시간대</span>
+              <span className="text-3xs text-slate-400">자주 찾는 시간대</span>
             </div>
 
             {/* 24시간 바 차트 */}
-            <div className="flex items-end gap-1 sm:gap-1.5 h-28 pt-4 pb-2 px-1 bg-slate-900/60 rounded-xl border border-slate-700/40 overflow-x-auto">
+            <div className="flex items-end gap-1 sm:gap-1.5 h-24 pt-3 pb-1.5 px-1 bg-slate-900/60 rounded-xl border border-slate-700/40 overflow-x-auto">
               {hourlyStats.hours.map(h => {
                 const heightPercent = Math.round((h.count / hourlyStats.maxCount) * 100)
                 const isPeak = h.count > 0 && h.count === hourlyStats.maxCount
@@ -799,7 +799,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-3xs text-slate-400 pt-2 border-t border-slate-700/40">
+          <div className="flex items-center justify-between text-3xs text-slate-400 pt-1.5 border-t border-slate-700/40">
             <span>새벽 (00~06시)</span>
             <span>오전 (06~12시)</span>
             <span>오후 (12~18시)</span>
@@ -808,26 +808,26 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         </div>
 
         {/* 주일 예배 출석률 & 식사 신청 현황 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 sm:p-5 rounded-2xl space-y-4 shadow-xl flex flex-col justify-between">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3.5 sm:p-4 rounded-2xl space-y-3 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <CalendarCheck size={16} className="text-teal-400" />
-                <h2 className="text-sm font-bold text-white">주일 예배 출석 & 식사 통계</h2>
+              <div className="flex items-center gap-1.5">
+                <CalendarCheck size={14} className="text-teal-400" />
+                <h2 className="text-xs font-bold text-white">주일 예배 출석 & 식사 통계</h2>
               </div>
-              <span className="text-2xs text-slate-400">최근 4주 현황</span>
+              <span className="text-3xs text-slate-400">최근 4주 현황</span>
             </div>
 
             {/* 최근 4주 출석률 트렌드 */}
-            <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/40 space-y-2 mb-3">
-              <div className="flex items-center justify-between text-2xs font-semibold text-slate-400">
+            <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 space-y-1.5 mb-2.5">
+              <div className="flex items-center justify-between text-3xs font-semibold text-slate-400">
                 <span>최근 주차별 출석률</span>
                 <span className="text-teal-400 font-bold">평균 {recentAttendanceTrend.length > 0 ? Math.round(recentAttendanceTrend.reduce((acc, t) => acc + t.rate, 0) / recentAttendanceTrend.length) : 0}%</span>
               </div>
               {recentAttendanceTrend.length === 0 ? (
-                <div className="text-center py-3 text-slate-500 text-2xs">등록된 출석 이력이 없습니다.</div>
+                <div className="text-center py-2 text-slate-500 text-3xs">등록된 출석 이력이 없습니다.</div>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {recentAttendanceTrend.map(t => (
                     <div key={t.date} className="space-y-0.5">
                       <div className="flex justify-between text-3xs text-slate-300 font-medium">
@@ -844,134 +844,134 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             </div>
 
             {/* 이번 주 식사 신청 현황 바 */}
-            <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/40 space-y-1.5">
-              <div className="flex items-center justify-between text-2xs font-semibold text-slate-300">
-                <span className="flex items-center gap-1.5">
-                  <Utensils size={13} className="text-amber-400" />
+            <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 space-y-1">
+              <div className="flex items-center justify-between text-3xs font-semibold text-slate-300">
+                <span className="flex items-center gap-1">
+                  <Utensils size={12} className="text-amber-400" />
                   <span>이번 주 식사 신청 ({mealStats.targetSunday})</span>
                 </span>
                 <span className="text-amber-300 font-bold font-mono">총 {mealStats.totalMeals}명</span>
               </div>
-              <div className="flex items-center gap-2 text-3xs text-slate-400 pt-1">
-                <span className="text-emerald-400">🍚 식사 {mealStats.attendingFamilyCount}가정</span>
+              <div className="flex items-center gap-1.5 text-3xs text-slate-400 pt-0.5">
+                <span className="text-emerald-400">🍚 {mealStats.attendingFamilyCount}가정</span>
                 <span>·</span>
-                <span className="text-slate-400">❌ 미식사 {mealStats.absentFamilyCount}가정</span>
+                <span className="text-slate-400">❌ {mealStats.absentFamilyCount}가정</span>
                 <span>·</span>
-                <span className="text-orange-400 font-medium">⏳ 미응답 {mealStats.pendingFamilyCount}가정</span>
+                <span className="text-orange-400 font-medium">⏳ {mealStats.pendingFamilyCount}가정</span>
               </div>
             </div>
           </div>
 
-          <p className="text-3xs text-slate-500 pt-2 border-t border-slate-700/40">
-            * 출석 체크 및 식사 신청 탭의 데이터와 실시간 연동됩니다.
+          <p className="text-3xs text-slate-500 pt-1.5 border-t border-slate-700/40">
+            * 출석 체크 및 식사 신청 탭과 실시간 연동됩니다.
           </p>
         </div>
 
         {/* 기기 및 실행 환경 점유율 */}
-        <div className="bg-slate-800/80 border border-slate-700/60 p-4 sm:p-5 rounded-2xl space-y-4 shadow-xl flex flex-col justify-between">
+        <div className="bg-slate-800/80 border border-slate-700/60 p-3.5 sm:p-4 rounded-2xl space-y-3 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Smartphone size={16} className="text-emerald-400" />
-                <h2 className="text-sm font-bold text-white">기기 및 실행 환경 점유율</h2>
+              <div className="flex items-center gap-1.5">
+                <Smartphone size={14} className="text-emerald-400" />
+                <h2 className="text-xs font-bold text-white">기기 및 실행 환경 점유율</h2>
               </div>
-              <span className="text-2xs text-slate-400">PWA vs 웹</span>
+              <span className="text-3xs text-slate-400">PWA vs 웹</span>
             </div>
 
             {/* 실행 방식 (앱 vs 웹) */}
-            <div className="flex items-center gap-2 text-xs font-bold mb-3">
-              <div className="flex-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 p-2.5 rounded-xl text-center">
+            <div className="flex items-center gap-2 text-2xs font-bold mb-2.5">
+              <div className="flex-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 p-2 rounded-xl text-center">
                 📱 홈화면 앱 {platformStats.pwa.app.rate}% ({platformStats.pwa.app.count}명)
               </div>
-              <div className="flex-1 bg-slate-700/40 text-slate-300 border border-slate-600/30 p-2.5 rounded-xl text-center">
+              <div className="flex-1 bg-slate-700/40 text-slate-300 border border-slate-600/30 p-2 rounded-xl text-center">
                 🌐 웹 브라우저 {platformStats.pwa.web.rate}% ({platformStats.pwa.web.count}명)
               </div>
             </div>
 
             {/* OS 플랫폼 점유율 바 */}
-            <div className="space-y-1.5 text-2xs bg-slate-900/60 p-3 rounded-xl border border-slate-700/40">
+            <div className="space-y-1 text-2xs bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40">
               <div>
-                <div className="flex justify-between text-slate-300 font-semibold mb-0.5">
+                <div className="flex justify-between text-slate-300 font-semibold mb-0.5 text-3xs">
                   <span>🍎 iPhone / iPad (iOS)</span>
                   <span>{platformStats.os.iOS.count}명 ({platformStats.os.iOS.rate}%)</span>
                 </div>
-                <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-slate-700/50 rounded-full h-1 overflow-hidden">
                   <div className="bg-blue-400 h-full rounded-full" style={{ width: `${platformStats.os.iOS.rate}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-slate-300 font-semibold mb-0.5">
+                <div className="flex justify-between text-slate-300 font-semibold mb-0.5 text-3xs">
                   <span>🤖 Galaxy / Android</span>
                   <span>{platformStats.os.Android.count}명 ({platformStats.os.Android.rate}%)</span>
                 </div>
-                <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-slate-700/50 rounded-full h-1 overflow-hidden">
                   <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${platformStats.os.Android.rate}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-slate-300 font-semibold mb-0.5">
+                <div className="flex justify-between text-slate-300 font-semibold mb-0.5 text-3xs">
                   <span>💻 Windows PC</span>
                   <span>{platformStats.os.Windows.count}명 ({platformStats.os.Windows.rate}%)</span>
                 </div>
-                <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-slate-700/50 rounded-full h-1 overflow-hidden">
                   <div className="bg-amber-400 h-full rounded-full" style={{ width: `${platformStats.os.Windows.rate}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-slate-300 font-semibold mb-0.5">
+                <div className="flex justify-between text-slate-300 font-semibold mb-0.5 text-3xs">
                   <span>🖥️ Mac</span>
                   <span>{platformStats.os.Mac.count}명 ({platformStats.os.Mac.rate}%)</span>
                 </div>
-                <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-slate-700/50 rounded-full h-1 overflow-hidden">
                   <div className="bg-purple-400 h-full rounded-full" style={{ width: `${platformStats.os.Mac.rate}%` }} />
                 </div>
               </div>
             </div>
           </div>
 
-          <p className="text-3xs text-slate-500 pt-2 border-t border-slate-700/40">
-            * 성도가 앱을 켤 때 브라우저 환경을 자동 인식하여 집계됩니다.
+          <p className="text-3xs text-slate-500 pt-1.5 border-t border-slate-700/40">
+            * 성도 접속 시 자동 집계됩니다.
           </p>
         </div>
       </div>
 
       {/* ─── 4. 목회 돌봄 관심 성도 알림 배너 (앱 접속 중이지만 2주+ 결석) ─── */}
       {metrics.careNeededCount > 0 && (
-        <div className="bg-gradient-to-r from-rose-950/60 to-slate-900 border border-rose-500/30 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5 border border-rose-500/30">
-              <AlertTriangle size={18} />
+        <div className="bg-gradient-to-r from-rose-950/60 to-slate-900 border border-rose-500/30 rounded-2xl p-3.5 sm:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5 border border-rose-500/30">
+              <AlertTriangle size={16} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-rose-300">목회적 돌봄 관심 필요 성도 ({metrics.careNeededCount}명)</h3>
-                <span className="text-3xs bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded border border-rose-500/30">우선 심방 권장</span>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-rose-300">목회적 돌봄 관심 성도 ({metrics.careNeededCount}명)</h3>
+                <span className="text-3xs bg-rose-500/20 text-rose-300 font-bold px-1.5 py-0.5 rounded border border-rose-500/30">심방 권장</span>
               </div>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                교회 앱에는 최근 꾸준히 접속 중이지만, 주일 예배에는 <strong>2주 이상 연속 결석</strong> 중인 성도입니다. 따뜻한 안부 전화나 심방을 권장합니다.
+              <p className="text-2xs text-slate-300 mt-0.5 leading-relaxed">
+                앱 접속 중이지만 주일 예배에 <strong>2주 이상 연속 결석</strong> 중인 성도입니다. 따뜻한 안부 권장을 추천합니다.
               </p>
             </div>
           </div>
           <button
             onClick={() => setFilterType('care')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-md"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-2xs font-bold transition-all shrink-0 cursor-pointer shadow-md"
           >
-            <Users size={14} />
-            <span>관심 성도 바로보기</span>
+            <Users size={12} />
+            <span>관심 성도 보기</span>
           </button>
         </div>
       )}
 
       {/* ─── 5. 상세 현황 뷰 (개인별 테이블 vs 가족별 뷰 전환) ─── */}
-      <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-blue-400" />
-              <h2 className="text-sm font-bold text-white">
+      <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-3.5 sm:p-4 space-y-3 shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <Users size={15} className="text-blue-400" />
+              <h2 className="text-xs font-bold text-white">
                 {viewMode === 'individual'
                   ? `성도별 상세 이용 현황 (${filteredMembers.length}명)`
                   : `가족 단위 통합 접속 뷰 (${familyViewUnits.length}가정)`
@@ -983,24 +983,24 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             <div className="flex bg-slate-900/80 p-0.5 rounded-xl border border-slate-700">
               <button
                 onClick={() => setViewMode('individual')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-2xs font-bold transition-all cursor-pointer ${
                   viewMode === 'individual'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Users size={13} />
+                <Users size={11} />
                 <span>개인별</span>
               </button>
               <button
                 onClick={() => setViewMode('family')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-2xs font-bold transition-all cursor-pointer ${
                   viewMode === 'family'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Users2 size={13} />
+                <Users2 size={11} />
                 <span>가족별</span>
               </button>
             </div>

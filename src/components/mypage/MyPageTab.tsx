@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks } from '../../lib/familyInfo'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -30,6 +30,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   const [editName, setEditName] = useState(currentUser.name)
   const [editPhone, setEditPhone] = useState(currentUser.phone || '')
   const [editAddress, setEditAddress] = useState(currentUser.address || '')
+  const [editSpouseName, setEditSpouseName] = useState('')
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl || '')
 
   // 자녀 정보(배우자와 공유) 수정 상태: 모달을 열 때마다 최신 공유 목록으로 초기화
@@ -38,6 +39,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     setEditName(currentUser.name || '')
     setEditPhone(currentUser.phone || '')
     setEditAddress(currentUser.address || '')
+    setEditSpouseName(parseFamilyInfo(currentUser.familyInfo).spouseName || '')
     setAvatarPreview(currentUser.avatarUrl || '')
     const b = parseBirthday(currentUser.birthday)
     setEditBirthYear(b.year)
@@ -282,7 +284,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
     // 자녀 정보 저장: 배우자가 연동되어 있으면 자녀 목록을 배우자 계정에도 동일하게 반영(공유)
     const existingNote = parseFamilyInfo(currentUser.familyInfo).note
-    const familyInfoUpdates = buildFamilyInfoSyncUpdates(currentUser, existingNote, editChildren, allUsers)
+    const familyInfoUpdates = buildFamilyInfoSyncUpdates(currentUser, existingNote, editChildren, allUsers, editSpouseName.trim())
     // 주소를 새로 입력/수정했으면 본인 + 배우자(부부) 계정의 "주소 보완요청" 표시를 자동으로 끕니다.
     if (editAddress.trim()) {
       const idsToClear = new Set([currentUser.id, ...spouseLinks.map(sp => sp.id)])
@@ -646,6 +648,20 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   </select>
                 </div>
               </div>
+
+              {/* 배우자 정보 (앱에 가입하지 않은 경우 직접 입력) */}
+              {findLinkedFamilyMembers(currentUser, allUsers).length === 0 && (
+                <div className="pt-1 border-t border-gray-100">
+                  <label className="text-2xs text-gray-500 font-bold">배우자 성함 (앱에 미가입 시 직접 입력)</label>
+                  <input
+                    type="text"
+                    value={editSpouseName}
+                    onChange={e => setEditSpouseName(e.target.value)}
+                    placeholder="예: 홍길순 (배우자가 있을 경우 입력)"
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-400 text-xs"
+                  />
+                </div>
+              )}
 
               {/* 자녀 정보 (배우자가 연동되어 있으면 자동으로 공유됩니다) */}
               <div className="pt-1 border-t border-gray-100">

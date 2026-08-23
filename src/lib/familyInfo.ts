@@ -77,17 +77,19 @@ export interface FamilyChildInfo {
 
 export interface FamilyInfoData {
   note: string
+  spouseName?: string // 미가입 배우자 이름 직접 입력
   children: FamilyChildInfo[]
   addressRequestedAt?: string // 관리자가 "주소 보완요청"을 누른 시각(ISO). 비어있으면 요청 없음.
 }
 
 export function parseFamilyInfo(raw?: string | null): FamilyInfoData {
-  if (!raw || !raw.trim()) return { note: '', children: [], addressRequestedAt: '' }
+  if (!raw || !raw.trim()) return { note: '', spouseName: '', children: [], addressRequestedAt: '' }
   try {
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object' && Array.isArray(parsed.children)) {
       return {
         note: typeof parsed.note === 'string' ? parsed.note : '',
+        spouseName: typeof parsed.spouseName === 'string' ? parsed.spouseName.trim() : '',
         children: parsed.children
           .filter((c: unknown): c is Record<string, unknown> => typeof c === 'object' && c !== null && typeof (c as Record<string, unknown>).name === 'string' && !!((c as Record<string, unknown>).name as string).trim())
           .map((c: Record<string, unknown>) => ({
@@ -103,17 +105,18 @@ export function parseFamilyInfo(raw?: string | null): FamilyInfoData {
   } catch {
     // JSON이 아니면 예전 방식의 자유 텍스트 메모로 간주하고 그대로 보존
   }
-  return { note: raw, children: [], addressRequestedAt: '' }
+  return { note: raw, spouseName: '', children: [], addressRequestedAt: '' }
 }
 
 export function serializeFamilyInfo(data: FamilyInfoData): string {
   const note = (data.note || '').trim()
+  const spouseName = (data.spouseName || '').trim()
   const children = (data.children || [])
     .filter(c => c.name && c.name.trim())
     .map(c => ({ id: c.id, name: c.name, birthday: c.birthday || '', labriId: c.labriId || '', avatarUrl: c.avatarUrl || '' }))
   const addressRequestedAt = data.addressRequestedAt || ''
-  if (!note && children.length === 0 && !addressRequestedAt) return ''
-  return JSON.stringify({ note, children, addressRequestedAt })
+  if (!note && !spouseName && children.length === 0 && !addressRequestedAt) return ''
+  return JSON.stringify({ note, spouseName, children, addressRequestedAt })
 }
 
 // familyGroupId로 연동된 다른 실제 계정(배우자 등)을 찾습니다.
@@ -146,20 +149,23 @@ export function getSharedChildren(user: UserProfile, allUsers: UserProfile[]): F
   return linked.reduce((acc, spouse) => mergeChildrenLists(acc, parseFamilyInfo(spouse.familyInfo).children), own)
 }
 
+import { familyKeyOf } from './familyKey'
+
 // 저장 시 본인 + 배우자 계정 모두에 동일한(최신) 자녀 목록을 기록하기 위한 업데이트 목록 생성.
-// note와 addressRequestedAt(주소 보완요청 상태)은 각 계정별로 개별 보존합니다(본인 것만 바꾸고
-// 배우자의 기존 메모/보완요청 상태는 그대로 유지).
+// note, spouseName, addressRequestedAt(주소 보완요청 상태)은 각 계정별로 개별 보존합니다.
 export function buildFamilyInfoSyncUpdates(
   targetUser: UserProfile,
   note: string,
   children: FamilyChildInfo[],
-  allUsers: UserProfile[]
+  allUsers: UserProfile[],
+  spouseName?: string
 ): { userId: string; familyInfo: string }[] {
-  const ownAddressRequestedAt = parseFamilyInfo(targetUser.familyInfo).addressRequestedAt
-  const updates = [{ userId: targetUser.id, familyInfo: serializeFamilyInfo({ note, children, addressRequestedAt: ownAddressRequestedAt }) }]
+  const targetData = parseFamilyInfo(targetUser.familyInfo)
+  const finalSpouseName = spouseName !== undefined ? spouseName : (targetData.spouseName || '')
+  const updates = [{ userId: targetUser.id, familyInfo: serializeFamilyInfo({ note, spouseName: finalSpouseName, children, addressRequestedAt: targetData.addressRequestedAt }) }]
   findLinkedFamilyMembers(targetUser, allUsers).forEach(spouse => {
     const spouseData = parseFamilyInfo(spouse.familyInfo)
-    updates.push({ userId: spouse.id, familyInfo: serializeFamilyInfo({ note: spouseData.note, children, addressRequestedAt: spouseData.addressRequestedAt }) })
+    updates.push({ userId: spouse.id, familyInfo: serializeFamilyInfo({ note: spouseData.note, spouseName: spouseData.spouseName || '', children, addressRequestedAt: spouseData.addressRequestedAt }) })
   })
   return updates
 }
@@ -181,23 +187,21 @@ export function getMissingBirthdayChildren(user: UserProfile, allUsers: UserProf
 }
 
 // 주소록 등에 보여줄 "배우자:xxx / 자녀:xxx/xxx" 형태의 요약 문자열 생성
-//
-// "기타 메모"(note)는 관리자만 보는 내부 메모라, 기본값(includeNote=false)에서는
-// 포함하지 않습니다 — 주소록·마이페이지 등 성도에게 노출되는 화면에서 자동으로 빠집니다.
-// 관리자 성도관리 화면처럼 메모를 보여줘야 하는 곳에서만 true로 넘겨서 씁니다.
 export function buildFamilyStatusText(user: UserProfile, allUsers: UserProfile[], includeNote = false): string {
   const parts: string[] = []
   const linked = findLinkedFamilyMembers(user, allUsers)
+  const { note, spouseName } = parseFamilyInfo(user.familyInfo)
   if (linked.length > 0) {
     parts.push(`배우자:${linked.map(u => u.name).join('·')}`)
+  } else if (spouseName) {
+    parts.push(`배우자:${spouseName}`)
   }
   const children = getSharedChildren(user, allUsers)
   if (children.length > 0) {
     parts.push(`자녀:${children.map(c => c.name).join('·')}`)
   }
-  if (includeNote) {
-    const { note } = parseFamilyInfo(user.familyInfo)
-    if (note) parts.push(note)
+  if (includeNote && note) {
+    parts.push(note)
   }
   return parts.join(' / ')
 }
@@ -213,12 +217,33 @@ function parentRoleLabel(u: UserProfile): '부' | '모' | null {
 export function buildParentLabel(owner: UserProfile, linkedMembers: UserProfile[]): string {
   const people = [owner, ...linkedMembers]
   const labeled = people.map(p => ({ p, role: parentRoleLabel(p) }))
-  if (labeled.every(x => x.role)) {
+  if (labeled.length > 1 && labeled.every(x => x.role)) {
     const order: Record<'부' | '모', number> = { '부': 0, '모': 1 }
     const text: Record<'부' | '모', string> = { '부': '아빠', '모': '엄마' }
     const sorted = [...labeled].sort((a, b) => order[a.role as '부' | '모'] - order[b.role as '부' | '모'])
     return sorted.map(x => `${text[x.role as '부' | '모']}: ${x.p.name}`).join(' / ')
   }
+
+  // 배우자 계정 연동은 없으나 '미가입 배우자 이름'이 직접 입력된 경우
+  const { spouseName } = parseFamilyInfo(owner.familyInfo)
+  if (spouseName && owner.familyRole) {
+    if (owner.familyRole === '부') {
+      return `아빠: ${owner.name} / 엄마: ${spouseName}`
+    }
+    if (owner.familyRole === '모') {
+      return `엄마: ${owner.name} / 아빠: ${spouseName}`
+    }
+    return `보호자: ${owner.name} · ${spouseName}`
+  }
+
+  // 편부모 (배우자 연동 및 미가입 배우자 정보 모두 없음)
+  if (owner.familyRole === '부') {
+    return `아빠: ${owner.name}`
+  }
+  if (owner.familyRole === '모') {
+    return `엄마: ${owner.name}`
+  }
+
   return `보호자:${people.map(p => p.name).join('·')}`
 }
 
@@ -228,23 +253,20 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
   const seen = new Set<string>()
   const out: UserProfile[] = []
 
-  // 🐛 자녀가 커서 직접 가입하면 **주소록에 두 번** 나옵니다.
-  //    (① 부모가 적어둔 가족 메모 속 자녀  ② 새로 만든 본인 계정)
-  // → 같은 가정에 같은 이름의 실제 계정이 있으면, 메모 쪽 자녀는 만들지 않습니다.
-  //    (관리자가 가족 메모에서 지우지 않아도 자동으로 정리됩니다)
   const realMemberKeys = new Set(
     users
       .filter(u => !u.isDependent && u.name)
-      .map(u => `${(u.familyGroupId || '').trim()}|${u.name.trim()}`)
+      .map(u => `${(u.familyGroupId || familyKeyOf(u)).trim()}|${u.name.trim()}`)
   )
 
   users.forEach(u => {
     const shared = getSharedChildren(u, users)
     const linked = findLinkedFamilyMembers(u, users)
+    const effectiveFamilyGroupId = u.familyGroupId || familyKeyOf(u)
     shared.forEach(c => {
       if (seen.has(c.id)) return
       // 이 자녀가 이미 계정을 만들어 명단에 있으면 가상 항목을 만들지 않습니다.
-      if (realMemberKeys.has(`${(u.familyGroupId || '').trim()}|${(c.name || '').trim()}`)) {
+      if (realMemberKeys.has(`${effectiveFamilyGroupId.trim()}|${(c.name || '').trim()}`)) {
         seen.add(c.id)
         return
       }
@@ -257,15 +279,11 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
         role: 'MEMBER',
         duty: '자녀',
         birthday: c.birthday,
-        // 부모가 올려준 자녀 사진 (없으면 이름 두 글자가 표시됩니다)
         avatarUrl: c.avatarUrl || '',
         createdAt: '',
         isDependent: true,
-        // 자녀 교회학교 그룹. 비어 있으면 주소록 목록/생일 달력에서 숨깁니다.
         childLabriId: c.labriId || '',
-        // 주소록에서 "부모 바로 아래"에 자녀를 붙이려면 어느 가정인지 알아야 합니다.
-        // (가족 연결이 안 된 분의 자녀는 값이 없어, 주소록에서 단독 항목으로 나옵니다)
-        familyGroupId: u.familyGroupId,
+        familyGroupId: effectiveFamilyGroupId,
         parentName: buildParentLabel(u, linked)
       })
     })

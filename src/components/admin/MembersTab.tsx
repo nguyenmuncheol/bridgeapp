@@ -38,6 +38,7 @@ export default function MembersTab({
   }>({ name: '', phone: '', address: '', birthday: '', role: 'MEMBER', duty: '성도', labriId: '', familyGroupId: '', familyInfo: '', familyRole: '', teachGroup: '' })
   // 가족 현황: 자녀 등 미가입 구성원 목록 + 기타 메모 (구조화 저장, familyInfo.ts 참고)
   const [editFamilyNote, setEditFamilyNote] = useState('')
+  const [editSpouseName, setEditSpouseName] = useState('')
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
 
   // ── 자녀 프로필 사진 (관리자가 대신 올려줄 수 있게) ──
@@ -93,8 +94,9 @@ export default function MembersTab({
       familyRole: member.familyRole || '',
       teachGroup: member.teachGroup || ''
     })
-    // 배우자가 연동되어 있으면 배우자가 입력한 자녀까지 합쳐서 보여줌 (부부는 자녀 정보 공유)
-    setEditFamilyNote(parseFamilyInfo(member.familyInfo).note)
+    const parsed = parseFamilyInfo(member.familyInfo)
+    setEditFamilyNote(parsed.note)
+    setEditSpouseName(parsed.spouseName || '')
     setEditChildren(getSharedChildren(member, allUsers))
   }
 
@@ -115,16 +117,11 @@ export default function MembersTab({
     if (!editingMember) return
     if (isSavingMember) return
 
-    // 🐛 과거 버그: 이름이 비어도 그대로 저장됐습니다. 모바일 키보드에서 전체선택 후
-    // 삭제가 흔한데, 이름이 빈 성도는 아바타가 빈 동그라미가 되고 이름 검색에도 안 걸립니다.
     if (!editMemberData.name?.trim()) {
       alert('이름을 입력해 주세요.')
       return
     }
 
-    // 🐛 과거 버그(치명적): 관리자가 자기 카드에서 등급을 실수로 낮춰도 아무 경고가 없었습니다.
-    // 모바일에서는 등급 선택이 전체화면 목록이라 오조작하기 쉽고, 마지막 관리자가 강등되면
-    // **아무도 승인/성도관리/쿠폰을 할 수 없게 되어** Supabase 대시보드를 직접 열어야 합니다.
     const wasAdmin = editingMember.role === 'ADMIN'
     const willBeAdmin = editMemberData.role === 'ADMIN'
     if (wasAdmin && !willBeAdmin) {
@@ -141,9 +138,9 @@ export default function MembersTab({
     setIsSavingMember(true)
     try {
 
-    // 가족 현황(자녀 목록 + 기타 메모)을 저장용 문자열로 직렬화 (주소 보완요청 상태는 그대로 보존)
+    // 가족 현황(자녀 목록 + 기타 메모 + 미가입 배우자)을 저장용 문자열로 직렬화
     const ownAddressRequestedAt = parseFamilyInfo(editingMember.familyInfo).addressRequestedAt
-    const serializedFamilyInfo = serializeFamilyInfo({ note: editFamilyNote, children: editChildren, addressRequestedAt: ownAddressRequestedAt })
+    const serializedFamilyInfo = serializeFamilyInfo({ note: editFamilyNote, spouseName: editSpouseName.trim(), children: editChildren, addressRequestedAt: ownAddressRequestedAt })
 
     let resolvedFid: string | null = null
 
@@ -589,6 +586,20 @@ export default function MembersTab({
                 </div>
               </div>
               <p className="text-2xs text-gray-400">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
+
+              {/* 미가입 배우자 성함 (계정 연동 없이 텍스트로만 저장 시) */}
+              {!editLinkedMemberId && (
+                <div>
+                  <label className="text-2xs text-gray-400 font-semibold">미가입 배우자 성함 (앱에 미가입 시 직접 입력)</label>
+                  <input
+                    type="text"
+                    value={editSpouseName}
+                    onChange={e => setEditSpouseName(e.target.value)}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-xs"
+                    placeholder="예: 홍길순 (배우자가 있을 경우 입력)"
+                  />
+                </div>
+              )}
 
               {/* 가족 현황: 미가입 자녀 등 (나이대는 생일 기반 자동 표시) */}
               <div>

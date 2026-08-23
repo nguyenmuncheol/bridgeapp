@@ -3,19 +3,19 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
-import { buildFamilyStatusText, getChildGroupLabel, FAMILY_ROLE_ORDER } from '../../lib/familyInfo'
+import { buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE, FAMILY_ROLE_ORDER } from '../../lib/familyInfo'
 import { formatBirthdayMonthDayOnly, calculateAge } from '../../lib/dateUtils'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 
-// 주소록 편성상태 필터: 라브리1~3 / 자녀(유아·유치·학생 통합, 하단 라벨로 세부 구분 표시) / 라브리 미정(❤️)
+// 주소록 편성상태 필터: 라브리1~3 / 교회학교 / 라브리 미정(❤️)
 const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => boolean }[] = [
   { key: '전체', label: '전체', match: () => true },
   { key: '라브리1', label: '라브리1', match: m => m.labriId === '라브리1' },
   { key: '라브리2', label: '라브리2', match: m => m.labriId === '라브리2' },
   { key: '라브리3', label: '라브리3', match: m => m.labriId === '라브리3' },
-  // 계정이 없는 자녀 + 커서 직접 가입한 자녀를 함께 보여줍니다.
-  { key: '자녀', label: '자녀', match: m => !!m.isDependent || m.familyRole === '자녀' },
+  // 교회학교: 부서가 지정되어 있고 출석미적용이 아닌 자녀만 매칭
+  { key: '교회학교', label: '교회학교', match: m => (!!m.isDependent || m.familyRole === '자녀') && !!m.childLabriId && m.childLabriId !== CHILD_LABRI_NO_ATTENDANCE },
   { key: '미정', label: '❤️', match: m => !m.isDependent && m.familyRole !== '자녀' && (!m.labriId || m.labriId === '미정') },
 ]
 
@@ -28,48 +28,18 @@ const ageOf = (m: UserProfile): number => {
   return age === null ? -1 : age
 }
 
-// 🐛 과거 문제: 부부는 묶는 규칙이 있는데 **자녀는 없었습니다.**
-// 자녀(계정이 없는 가상 항목)가 "나이 어린 사람"으로 취급돼 목록 맨 아래로 밀려서,
-// 목사님 가정 자녀 두 명이 부모와 10줄 떨어져 나오는 식이었습니다.
-// → 아래 childrenOf / flattenWithChildren 로 자녀를 부모 바로 아래에 붙입니다.
-
 /**
  * "자녀로 볼 사람"인지 판단합니다.
  * ① 계정이 없는 자녀(가상 항목)
- * ② **자녀가 커서 직접 가입한 경우** — 실제 계정이지만 가족에서의 역할이 '자녀'
- *    (이 경우도 부모 아래에 붙여야 가정이 흩어지지 않습니다)
+ * ② 자녀가 커서 직접 가입한 경우 — 실제 계정이지만 가족에서의 역할이 '자녀'
  */
 function isChildLike(m: UserProfile): boolean {
   return !!m.isDependent || m.familyRole === '자녀'
 }
 
-/** 이 가정(들)에 속한 자녀를 나이 많은 순으로 꺼냅니다. 이미 배치된 자녀는 건너뜁니다. */
-function childrenOf(members: UserProfile[], scope: UserProfile[], claimed: Set<string>): UserProfile[] {
-  const gids = new Set(members.map(m => m.familyGroupId).filter(Boolean) as string[])
-  if (gids.size === 0) return []
-  const kids = scope.filter(c =>
-    isChildLike(c) && c.familyGroupId && gids.has(c.familyGroupId) && !claimed.has(c.id)
-  )
-  kids.forEach(k => claimed.add(k.id))
-  return [...kids].sort((a, b) => {
-    const d = ageOf(b) - ageOf(a)
-    return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', 'ko')
-  })
-}
-
-/** 가정 묶음(부부/단독)을 한 줄 목록으로 펼치면서, 각 가정 뒤에 그 집 자녀를 이어 붙입니다. */
-function flattenWithChildren(
-  units: { members: UserProfile[]; sortAge: number }[],
-  scope: UserProfile[],
-  claimed: Set<string>
-): UserProfile[] {
-  return units.flatMap(u => [...u.members, ...childrenOf(u.members, scope, claimed)])
-}
-
 // 부부 묶기: 전달된 scope(현재 화면에 표시될 후보 목록) 안에 familyRole이 '부'/'모'인 두 사람이
 // 같은 familyGroupId로 모두 존재할 때만 한 쌍으로 묶습니다. 배우자가 다른 라브리라 scope에
 // 없으면 억지로 데려오지 않고 단독으로 취급합니다.
-// (자녀 가상 항목은 여기서 제외하고, 나중에 부모 아래에 붙입니다)
 function groupCouplesInScope(scope: UserProfile[]): { members: UserProfile[]; sortAge: number }[] {
   const paired = new Set<string>()
   const units: { members: UserProfile[]; sortAge: number }[] = []
@@ -120,26 +90,38 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
   // 주소록 필터 (검색어 우선, 그 다음 편성상태 필터) + 필터별 정렬 규칙 적용
   const displayedMembers = useMemo(() => {
     const q = searchQuery.trim()
-    // 🐛 과거 문제: `name.includes(검색어)` 뿐이라 어르신이 "ㄱ"을 입력해 김/강/고 성도를
-    // 찾으려 하면 결과가 하나도 안 나왔습니다. → 초성 검색 지원(koreanSearch.ts)
-    // 교회학교 그룹이 지정되지 않은 자녀는 주소록 목록에 넣지 않습니다.
-    // (부모 카드의 "가족현황" 줄에는 이름이 그대로 나옵니다)
-    const visibleEntries = addressBookEntries.filter(m => !m.isDependent || !!m.childLabriId)
-    const base = q
-      ? visibleEntries.filter(m => matchesKoreanSearch(m.name, q))
-      : visibleEntries
-    const activeFilter = ADDRESS_FILTERS.find(f => f.key === addressFilter) || ADDRESS_FILTERS[0]
-    const filtered = base.filter(activeFilter.match)
+    const isChurchSchoolTab = addressFilter === '교회학교'
 
-    // ① "자녀" 필터: 나이 많은 순(생일 빠른 순)으로 정렬
-    if (addressFilter === '자녀') {
-      return [...filtered].sort((a, b) => {
+    // ① "교회학교" 탭: 자녀 가상 항목 중 출석미적용이 아닌 자녀만 나이순 정렬하여 단독 표시
+    if (isChurchSchoolTab) {
+      const kidsEntries = addressBookEntries.filter(m =>
+        isChildLike(m) && !!m.childLabriId && m.childLabriId !== CHILD_LABRI_NO_ATTENDANCE
+      )
+      const filteredKids = q
+        ? kidsEntries.filter(m => matchesKoreanSearch(m.name, q) || (m.parentName && matchesKoreanSearch(m.parentName, q)))
+        : kidsEntries
+
+      return [...filteredKids].sort((a, b) => {
         const diff = ageOf(b) - ageOf(a)
         return diff !== 0 ? diff : a.name.localeCompare(b.name, 'ko')
       })
     }
 
-    // ② "전체" 필터: 담임목사님(정제호) → 사모님(임혜영) 부부를 최상단에 고정, 나머지는 나이순(부부는 묶어서)
+    // ② 성인 성도 중심 목록 (전체 / 라브리1~3 / 미정): 자녀 카드는 숨기고 성인 카드만 렌더링
+    // 검색 시: 본인 이름뿐 아니라 자녀 이름으로도 부모 성도를 찾을 수 있도록 매칭
+    const adultEntries = addressBookEntries.filter(m => !isChildLike(m))
+    const filteredAdults = q
+      ? adultEntries.filter(m => {
+          if (matchesKoreanSearch(m.name, q) || (m.duty && matchesKoreanSearch(m.duty, q))) return true
+          const sharedKids = getSharedChildren(m, allUsers)
+          return sharedKids.some(k => matchesKoreanSearch(k.name, q))
+        })
+      : adultEntries
+
+    const activeFilter = ADDRESS_FILTERS.find(f => f.key === addressFilter) || ADDRESS_FILTERS[0]
+    const filtered = filteredAdults.filter(activeFilter.match)
+
+    // "전체" 필터: 담임목사님 부부 최상단 고정, 나머지는 나이순(부부는 묶어서)
     if (addressFilter === '전체') {
       const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
       const isPastorsWife = (m: UserProfile) => !m.isDependent && (m.name === '임혜영' || m.duty?.includes('사모'))
@@ -156,21 +138,12 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       })
       const pinnedAdults = [...pastor, ...pastorWife]
       const pinnedIds = new Set(pinnedAdults.map(m => m.id))
-      const claimed = new Set<string>()
-      // 목사님 가정 자녀도 부모 바로 아래에 붙입니다.
-      const pinnedBlock = [...pinnedAdults, ...childrenOf(pinnedAdults, filtered, claimed)]
-      const rest = filtered.filter(m => !pinnedIds.has(m.id) && !claimed.has(m.id))
-      const restSorted = flattenWithChildren(sortUnitsByAge(groupCouplesInScope(rest)), rest, claimed)
-      // 부모를 이 화면에서 못 찾은 자녀는 맨 뒤에 나이순으로 둡니다.
-      const orphanKids = rest.filter(m => isChildLike(m) && !claimed.has(m.id))
-        .sort((a, b) => (ageOf(b) - ageOf(a)) || a.name.localeCompare(b.name, 'ko'))
-      return [...pinnedBlock, ...restSorted, ...orphanKids]
+      const rest = filtered.filter(m => !pinnedIds.has(m.id))
+      const restSorted = sortUnitsByAge(groupCouplesInScope(rest)).flatMap(u => u.members)
+      return [...pinnedAdults, ...restSorted]
     }
 
-    // ③ 라브리1/2/3/미정 필터:
-    //    1. 해당 라브리 리더(LEADER) 부부 최상단 고정
-    //    2. 리더가 없으면 목사님(정제호) 부부 최상단 고정
-    //    (Tester 등 일반 관리자/성도는 나이순으로 자연스럽게 배치)
+    // 라브리1/2/3/미정 필터: 해당 라브리 리더 부부 최상단 고정, 나머지는 나이순
     if (LABRI_FILTER_KEYS.includes(addressFilter)) {
       const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
       const leaders = filtered.filter(m => !m.isDependent && m.role === 'LEADER')
@@ -191,17 +164,26 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         pinnedBlock.push(...unit)
       })
 
-      const claimed = new Set<string>()
-      const pinnedWithKids = [...pinnedBlock, ...childrenOf(pinnedBlock, filtered, claimed)]
-      const rest = filtered.filter(m => !pinnedIds.has(m.id) && !claimed.has(m.id))
-      const restSorted = flattenWithChildren(sortUnitsByAge(groupCouplesInScope(rest)), rest, claimed)
-      const orphanKids = rest.filter(m => isChildLike(m) && !claimed.has(m.id))
-        .sort((a, b) => (ageOf(b) - ageOf(a)) || a.name.localeCompare(b.name, 'ko'))
-      return [...pinnedWithKids, ...restSorted, ...orphanKids]
+      const rest = filtered.filter(m => !pinnedIds.has(m.id))
+      const restSorted = sortUnitsByAge(groupCouplesInScope(rest)).flatMap(u => u.members)
+      return [...pinnedBlock, ...restSorted]
     }
 
     return filtered
-  }, [addressBookEntries, addressFilter, searchQuery])
+  }, [addressBookEntries, addressFilter, searchQuery, allUsers])
+
+  // 전체 통계 카운팅 (출석미적용 자녀는 교회학교 카운트에서 제외)
+  const countingStats = useMemo(() => {
+    const totalAdults = addressBookEntries.filter(m => !isChildLike(m)).length
+    const totalChurchSchoolKids = addressBookEntries.filter(m =>
+      isChildLike(m) && !!m.childLabriId && m.childLabriId !== CHILD_LABRI_NO_ATTENDANCE
+    ).length
+    return {
+      adults: totalAdults,
+      churchSchool: totalChurchSchoolKids,
+      total: totalAdults + totalChurchSchoolKids
+    }
+  }, [addressBookEntries])
 
   return (
     <div className="space-y-3">
@@ -209,7 +191,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
-          placeholder="성도 이름으로 검색..."
+          placeholder="성도 또는 자녀 이름으로 검색..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs text-gray-900 font-medium"
@@ -217,49 +199,45 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
       </div>
 
-      {/* 검색 중에도 필터 칩을 유지합니다. 예전에는 검색창에 글자를 넣는 순간
-          칩 줄이 통째로 사라져서 화면이 손가락 밑에서 재구성됐습니다. */}
-      {(
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl text-2xs font-bold w-full">
-          {ADDRESS_FILTERS.map(opt => {
-            // 글자 수 비율에 따른 flex weight: 라브리1~3(4자) > 전체/자녀(2자) > ❤️(1자)
-            // 고정 px 대신 유동 비율을 사용하여 모바일/태블릿/PC 어디서나 자연스럽게 비례 확장됩니다.
-            const flexRatio =
-              opt.key === '미정' ? 1.0 :
-              opt.key === '전체' || opt.key === '자녀' ? 1.3 :
-              1.9
+      {/* 필터 칩 */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl text-2xs font-bold w-full">
+        {ADDRESS_FILTERS.map(opt => {
+          const flexRatio =
+            opt.key === '미정' ? 1.0 :
+            opt.key === '전체' ? 1.2 :
+            opt.key === '교회학교' ? 2.0 :
+            1.8
 
-            return (
-              <button
-                key={opt.key}
-                onClick={() => setAddressFilter(opt.key)}
-                style={{ flex: `${flexRatio} ${flexRatio} 0%` }}
-                className={`py-2 px-1 rounded-lg transition-all whitespace-nowrap text-center truncate ${
-                  addressFilter === opt.key ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setAddressFilter(opt.key)}
+              style={{ flex: `${flexRatio} ${flexRatio} 0%` }}
+              className={`py-2 px-1 rounded-lg transition-all whitespace-nowrap text-center truncate ${
+                addressFilter === opt.key ? 'bg-white text-[#335f87] shadow-xs font-bold' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
 
-      {/* 선택한 그룹에 몇 명이 있는지 바로 보여줍니다 */}
-      {displayedMembers.length > 0 && (
-        <p className="text-2xs text-gray-400 font-medium px-1">
-          {(() => {
-            const total = displayedMembers.length
-            // 자녀 탭은 성도 수를 따로 보여줄 이유가 없어 "자녀 총 N명"만 표시합니다.
-            if (addressFilter === '자녀' && !searchQuery.trim()) return `자녀 총 ${total}명`
-            const scope = searchQuery.trim() ? '검색 결과' : addressFilter === '전체' ? '전체' : addressFilter
-            const kids = displayedMembers.filter(m => isChildLike(m)).length
-            return kids > 0
-              ? `${scope} 총 ${total}명 (성도 ${total - kids}명 · 자녀 ${kids}명)`
-              : `${scope} 총 ${total}명`
-          })()}
-        </p>
-      )}
+      {/* 인원 카운팅 */}
+      <p className="text-2xs text-gray-400 font-medium px-1">
+        {(() => {
+          if (searchQuery.trim()) {
+            return `검색 결과 총 ${displayedMembers.length}명`
+          }
+          if (addressFilter === '교회학교') {
+            return `교회학교 총 ${displayedMembers.length}명`
+          }
+          if (addressFilter === '전체') {
+            return `전체 총 ${countingStats.total}명 (성인 ${countingStats.adults}명 + 교회학교 ${countingStats.churchSchool}명)`
+          }
+          return `${addressFilter} 성도 총 ${displayedMembers.length}명`
+        })()}
+      </p>
 
       <div className="space-y-2">
         {displayedMembers.length === 0 && (
@@ -269,65 +247,109 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
               : '표시할 성도가 없습니다.'}
           </div>
         )}
-        {displayedMembers.map(member => (
-          // 자녀는 살짝 들여쓰고 옅게 표시해 "이 집 아이"임이 한눈에 보이게 합니다.
-          <div
-            key={member.id}
-            className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
-              isChildLike(member) ? 'ml-5 border-gray-100/70 bg-gray-50/40' : 'border-gray-100'
-            }`}
-          >
-            <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
-              <div className="flex items-center gap-2.5">
-                <div
-                  onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
-                  className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
-                >
-                  {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-gray-900 text-sm">{member.name}</span>
-                    <span className="text-2xs text-gray-400">{member.duty}</span>
+        {displayedMembers.map(member => {
+          const isChild = isChildLike(member)
+          const memberKids = !isChild ? getSharedChildren(member, allUsers) : []
+
+          return (
+            <div
+              key={member.id}
+              className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
+                isChild ? 'border-gray-100/80 bg-gray-50/40' : 'border-gray-100'
+              }`}
+            >
+              <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
+                    className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
+                  >
+                    {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
                   </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-gray-900 text-sm">{member.name}</span>
+                      <span className="text-2xs text-gray-400">{member.duty}</span>
+                      {memberKids.length > 0 && (
+                        <span className="text-3xs bg-blue-50 text-[#335f87] font-semibold px-1.5 py-0.5 rounded-full border border-blue-100/80">
+                          👶 {memberKids.length}
+                        </span>
+                      )}
+                    </div>
+                    {member.isDependent ? (
+                      getChildGroupLabel(member.childLabriId) && (
+                        <span className="text-2xs text-[#335f87] font-medium">{getChildGroupLabel(member.childLabriId)}</span>
+                      )
+                    ) : (
+                      member.labriId && member.labriId !== '미정' && (
+                        <span className="text-2xs text-[#335f87] font-medium">{member.labriId}</span>
+                      )
+                    )}
+                  </div>
+                </div>
+                <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
+              </button>
+              {expandedMember === member.id && (
+                <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
                   {member.isDependent ? (
-                    // "출석 미적용"은 부서 이름이 아니므로 부서 칸을 비워 둡니다.
-                    getChildGroupLabel(member.childLabriId) && (
-                      <span className="text-2xs text-[#335f87]">{getChildGroupLabel(member.childLabriId)}</span>
-                    )
+                    <>
+                      <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
+                      {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
+                    </>
                   ) : (
-                    member.labriId && member.labriId !== '미정' && (
-                      <span className="text-2xs text-[#335f87]">{member.labriId}</span>
-                    )
+                    <>
+                      {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
+                      {member.phone && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <span className="w-3 text-center text-2xs">📞</span>
+                          <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
+                        </div>
+                      )}
+                      {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
+                      {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
+
+                      {/* 자녀 목록 서브 박스 */}
+                      {memberKids.length > 0 && (
+                        <div className="mt-2.5 pt-2.5 border-t border-gray-100 space-y-1.5">
+                          <div className="text-2xs font-bold text-gray-500 flex items-center gap-1">
+                            <span>👶 자녀 ({memberKids.length}명)</span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5">
+                            {memberKids.map(child => (
+                              <div key={child.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/80 border border-gray-100/80">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    onClick={child.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember({ id: child.id, name: child.name, avatarUrl: child.avatarUrl } as UserProfile) } : undefined}
+                                    className={`w-7 h-7 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-2xs shrink-0 overflow-hidden ${child.avatarUrl ? 'cursor-pointer' : ''}`}
+                                  >
+                                    {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" /> : getInitials(child.name)}
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-gray-800 text-xs">{child.name}</span>
+                                    {getChildGroupLabel(child.labriId) && (
+                                      <span className="ml-1.5 text-3xs font-semibold px-1.5 py-0.5 bg-blue-50 text-[#335f87] rounded-md border border-blue-100/60">
+                                        {getChildGroupLabel(child.labriId)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {child.birthday && (
+                                  <span className="text-3xs text-gray-500 font-medium">
+                                    🎂 {formatBirthdayMonthDayOnly(child.birthday)}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-              </div>
-              <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
-            </button>
-            {expandedMember === member.id && (
-              <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2">
-                {member.isDependent ? (
-                  <>
-                    <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                  </>
-                ) : (
-                  <>
-                    {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
-                    {member.phone && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <span className="w-3 text-center text-2xs">📞</span>
-                        <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
-                      </div>
-                    )}
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                    {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {lightboxMember?.avatarUrl && (

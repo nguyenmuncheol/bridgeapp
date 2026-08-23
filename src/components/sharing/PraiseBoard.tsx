@@ -146,13 +146,19 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
   // ── 찬양/묵상 수정 저장 ──
   const handleSavePraiseEdit = async () => {
     if (!editingPraise) return
-    await dbUpdatePost(editingPraise.id, { title: editPraiseTitle, content: editPraiseContent })
-    setPraises(prev => prev.map(p => p.id === editingPraise.id
-      ? { ...p, title: editPraiseTitle, content: editPraiseContent }
+    const editId = editingPraise.id
+    const { error } = await dbUpdatePost(editId, { title: editPraiseTitle.trim(), content: editPraiseContent.trim() })
+    if (error) {
+      showToast('수정하지 못했습니다. 다시 시도해 주세요.', true)
+      return
+    }
+    setPraises(prev => prev.map(p => p.id === editId
+      ? { ...p, title: editPraiseTitle.trim(), content: editPraiseContent.trim() }
       : p
     ))
     setEditingPraise(null)
     setSelectedPraise(null)
+    showToast('수정되었습니다.')
   }
 
   return (
@@ -293,9 +299,13 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                     <>
                       <button
                         onClick={() => {
-                          setEditingPraise(selectedPraise)
-                          setEditPraiseTitle(selectedPraise.title)
-                          setEditPraiseContent(selectedPraise.content)
+                          const target = selectedPraise
+                          setSelectedPraise(null)
+                          setTimeout(() => {
+                            setEditingPraise(target)
+                            setEditPraiseTitle(target.title)
+                            setEditPraiseContent(target.content)
+                          }, 50)
                         }}
                         className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
                         title="수정"
