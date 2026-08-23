@@ -47,8 +47,8 @@ function groupCouplesInScope(scope: UserProfile[]): { members: UserProfile[]; so
   scope.filter(m => !isChildLike(m)).forEach(m => {
     if (paired.has(m.id)) return
     const isSpouseRole = m.familyRole === '부' || m.familyRole === '모'
-    const spouse = isSpouseRole && m.familyGroupId
-      ? scope.find(o => o.id !== m.id && !paired.has(o.id) && o.familyGroupId === m.familyGroupId && (o.familyRole === '부' || o.familyRole === '모'))
+    const spouse = m.familyGroupId
+      ? scope.find(o => o.id !== m.id && !paired.has(o.id) && o.familyGroupId === m.familyGroupId && (isSpouseRole ? (o.familyRole === '부' || o.familyRole === '모' || !o.familyRole) : true))
       : undefined
 
     if (spouse) {
@@ -143,12 +143,13 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       return [...pinnedAdults, ...restSorted]
     }
 
-    // 라브리1/2/3/미정 필터: 해당 라브리 리더 부부 최상단 고정, 나머지는 나이순
+    // 라브리1/2/3/미정 필터: 해당 라브리 리더 부부(없으면 관리자 부부, 없으면 목사님 부부) 최상단 고정, 나머지는 나이순
     if (LABRI_FILTER_KEYS.includes(addressFilter)) {
       const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
       const leaders = filtered.filter(m => !m.isDependent && m.role === 'LEADER')
+      const admins = filtered.filter(m => !m.isDependent && m.role === 'ADMIN')
       const pastors = filtered.filter(isSeniorPastor)
-      const pinnedBase = leaders.length > 0 ? leaders : pastors
+      const pinnedBase = leaders.length > 0 ? leaders : (admins.length > 0 ? admins : pastors)
 
       const pinnedIds = new Set<string>()
       const pinnedBlock: UserProfile[] = []
@@ -156,7 +157,9 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         if (pinnedIds.has(lead.id)) return
         const spouse = (lead.familyRole === '부' || lead.familyRole === '모') && lead.familyGroupId
           ? filtered.find(o => o.id !== lead.id && !pinnedIds.has(o.id) && o.familyGroupId === lead.familyGroupId && (o.familyRole === '부' || o.familyRole === '모'))
-          : undefined
+          : (lead.familyGroupId
+              ? filtered.find(o => o.id !== lead.id && !pinnedIds.has(o.id) && o.familyGroupId === lead.familyGroupId)
+              : undefined)
         const unit = spouse
           ? [lead, spouse].sort((a, b) => (FAMILY_ROLE_ORDER[a.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.familyRole || ''] || 10))
           : [lead]
