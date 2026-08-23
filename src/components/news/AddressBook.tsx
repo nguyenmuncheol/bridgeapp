@@ -247,109 +247,63 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
               : '표시할 성도가 없습니다.'}
           </div>
         )}
-        {displayedMembers.map(member => {
-          const isChild = isChildLike(member)
-          const memberKids = !isChild ? getSharedChildren(member, allUsers) : []
-
-          return (
-            <div
-              key={member.id}
-              className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
-                isChild ? 'border-gray-100/80 bg-gray-50/40' : 'border-gray-100'
-              }`}
-            >
-              <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
-                    className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
-                  >
-                    {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-gray-900 text-sm">{member.name}</span>
-                      <span className="text-2xs text-gray-400">{member.duty}</span>
-                      {memberKids.length > 0 && (
-                        <span className="text-3xs bg-blue-50 text-[#335f87] font-semibold px-1.5 py-0.5 rounded-full border border-blue-100/80">
-                          👶 {memberKids.length}
-                        </span>
-                      )}
-                    </div>
-                    {member.isDependent ? (
-                      getChildGroupLabel(member.childLabriId) && (
-                        <span className="text-2xs text-[#335f87] font-medium">{getChildGroupLabel(member.childLabriId)}</span>
-                      )
-                    ) : (
-                      member.labriId && member.labriId !== '미정' && (
-                        <span className="text-2xs text-[#335f87] font-medium">{member.labriId}</span>
-                      )
-                    )}
-                  </div>
+        {displayedMembers.map(member => (
+          <div
+            key={member.id}
+            className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
+              isChildLike(member) ? 'border-gray-100/80 bg-gray-50/40' : 'border-gray-100'
+            }`}
+          >
+            <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
+              <div className="flex items-center gap-2.5">
+                <div
+                  onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
+                  className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
+                >
+                  {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
                 </div>
-                <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
-              </button>
-              {expandedMember === member.id && (
-                <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-gray-900 text-sm">{member.name}</span>
+                    <span className="text-2xs text-gray-400">{member.duty}</span>
+                  </div>
                   {member.isDependent ? (
-                    <>
-                      <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
-                      {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                    </>
+                    getChildGroupLabel(member.childLabriId) && (
+                      <span className="text-2xs text-[#335f87] font-medium">{getChildGroupLabel(member.childLabriId)}</span>
+                    )
                   ) : (
-                    <>
-                      {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
-                      {member.phone && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <span className="w-3 text-center text-2xs">📞</span>
-                          <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
-                        </div>
-                      )}
-                      {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                      {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
-
-                      {/* 자녀 목록 서브 박스 */}
-                      {memberKids.length > 0 && (
-                        <div className="mt-2.5 pt-2.5 border-t border-gray-100 space-y-1.5">
-                          <div className="text-2xs font-bold text-gray-500 flex items-center gap-1">
-                            <span>👶 자녀 ({memberKids.length}명)</span>
-                          </div>
-                          <div className="grid grid-cols-1 gap-1.5">
-                            {memberKids.map(child => (
-                              <div key={child.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/80 border border-gray-100/80">
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    onClick={child.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember({ id: child.id, name: child.name, avatarUrl: child.avatarUrl } as UserProfile) } : undefined}
-                                    className={`w-7 h-7 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-2xs shrink-0 overflow-hidden ${child.avatarUrl ? 'cursor-pointer' : ''}`}
-                                  >
-                                    {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" /> : getInitials(child.name)}
-                                  </div>
-                                  <div>
-                                    <span className="font-bold text-gray-800 text-xs">{child.name}</span>
-                                    {getChildGroupLabel(child.labriId) && (
-                                      <span className="ml-1.5 text-3xs font-semibold px-1.5 py-0.5 bg-blue-50 text-[#335f87] rounded-md border border-blue-100/60">
-                                        {getChildGroupLabel(child.labriId)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {child.birthday && (
-                                  <span className="text-3xs text-gray-500 font-medium">
-                                    🎂 {formatBirthdayMonthDayOnly(child.birthday)}
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                    member.labriId && member.labriId !== '미정' && (
+                      <span className="text-2xs text-[#335f87] font-medium">{member.labriId}</span>
+                    )
                   )}
                 </div>
-              )}
-            </div>
-          )
-        })}
+              </div>
+              <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
+            </button>
+            {expandedMember === member.id && (
+              <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
+                {member.isDependent ? (
+                  <>
+                    <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
+                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
+                  </>
+                ) : (
+                  <>
+                    {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
+                    {member.phone && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <span className="w-3 text-center text-2xs">📞</span>
+                        <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
+                      </div>
+                    )}
+                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
+                    {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {lightboxMember?.avatarUrl && (
