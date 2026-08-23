@@ -50,6 +50,8 @@
  * 글자와 버튼·여백이 **함께** 커집니다.
  */
 @theme {
+  --text-3xs: 0.625rem;             /* 10px — 매우 작은 보조 라벨 */
+  --text-3xs--line-height: 0.875rem;
   --text-2xs: 0.75rem;              /* 12px — 날짜·작성자·작은 라벨 */
   --text-2xs--line-height: 1.125rem;
   --text-xs: 0.875rem;              /* 14px — 본문 */
