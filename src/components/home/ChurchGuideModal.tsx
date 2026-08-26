@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Church, Clock3, Users, Heart, Mail, Phone } from 'lucide-react'
+import { X, Church, Clock3, Users, Heart, Mail } from 'lucide-react'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 interface ChurchGuideModalProps {
@@ -51,7 +51,6 @@ const PASTOR = {
   role: '전임목사',
   name: '정제호',
   email: 'jehojung88@gmail.com',
-  phone: '0969388213',
   bio: '1975년에 태어나 성결대 신학과와 성결신학대학원을 졸업하고, 목사안수를 받았다. 안양 밝은빛교회와 등촌제일교회, 인천복된교회에서 청년부와 교육목사로 섬겼고, 굿네이버스 아동보호전문기관, 스리랑카 예수전도단 DTS와 간사, 제주열방대학 SOIWSW 수료 후 2015년 베트남 하노이로 이주하여 2018년부터 하노이 더브릿지 교회에서 전임목사로 사역하고 있다.',
 }
 
@@ -196,13 +195,6 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                     >
                       <Mail size={12} className="shrink-0 text-gray-400" />
                       {PASTOR.email}
-                    </a>
-                    <a
-                      href={`tel:${PASTOR.phone}`}
-                      className="flex items-center gap-1.5 text-2xs text-gray-600 hover:text-[#335f87]"
-                    >
-                      <Phone size={12} className="shrink-0 text-gray-400" />
-                      {PASTOR.phone}
                     </a>
                   </div>
                 </div>

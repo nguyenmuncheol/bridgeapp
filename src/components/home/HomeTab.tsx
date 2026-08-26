@@ -259,7 +259,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
           <div className="bg-gradient-to-br from-[#335f87] to-[#1e3d5a] text-white p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Church size={20} className="text-blue-200" />
-              <span className="text-xs font-bold text-blue-200 tracking-widest uppercase">The Bridge Church</span>
+              <span className="text-xs font-bold text-blue-200 tracking-widest uppercase">더브릿지 교회</span>
             </div>
             <h1 className="text-lg font-black leading-snug">더브릿지 교회에 오신 것을 환영합니다</h1>
             <p className="text-xs text-blue-100 leading-relaxed italic whitespace-pre-line">{CHURCH_INFO.vision}</p>
