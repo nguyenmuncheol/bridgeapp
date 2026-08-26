@@ -204,29 +204,56 @@ export default function StatsTab({
     }
   }, [childRecords, safeStart, safeEnd])
 
-  // 선택한 주일의 교회학교 명단 (부서순 → 이름순, 성인 명단과 같은 구성)
+  // 자녀 결석 연속 주수 계산 — 성인 출석(getAbsenceStreak)과 같은 방식이지만,
+  // 교회학교 출석은 별도 표(child_attendance_records)에 저장되어 이 화면에서 직접 계산합니다.
+  const childDateKeysDesc = useMemo(() => {
+    const keys = new Set<string>()
+    ;(childRecords || []).forEach((r: ChildAttendanceRow) => keys.add(String(r.date_str)))
+    return Array.from(keys).sort().reverse()
+  }, [childRecords])
+
+  const getChildAbsenceStreak = (dependentId: string, fromDate: string): number => {
+    const startIdx = childDateKeysDesc.indexOf(fromDate)
+    if (startIdx === -1) return 0
+    let streak = 0
+    for (let i = startIdx; i < childDateKeysDesc.length; i++) {
+      const rec = (childRecords || []).find((r: ChildAttendanceRow) =>
+        String(r.date_str) === childDateKeysDesc[i] && String(r.dependent_id) === dependentId)
+      if (!rec || rec.status !== 'ABSENT') break
+      streak++
+    }
+    return streak
+  }
+
+  // 선택한 주일의 교회학교 명단 정렬: 성인 명단(sortedAttendanceRows)과 동일한 기준으로
+  // ①이번 주 결석자를 연속결석 주수가 많은 순으로 먼저, ②그 외는 이름 가나다순으로 정렬합니다.
   const childRosterRows = useMemo(() => {
     const byId = new Map<string, ChildAttendanceRow>()
     ;(childRecords || []).forEach((r: ChildAttendanceRow) => {
       if (String(r.date_str) === selectedStatsDate) byId.set(String(r.dependent_id), r)
     })
-    const order = new Map<string, number>(CHILD_ATTENDANCE_GROUPS.map((g, i) => [g as string, i]))
     return buildDependentEntries(allUsers)
       .filter(c => (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.childLabriId || ''))
       .map(child => {
-        const rec = byId.get(child.id.replace(/^dep_/, ''))
+        const depId = child.id.replace(/^dep_/, '')
+        const rec = byId.get(depId)
+        const status = (rec?.status as 'ATTEND' | 'ABSENT' | undefined) || null
         return {
           child,
-          status: (rec?.status as 'ATTEND' | 'ABSENT' | undefined) || null,
+          status,
           note: rec?.note || '',
+          absenceStreak: status === 'ABSENT' ? getChildAbsenceStreak(depId, selectedStatsDate) : 0,
         }
       })
       .sort((a, b) => {
-        const ga = order.get(a.child.childLabriId || '') ?? 99
-        const gb = order.get(b.child.childLabriId || '') ?? 99
-        return ga !== gb ? ga - gb : a.child.name.localeCompare(b.child.name, 'ko')
+        const aAbsent = a.status === 'ABSENT'
+        const bAbsent = b.status === 'ABSENT'
+        if (aAbsent !== bAbsent) return aAbsent ? -1 : 1
+        if (aAbsent && b.absenceStreak !== a.absenceStreak) return b.absenceStreak - a.absenceStreak
+        return a.child.name.localeCompare(b.child.name, 'ko')
       })
-  }, [childRecords, selectedStatsDate, allUsers])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childRecords, selectedStatsDate, allUsers, childDateKeysDesc])
 
   const CHILD_BAR: Record<string, string> = {
     '영아부': '#fbcfe8', '유아·유치부': '#fde68a', '초등부': '#a7f3d0', '중고등부': '#bfdbfe',
@@ -549,7 +576,7 @@ export default function StatsTab({
                     <td className="p-2 text-center">
                       {row.status ? (
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                          {row.status === 'ABSENT' ? '❌ 결석' : '✅ 출석'}
+                          {row.status === 'ABSENT' ? `❌ ${formatAbsenceStreak(row.absenceStreak)}` : '✅ 출석'}
                         </span>
                       ) : (
                         <span className="text-gray-300 text-[10px]">미기록</span>

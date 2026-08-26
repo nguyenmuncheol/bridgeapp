@@ -308,26 +308,60 @@ export default function MembersTab({
     }
   }
 
-  // "성도" 탭 명단도 출석/결석 명단과 동일한 기준(가장 최근 주일 기준 장기결석자 우선)으로 정렬합니다.
-  const sortedFilteredMembers = useMemo(() => {
-    return filteredMembers
-      .map(member => {
-        const rec = latestAttendanceDate ? (dbAttendanceData[latestAttendanceDate] || []).find(r => r.userId === member.id) : undefined
-        const isAbsent = rec?.status === 'ABSENT'
-        return {
-          member,
-          isAbsent,
-          absenceStreak: isAbsent ? getAbsenceStreak(member.id, latestAttendanceDate) : 0
+  // "성도" 탭 명단도 출석/결석 명단과 동일한 기준(가장 최근 주일 기준 장기결석자 우선)으로 정렬하되,
+  // 부부(같은 familyGroupId + 부/모 호칭)는 한 쌍으로 묶어서 나란히 보여줍니다.
+  const sortedMemberUnits = useMemo(() => {
+    const rows = filteredMembers.map(member => {
+      const rec = latestAttendanceDate ? (dbAttendanceData[latestAttendanceDate] || []).find(r => r.userId === member.id) : undefined
+      const isAbsent = rec?.status === 'ABSENT'
+      return {
+        member,
+        isAbsent,
+        absenceStreak: isAbsent ? getAbsenceStreak(member.id, latestAttendanceDate) : 0
+      }
+    })
+
+    // 부부 묶기: 같은 familyGroupId를 가진 두 성도가 모두 이 목록 안에 있을 때만 한 쌍으로 묶습니다.
+    // (자녀가 성도로 가입해 있어도 familyRole이 '자녀'면 부부 짝짓기 대상에서 제외)
+    const paired = new Set<string>()
+    const units = rows
+      .filter(r => r.member.familyRole !== '자녀')
+      .map(r => {
+        if (paired.has(r.member.id)) return null
+        const spouse = r.member.familyGroupId
+          ? rows.find(o => o.member.id !== r.member.id && !paired.has(o.member.id) && o.member.familyRole !== '자녀' && o.member.familyGroupId === r.member.familyGroupId)
+          : undefined
+        if (spouse) {
+          paired.add(r.member.id)
+          paired.add(spouse.member.id)
+          const members = [r, spouse].sort((a, b) =>
+            (FAMILY_ROLE_ORDER[a.member.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.member.familyRole || ''] || 10)
+          )
+          return {
+            members,
+            isAbsent: members.some(m => m.isAbsent),
+            absenceStreak: Math.max(...members.map(m => m.absenceStreak))
+          }
         }
+        paired.add(r.member.id)
+        return { members: [r], isAbsent: r.isAbsent, absenceStreak: r.absenceStreak }
       })
-      .sort((a, b) => {
-        if (a.isAbsent !== b.isAbsent) return a.isAbsent ? -1 : 1
-        if (a.isAbsent && b.absenceStreak !== a.absenceStreak) return b.absenceStreak - a.absenceStreak
-        return a.member.name.localeCompare(b.member.name, 'ko')
-      })
-      .map(x => x.member)
+      .filter((u): u is NonNullable<typeof u> => u !== null)
+
+    // 자녀 호칭 성도(familyRole === '자녀')는 짝짓기 없이 단독 유닛으로 추가
+    rows.filter(r => r.member.familyRole === '자녀').forEach(r => {
+      units.push({ members: [r], isAbsent: r.isAbsent, absenceStreak: r.absenceStreak })
+    })
+
+    return units.sort((a, b) => {
+      if (a.isAbsent !== b.isAbsent) return a.isAbsent ? -1 : 1
+      if (a.isAbsent && b.absenceStreak !== a.absenceStreak) return b.absenceStreak - a.absenceStreak
+      return a.members[0].member.name.localeCompare(b.members[0].member.name, 'ko')
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredMembers, attendanceDateKeysDesc, dbAttendanceData, latestAttendanceDate])
+
+  const sortedFilteredMembers = useMemo(() => sortedMemberUnits.flatMap(u => u.members.map(x => x.member)), [sortedMemberUnits])
 
   // ── 성도 정보 CSV 내보내기 ──
   // ⚠️ 연락처·주소가 들어가는 개인정보 파일이라 **목사(ADMIN)만** 받을 수 있게 합니다.
@@ -397,49 +431,60 @@ export default function MembersTab({
           )}
         </div>
 
-        {/* 성도 리스트 (장기결석자 우선 정렬) */}
-        {sortedFilteredMembers.map(member => (
-          <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2">
-                <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
-                  {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" /> : getInitials(member.name)}
+        {/* 성도 리스트 (장기결석자 우선 정렬 + 부부는 한 쌍으로 묶어서 표시) */}
+        {sortedMemberUnits.map(unit => {
+          const cards = unit.members.map(({ member }) => (
+            <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                    {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" /> : getInitials(member.name)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(member, '')}</h3>
+                    <p className="text-2xs text-gray-400 mt-0.5">{member.email || '이메일 없음'}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(member, '')}</h3>
-                  <p className="text-2xs text-gray-400 mt-0.5">{member.email || '이메일 없음'}</p>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${
+                    member.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
+                    member.role === 'LEADER' ? 'bg-blue-100 text-blue-700' :
+                    member.role === 'TEACHER' ? 'bg-emerald-100 text-emerald-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>{member.role}</span>
+                  {!isLeader && (
+                    <button onClick={() => handleStartEditMember(member)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
+                      <Edit2 size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${
-                  member.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
-                  member.role === 'LEADER' ? 'bg-blue-100 text-blue-700' :
-                  member.role === 'TEACHER' ? 'bg-emerald-100 text-emerald-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>{member.role}</span>
-                {!isLeader && (
-                  <button onClick={() => handleStartEditMember(member)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
-                    <Edit2 size={13} />
-                  </button>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-2xs text-gray-500 pl-14">
+                <span>📞 {member.phone ? <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a> : '미입력'}</span>
+                <span>🏠 {member.address || '미입력'}</span>
+                <span>🎂 {formatBirthdayDisplay(member.birthday) || '미입력'}</span>
+                <span>⛪ {member.labriId || '라브리 미정'}</span>
+                {/* 가족 연계 정보(배우자/자녀)는 좌측 열, 기타 메모는 라브리 바로 아래(우측 열)에
+                    각자 열을 맞춰 따로 표시합니다 — 가족 연계와 무관한 관리자 전용 메모라서 섞으면 헷갈립니다. */}
+                {buildFamilyStatusText(member, allUsers, false) && (
+                  <span className="row-start-3 col-start-1">👨‍👩‍👧 {buildFamilyStatusText(member, allUsers, false)}</span>
+                )}
+                {parseFamilyInfo(member.familyInfo).note && (
+                  <span className="row-start-3 col-start-2">📝 {parseFamilyInfo(member.familyInfo).note}</span>
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-2xs text-gray-500 pl-14">
-              <span>📞 {member.phone ? <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a> : '미입력'}</span>
-              <span>🏠 {member.address || '미입력'}</span>
-              <span>🎂 {formatBirthdayDisplay(member.birthday) || '미입력'}</span>
-              <span>⛪ {member.labriId || '라브리 미정'}</span>
-              {/* 가족 연계 정보(배우자/자녀)는 좌측 열, 기타 메모는 라브리 바로 아래(우측 열)에
-                  각자 열을 맞춰 따로 표시합니다 — 가족 연계와 무관한 관리자 전용 메모라서 섞으면 헷갈립니다. */}
-              {buildFamilyStatusText(member, allUsers, false) && (
-                <span className="row-start-3 col-start-1">👨‍👩‍👧 {buildFamilyStatusText(member, allUsers, false)}</span>
-              )}
-              {parseFamilyInfo(member.familyInfo).note && (
-                <span className="row-start-3 col-start-2">📝 {parseFamilyInfo(member.familyInfo).note}</span>
-              )}
+          ))
+
+          if (unit.members.length < 2) return cards[0]
+
+          return (
+            <div key={unit.members.map(({ member }) => member.id).join('-')} className="bg-blue-50/40 border border-blue-100 rounded-2xl p-2 space-y-2">
+              <p className="text-2xs font-bold text-[#335f87] px-1">👫 부부</p>
+              {cards}
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {filteredMembers.length === 0 && (
           <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-xs text-gray-400">검색 결과가 없습니다.</div>

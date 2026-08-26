@@ -363,15 +363,12 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
         <div className="max-h-52 overflow-y-auto space-y-2 pr-1 scroll-smooth">
           {notices.map((notice) => (
             <div key={notice.id} onClick={() => setSelectedNoticeModal(notice)}
-              className="bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 cursor-pointer hover:border-blue-200 transition-all flex items-center justify-between">
-              <div className="space-y-0.5 flex-1 pr-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xs font-bold text-[#335f87] bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
-                  <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{notice.title}</h3>
-                </div>
-                <p className="text-2xs text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
+              className="bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 cursor-pointer hover:border-blue-200 transition-all space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xs font-bold text-[#335f87] bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
+                <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{notice.title}</h3>
               </div>
-              <span className="text-2xs text-gray-400 font-mono shrink-0">{notice.createdAt}</span>
+              <p className="text-2xs text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
             </div>
           ))}
         </div>
