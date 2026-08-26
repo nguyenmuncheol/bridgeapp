@@ -30,6 +30,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  // Google Search Console 소유권 확인
+  verification: {
+    google: "QW-MvHuL4UJjsOvKNAqfswr8LD7eT8_TybELGa69Te8",
+  },
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
