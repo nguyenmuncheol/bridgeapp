@@ -493,8 +493,11 @@ export default function Home() {
   const { pullPx, refreshing, threshold } = usePullToRefresh()
 
   // 비로그인 + 앱 미설치 방문자에게는 랜딩 페이지를 먼저 보여줍니다.
-  // (로딩 중에는 판단을 미뤄 로딩 화면과 랜딩이 번갈아 깜빡이지 않게 합니다)
-  const showLanding = !isLoading && isGuest && !landingDismissed && !isRunningStandalone()
+  // currentUserId는 세션 확인 전 기본값이 'guest'이므로(위 useState 초기값 참고),
+  // isLoading을 기다리지 않고 즉시 랜딩을 보여줍니다 — 검색엔진/AI 크롤러가
+  // 자바스크립트 실행 없이 받는 최초 HTML에도 실제 소개 문구가 담기도록 하기 위함입니다.
+  // (이미 로그인된 재방문 회원은 세션 확인이 끝나는 순간 바로 앱 화면으로 전환됩니다)
+  const showLanding = isGuest && !landingDismissed && !isRunningStandalone()
   if (showLanding) {
     return <LandingPage onEnter={() => setLandingDismissed(true)} />
   }

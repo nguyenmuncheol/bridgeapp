@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /$
+Disallow: /analytics
+Disallow: /demo
+Disallow: /auth
+
+Sitemap: https://hanoibridge.vercel.app/sitemap.xml
