@@ -63,8 +63,9 @@ export const metadata: Metadata = {
 
 // Church/WebSite/WebPage 구조화 데이터 (JSON-LD).
 // 비회원에게는 랜딩페이지·HomeTab만 보이므로, 그 화면에 실제로 나오는 정보
-// (이름, 위치, 주일예배 시간, 대상 세대)만 담습니다. geo 좌표는 여전히 넣지 않습니다 —
-// 카페(제3자 업체)의 지도 좌표를 교회 좌표로 잘못 표기하지 않기 위함입니다.
+// (이름, 위치, 주일예배 시간, 대상 세대)만 담습니다.
+// geo 좌표는 카페(제3자 업체) 좌표가 아니라, 교회 자체의 구글 비즈니스 프로필에
+// 등록/수정 요청한 좌표(2026-08-26 기준)를 사용합니다.
 // sameAs는 교회가 직접 확인한 공식 채널(구글 비즈니스 프로필, 카카오 오픈채팅)만 담아,
 // 검색엔진/AI가 이 사이트와 동일한 실체(entity)로 정확히 연결하도록 돕습니다.
 const jsonLd = {
@@ -84,6 +85,11 @@ const jsonLd = {
         addressLocality: "Nam Từ Liêm",
         addressRegion: "Hà Nội",
         addressCountry: "VN",
+      },
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: 21.011665782457595,
+        longitude: 105.7751813918244,
       },
       openingHoursSpecification: [
         {
