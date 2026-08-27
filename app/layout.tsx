@@ -63,8 +63,10 @@ export const metadata: Metadata = {
 
 // Church/WebSite/WebPage 구조화 데이터 (JSON-LD).
 // 비회원에게는 랜딩페이지·HomeTab만 보이므로, 그 화면에 실제로 나오는 정보
-// (이름, 위치, 주일예배 시간, 대상 세대)만 담고 확인되지 않은 geo 좌표·SNS 링크는
-// 넣지 않습니다 — 카페(제3자 업체)의 지도 좌표를 교회 좌표로 잘못 표기하지 않기 위함입니다.
+// (이름, 위치, 주일예배 시간, 대상 세대)만 담습니다. geo 좌표는 여전히 넣지 않습니다 —
+// 카페(제3자 업체)의 지도 좌표를 교회 좌표로 잘못 표기하지 않기 위함입니다.
+// sameAs는 교회가 직접 확인한 공식 채널(구글 비즈니스 프로필, 카카오 오픈채팅)만 담아,
+// 검색엔진/AI가 이 사이트와 동일한 실체(entity)로 정확히 연결하도록 돕습니다.
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -90,6 +92,10 @@ const jsonLd = {
           opens: "11:00",
           description: "열린 주일 예배 · 유아·유치부 · 중고등부",
         },
+      ],
+      sameAs: [
+        "https://maps.app.goo.gl/qLC3KyS4MQxhmH6T6",
+        "https://open.kakao.com/me/hanoithebridge",
       ],
       inLanguage: "ko",
     },

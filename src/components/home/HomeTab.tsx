@@ -294,7 +294,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-blue-100/60">
                 <a
-                  href="https://maps.app.goo.gl/QmPUonpPZnpMxyum7"
+                  href="https://maps.app.goo.gl/qLC3KyS4MQxhmH6T6"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-2 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 shadow-2xs transition-all"
@@ -302,7 +302,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
                   🗺️ 지도 보기
                 </a>
                 <a
-                  href="https://open.kakao.com/o/sZaUR1Ii"
+                  href="https://open.kakao.com/me/hanoithebridge"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-2 bg-[#fee500] hover:bg-[#fada0a] text-[#191919] text-xs font-bold rounded-lg flex items-center justify-center gap-1 shadow-2xs transition-all"
