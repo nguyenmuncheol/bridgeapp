@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { UserProfile, Role } from '../../lib/mockData'
 import { dbFetchAttendanceRecords } from '../../lib/db'
+import { getUnassignedChildren } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 import MealsTab from './MealsTab'
 import ApprovalTab from './ApprovalTab'
@@ -31,6 +32,10 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
   const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts'>(defaultTab)
 
   const pendingCount = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt).length
+
+  // 부모가 등록했지만 아직 교회학교 그룹이 없는 자녀 — 그룹을 정해 주기 전까지
+  // 주소록·생일·출석 어디에도 안 나오므로 성도 탭에 숫자로 알려 줍니다.
+  const unassignedChildren = useMemo(() => getUnassignedChildren(allUsers), [allUsers])
 
   // 식수 복사 등 여러 탭에서 공통으로 쓰는 토스트 (alert 대체)
   const [toastMsg, setToastMsg] = useState('')
@@ -112,7 +117,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
         {[
           { id: 'meals', label: '🍱 식사', show: !isCouponManager && !isTeacher },
           { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, show: !isLeader && !isCouponManager && !isTeacher },
-          { id: 'members', label: '📋 성도', show: !isCouponManager && !isTeacher },
+          { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}`, show: !isCouponManager && !isTeacher },
           { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader && !isTeacher },
           { id: 'stats', label: '📊 출석', show: !isCouponManager },
           { id: 'alerts', label: '🔔 알림', show: currentUser?.role === 'ADMIN' },

@@ -252,9 +252,10 @@ export function buildParentLabel(owner: UserProfile, linkedMembers: UserProfile[
   return `보호자:${people.map(p => p.name).join('·')}`
 }
 
-// 계정이 없는 자녀 등 가족 구성원을 주소록/생일 목록에 표시하기 위한 가상 항목 생성.
+// 계정이 없는 자녀 등 가족 구성원의 가상 항목 생성 (교회학교 그룹 지정 여부와 무관한 전체 목록).
 // 부부가 각자 자녀를 저장했더라도 같은 자녀(id)는 한 번만 나오도록 중복 제거합니다.
-export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
+// 실제로 화면에 무엇을 보여줄지는 아래 두 함수가 나눠서 결정합니다.
+function buildAllDependentEntries(users: UserProfile[]): UserProfile[] {
   const seen = new Set<string>()
   const out: UserProfile[] = []
 
@@ -272,13 +273,6 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
       if (seen.has(c.id)) return
       // 이 자녀가 이미 계정을 만들어 명단에 있으면 가상 항목을 만들지 않습니다.
       if (realMemberKeys.has(`${effectiveFamilyGroupId.trim()}|${(c.name || '').trim()}`)) {
-        seen.add(c.id)
-        return
-      }
-      // 교회학교 그룹이 없는 자녀(미지정)는 주소록·생일·출석 어디에도 나오지 않습니다.
-      // 그룹은 관리자가 정해 주며, 정해지기 전까지는 부모의 가족현황 줄과 관리자 자녀
-      // 목록에만 보입니다(그래야 관리자가 새로 등록된 자녀를 놓치지 않습니다).
-      if (!(c.labriId || '').trim()) {
         seen.add(c.id)
         return
       }
@@ -301,4 +295,24 @@ export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
     })
   })
   return out
+}
+
+/**
+ * 화면(주소록·생일·출석)에 보여줄 자녀 목록.
+ *
+ * 교회학교 그룹이 없는 자녀(미지정)는 여기서 빠집니다. 그룹은 관리자가 정해 주며,
+ * 정해지기 전까지 자녀는 부모의 가족현황 줄과 관리자 자녀 목록에만 보입니다.
+ */
+export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
+  return buildAllDependentEntries(users).filter(c => !!(c.childLabriId || '').trim())
+}
+
+/**
+ * 관리자가 아직 교회학교 그룹을 정해 주지 않은 자녀들.
+ *
+ * 부모가 자녀를 등록해도 그룹이 없으면 어느 명단에도 나오지 않으므로,
+ * 관리자 화면에서 이 목록을 알려 주어 빠뜨리지 않게 합니다.
+ */
+export function getUnassignedChildren(users: UserProfile[]): UserProfile[] {
+  return buildAllDependentEntries(users).filter(c => !(c.childLabriId || '').trim())
 }

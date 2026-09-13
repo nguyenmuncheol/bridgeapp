@@ -5,7 +5,7 @@ import { Search, Edit2, Save, X, Camera } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren } from '../../lib/familyInfo'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -70,8 +70,17 @@ export default function MembersTab({
     }
   }
 
+  const unassignedChildren = useMemo(() => getUnassignedChildren(allUsers), [allUsers])
+
+  // 자녀 이름으로도 부모를 찾을 수 있습니다 — 자녀는 계정이 없어서 명단에 직접 뜨지 않고,
+  // 교회학교 그룹을 정해 주려면 부모 카드를 열어야 하기 때문입니다.
   const filteredMembers = memberSearch
-    ? approvedMembers.filter(m => m.name.includes(memberSearch) || m.phone.includes(memberSearch) || (m.email && m.email.includes(memberSearch)))
+    ? approvedMembers.filter(m =>
+        m.name.includes(memberSearch) ||
+        m.phone.includes(memberSearch) ||
+        (m.email && m.email.includes(memberSearch)) ||
+        getSharedChildren(m, allUsers).some(c => c.name.includes(memberSearch))
+      )
     : approvedMembers
 
   const handleStartEditMember = (member: UserProfile) => {
@@ -415,6 +424,33 @@ export default function MembersTab({
           />
           {memberSearch && <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
         </div>
+
+        {/* 부모가 등록했지만 교회학교 그룹이 없는 자녀 — 그룹을 정해 주기 전까지
+            주소록·생일·출석 어디에도 나오지 않으므로 여기서 알려 줍니다. */}
+        {unassignedChildren.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1.5">
+            <p className="text-2xs font-bold text-amber-900">
+              🧒 교회학교 그룹을 정해 주세요 ({unassignedChildren.length}명)
+            </p>
+            <p className="text-2xs text-amber-700 leading-snug">
+              부모가 등록한 자녀입니다. 그룹을 정하기 전까지는 주소록·생일·출석 명단에 나오지 않습니다.
+              이름을 누르면 부모 카드를 찾아 드립니다.
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {unassignedChildren.map(child => (
+                <button
+                  key={child.id}
+                  type="button"
+                  onClick={() => setMemberSearch(child.name)}
+                  className="px-2 py-1 bg-white border border-amber-200 rounded-lg text-2xs font-bold text-amber-900 hover:bg-amber-100 transition-colors"
+                >
+                  {child.name}
+                  {child.parentName && <span className="font-normal text-amber-600 ml-1">{child.parentName}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
           <p className="text-2xs text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
