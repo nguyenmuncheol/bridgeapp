@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks, findLinkedFamilyMembers } from '../../lib/familyInfo'
-import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
+import { parseBirthdayFlexible, daysInMonth, formatBirthdayDisplay } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -19,9 +19,10 @@ interface MyPageTabProps {
   allUsers?: UserProfile[]
   onNavigateAdmin: () => void
   onUpdateUsers?: React.Dispatch<React.SetStateAction<UserProfile[]>>
+  onLogout?: () => void
 }
 
-export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin, onUpdateUsers }: MyPageTabProps) {
+export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin, onUpdateUsers, onLogout }: MyPageTabProps) {
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
@@ -35,6 +36,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   // 자녀 정보(배우자와 공유) 수정 상태: 모달을 열 때마다 최신 공유 목록으로 초기화
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
+  // 자녀 생일도 부모 생일과 똑같이 년/월/일 드롭다운으로 고릅니다.
+  // 고르는 도중(년만 고른 상태 등)에는 아직 생일 문자열을 만들 수 없으므로 선택값을 따로 들고 있습니다.
+  const [childBirthParts, setChildBirthParts] = useState<Record<string, { year: string; month: string; day: string }>>({})
   const openEditModal = () => {
     setEditName(currentUser.name || '')
     setEditPhone(currentUser.phone || '')
@@ -45,14 +49,33 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     setEditBirthYear(b.year)
     setEditBirthMonth(b.month)
     setEditBirthDay(b.day)
-    setEditChildren(getSharedChildren(currentUser, allUsers))
+    const shared = getSharedChildren(currentUser, allUsers)
+    setEditChildren(shared)
+    setChildBirthParts(Object.fromEntries(shared.map(c => [c.id, parseBirthday(c.birthday)])))
     setShowEditModal(true)
   }
   const addEditChild = () => {
-    setEditChildren(prev => [...prev, { id: `child_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: '', birthday: '' }])
+    const id = `child_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    setEditChildren(prev => [...prev, { id, name: '', birthday: '' }])
+    setChildBirthParts(prev => ({ ...prev, [id]: { year: '', month: '', day: '' } }))
   }
   const updateEditChild = (id: string, updates: Partial<FamilyChildInfo>) => {
     setEditChildren(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
+  }
+  const updateChildBirth = (childId: string, part: 'year' | 'month' | 'day', value: string) => {
+    const cur = childBirthParts[childId] || { year: '', month: '', day: '' }
+    const next = { ...cur, [part]: value }
+    // 그 달에 없는 날(2월 30일 등)이 남지 않게 정리합니다 — 그런 생일은 달력에 영영 안 뜹니다.
+    if (next.month && next.day && Number(next.day) > daysInMonth(next.year ? Number(next.year) : null, Number(next.month))) {
+      next.day = ''
+    }
+    setChildBirthParts(prev => ({ ...prev, [childId]: next }))
+    // 연도는 몰라도 됩니다(생일 달력은 월·일만 씁니다). 월·일이 모두 있어야 저장합니다.
+    updateEditChild(childId, {
+      birthday: next.month && next.day
+        ? (next.year ? `${next.year}-${next.month}-${next.day}` : `${next.month}-${next.day}`)
+        : ''
+    })
   }
   const removeEditChild = (id: string) => {
     const child = editChildren.find(c => c.id === id)
@@ -90,6 +113,12 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     const count = daysInMonth(y, m)
     return Array.from({ length: count }, (_, i) => String(i + 1).padStart(2, '0'))
   }, [editBirthYear, editBirthMonth])
+
+  // 29일을 고른 뒤 평년으로 연도를 바꾸는 식으로 그 달에 없는 날이 남으면 비웁니다.
+  // (그대로 저장되면 달력에 🎂가 영영 안 뜹니다)
+  useEffect(() => {
+    if (editBirthDay && !days.includes(editBirthDay)) setEditBirthDay('')
+  }, [days, editBirthDay])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -138,9 +167,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     getPushUiState().then(setPushState).catch(() => setPushState('unsupported'))
   }, [])
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, ms = 1500) => {
     setToastMsg(msg)
-    setTimeout(() => setToastMsg(''), 1500)
+    setTimeout(() => setToastMsg(''), ms)
   }
 
   const handleTogglePush = async () => {
@@ -249,6 +278,14 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     const hasBirthday = !!(editBirthYear && editBirthMonth && editBirthDay)
     const birthdayStr = hasBirthday ? `${editBirthYear}-${editBirthMonth}-${editBirthDay}` : undefined
 
+    // 🐛 과거 버그: 년·월·일 중 일부만 고르면 생일이 조용히 저장되지 않는데
+    // "수정되었습니다"만 떠서, 입력했다고 믿은 성도의 생일이 계속 비어 있었습니다.
+    const pickedBirthdayParts = [editBirthYear, editBirthMonth, editBirthDay].filter(Boolean).length
+    if (pickedBirthdayParts > 0 && !hasBirthday) {
+      showToast('⚠️ 생년월일은 년·월·일을 모두 선택해 주세요.', 2500)
+      return
+    }
+
     setIsSavingProfile(true)
 
     // 🐛 과거 버그: 정작 본인 프로필 저장 결과만 확인하지 않았습니다(배우자/자녀 저장은 확인함).
@@ -271,11 +308,14 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     // (조부모 등 확대가족과는 공유하지 않도록 findSpouseLinks에서 부/모 관계만 걸러냅니다.)
     const spouseLinks = findSpouseLinks(currentUser, allUsers)
     const syncedSpouseIds = new Set<string>()
+    // 가족 계정 동기화 실패는 브라우저 alert 대신 모아서 토스트 한 번으로 알립니다.
+    // (자녀가 여러 명이면 alert이 연달아 떠서 저장이 끝났는지도 알기 어려웠습니다)
+    const syncFailures: string[] = []
     if (editAddress.trim()) {
       for (const spouse of spouseLinks) {
         const { error } = await dbUpdateProfile(spouse.id, { address: editAddress.trim() })
         if (error) {
-          alert(`배우자(${spouse.name}) 계정 주소 동기화 중 오류가 발생했습니다: ${error.message}`)
+          syncFailures.push(`배우자(${spouse.name}) 주소`)
         } else {
           syncedSpouseIds.add(spouse.id)
         }
@@ -296,8 +336,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     }
     for (const upd of familyInfoUpdates) {
       const { error } = await dbUpdateProfile(upd.userId, { familyInfo: upd.familyInfo })
-      if (error) {
-        alert(`자녀 정보 저장 중 오류가 발생했습니다: ${error.message}`)
+      if (error && !syncFailures.includes('자녀 정보')) {
+        syncFailures.push('자녀 정보')
       }
     }
 
@@ -322,7 +362,11 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
     setIsSavingProfile(false)
     setShowEditModal(false)
-    showToast('✅ 프로필 정보가 수정되었습니다!')
+    if (syncFailures.length > 0) {
+      showToast(`⚠️ 내 정보는 저장했지만 ${syncFailures.join(' · ')} 반영에 실패했습니다`, 3500)
+    } else {
+      showToast('✅ 프로필 정보가 수정되었습니다!')
+    }
   }
 
   const myPrayers = prayers.filter(p => p.authorId === currentUser.id)
@@ -337,34 +381,23 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       {/* ── 프로필 카드 ── */}
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4 relative">
         <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => currentUser.avatarUrl ? setShowAvatarLightbox(true) : openEditModal()}
-              className="w-20 h-20 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
-              title={currentUser.avatarUrl ? '프로필 사진 크게 보기' : '프로필 사진 등록'}
-            >
-              {currentUser.avatarUrl
-                ? <img src={currentUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" style={{ objectPosition: 'center center' }} />
-                : getInitials(currentUser.name)
-              }
-            </button>
-            <button
-              type="button"
-              onClick={openEditModal}
-              title="정보 수정하기"
-              aria-label="정보 수정하기"
-              className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-[#335f87] text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm hover:bg-[#2b5072] transition-all"
-            >
-              <Pencil size={13} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => currentUser.avatarUrl ? setShowAvatarLightbox(true) : openEditModal()}
+            className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
+            title={currentUser.avatarUrl ? '프로필 사진 크게 보기' : '프로필 사진 등록'}
+          >
+            {currentUser.avatarUrl
+              ? <img src={currentUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" style={{ objectPosition: 'center center' }} />
+              : getInitials(currentUser.name)
+            }
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
               <span className="text-2xs font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full shrink-0">{currentUser.role}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">{currentUser.email}</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{currentUser.email}</p>
           </div>
         </div>
 
@@ -393,6 +426,13 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 <span className="text-gray-400 text-2xs">연락처</span>
                 <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.phone || '연락처 미입력'}</p>
               </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
+            <span className="text-sm mt-0.5">🎂</span>
+            <div>
+              <span className="text-gray-400 text-2xs">생년월일</span>
+              <p className="font-bold text-gray-800 text-2xs mt-0.5">{formatBirthdayDisplay(currentUser.birthday) || '생일 미입력'}</p>
             </div>
           </div>
           <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
@@ -574,6 +614,16 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         )}
       </section>
 
+      {/* ── 로그아웃 ── (예전에는 알림함 안에만 있어서 찾기 어려웠습니다) */}
+      {onLogout && (
+        <button
+          onClick={onLogout}
+          className="w-full py-3 bg-white border border-gray-200 text-gray-500 text-xs font-bold rounded-2xl shadow-2xs hover:bg-gray-50 hover:text-rose-500 transition-all"
+        >
+          로그아웃
+        </button>
+      )}
+
       {/* ── 프로필 수정 모달 ── */}
       {showEditModal && (
         <div
@@ -593,6 +643,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
                   📷 프로필 사진 선택
                 </button>
+                <p className="text-2xs text-gray-400">사진은 맨 아래 &apos;저장&apos;을 눌러야 실제로 바뀝니다.</p>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
               <div>
@@ -629,11 +680,15 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               <div>
                 <label className="text-2xs text-gray-400 font-bold">생년월일</label>
                 <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {/* 🐛 과거 버그: 빈 값 선택지가 없어서, 생일을 한 번도 입력하지 않은 분께도
+                      화면에는 맨 앞 항목(올해 1월 1일)이 골라진 것처럼 보였습니다.
+                      그대로 저장하면 생일은 저장되지 않는데 "수정되었습니다"만 떴습니다. */}
                   <select
                     value={editBirthYear}
                     onChange={e => setEditBirthYear(e.target.value)}
                     className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
                   >
+                    <option value="">년</option>
                     {years.map(y => (
                       <option key={y} value={y}>{y}년</option>
                     ))}
@@ -643,6 +698,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     onChange={e => setEditBirthMonth(e.target.value)}
                     className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
                   >
+                    <option value="">월</option>
                     {months.map(m => (
                       <option key={m} value={m}>{parseInt(m, 10)}월</option>
                     ))}
@@ -652,6 +708,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     onChange={e => setEditBirthDay(e.target.value)}
                     className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
                   >
+                    <option value="">일</option>
                     {days.map(d => (
                       <option key={d} value={d}>{parseInt(d, 10)}일</option>
                     ))}
@@ -681,6 +738,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 </div>
                 <p className="text-2xs text-gray-400 mt-1">
                   동그라미를 누르면 자녀 사진을 넣거나 바꿀 수 있습니다.
+                  <br />
+                  생일은 태어난 해를 모르시면 월·일만 고르셔도 됩니다.
                 </p>
                 <div className="mt-1.5 space-y-2">
                   {editChildren.length === 0 && (
@@ -690,6 +749,14 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     // 교회학교 그룹이 지정된 자녀만 생일을 챙깁니다.
                     // (미지정 자녀는 생일을 비워두셔도 되고, 생일 달력에도 안 나옵니다)
                     const needsBirthday = !!child.labriId && !child.birthday
+                    const birthParts = childBirthParts[child.id] || { year: '', month: '', day: '' }
+                    const childDays = Array.from(
+                      { length: daysInMonth(birthParts.year ? Number(birthParts.year) : null, birthParts.month ? Number(birthParts.month) : 1) },
+                      (_, i) => String(i + 1).padStart(2, '0')
+                    )
+                    const childBirthClass = needsBirthday
+                      ? 'bg-rose-50 border-rose-200 text-rose-700'
+                      : 'bg-white border-gray-200 text-gray-900'
                     return (
                       <div key={child.id} className="p-2 bg-gray-50/70 border border-gray-100 rounded-xl space-y-1.5">
                         {/* 첫 줄: 사진 + 이름 + 삭제 */}
@@ -717,26 +784,50 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             <X size={13} />
                           </button>
                         </div>
-                        {/* 둘째 줄: 생일 + 교회학교 그룹 */}
-                        <div className="flex gap-1.5">
-                          <input
-                            type="text"
-                            value={child.birthday || ''}
-                            onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
-                            placeholder="생일 YYYY-MM-DD"
-                            className={`w-1/2 p-2 rounded-lg border focus:outline-none font-medium text-2xs ${needsBirthday ? 'bg-rose-50 border-rose-200 text-rose-700 placeholder:text-rose-300' : 'bg-white border-gray-200 text-gray-900'}`}
-                          />
+                        {/* 둘째 줄: 생일 — 부모 생일과 같은 방식으로 골라 넣습니다 */}
+                        <div className="grid grid-cols-3 gap-1.5">
                           <select
-                            value={child.labriId || ''}
-                            onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
-                            className="w-1/2 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                            value={birthParts.year}
+                            onChange={e => updateChildBirth(child.id, 'year', e.target.value)}
+                            className={`p-2 rounded-lg border focus:outline-none font-medium text-2xs ${childBirthClass}`}
                           >
-                            <option value="">미지정</option>
-                            {CHILD_LABRI_OPTIONS.map(g => (
-                              <option key={g} value={g}>{g}</option>
+                            <option value="">년</option>
+                            {years.map(y => (
+                              <option key={y} value={y}>{y}년</option>
+                            ))}
+                          </select>
+                          <select
+                            value={birthParts.month}
+                            onChange={e => updateChildBirth(child.id, 'month', e.target.value)}
+                            className={`p-2 rounded-lg border focus:outline-none font-medium text-2xs ${childBirthClass}`}
+                          >
+                            <option value="">월</option>
+                            {months.map(m => (
+                              <option key={m} value={m}>{parseInt(m, 10)}월</option>
+                            ))}
+                          </select>
+                          <select
+                            value={birthParts.day}
+                            onChange={e => updateChildBirth(child.id, 'day', e.target.value)}
+                            className={`p-2 rounded-lg border focus:outline-none font-medium text-2xs ${childBirthClass}`}
+                          >
+                            <option value="">일</option>
+                            {childDays.map(d => (
+                              <option key={d} value={d}>{parseInt(d, 10)}일</option>
                             ))}
                           </select>
                         </div>
+                        {/* 셋째 줄: 교회학교 그룹 */}
+                        <select
+                          value={child.labriId || ''}
+                          onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
+                          className="w-full p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                        >
+                          <option value="">교회학교 미지정</option>
+                          {CHILD_LABRI_OPTIONS.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
                       </div>
                     )
                   })}

@@ -795,6 +795,7 @@ export default function Home() {
                     allUsers={users}
                     onNavigateAdmin={() => setIsAdminViewMode(true)}
                     onUpdateUsers={setUsers}
+                    onLogout={supabaseUser ? handleLogout : undefined}
                   />
                 )}
               </>
