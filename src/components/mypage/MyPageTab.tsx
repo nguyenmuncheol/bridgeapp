@@ -360,22 +360,23 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </button>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="font-bold text-base text-gray-900 truncate">{getUserDisplayName(currentUser)}</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
               <span className="text-2xs font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full shrink-0">{currentUser.role}</span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{currentUser.email}</p>
           </div>
-          <button
-            type="button"
-            onClick={openEditModal}
-            title="정보 수정하기"
-            className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-2xs font-bold rounded-lg border border-gray-200 transition-all self-start"
-          >
-            <Pencil size={12} />
-            정보 수정
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={openEditModal}
+          title="정보 수정하기"
+          className="w-full flex items-center justify-center gap-1.5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded-xl border border-gray-200 transition-all"
+        >
+          <Pencil size={13} />
+          정보 수정하기
+        </button>
 
         <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 text-xs">
           <div className="grid grid-cols-2 gap-2">
