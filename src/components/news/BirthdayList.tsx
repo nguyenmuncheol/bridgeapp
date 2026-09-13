@@ -40,7 +40,7 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
             const dayStr = mmdd ? `${parseInt(mmdd.slice(0, 2), 10)}월 ${parseInt(mmdd.slice(3, 5), 10)}일` : ''
             return (
               <div key={m.id} className="p-2.5 bg-pink-50/40 border border-pink-100 rounded-xl flex items-center gap-2.5">
-                <Avatar allUsers={allUsers} authorId={m.id} authorName={m.name} size="w-10 h-8 text-xs" />
+                <Avatar allUsers={allUsers} authorId={m.id} authorName={m.name} avatarUrl={m.avatarUrl} size="w-10 h-8 text-xs" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <span className="font-bold text-xs text-gray-900 truncate">{m.name}</span>

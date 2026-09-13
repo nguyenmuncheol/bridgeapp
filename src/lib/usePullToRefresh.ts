@@ -20,12 +20,31 @@ export function usePullToRefresh() {
   const pullRef = useRef(0)
 
   useEffect(() => {
+    // 출석체크 등 내부 스크롤이 있는 모달은 열려 있는 동안 document.body.style.overflow를
+    // 'hidden'으로 잠급니다(ImageViewerModal 등과 동일한 관례). 이 값이 'hidden'이면
+    // 모달 내부를 스크롤하려는 손짓을 이 훅이 "당겨서 새로고침"으로 가로채면 안 됩니다.
+    // 🐛 과거 버그: 이 검사가 없어서 모달이 열려 있어도(배경 페이지 scrollY가 0이면)
+    // 모달 안에서 아래로 드래그할 때마다 새로고침이 시도되어 모달 안 스크롤 자체가 막혔습니다.
+    const isScrollLockedByModal = () => document.body.style.overflow === 'hidden'
+
     const onTouchStart = (e: TouchEvent) => {
+      if (isScrollLockedByModal()) {
+        startYRef.current = null
+        return
+      }
       startYRef.current = window.scrollY <= 0 ? e.touches[0].clientY : null
     }
 
     const onTouchMove = (e: TouchEvent) => {
       if (startYRef.current === null || refreshing) return
+      if (isScrollLockedByModal()) {
+        startYRef.current = null
+        if (pullRef.current !== 0) {
+          pullRef.current = 0
+          setPullPx(0)
+        }
+        return
+      }
       const dy = e.touches[0].clientY - startYRef.current
       if (dy <= 0 || window.scrollY > 0) {
         if (pullRef.current !== 0) {

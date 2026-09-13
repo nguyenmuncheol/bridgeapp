@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell } from 'lucide-react'
+import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth } from '../../lib/dateUtils'
@@ -352,20 +352,29 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <button
               type="button"
               onClick={openEditModal}
-              title="프로필 사진 변경"
-              aria-label="프로필 사진 변경"
+              title="정보 수정하기"
+              aria-label="정보 수정하기"
               className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-[#335f87] text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm hover:bg-[#2b5072] transition-all"
             >
-              <Camera size={13} />
+              <Pencil size={13} />
             </button>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
-              <span className="text-2xs font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full">{currentUser.role}</span>
+              <h2 className="font-bold text-base text-gray-900 truncate">{getUserDisplayName(currentUser)}</h2>
+              <span className="text-2xs font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full shrink-0">{currentUser.role}</span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{currentUser.email}</p>
           </div>
+          <button
+            type="button"
+            onClick={openEditModal}
+            title="정보 수정하기"
+            className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-2xs font-bold rounded-lg border border-gray-200 transition-all self-start"
+          >
+            <Pencil size={12} />
+            정보 수정
+          </button>
         </div>
 
         <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 text-xs">

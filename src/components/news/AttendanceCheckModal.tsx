@@ -35,6 +35,22 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   useModalDismiss(showAttendanceModal, () => setShowAttendanceModal(false))
   const [checkSubmitted, setCheckSubmitted] = useState(false)
 
+  // 🐛 모바일 스크롤 및 풀-투-리프레시 잠금 (ImageViewerModal 등과 동일한 관례)
+  // 명단이 길어 모달 안에서 스크롤이 꼭 필요한데, 이 잠금이 없으면 배경 페이지가
+  // scrollY=0인 상태에서 모달 안을 아래로 드래그할 때마다 usePullToRefresh가 이를
+  // "당겨서 새로고침" 동작으로 가로채 스크롤이 안 되고 화면이 새로고침됐습니다.
+  useEffect(() => {
+    if (!showAttendanceModal) return
+    const prevBodyOverflow = document.body.style.overflow
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehaviorY = 'none'
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll
+    }
+  }, [showAttendanceModal])
+
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
     setToastMsg((isErr ? '⚠️ ' : '') + msg)
