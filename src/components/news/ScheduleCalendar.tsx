@@ -73,10 +73,8 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
   }
 
   // 생일 매칭 (입력 형식이 무엇이든 관대하게 파싱해서 비교). 자녀(미가입) 생일도 함께 표시.
-  const birthdayEntries = useMemo(
-    () => addressBookEntries.filter(u => !u.isDependent || !!u.childLabriId),
-    [addressBookEntries]
-  )
+  // 교회학교 그룹이 없는 자녀는 buildDependentEntries 단계에서 이미 빠져 있습니다.
+  const birthdayEntries = addressBookEntries
 
   const birthdaysByDay = useMemo(() => {
     const map: Record<number, string[]> = {}

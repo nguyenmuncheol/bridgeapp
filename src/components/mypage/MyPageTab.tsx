@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks, findLinkedFamilyMembers } from '../../lib/familyInfo'
+import { FamilyChildInfo, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayDisplay } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -738,8 +738,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 </div>
                 <p className="text-2xs text-gray-400 mt-1">
                   동그라미를 누르면 자녀 사진을 넣거나 바꿀 수 있습니다.
-                  <br />
-                  생일은 태어난 해를 모르시면 월·일만 고르셔도 됩니다.
                 </p>
                 <div className="mt-1.5 space-y-2">
                   {editChildren.length === 0 && (
@@ -817,17 +815,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             ))}
                           </select>
                         </div>
-                        {/* 셋째 줄: 교회학교 그룹 */}
-                        <select
-                          value={child.labriId || ''}
-                          onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
-                          className="w-full p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
-                        >
-                          <option value="">교회학교 미지정</option>
-                          {CHILD_LABRI_OPTIONS.map(g => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
                       </div>
                     )
                   })}
