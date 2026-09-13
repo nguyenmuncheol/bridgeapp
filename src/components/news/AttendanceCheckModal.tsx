@@ -58,8 +58,11 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   }
 
   // ── 교회학교 그룹이 지정된 자녀들 (계정이 없으므로 부모의 가족현황에서 만들어 옵니다) ──
+  // "출석 미적용"과 "미지정"은 출석 대상이 아니므로 명단 자체에서 뺍니다.
+  // (예전에는 childLabriId가 비어있지만 않으면 통과시켰습니다. 아래 그룹 선택지에
+  //  "출석 미적용" 탭이 없어서 화면에는 안 떴을 뿐, 명단에는 섞여 있었습니다.)
   const childEntries = useMemo(
-    () => buildDependentEntries(allUsers).filter(c => !!c.childLabriId),
+    () => buildDependentEntries(allUsers).filter(c => (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.childLabriId || '')),
     [allUsers]
   )
 

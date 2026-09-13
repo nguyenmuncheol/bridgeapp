@@ -646,7 +646,7 @@ export default function MembersTab({
                 </div>
               )}
 
-              {/* 가족 현황: 미가입 자녀 등 (나이대는 생일 기반 자동 표시) */}
+              {/* 가족 현황: 미가입 자녀 등 (교회학교 그룹은 직접 지정합니다) */}
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
