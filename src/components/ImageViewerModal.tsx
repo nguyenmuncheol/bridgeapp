@@ -43,19 +43,10 @@ export default function ImageViewerModal({
     }
   }, [isOpen, initialIndex, images.length])
 
-  // 모바일 스크롤 및 풀-투-리프레시 잠금
-  useEffect(() => {
-    if (!isOpen) return
-    const prevBodyOverflow = document.body.style.overflow
-    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
-    document.body.style.overflow = 'hidden'
-    document.body.style.overscrollBehaviorY = 'none'
-
-    return () => {
-      document.body.style.overflow = prevBodyOverflow
-      document.body.style.overscrollBehaviorY = prevBodyOverscroll
-    }
-  }, [isOpen])
+  // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss(아래)가 처리합니다.
+  // 🐛 예전엔 여기서도 따로 잠갔습니다. 같은 document.body 속성을 두 효과가 각자
+  // save/restore하면서 경쟁해, 닫은 뒤 메인 페이지 스크롤이 풀리지 않고 멈춘 것처럼
+  // 보이는 사고가 있었습니다 — 잠금은 훅 하나에만 두는 게 맞습니다.
 
   // 키보드 조작 (ESC 닫기, 방향키 이동)
   useEffect(() => {

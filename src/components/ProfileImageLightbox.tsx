@@ -29,20 +29,11 @@ export default function ProfileImageLightbox({ src, alt, onClose }: ProfileImage
     setMounted(true)
   }, [])
 
+  // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss가 처리합니다.
+  // 🐛 예전엔 여기서도 따로 잠갔습니다. 같은 document.body 속성을 두 효과가 각자
+  // save/restore하면서 경쟁해, 닫은 뒤 메인 페이지 스크롤이 풀리지 않고 멈춘 것처럼
+  // 보이는 사고가 있었습니다 — 잠금은 훅 하나에만 두는 게 맞습니다.
   useModalDismiss(true, onClose)
-
-  // 모바일 스크롤 및 풀-투-리프레시 잠금
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow
-    const prevOverscroll = document.body.style.overscrollBehaviorY
-    document.body.style.overflow = 'hidden'
-    document.body.style.overscrollBehaviorY = 'none'
-
-    return () => {
-      document.body.style.overflow = prevOverflow
-      document.body.style.overscrollBehaviorY = prevOverscroll
-    }
-  }, [])
 
   // 키보드 ESC 닫기
   useEffect(() => {
