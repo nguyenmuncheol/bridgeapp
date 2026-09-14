@@ -130,15 +130,6 @@ export function findLinkedFamilyMembers(user: UserProfile, allUsers: UserProfile
   return allUsers.filter(u => u.id !== user.id && u.familyGroupId === user.familyGroupId)
 }
 
-// 부부(가족 내 호칭이 서로 '부'/'모'로 지정된 두 계정)만 반환합니다. 조부모 등 확대가족
-// 구성원과는 주소를 자동으로 공유하지 않기 위한 안전장치입니다(3대가 한 가족그룹으로
-// 묶여 있어도 조부모의 주소까지 같이 바뀌지 않도록).
-export function findSpouseLinks(user: UserProfile, allUsers: UserProfile[]): UserProfile[] {
-  const isParentRole = (u: UserProfile) => u.familyRole === '부' || u.familyRole === '모'
-  if (!isParentRole(user)) return []
-  return findLinkedFamilyMembers(user, allUsers).filter(isParentRole)
-}
-
 // 두 자녀 목록을 id 기준으로 병합합니다. primary가 secondary보다 우선(같은 id면 primary 값 사용)합니다.
 export function mergeChildrenLists(primary: FamilyChildInfo[], secondary: FamilyChildInfo[]): FamilyChildInfo[] {
   const map = new Map<string, FamilyChildInfo>()

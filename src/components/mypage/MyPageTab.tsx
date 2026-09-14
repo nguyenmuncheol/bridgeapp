@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
-import { FamilyChildInfo, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findSpouseLinks, findLinkedFamilyMembers } from '../../lib/familyInfo'
+import { FamilyChildInfo, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayDisplay } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -304,32 +304,21 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       return
     }
 
-    // 부부간 주소 공유: 가족 내 호칭이 부/모로 서로 연결된 배우자 계정에도 동일한 주소를 저장합니다.
-    // (조부모 등 확대가족과는 공유하지 않도록 findSpouseLinks에서 부/모 관계만 걸러냅니다.)
-    const spouseLinks = findSpouseLinks(currentUser, allUsers)
-    const syncedSpouseIds = new Set<string>()
+    // 주소는 **본인 계정에만** 저장합니다. 예전에는 배우자 주소까지 같이 바꿨는데,
+    // 한 분이 이사·오타로 주소를 고치면 배우자 주소까지 말없이 덮어써졌습니다.
+    // 두 분의 주소를 맞추는 일은 관리자가 [성도 관리]에서 어느 쪽으로 맞출지 고르도록 했습니다.
     // 가족 계정 동기화 실패는 브라우저 alert 대신 모아서 토스트 한 번으로 알립니다.
     // (자녀가 여러 명이면 alert이 연달아 떠서 저장이 끝났는지도 알기 어려웠습니다)
     const syncFailures: string[] = []
-    if (editAddress.trim()) {
-      for (const spouse of spouseLinks) {
-        const { error } = await dbUpdateProfile(spouse.id, { address: editAddress.trim() })
-        if (error) {
-          syncFailures.push(`배우자(${spouse.name}) 주소`)
-        } else {
-          syncedSpouseIds.add(spouse.id)
-        }
-      }
-    }
 
     // 자녀 정보 저장: 배우자가 연동되어 있으면 자녀 목록을 배우자 계정에도 동일하게 반영(공유)
     const existingNote = parseFamilyInfo(currentUser.familyInfo).note
     const familyInfoUpdates = buildFamilyInfoSyncUpdates(currentUser, existingNote, editChildren, allUsers, editSpouseName.trim())
-    // 주소를 새로 입력/수정했으면 본인 + 배우자(부부) 계정의 "주소 보완요청" 표시를 자동으로 끕니다.
+    // 주소를 새로 입력/수정했으면 "주소 보완요청" 표시를 끕니다.
+    // 배우자 주소는 건드리지 않으므로 배우자의 요청 표시도 그대로 둡니다.
     if (editAddress.trim()) {
-      const idsToClear = new Set([currentUser.id, ...spouseLinks.map(sp => sp.id)])
       familyInfoUpdates.forEach((upd, idx) => {
-        if (!idsToClear.has(upd.userId)) return
+        if (upd.userId !== currentUser.id) return
         const data = parseFamilyInfo(upd.familyInfo)
         familyInfoUpdates[idx] = { userId: upd.userId, familyInfo: serializeFamilyInfo({ ...data, addressRequestedAt: '' }) }
       })
@@ -353,9 +342,6 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           avatarUrl: avatarPreview,
           familyInfo: famUpd ? famUpd.familyInfo : u.familyInfo
         }
-      }
-      if (syncedSpouseIds.has(u.id)) {
-        return { ...u, address: editAddress.trim(), familyInfo: famUpd ? famUpd.familyInfo : u.familyInfo }
       }
       return famUpd ? { ...u, familyInfo: famUpd.familyInfo } : u
     }))

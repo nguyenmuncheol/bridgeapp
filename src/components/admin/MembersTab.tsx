@@ -5,7 +5,7 @@ import { Search, Edit2, Save, X, Camera } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren } from '../../lib/familyInfo'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -40,6 +40,8 @@ export default function MembersTab({
   const [editFamilyNote, setEditFamilyNote] = useState('')
   const [editSpouseName, setEditSpouseName] = useState('')
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
+  // 부부의 주소가 서로 다를 때 어느 쪽으로 맞출지 — 고르기 전에는 양쪽을 그대로 둡니다.
+  const [addressSyncChoice, setAddressSyncChoice] = useState<'keep' | 'self' | 'spouse'>('keep')
 
   // ── 자녀 프로필 사진 (관리자가 대신 올려줄 수 있게) ──
   // 자녀는 자기 계정이 없어서 본인이 올릴 수 없으므로, 관리자도 편집 모달에서 올려줄 수 있습니다.
@@ -107,7 +109,35 @@ export default function MembersTab({
     setEditFamilyNote(parsed.note)
     setEditSpouseName(parsed.spouseName || '')
     setEditChildren(getSharedChildren(member, allUsers))
+    setAddressSyncChoice('keep')
   }
+
+  /**
+   * 가족 연결 대상을 바꿀 때, 그 사람이 이미 등록해 둔 자녀를 목록에 합쳐 옵니다.
+   *
+   * 🐛 과거 사고: 자녀 목록은 창을 열 때 한 번만 읽어 옵니다. 아직 가족으로 묶이지 않은
+   * 두 분을 여기서 새로 연결하면, 상대의 자녀는 그 목록에 들어있지 않은 채로 저장되어
+   * **상대 계정의 자녀가 통째로 지워졌습니다.** (실제로 자녀 두 명이 사라진 적이 있습니다)
+   */
+  const handleChangeLinkedMember = (targetId: string) => {
+    setEditLinkedMemberId(targetId)
+    setAddressSyncChoice('keep')
+    const target = targetId ? allUsers.find(u => u.id === targetId) : null
+    if (!target) return
+    setEditChildren(prev => mergeChildrenLists(prev, parseFamilyInfo(target.familyInfo).children))
+  }
+
+  // 연결된 배우자와 주소가 서로 다르면(둘 다 입력되어 있고 값이 다름) 어느 쪽으로 맞출지 물어봅니다.
+  // 주소를 함께 쓰는 건 부부(부/모)뿐이라, 조부모 등 다른 가족과 묶인 경우에는 묻지 않습니다.
+  const addressConflictSpouse = (() => {
+    const target = editLinkedMemberId ? allUsers.find(u => u.id === editLinkedMemberId) : null
+    if (!target) return null
+    const isParentRole = (role?: string) => role === '부' || role === '모'
+    if (!isParentRole(editMemberData.familyRole) || !isParentRole(target.familyRole)) return null
+    const theirs = (target.address || '').trim()
+    const mine = (editMemberData.address || '').trim()
+    return theirs && mine && theirs !== mine ? target : null
+  })()
 
   // 자녀(미가입 가족 구성원) 목록 편집 헬퍼
   const addEditChild = () => {
@@ -157,11 +187,30 @@ export default function MembersTab({
       const targetMember = allUsers.find(u => u.id === editLinkedMemberId)
       resolvedFid = targetMember?.familyGroupId || editingMember.familyGroupId || `fam_${Date.now().toString(36)}`
 
+      // 상대 계정에 있는 자녀가 이 목록에서 빠져 있으면, 저장 시 그 자녀가 지워집니다.
+      // 실수로 지우는 일이 없도록 이름을 보여 주고 확인받습니다.
+      if (targetMember) {
+        const editIds = new Set(editChildren.map(c => c.id))
+        const dropped = parseFamilyInfo(targetMember.familyInfo).children.filter(c => !editIds.has(c.id))
+        if (dropped.length > 0) {
+          const names = dropped.map(c => c.name?.trim() || '이름 없음').join(', ')
+          if (!confirm(`${targetMember.name} 님 계정에 등록된 자녀(${names})가 아래 목록에 없습니다.\n이대로 저장하면 해당 자녀 정보가 지워집니다.\n\n계속할까요?`)) {
+            return
+          }
+        }
+      }
+
+      // 부부 주소 맞추기: 서로 다를 때만 관리자가 고른 쪽으로 맞춥니다(기본은 각자 유지).
+      const spouseAddress = (targetMember?.address || '').trim()
+      const selfAddressInput = (editMemberData.address || '').trim()
+      const hasAddressConflict = !!targetMember && !!spouseAddress && !!selfAddressInput && spouseAddress !== selfAddressInput
+      const finalSelfAddress = hasAddressConflict && addressSyncChoice === 'spouse' ? spouseAddress : editMemberData.address
+
       // 본인 업데이트
       const { error: selfUpdateError } = await dbUpdateProfile(editingMember.id, {
         name: editMemberData.name,
         phone: editMemberData.phone,
-        address: editMemberData.address,
+        address: finalSelfAddress,
         birthday: editMemberData.birthday,
         role: editMemberData.role,
         teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
@@ -205,9 +254,13 @@ export default function MembersTab({
       // 🐛 과거 버그: 주소를 손대지 않아도 저장할 때마다 배우자 주소를 덮어썼습니다.
       // 편집 중인 분의 주소가 비어 있으면 배우자의 멀쩡한 주소까지 빈칸이 됐고,
       // 안내 메시지는 편집한 분 이름만 언급해서 아무도 눈치채지 못했습니다.
-      // → 주소가 실제로 바뀌었고, 빈 값이 아닐 때만 함께 저장합니다.
-      const addressChanged = (editMemberData.address || '').trim() !== (editingMember.address || '').trim()
-      if (isSpousePair && targetMember && addressChanged && editMemberData.address?.trim()) {
+      // → 주소가 서로 다르면 관리자가 고른 쪽으로만 맞추고, 다르지 않으면
+      //   새로 입력·수정했을 때만 배우자에게도 함께 저장합니다.
+      const addressChanged = selfAddressInput !== (editingMember.address || '').trim()
+      const shouldPushAddressToSpouse = hasAddressConflict
+        ? addressSyncChoice === 'self'
+        : (addressChanged && !!selfAddressInput)
+      if (isSpousePair && targetMember && shouldPushAddressToSpouse) {
         const { error: addressSyncError } = await dbUpdateProfile(targetMember.id, { address: editMemberData.address })
         if (addressSyncError) {
           alert(`배우자(${targetMember.name}) 계정 주소 동기화 중 오류가 발생했습니다: ${addressSyncError.message}`)
@@ -245,7 +298,7 @@ export default function MembersTab({
             ...u,
             name: editMemberData.name,
             phone: editMemberData.phone,
-            address: editMemberData.address,
+            address: finalSelfAddress,
             birthday: editMemberData.birthday,
             role: editMemberData.role,
             teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
@@ -627,6 +680,34 @@ export default function MembersTab({
                   )}
                 </div>
                 <input type="text" value={editMemberData.address} onChange={e => setEditMemberData(p => ({ ...p, address: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="경남 A동 1023호" />
+
+                {/* 부부의 주소가 서로 다를 때만 물어봅니다. 고르지 않으면 양쪽 다 그대로 둡니다. */}
+                {addressConflictSpouse && (
+                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
+                    <p className="text-2xs font-bold text-amber-900">
+                      {addressConflictSpouse.name} 님과 주소가 다릅니다. 어느 쪽으로 맞출까요?
+                    </p>
+                    {([
+                      { key: 'keep', label: '각자 주소 그대로 두기', detail: '' },
+                      { key: 'self', label: '이 화면의 주소로 맞추기', detail: editMemberData.address },
+                      { key: 'spouse', label: `${addressConflictSpouse.name} 님 주소로 맞추기`, detail: addressConflictSpouse.address || '' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setAddressSyncChoice(opt.key)}
+                        className={`w-full text-left px-2 py-1.5 rounded-lg text-2xs border transition-colors ${
+                          addressSyncChoice === opt.key
+                            ? 'bg-white border-amber-400 text-amber-900 font-bold'
+                            : 'bg-white/50 border-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {addressSyncChoice === opt.key ? '● ' : '○ '}{opt.label}
+                        {opt.detail && <span className="block font-normal text-amber-600 pl-3">{opt.detail}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* 생년월일 */}
@@ -641,7 +722,7 @@ export default function MembersTab({
                   <label className="text-2xs text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
                   <select
                     value={editLinkedMemberId}
-                    onChange={e => setEditLinkedMemberId(e.target.value)}
+                    onChange={e => handleChangeLinkedMember(e.target.value)}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
                   >
                     <option value="">단독 (가족 없음)</option>
