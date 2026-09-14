@@ -127,11 +127,57 @@ export function sortAdultsForGroupDisplay(members: UserProfile[]): UserProfile[]
   return [...pinnedBlock, ...restSorted]
 }
 
+/** 교회학교 부서 표시 순서: 중고등부 -> 초등부 -> 유아·유치부 -> 영아부 */
+export const CHURCH_SCHOOL_ORDER = ['중고등부', '초등부', '유아·유치부', '영아부'] as const
+
+/** 교회학교 부서 우선순위 반환 (0: 중고등부, 1: 초등부, 2: 유아·유치부, 3: 영아부, 99: 기타) */
+export function getDepartmentRank(dept?: string): number {
+  if (!dept) return 99
+  const clean = dept.replace(/[·\s]/g, '')
+  if (clean.includes('중고등')) return 0
+  if (clean.includes('초등')) return 1
+  if (clean.includes('유아') || clean.includes('유치')) return 2
+  if (clean.includes('영아')) return 3
+  return 99
+}
+
 /** 자녀 그룹(교회학교 부서별) 안에서의 표시 순서: 나이 내림차순, 동률·미상이면 이름순. */
 export function sortChildrenForGroupDisplay(children: UserProfile[]): UserProfile[] {
   return [...children].sort((a, b) => {
     const diff = ageOf(b) - ageOf(a)
     return diff !== 0 ? diff : a.name.localeCompare(b.name, 'ko')
+  })
+}
+
+/**
+ * 주소록 교회학교 명단을 부서별로 모아서 정렬:
+ * 1. 부서 순서: 중고등부 -> 초등부 -> 유아·유치부 -> 영아부
+ * 2. 부서 내 정렬:
+ *    - 생일이 있어 나이 계산이 가능한 경우 나이 많은 순 (연장자 우선)
+ *    - 생일이 없는 경우 해당 부서 내 뒤쪽에 위치
+ *    - 동률이거나 둘 다 생일 미입력인 경우 이름 가나다순
+ */
+export function sortChildrenByDepartment(children: UserProfile[]): UserProfile[] {
+  return [...children].sort((a, b) => {
+    // 1. 부서 순서
+    const rankA = getDepartmentRank(a.childLabriId)
+    const rankB = getDepartmentRank(b.childLabriId)
+    if (rankA !== rankB) return rankA - rankB
+
+    // 2. 같은 부서 내: 생일이 있는 경우 나이 내림차순
+    const ageA = ageOf(a)
+    const ageB = ageOf(b)
+
+    if (ageA >= 0 && ageB >= 0) {
+      if (ageA !== ageB) return ageB - ageA
+    } else if (ageA >= 0 && ageB < 0) {
+      return -1 // 생일 있는 아이 먼저
+    } else if (ageA < 0 && ageB >= 0) {
+      return 1 // 생일 없는 아이 뒤로
+    }
+
+    // 3. 이름순
+    return a.name.localeCompare(b.name, 'ko')
   })
 }
 

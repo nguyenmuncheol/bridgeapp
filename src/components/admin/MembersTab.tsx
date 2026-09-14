@@ -1186,7 +1186,7 @@ export default function MembersTab({
                       onChange={e => setLeaveKeepsAccess(e.target.checked)}
                       className="rounded border-gray-300"
                     />
-                    탈퇴 처리 후 홈페이지 접근 허용 (좋게 마무리된 경우)
+                    탈퇴 처리 후 홈페이지 접근 허용
                   </label>
                   <button
                     type="button"

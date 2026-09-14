@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { ChevronRight, Users, Search, Triangle } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
 import {
   buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE,
-  isChildLike, sortChildrenForGroupDisplay, sortAdultsForGroupDisplay, groupCouplesInScope, sortUnitsByAge,
+  isChildLike, sortChildrenForGroupDisplay, sortChildrenByDepartment, getDepartmentRank, sortAdultsForGroupDisplay, groupCouplesInScope, sortUnitsByAge,
 } from '../../lib/familyInfo'
 import { formatBirthdayMonthDayOnly } from '../../lib/dateUtils'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
@@ -54,7 +54,8 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         ? kidsEntries.filter(m => matchesKoreanSearch(m.name, q) || (m.parentName && matchesKoreanSearch(m.parentName, q)))
         : kidsEntries
 
-      return sortChildrenForGroupDisplay(filteredKids)
+      // ① "교회학교" 탭: 중고등부 -> 초등부 -> 유아유치부 -> 영아부 순으로 부서별로 모아서 나열 (생일 미입력자 포함)
+      return sortChildrenByDepartment(filteredKids)
     }
 
     // ② 성인 성도 중심 목록 (전체 / 라브리1~3 / 미정): 자녀 카드는 숨기고 성인 카드만 렌더링
@@ -105,15 +106,39 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
   // 전체 통계 카운팅 (출석미적용 자녀는 교회학교 카운트에서 제외)
   const countingStats = useMemo(() => {
     const totalAdults = addressBookEntries.filter(m => !isChildLike(m)).length
-    const totalChurchSchoolKids = addressBookEntries.filter(m =>
+    const kids = addressBookEntries.filter(m =>
       isChildLike(m) && !!m.childLabriId && m.childLabriId !== CHILD_LABRI_NO_ATTENDANCE
-    ).length
+    )
+    const totalChurchSchoolKids = kids.length
+
+    const deptCounts = {
+      msHs: kids.filter(m => getDepartmentRank(m.childLabriId) === 0).length, // 중고등부
+      elem: kids.filter(m => getDepartmentRank(m.childLabriId) === 1).length, // 초등부
+      kinder: kids.filter(m => getDepartmentRank(m.childLabriId) === 2).length, // 유아·유치부
+      infant: kids.filter(m => getDepartmentRank(m.childLabriId) === 3).length, // 영아부
+    }
+
+    const churchSchoolBreakdown = `중고등부 ${deptCounts.msHs}명, 초등부 ${deptCounts.elem}명, 유아·유치부 ${deptCounts.kinder}명, 영아부 ${deptCounts.infant}명`
+
     return {
       adults: totalAdults,
       churchSchool: totalChurchSchoolKids,
+      churchSchoolBreakdown,
       total: totalAdults + totalChurchSchoolKids
     }
   }, [addressBookEntries])
+
+  // 교회학교 탭 검색 시 필터링된 결과의 부서별 인원 계산용
+  const displayedChurchSchoolBreakdown = useMemo(() => {
+    if (addressFilter !== '교회학교') return ''
+    const deptCounts = {
+      msHs: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 0).length,
+      elem: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 1).length,
+      kinder: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 2).length,
+      infant: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 3).length,
+    }
+    return `중고등부 ${deptCounts.msHs}명, 초등부 ${deptCounts.elem}명, 유아·유치부 ${deptCounts.kinder}명, 영아부 ${deptCounts.infant}명`
+  }, [addressFilter, displayedMembers])
 
   return (
     <div className="space-y-3">
@@ -157,10 +182,13 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
       <p className="text-2xs text-gray-400 font-medium px-1">
         {(() => {
           if (searchQuery.trim()) {
+            if (addressFilter === '교회학교') {
+              return `검색 결과 총 ${displayedMembers.length}명 (${displayedChurchSchoolBreakdown})`
+            }
             return `검색 결과 총 ${displayedMembers.length}명`
           }
           if (addressFilter === '교회학교') {
-            return `교회학교 총 ${displayedMembers.length}명`
+            return `교회학교 총 ${displayedMembers.length}명 (${countingStats.churchSchoolBreakdown})`
           }
           if (addressFilter === '전체') {
             return `전체 총 ${countingStats.total}명 (성인 ${countingStats.adults}명 + 교회학교 ${countingStats.churchSchool}명)`
@@ -177,75 +205,98 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
               : '표시할 성도가 없습니다.'}
           </div>
         )}
-        {displayedMembers.map(member => (
-          <div
-            key={member.id}
-            className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
-              isChildLike(member) ? 'border-gray-100/80 bg-gray-50/40' : 'border-gray-100'
-            }`}
-          >
-            <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
-              <div className="flex items-center gap-2.5">
-                <div className="relative shrink-0">
-                  <div
-                    onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
-                    className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
-                  >
-                    {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
-                  </div>
-                  {member.isUnregistered && (
-                    <span
-                      title="미가입 성도"
-                      className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-xs ring-1 ring-white"
-                    >
-                      <Triangle size={9} className="text-amber-400" fill="currentColor" strokeWidth={0} />
+        {displayedMembers.map((member, index) => {
+          const isChurchSchoolTab = addressFilter === '교회학교'
+          const currentDept = getChildGroupLabel(member.childLabriId) || '기타'
+          const prevDept = index > 0 ? (getChildGroupLabel(displayedMembers[index - 1].childLabriId) || '기타') : null
+          const isNewDeptSection = isChurchSchoolTab && currentDept !== prevDept
+          const currentDeptCount = isChurchSchoolTab
+            ? displayedMembers.filter(m => (getChildGroupLabel(m.childLabriId) || '기타') === currentDept).length
+            : 0
+
+          return (
+            <Fragment key={member.id}>
+              {isNewDeptSection && (
+                <div className="pt-2.5 pb-1 px-1 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-gray-700">
+                      {currentDept === '중고등부' ? '🏫' : currentDept === '초등부' ? '🎒' : currentDept.includes('유아') ? '🎨' : '🍼'} {currentDept}
                     </span>
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-gray-900 text-sm">{member.name}</span>
-                    <span className="text-2xs text-gray-400">{member.duty}</span>
+                    <span className="text-2xs font-semibold text-[#335f87] bg-sky-50 px-1.5 py-0.5 rounded-md">
+                      {currentDeptCount}명
+                    </span>
                   </div>
-                  {member.isDependent ? (
-                    getChildGroupLabel(member.childLabriId) && (
-                      <span className="text-2xs text-[#335f87] font-medium">{getChildGroupLabel(member.childLabriId)}</span>
-                    )
-                  ) : (
-                    member.labriId && member.labriId !== '미정' && (
-                      <span className="text-2xs text-[#335f87] font-medium">{member.labriId}</span>
-                    )
-                  )}
                 </div>
-              </div>
-              <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
-            </button>
-            {expandedMember === member.id && (
-              <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
-                {member.isUnregistered ? (
-                  <p className="text-2xs text-gray-300">앱에 가입하지 않아 등록된 정보가 없습니다.</p>
-                ) : member.isDependent ? (
-                  <>
-                    <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                  </>
-                ) : (
-                  <>
-                    {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
-                    {member.phone && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <span className="w-3 text-center text-2xs">📞</span>
-                        <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
+              )}
+              <div
+                className={`bg-white rounded-2xl border shadow-2xs overflow-hidden ${
+                  isChildLike(member) ? 'border-gray-100/80 bg-gray-50/40' : 'border-gray-100'
+                }`}
+              >
+                <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative shrink-0">
+                      <div
+                        onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
+                        className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
+                      >
+                        {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
                       </div>
+                      {member.isUnregistered && (
+                        <span
+                          title="미가입 성도"
+                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-xs ring-1 ring-white"
+                        >
+                          <Triangle size={9} className="text-amber-400" fill="currentColor" strokeWidth={0} />
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-gray-900 text-sm">{member.name}</span>
+                        <span className="text-2xs text-gray-400">{member.duty}</span>
+                      </div>
+                      {member.isDependent ? (
+                        getChildGroupLabel(member.childLabriId) && (
+                          <span className="text-2xs text-[#335f87] font-medium">{getChildGroupLabel(member.childLabriId)}</span>
+                        )
+                      ) : (
+                        member.labriId && member.labriId !== '미정' && (
+                          <span className="text-2xs text-[#335f87] font-medium">{member.labriId}</span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
+                </button>
+                {expandedMember === member.id && (
+                  <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
+                    {member.isUnregistered ? (
+                      <p className="text-2xs text-gray-300">앱에 가입하지 않아 등록된 정보가 없습니다.</p>
+                    ) : member.isDependent ? (
+                      <>
+                        <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
+                        {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
+                      </>
+                    ) : (
+                      <>
+                        {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
+                        {member.phone && (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <span className="w-3 text-center text-2xs">📞</span>
+                            <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
+                          </div>
+                        )}
+                        {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
+                        {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
+                      </>
                     )}
-                    {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                    {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
-                  </>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
+            </Fragment>
+          )
+        })}
       </div>
 
       {lightboxMember?.avatarUrl && (
