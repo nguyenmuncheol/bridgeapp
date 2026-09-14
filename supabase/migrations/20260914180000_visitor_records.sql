@@ -10,8 +10,9 @@ CREATE TABLE IF NOT EXISTS public.visitor_records (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   date_str date NOT NULL,
   name text,
-  category text NOT NULL CHECK (category IN ('성인', '중고등부', '초등부', '유아유치부')),
+  category text NOT NULL CHECK (category IN ('성인', '학생', '중고등부', '초등부', '유아유치부')),
   count integer NOT NULL DEFAULT 1,
+  note text,
   recorded_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL ON UPDATE CASCADE,
   created_at timestamptz DEFAULT now()
 );

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Edit2, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
-import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, ChildAttendanceRow } from '../../lib/db'
+import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, dbFetchAllVisitorRecords, ChildAttendanceRow, VisitorRecordRow } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
@@ -41,6 +41,16 @@ export default function StatsTab({
   const [showAdultRoster, setShowAdultRoster] = useState(false)
   const [showChildRoster, setShowChildRoster] = useState(false)
 
+  // 특이사항 Note 팝업 상태
+  const [notePopup, setNotePopup] = useState<{ name: string; note: string } | null>(null)
+  useModalDismiss(!!notePopup, () => setNotePopup(null))
+
+  // 전체 방문자 기록 조회
+  const { data: allVisitorRecords } = useCachedQuery(
+    'allVisitorRecords',
+    () => dbFetchAllVisitorRecords()
+  )
+
   // ── 출석 탭 — 기간(시작~끝) 선택 ──
   // 🐛 과거 제약: "최근 3개월" 드롭다운뿐이라 그보다 오래된 기록은 아예 볼 수 없었고,
   //    분기·반기·연간 출석률을 뽑으려면 방법이 없었습니다.
@@ -72,6 +82,27 @@ export default function StatsTab({
 
   const [statsDate, setStatsDate] = useState<string>('')
   const selectedStatsDate = statsDate && allSundays.includes(statsDate) ? statsDate : (allSundays[allSundays.length - 1] || '')
+
+  // 선택한 주일의 방문자 기록 및 통계
+  const selectedDateVisitors = useMemo(() => {
+    if (!allVisitorRecords || !selectedStatsDate) return []
+    return allVisitorRecords.filter((r: VisitorRecordRow) => r.date_str === selectedStatsDate)
+  }, [allVisitorRecords, selectedStatsDate])
+
+  const visitorStats = useMemo(() => {
+    const anon = selectedDateVisitors.filter((r: VisitorRecordRow) => !r.name)
+    const adultCount = anon.find(r => r.category === '성인')?.count || 0
+    const studentCount = anon
+      .filter(r => r.category === '학생' || r.category === '중고등부' || r.category === '초등부' || r.category === '유아유치부')
+      .reduce((acc, r) => acc + r.count, 0)
+    const named = selectedDateVisitors.filter((r: VisitorRecordRow) => !!r.name)
+    return {
+      adultAnonCount: adultCount,
+      studentAnonCount: studentCount,
+      namedVisitors: named,
+      totalCount: adultCount + studentCount + named.length
+    }
+  }, [selectedDateVisitors])
 
   // 기간 단축 버튼 (자주 쓰는 범위를 한 번에)
   const applyQuickRange = (weeksBack: number) => {
@@ -488,7 +519,7 @@ export default function StatsTab({
                   <th className="p-2">성도명</th>
                   <th className="p-2">소속</th>
                   <th className="p-2 text-center">출석여부</th>
-                  <th className="p-2">결석사유</th>
+                  <th className="p-2 text-center">Note</th>
                   <th className="p-2 text-right">수정</th>
                 </tr>
               </thead>
@@ -506,7 +537,19 @@ export default function StatsTab({
                         <span className="text-gray-300 text-[10px]">미기록</span>
                       )}
                     </td>
-                    <td className="p-2 text-gray-500">{note || '-'}</td>
+                    <td className="p-2 text-center">
+                      {note ? (
+                        <button
+                          type="button"
+                          onClick={() => setNotePopup({ name: `${user.name} ${user.duty || ''}`, note })}
+                          className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                        >
+                          📝 Note
+                        </button>
+                      ) : (
+                        <span className="text-gray-300 text-[10px]">-</span>
+                      )}
+                    </td>
                     <td className="p-2 text-right">
                       <button
                         type="button"
@@ -599,7 +642,7 @@ export default function StatsTab({
                     <th className="p-2">이름</th>
                     <th className="p-2">부서</th>
                     <th className="p-2 text-center">출석여부</th>
-                    <th className="p-2">결석사유</th>
+                    <th className="p-2 text-center">Note</th>
                     <th className="p-2 text-right">수정</th>
                   </tr>
                 </thead>
@@ -617,7 +660,19 @@ export default function StatsTab({
                           <span className="text-gray-300 text-[10px]">미기록</span>
                         )}
                       </td>
-                      <td className="p-2 text-gray-500">{row.note || '-'}</td>
+                      <td className="p-2 text-center">
+                        {row.note ? (
+                          <button
+                            type="button"
+                            onClick={() => setNotePopup({ name: `${row.child.name} (${row.child.childLabriId || ''})`, note: row.note! })}
+                            className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                          >
+                            📝 Note
+                          </button>
+                        ) : (
+                          <span className="text-gray-300 text-[10px]">-</span>
+                        )}
+                      </td>
                       <td className="p-2 text-right">
                         <button
                           type="button"
@@ -638,6 +693,85 @@ export default function StatsTab({
               </table>
             )
           )}
+        </div>
+
+        {/* ── 방문자 현황 (선택한 주일) ── */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-[12px] text-gray-900">
+                🏷️ {selectedStatsDate || '선택한 주일'} 방문자 현황
+              </h3>
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                총 {visitorStats.totalCount}명
+              </span>
+            </div>
+          </div>
+
+          {/* 익명 카운터 요약 */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-amber-50/50 border border-amber-200/70 rounded-xl p-2.5 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-amber-950">성인 방문자 (익명)</span>
+              <span className="text-xs font-black text-amber-900">{visitorStats.adultAnonCount}명</span>
+            </div>
+            <div className="bg-amber-50/50 border border-amber-200/70 rounded-xl p-2.5 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-amber-950">학생 방문자 (익명)</span>
+              <span className="text-xs font-black text-amber-900">{visitorStats.studentAnonCount}명</span>
+            </div>
+          </div>
+
+          {/* 기명 방문자 명단 */}
+          <div className="space-y-1.5 pt-1">
+            <div className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
+              <span>기명 방문자 명단 ({visitorStats.namedVisitors.length}명)</span>
+            </div>
+            {visitorStats.namedVisitors.length === 0 ? (
+              <p className="py-2.5 text-center text-[10px] text-gray-400 bg-gray-50 rounded-xl">
+                등록된 기명 방문자가 없습니다.
+              </p>
+            ) : (
+              <table className="w-full text-[12px] text-left">
+                <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                  <tr>
+                    <th className="p-2">이름</th>
+                    <th className="p-2">구분</th>
+                    <th className="p-2 text-center">출석여부</th>
+                    <th className="p-2 text-center">Note</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-gray-700">
+                  {visitorStats.namedVisitors.map((v: VisitorRecordRow) => (
+                    <tr key={v.id} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="p-2 font-bold text-gray-800">{v.name}</td>
+                      <td className="p-2 text-gray-500">
+                        <span className="text-[10px] font-bold bg-amber-100/80 text-amber-900 px-1.5 py-0.5 rounded">
+                          {v.category}
+                        </span>
+                      </td>
+                      <td className="p-2 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                          ✅ 출석
+                        </span>
+                      </td>
+                      <td className="p-2 text-center">
+                        {v.note ? (
+                          <button
+                            type="button"
+                            onClick={() => setNotePopup({ name: `${v.name} (${v.category} 방문자)`, note: v.note! })}
+                            className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                          >
+                            📝 Note
+                          </button>
+                        ) : (
+                          <span className="text-gray-300 text-[10px]">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
         {/* ───────── 하단: 기간 통계 ───────── */}
@@ -876,6 +1010,51 @@ export default function StatsTab({
                 className="flex-1 py-2.5 bg-[#335f87] text-white text-[12px] font-bold rounded-xl hover:bg-[#2b5072] shadow-xs"
               >
                 출석 정보 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 특이사항 / 메모 팝업 모달 ── */}
+      {notePopup && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={backdropClose(() => setNotePopup(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3.5 shadow-2xl animate-in zoom-in-95 duration-200 border border-gray-100">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+              <h4 className="font-bold text-[14px] text-gray-900 flex items-center gap-1.5">
+                <span>📝 특이사항 / 메모</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setNotePopup(null)}
+                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-[10px] font-bold text-gray-400">대상</div>
+              <div className="font-bold text-[12px] text-gray-800">{notePopup.name}</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-[10px] font-bold text-gray-400">내용</div>
+              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[12px] text-gray-800 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
+                {notePopup.note}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setNotePopup(null)}
+                className="w-full py-2.5 bg-[#335f87] text-white font-bold text-[12px] rounded-xl shadow-xs hover:bg-[#284b6b] transition-all"
+              >
+                확인
               </button>
             </div>
           </div>

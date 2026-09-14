@@ -1505,7 +1505,9 @@ export async function dbSaveAttendanceRecords(records: {
 // ==========================================
 // 9. 방문자 출석 (visitor_records)
 // ==========================================
-export type VisitorCategory = '성인' | '중고등부' | '초등부' | '유아유치부'
+export type AnonymousVisitorCategory = '성인' | '학생'
+export type NamedVisitorCategory = '성인' | '중고등부' | '초등부' | '유아유치부'
+export type VisitorCategory = '성인' | '학생' | '중고등부' | '초등부' | '유아유치부'
 
 export interface VisitorRecordRow {
   id: string
@@ -1513,6 +1515,7 @@ export interface VisitorRecordRow {
   name: string | null
   category: VisitorCategory
   count: number
+  note?: string | null
   recorded_by: string | null
   created_at: string
 }
@@ -1532,7 +1535,7 @@ export async function dbFetchVisitorRecords(dateStr: string): Promise<VisitorRec
 /** 특정 주일의 익명 카운터 방문자 일괄 저장 (기존 카운터 레코드 교체) */
 export async function dbSaveVisitorCounters(
   dateStr: string,
-  counters: { category: VisitorCategory; count: number }[],
+  counters: { category: AnonymousVisitorCategory; count: number }[],
   recordedBy?: string
 ) {
   // 1. 해당 주일의 기존 익명(name is null) 레코드 삭제
@@ -1564,11 +1567,12 @@ export async function dbSaveVisitorCounters(
   return res
 }
 
-/** 기명 방문자 추가 (1회당 count=1) */
+/** 기명 방문자 추가 (1회당 count=1, note 포함) */
 export async function dbAddNamedVisitor(
   dateStr: string,
   name: string,
-  category: VisitorCategory,
+  category: NamedVisitorCategory,
+  note?: string,
   recordedBy?: string
 ) {
   const trimmed = name.trim()
@@ -1579,6 +1583,7 @@ export async function dbAddNamedVisitor(
     name: trimmed,
     category,
     count: 1,
+    note: (note || '').trim() || null,
     recorded_by: recordedBy || null
   }])
 
@@ -1608,6 +1613,17 @@ export async function dbFetchAllNamedVisitors(): Promise<VisitorRecordRow[]> {
     .order('date_str', { ascending: false })
 
   throwIfFetchFailed(error, '기명 방문자 기록')
+  return (data || []) as unknown as VisitorRecordRow[]
+}
+
+/** 모든 방문자 기록 조회 (관리자 출석 탭 등에서 주일별/기간별 통계용) */
+export async function dbFetchAllVisitorRecords(): Promise<VisitorRecordRow[]> {
+  const { data, error } = await supabase
+    .from('visitor_records')
+    .select('*')
+    .order('date_str', { ascending: false })
+
+  throwIfFetchFailed(error, '전체 방문자 출석 기록')
   return (data || []) as unknown as VisitorRecordRow[]
 }
 

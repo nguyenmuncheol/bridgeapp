@@ -58,11 +58,12 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
     visitCount: number
     recentDate: string
     dates: string[]
+    notes: { date: string; note: string }[]
   }
 
   const visitorSummaries = useMemo<VisitorSummary[]>(() => {
     if (!allNamedVisitors || allNamedVisitors.length === 0) return []
-    const map = new Map<string, { name: string; category: string; dates: string[] }>()
+    const map = new Map<string, { name: string; category: string; dates: string[]; notes: { date: string; note: string }[] }>()
 
     allNamedVisitors.forEach((v: VisitorRecordRow) => {
       if (!v.name) return
@@ -70,11 +71,15 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
       const existing = map.get(k)
       if (existing) {
         existing.dates.push(v.date_str)
+        if (v.note && v.note.trim()) {
+          existing.notes.push({ date: v.date_str, note: v.note.trim() })
+        }
       } else {
         map.set(k, {
           name: v.name.trim(),
           category: v.category,
-          dates: [v.date_str]
+          dates: [v.date_str],
+          notes: v.note && v.note.trim() ? [{ date: v.date_str, note: v.note.trim() }] : []
         })
       }
     })
@@ -88,6 +93,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
         visitCount: info.dates.length,
         recentDate: sortedDates[0],
         dates: sortedDates,
+        notes: info.notes.sort((a, b) => b.date.localeCompare(a.date))
       }
     }).sort((a, b) => {
       // 1. 최근 방문일 내림차순
@@ -430,20 +436,44 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                 </button>
 
                 {expandedMember === `vis_${v.key}` && (
-                  <div className="px-4 pb-3.5 space-y-1.5 text-xs border-t border-amber-100/80 pt-2.5 bg-white/60">
-                    <div className="text-2xs text-gray-600 font-bold">
-                      🗓️ 출석 일자 기록 ({v.dates.length}회):
+                  <div className="px-4 pb-3.5 space-y-2.5 text-xs border-t border-amber-100/80 pt-2.5 bg-white/60">
+                    <div className="space-y-1">
+                      <div className="text-2xs text-gray-600 font-bold">
+                        🗓️ 출석 일자 기록 ({v.dates.length}회):
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {v.dates.map(dateStr => (
+                          <span
+                            key={dateStr}
+                            className="px-2 py-0.5 bg-amber-100/70 border border-amber-200 text-amber-900 rounded-md text-[10px] font-semibold"
+                          >
+                            {dateStr}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {v.dates.map(dateStr => (
-                        <span
-                          key={dateStr}
-                          className="px-2 py-0.5 bg-amber-100/70 border border-amber-200 text-amber-900 rounded-md text-[10px] font-semibold"
-                        >
-                          {dateStr}
-                        </span>
-                      ))}
-                    </div>
+
+                    {/* 특이사항 목록 */}
+                    {v.notes.length > 0 && (
+                      <div className="pt-2 border-t border-amber-100/80 space-y-1.5">
+                        <div className="text-2xs text-amber-900 font-bold flex items-center gap-1">
+                          <span>📝 특이사항 ({v.notes.length}건):</span>
+                        </div>
+                        <div className="space-y-1">
+                          {v.notes.map((n, idx) => (
+                            <div
+                              key={idx}
+                              className="p-2 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-gray-800 leading-relaxed"
+                            >
+                              <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 mb-0.5">
+                                <span>📅 {n.date}</span>
+                              </div>
+                              <div className="whitespace-pre-wrap">{n.note}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

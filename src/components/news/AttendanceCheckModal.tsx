@@ -7,7 +7,7 @@ import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
   dbFetchVisitorRecords, dbSaveVisitorCounters, dbAddNamedVisitor, dbDeleteVisitorRecord,
-  dbFetchAllNamedVisitors, VisitorCategory, VisitorRecordRow
+  dbFetchAllNamedVisitors, AnonymousVisitorCategory, NamedVisitorCategory, VisitorRecordRow
 } from '../../lib/db'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -15,7 +15,8 @@ import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
-const VISITOR_CATEGORIES: VisitorCategory[] = ['성인', '중고등부', '초등부', '유아유치부']
+const ANONYMOUS_CATEGORIES: AnonymousVisitorCategory[] = ['성인', '학생']
+const NAMED_VISITOR_CATEGORIES: NamedVisitorCategory[] = ['성인', '중고등부', '초등부', '유아유치부']
 
 interface AttendanceCheckModalProps {
   currentUser: UserProfile
@@ -138,26 +139,22 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     { enabled: canCheck }
   )
 
-  // 방문자 카운터 로컬 상태 ({ 성인: 0, 중고등부: 0, 초등부: 0, 유아유치부: 0 })
-  const [visitorCounters, setVisitorCounters] = useState<Record<VisitorCategory, number>>({
+  // 방문자 카운터 로컬 상태 ({ 성인: 0, 학생: 0 })
+  const [visitorCounters, setVisitorCounters] = useState<Record<AnonymousVisitorCategory, number>>({
     '성인': 0,
-    '중고등부': 0,
-    '초등부': 0,
-    '유아유치부': 0,
+    '학생': 0,
   })
 
   // DB에서 불러온 카운터로 초기화
   useEffect(() => {
     if (visitorRecords) {
-      const counts: Record<VisitorCategory, number> = {
+      const counts: Record<AnonymousVisitorCategory, number> = {
         '성인': 0,
-        '중고등부': 0,
-        '초등부': 0,
-        '유아유치부': 0,
+        '학생': 0,
       }
       visitorRecords.forEach(r => {
-        if (!r.name && counts[r.category] !== undefined) {
-          counts[r.category] = r.count
+        if (!r.name && (r.category === '성인' || r.category === '학생')) {
+          counts[r.category as AnonymousVisitorCategory] = r.count
         }
       })
       setVisitorCounters(counts)
@@ -191,7 +188,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
   // 신규 기명 방문자 추가 입력 폼 상태
   const [newVisitorName, setNewVisitorName] = useState('')
-  const [newVisitorCategory, setNewVisitorCategory] = useState<VisitorCategory>('성인')
+  const [newVisitorCategory, setNewVisitorCategory] = useState<NamedVisitorCategory>('성인')
+  const [newVisitorNote, setNewVisitorNote] = useState('')
   const [isAddingVisitor, setIsAddingVisitor] = useState(false)
 
   // DB 기록에서 선택 상태·메모 파생
@@ -269,16 +267,17 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   }
 
   // ── 방문자 추가 핸들러 ──
-  const handleAddNamedVisitor = async (nameToAdd?: string, catToAdd?: VisitorCategory) => {
+  const handleAddNamedVisitor = async (nameToAdd?: string, catToAdd?: NamedVisitorCategory, noteToAdd?: string) => {
     const name = (nameToAdd || newVisitorName).trim()
     const category = catToAdd || newVisitorCategory
+    const note = (noteToAdd !== undefined ? noteToAdd : newVisitorNote).trim()
     if (!name) {
       showToast('방문자 이름을 입력해 주세요.', true)
       return
     }
 
     setIsAddingVisitor(true)
-    const res = await dbAddNamedVisitor(targetSundayDateStr, name, category, currentUser.id)
+    const res = await dbAddNamedVisitor(targetSundayDateStr, name, category, note || undefined, currentUser.id)
     setIsAddingVisitor(false)
 
     if (res.error) {
@@ -286,6 +285,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     } else {
       showToast(`${name} 방문자(${category})를 추가했습니다.`)
       setNewVisitorName('')
+      setNewVisitorNote('')
       refetchVisitorRecords()
       refetchAllNamedVisitors()
     }
@@ -314,7 +314,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     if (isVisitorTab) {
       // 방문자 탭 저장: 익명 카운터 저장
       setIsSubmittingAttendance(true)
-      const countersPayload = VISITOR_CATEGORIES.map(cat => ({
+      const countersPayload = ANONYMOUS_CATEGORIES.map(cat => ({
         category: cat,
         count: visitorCounters[cat] || 0
       }))
@@ -475,13 +475,13 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                   {/* 익명 방문자 숫자 카운터 */}
                   <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-amber-950">🔢 부서별 숫자 카운터 (익명 방문자)</span>
+                      <span className="text-xs font-black text-amber-950">🔢 익명 방문자 숫자 카운터 (성인/학생)</span>
                       <span className="text-2xs font-bold text-amber-700">
                         계: {Object.values(visitorCounters).reduce((a, b) => a + b, 0)}명
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      {VISITOR_CATEGORIES.map(cat => (
+                      {ANONYMOUS_CATEGORIES.map(cat => (
                         <div key={cat} className="flex items-center justify-between bg-white px-2.5 py-2 rounded-xl border border-amber-200 shadow-2xs">
                           <span className="text-xs font-bold text-gray-800">{cat}</span>
                           <div className="flex items-center gap-2">
@@ -507,7 +507,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                       ))}
                     </div>
                     <p className="text-[10px] text-amber-700/80 font-medium">
-                      * 이름을 모르는 방문자나 단체 방문객은 숫자 카운터로 간편하게 증감할 수 있습니다.
+                      * 이름을 모르는 방문자는 성인/학생 숫자 카운터로 간편하게 증감할 수 있습니다.
                     </p>
                   </div>
 
@@ -536,7 +536,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
                       {/* 부서 선택 라디오/칩 (성인 | 중고등부 | 초등부 | 유아유치부) */}
                       <div className="grid grid-cols-4 gap-1">
-                        {VISITOR_CATEGORIES.map(cat => (
+                        {NAMED_VISITOR_CATEGORIES.map(cat => (
                           <button
                             key={cat}
                             type="button"
@@ -552,6 +552,17 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         ))}
                       </div>
 
+                      {/* 특이사항 텍스트 입력란 */}
+                      <div>
+                        <textarea
+                          placeholder="특이사항 (선택사항, 예: 인도자, 비고 등)..."
+                          value={newVisitorNote}
+                          onChange={e => setNewVisitorNote(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-1.5 bg-white rounded-xl border border-gray-200 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#335f87] resize-none"
+                        />
+                      </div>
+
                       {/* 최근 기명 방문자 추천 (누르면 바로 입력창에 반영) */}
                       {allNamedVisitors && allNamedVisitors.length > 0 && (
                         <div className="pt-1 space-y-1">
@@ -560,7 +571,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                             {Array.from(new Set(allNamedVisitors.map(v => `${v.name}::${v.category}`)))
                               .slice(0, 6)
                               .map(key => {
-                                const [name, cat] = key.split('::') as [string, VisitorCategory]
+                                const [name, cat] = key.split('::') as [string, NamedVisitorCategory]
                                 return (
                                   <button
                                     key={key}
@@ -592,25 +603,33 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         {currentSundayNamedVisitors.map(v => (
                           <div
                             key={v.id}
-                            className="flex items-center justify-between p-2.5 bg-amber-50/50 rounded-xl border border-amber-200/60"
+                            className="p-2.5 bg-amber-50/50 rounded-xl border border-amber-200/60 space-y-1.5"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-gray-900">{v.name}</span>
-                              <span className="text-2xs font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
-                                {v.category}
-                              </span>
-                              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 py-0.5 rounded">
-                                ✅ 출석
-                              </span>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-gray-900">{v.name}</span>
+                                <span className="text-2xs font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
+                                  {v.category}
+                                </span>
+                                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 py-0.5 rounded">
+                                  ✅ 출석
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteVisitor(v.id, v.name)}
+                                className="p-1 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors"
+                                title="삭제"
+                              >
+                                <Trash2 size={13} />
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteVisitor(v.id, v.name)}
-                              className="p-1 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors"
-                              title="삭제"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {v.note && (
+                              <div className="text-2xs text-amber-950 bg-amber-100/60 rounded-lg px-2 py-1 border border-amber-200/50 flex items-start gap-1">
+                                <span className="shrink-0 font-bold">📝 Note:</span>
+                                <span className="break-all">{v.note}</span>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -713,17 +732,25 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                       {departmentLinkedVisitors.map(v => (
                         <div
                           key={v.id}
-                          className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200 flex items-center justify-between text-xs"
+                          className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200 text-xs space-y-1"
                         >
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-gray-900">{v.name}</span>
-                            <span className="text-[10px] font-bold bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded">
-                              🏷️방문
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-gray-900">{v.name}</span>
+                              <span className="text-[10px] font-bold bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded">
+                                🏷️방문
+                              </span>
+                            </div>
+                            <span className="text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              ✅ 출석
                             </span>
                           </div>
-                          <span className="text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            ✅ 출석
-                          </span>
+                          {v.note && (
+                            <div className="text-2xs text-amber-950 bg-amber-100/60 rounded-lg px-2 py-1 border border-amber-200/50 flex items-start gap-1">
+                              <span className="shrink-0 font-bold">📝</span>
+                              <span className="break-all">{v.note}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
