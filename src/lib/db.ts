@@ -1503,6 +1503,115 @@ export async function dbSaveAttendanceRecords(records: {
 }
 
 // ==========================================
+// 9. 방문자 출석 (visitor_records)
+// ==========================================
+export type VisitorCategory = '성인' | '중고등부' | '초등부' | '유아유치부'
+
+export interface VisitorRecordRow {
+  id: string
+  date_str: string
+  name: string | null
+  category: VisitorCategory
+  count: number
+  recorded_by: string | null
+  created_at: string
+}
+
+/** 특정 주일의 방문자 출석 기록 전체 조회 */
+export async function dbFetchVisitorRecords(dateStr: string): Promise<VisitorRecordRow[]> {
+  const { data, error } = await supabase
+    .from('visitor_records')
+    .select('*')
+    .eq('date_str', dateStr)
+    .order('created_at', { ascending: true })
+
+  throwIfFetchFailed(error, '방문자 출석 기록')
+  return (data || []) as unknown as VisitorRecordRow[]
+}
+
+/** 특정 주일의 익명 카운터 방문자 일괄 저장 (기존 카운터 레코드 교체) */
+export async function dbSaveVisitorCounters(
+  dateStr: string,
+  counters: { category: VisitorCategory; count: number }[],
+  recordedBy?: string
+) {
+  // 1. 해당 주일의 기존 익명(name is null) 레코드 삭제
+  const { error: delError } = await supabase
+    .from('visitor_records')
+    .delete()
+    .eq('date_str', dateStr)
+    .is('name', null)
+
+  if (delError) return { error: delError }
+
+  const toInsert = counters
+    .filter(c => c.count > 0)
+    .map(c => ({
+      date_str: dateStr,
+      name: null,
+      category: c.category,
+      count: c.count,
+      recorded_by: recordedBy || null
+    }))
+
+  if (toInsert.length === 0) {
+    invalidateCache('visitorRecords:')
+    return { error: null }
+  }
+
+  const res = await supabase.from('visitor_records').insert(toInsert)
+  if (!res.error) invalidateCache('visitorRecords:')
+  return res
+}
+
+/** 기명 방문자 추가 (1회당 count=1) */
+export async function dbAddNamedVisitor(
+  dateStr: string,
+  name: string,
+  category: VisitorCategory,
+  recordedBy?: string
+) {
+  const trimmed = name.trim()
+  if (!trimmed) return { error: { message: '방문자 이름을 입력해 주세요.' } }
+
+  const res = await supabase.from('visitor_records').insert([{
+    date_str: dateStr,
+    name: trimmed,
+    category,
+    count: 1,
+    recorded_by: recordedBy || null
+  }])
+
+  if (!res.error) {
+    invalidateCache('visitorRecords:')
+    invalidateCache('allNamedVisitors')
+  }
+  return res
+}
+
+/** 방문자 기록 삭제 (개별 삭제) */
+export async function dbDeleteVisitorRecord(id: string) {
+  const res = await supabase.from('visitor_records').delete().eq('id', id)
+  if (!res.error) {
+    invalidateCache('visitorRecords:')
+    invalidateCache('allNamedVisitors')
+  }
+  return res
+}
+
+/** 모든 기명 방문자 기록 조회 (주소록 미정 탭 및 자동완성용) */
+export async function dbFetchAllNamedVisitors(): Promise<VisitorRecordRow[]> {
+  const { data, error } = await supabase
+    .from('visitor_records')
+    .select('*')
+    .not('name', 'is', null)
+    .order('date_str', { ascending: false })
+
+  throwIfFetchFailed(error, '기명 방문자 기록')
+  return (data || []) as unknown as VisitorRecordRow[]
+}
+
+// ==========================================
 // 10. 이용 현황 분석 (Analytics)
 // ==========================================
 export interface PushSubscriptionInfo {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Edit2, X } from 'lucide-react'
+import { Edit2, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, ChildAttendanceRow } from '../../lib/db'
@@ -36,6 +36,11 @@ export default function StatsTab({
 }: StatsTabProps) {
   // 선생님은 자녀(교회학교) 출석만 봅니다. 어른 출석 통계는 숨깁니다.
   const isTeacher = currentUser?.role === 'TEACHER'
+
+  // 출석/결석 명단(성인, 교회학교) 펼침 상태: 기본값은 닫아둡니다.
+  const [showAdultRoster, setShowAdultRoster] = useState(false)
+  const [showChildRoster, setShowChildRoster] = useState(false)
+
   // ── 출석 탭 — 기간(시작~끝) 선택 ──
   // 🐛 과거 제약: "최근 3개월" 드롭다운뿐이라 그보다 오래된 기록은 아예 볼 수 없었고,
   //    분기·반기·연간 출석률을 뽑으려면 방법이 없었습니다.
@@ -460,54 +465,69 @@ export default function StatsTab({
         {/* 선택한 주일의 출석/결석 명단 (CSV는 아래 기간 카드에 있습니다) */}
         {!isTeacher && (
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
-          {/* CSV 버튼은 아래 "기간 출석률" 카드로 옮겼습니다 — 받아지는 범위가 기간이라
-              이 카드(선택한 주일 하루)에 있으면 어느 범위가 받아지는지 헷갈립니다. */}
-          <h3 className="font-bold text-[12px] text-gray-900">{selectedStatsDate || '선택한 주일'} 출석/결석 명단</h3>
-          <table className="w-full text-[12px] text-left">
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
-              <tr>
-                <th className="p-2">성도명</th>
-                <th className="p-2">소속</th>
-                <th className="p-2 text-center">출석여부</th>
-                <th className="p-2">결석사유</th>
-                <th className="p-2 text-right">수정</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 text-gray-700">
-              {sortedAttendanceRows.map(({ user, status, note, absenceStreak }) => (
-                <tr key={user.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="p-2 font-bold text-gray-800">{user.name} {user.duty}</td>
-                  <td className="p-2 text-gray-500">{normalizeLabriLabel(user.labriId)}</td>
-                  <td className="p-2 text-center">
-                    {status ? (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅ 출석'}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300 text-[10px]">미기록</span>
-                    )}
-                  </td>
-                  <td className="p-2 text-gray-500">{note || '-'}</td>
-                  <td className="p-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingAttendanceUser({
-                          user,
-                          dateStr: selectedStatsDate,
-                          status: (status as 'ATTEND' | 'ABSENT') || 'NONE',
-                          note: note || ''
-                        })
-                      }}
-                      disabled={!selectedStatsDate}
-                      className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
-                    >
-                      <Edit2 size={11} /> </button>
-                  </td>
+          <button
+            type="button"
+            onClick={() => setShowAdultRoster(prev => !prev)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-[#335f87] transition-colors">
+                {selectedStatsDate || '선택한 주일'} 출석/결석 명단 ({sortedAttendanceRows.length}명)
+              </h3>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-[#335f87]">
+              <span>{showAdultRoster ? '접기' : '펼치기'}</span>
+              {showAdultRoster ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
+
+          {showAdultRoster && (
+            <table className="w-full text-[12px] text-left">
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th className="p-2">성도명</th>
+                  <th className="p-2">소속</th>
+                  <th className="p-2 text-center">출석여부</th>
+                  <th className="p-2">결석사유</th>
+                  <th className="p-2 text-right">수정</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50 text-gray-700">
+                {sortedAttendanceRows.map(({ user, status, note, absenceStreak }) => (
+                  <tr key={user.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="p-2 font-bold text-gray-800">{user.name} {user.duty}</td>
+                    <td className="p-2 text-gray-500">{normalizeLabriLabel(user.labriId)}</td>
+                    <td className="p-2 text-center">
+                      {status ? (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅ 출석'}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[10px]">미기록</span>
+                      )}
+                    </td>
+                    <td className="p-2 text-gray-500">{note || '-'}</td>
+                    <td className="p-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingAttendanceUser({
+                            user,
+                            dateStr: selectedStatsDate,
+                            status: (status as 'ATTEND' | 'ABSENT') || 'NONE',
+                            note: note || ''
+                          })
+                        }}
+                        disabled={!selectedStatsDate}
+                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
+                      >
+                        <Edit2 size={11} /> </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
         )}
 
@@ -551,56 +571,72 @@ export default function StatsTab({
         </div>
         {/* 교회학교 명단 (선택한 주일) — 성인 명단과 같은 구성 */}
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
-          <h3 className="font-bold text-[12px] text-gray-900">🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단</h3>
+          <button
+            type="button"
+            onClick={() => setShowChildRoster(prev => !prev)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-[#335f87] transition-colors">
+                🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단 ({childRosterRows.length}명)
+              </h3>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-[#335f87]">
+              <span>{showChildRoster ? '접기' : '펼치기'}</span>
+              {showChildRoster ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
 
-          {childRosterRows.length === 0 ? (
-            <p className="py-4 text-center text-[10px] text-gray-400">
-              교회학교 그룹이 지정된 자녀가 없습니다.
-            </p>
-          ) : (
-            <table className="w-full text-[12px] text-left">
-              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
-                <tr>
-                  <th className="p-2">이름</th>
-                  <th className="p-2">부서</th>
-                  <th className="p-2 text-center">출석여부</th>
-                  <th className="p-2">결석사유</th>
-                  <th className="p-2 text-right">수정</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-gray-700">
-                {childRosterRows.map(row => (
-                  <tr key={row.child.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="p-2 font-bold text-gray-800">{row.child.name}</td>
-                    <td className="p-2 text-gray-500">{row.child.childLabriId}</td>
-                    <td className="p-2 text-center">
-                      {row.status ? (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                          {row.status === 'ABSENT' ? `❌ ${formatAbsenceStreak(row.absenceStreak)}` : '✅ 출석'}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-[10px]">미기록</span>
-                      )}
-                    </td>
-                    <td className="p-2 text-gray-500">{row.note || '-'}</td>
-                    <td className="p-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setEditingAttendanceUser({
-                          user: row.child,
-                          dateStr: selectedStatsDate,
-                          status: (row.status as 'ATTEND' | 'ABSENT') || 'NONE',
-                          note: row.note || ''
-                        })}
-                        disabled={!selectedStatsDate}
-                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
-                      >
-                        <Edit2 size={11} /> </button>
-                    </td>
+          {showChildRoster && (
+            childRosterRows.length === 0 ? (
+              <p className="py-4 text-center text-[10px] text-gray-400">
+                교회학교 그룹이 지정된 자녀가 없습니다.
+              </p>
+            ) : (
+              <table className="w-full text-[12px] text-left">
+                <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                  <tr>
+                    <th className="p-2">이름</th>
+                    <th className="p-2">부서</th>
+                    <th className="p-2 text-center">출석여부</th>
+                    <th className="p-2">결석사유</th>
+                    <th className="p-2 text-right">수정</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-gray-700">
+                  {childRosterRows.map(row => (
+                    <tr key={row.child.id} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="p-2 font-bold text-gray-800">{row.child.name}</td>
+                      <td className="p-2 text-gray-500">{row.child.childLabriId}</td>
+                      <td className="p-2 text-center">
+                        {row.status ? (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {row.status === 'ABSENT' ? `❌ ${formatAbsenceStreak(row.absenceStreak)}` : '✅ 출석'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-[10px]">미기록</span>
+                        )}
+                      </td>
+                      <td className="p-2 text-gray-500">{row.note || '-'}</td>
+                      <td className="p-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setEditingAttendanceUser({
+                            user: row.child,
+                            dateStr: selectedStatsDate,
+                            status: (row.status as 'ATTEND' | 'ABSENT') || 'NONE',
+                            note: row.note || ''
+                          })}
+                          disabled={!selectedStatsDate}
+                          className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
+                        >
+                          <Edit2 size={11} /> </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
           )}
         </div>
 

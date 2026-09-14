@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { CheckSquare } from 'lucide-react'
+import { CheckSquare, Plus, Trash2, Users } from 'lucide-react'
 import { UserProfile, isApprovedMember, canEditChildAttendance } from '../../lib/mockData'
 import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
+  dbFetchVisitorRecords, dbSaveVisitorCounters, dbAddNamedVisitor, dbDeleteVisitorRecord,
+  dbFetchAllNamedVisitors, VisitorCategory, VisitorRecordRow
 } from '../../lib/db'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -13,6 +15,7 @@ import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
+const VISITOR_CATEGORIES: VisitorCategory[] = ['성인', '중고등부', '초등부', '유아유치부']
 
 interface AttendanceCheckModalProps {
   currentUser: UserProfile
@@ -32,8 +35,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const canCheck = canEditChildAttendance(currentUser.role)
 
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
-  // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss가 공통으로 처리합니다
-  // (예전에는 여기만 따로 잠갔는데, 같은 문제가 다른 팝업에도 있어 훅으로 옮겼습니다).
   useModalDismiss(showAttendanceModal, () => setShowAttendanceModal(false))
   const [checkSubmitted, setCheckSubmitted] = useState(false)
 
@@ -43,33 +44,33 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     setTimeout(() => setToastMsg(''), 2500)
   }
 
-  // ── 교회학교 그룹이 지정된 자녀들 (계정이 없으므로 부모의 가족현황에서 만들어 옵니다) ──
-  // "출석 미적용"과 "미지정"은 출석 대상이 아니므로 명단 자체에서 뺍니다.
-  // (예전에는 childLabriId가 비어있지만 않으면 통과시켰습니다. 아래 그룹 선택지에
-  //  "출석 미적용" 탭이 없어서 화면에는 안 떴을 뿐, 명단에는 섞여 있었습니다.)
+  // ── 교회학교 그룹이 지정된 자녀들 ──
   const childEntries = useMemo(
     () => buildDependentEntries(allUsers).filter(c => (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.childLabriId || '')),
     [allUsers]
   )
 
-  // ── 내가 출석을 입력할 수 있는 그룹 목록 ──
+  // ── 내가 출석을 입력할 수 있는 그룹 목록 + [방문자] 탭 ──
   const availableGroups = useMemo(() => {
-    // 자녀 그룹은 "지정된 자녀가 한 명이라도 있는 그룹"만 보여줍니다.
     const activeChildGroups = CHILD_ATTENDANCE_GROUPS.filter(g => childEntries.some(c => c.childLabriId === g))
 
+    let groups: string[] = []
     if (isTeacher) {
-      // 담당 그룹을 하나도 지정하지 않은 선생님 = 모든 자녀 그룹 담당.
-      // 여러 부서를 겸임할 수 있어 teachGroup은 "영아부,중고등부"처럼 콤마로 이어 붙어 저장됩니다.
       const mine = parseTeachGroups(currentUser.teachGroup)
-      return mine.length > 0 ? activeChildGroups.filter(g => mine.includes(g)) : [...activeChildGroups]
+      groups = mine.length > 0 ? activeChildGroups.filter(g => mine.includes(g)) : [...activeChildGroups]
+    } else if (isAdmin) {
+      groups = [...ADULT_GROUPS, ...activeChildGroups]
+    } else if (isLeader) {
+      groups = [currentUser.labriId || '미정']
     }
-    if (isAdmin) return [...ADULT_GROUPS, ...activeChildGroups]
-    if (isLeader) return [currentUser.labriId || '미정']
+
+    if (groups.length > 0) {
+      return [...groups, '방문자']
+    }
     return []
   }, [isTeacher, isAdmin, isLeader, currentUser.teachGroup, currentUser.labriId, childEntries])
 
   const [selectedGroupOverride, setSelectedGroupOverride] = useState<string | null>(null)
-  // 그룹 목록이 만들어지면 첫 번째 그룹을 자동 선택합니다 (렌더 시점에 파생).
   const selectedGroup =
     selectedGroupOverride && availableGroups.includes(selectedGroupOverride)
       ? selectedGroupOverride
@@ -77,12 +78,9 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const setSelectedGroup = setSelectedGroupOverride
 
   const childMode = isChildGroup(selectedGroup)
+  const isVisitorTab = selectedGroup === '방문자'
 
-  // 가장 최근 지난 주일 날짜 계산 (오늘이 일요일이면 오늘, 월~토요일이면 직전 일요일)
-  // 🐛 과거 버그: 이 값을 화면이 처음 만들어질 때 딱 한 번만 계산했습니다.
-  // 리더가 토요일 저녁에 앱을 열어두고 주일 예배 후 그대로 출석을 제출하면,
-  // **지난 주일 날짜로 저장**되어 지난주 기록을 덮어썼습니다.
-  // → 날짜가 바뀌거나 앱으로 돌아올 때 다시 계산합니다.
+  // 가장 최근 지난 주일 날짜 계산
   const computeTargetSunday = () => {
     const d = new Date()
     const dayOfWeek = d.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
@@ -114,20 +112,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     [allUsers]
   )
 
-  // 지금 화면에 보여줄 대상 (어른 성도 또는 자녀)
-  // 정렬은 주소록과 동일한 기준(리더/관리자/목사님 부부 최상단 고정 + 나이 내림차순,
-  // 자녀는 나이 내림차순)을 씁니다 — familyInfo.ts의 공용 함수라 두 화면이 어긋나지 않습니다.
-  const targetMembers = useMemo(() => {
-    if (!selectedGroup) return []
-    if (childMode) return sortChildrenForGroupDisplay(childEntries.filter(c => c.childLabriId === selectedGroup))
-    const group = selectedGroup === '미정'
-      ? members.filter(u => !u.labriId || u.labriId === '미정')
-      : members.filter(u => u.labriId === selectedGroup)
-    return sortAdultsForGroupDisplay(group)
-  }, [selectedGroup, childMode, childEntries, members])
-
   // ── DB에서 출석 기록 로드 ──
-  // 어른 출석표와 자녀 출석표는 완전히 다른 표라서 따로 불러옵니다.
   const { data: rawRecords, refetch: refetchAttendance } = useCachedQuery(
     `attendanceRecords:${targetSundayDateStr}`,
     () => dbFetchAttendanceRecords(targetSundayDateStr),
@@ -139,7 +124,77 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     { enabled: canCheck }
   )
 
-  // DB 기록에서 선택 상태·메모를 파생 (rawRecords/rawChildRecords가 바뀔 때 자동 갱신)
+  // ── 방문자 출석 기록 로드 ──
+  const { data: visitorRecords, refetch: refetchVisitorRecords } = useCachedQuery(
+    `visitorRecords:${targetSundayDateStr}`,
+    () => dbFetchVisitorRecords(targetSundayDateStr),
+    { enabled: canCheck }
+  )
+
+  // ── 최근 기명 방문자 전체 (자동완성/추천용) ──
+  const { data: allNamedVisitors, refetch: refetchAllNamedVisitors } = useCachedQuery(
+    'allNamedVisitors',
+    () => dbFetchAllNamedVisitors(),
+    { enabled: canCheck }
+  )
+
+  // 방문자 카운터 로컬 상태 ({ 성인: 0, 중고등부: 0, 초등부: 0, 유아유치부: 0 })
+  const [visitorCounters, setVisitorCounters] = useState<Record<VisitorCategory, number>>({
+    '성인': 0,
+    '중고등부': 0,
+    '초등부': 0,
+    '유아유치부': 0,
+  })
+
+  // DB에서 불러온 카운터로 초기화
+  useEffect(() => {
+    if (visitorRecords) {
+      const counts: Record<VisitorCategory, number> = {
+        '성인': 0,
+        '중고등부': 0,
+        '초등부': 0,
+        '유아유치부': 0,
+      }
+      visitorRecords.forEach(r => {
+        if (!r.name && counts[r.category] !== undefined) {
+          counts[r.category] = r.count
+        }
+      })
+      setVisitorCounters(counts)
+    }
+  }, [visitorRecords])
+
+  // 해당 주일의 기명 방문자 목록
+  const currentSundayNamedVisitors = useMemo(() => {
+    return (visitorRecords || []).filter(r => !!r.name)
+  }, [visitorRecords])
+
+  // Option 2: 현재 선택된 부서/라브리 탭에 소속된 기명 방문자 목록
+  const departmentLinkedVisitors = useMemo(() => {
+    if (isVisitorTab) return []
+    // 자녀 부서 탭인 경우 (중고등부, 초등부, 유아·유치부)
+    if (childMode) {
+      return currentSundayNamedVisitors.filter(v => {
+        if (selectedGroup === '중고등부') return v.category === '중고등부'
+        if (selectedGroup === '초등부') return v.category === '초등부'
+        if (selectedGroup === '유아·유치부') return v.category === '유아유치부'
+        return false
+      })
+    }
+    // 어른 라브리 탭인 경우 (성인 방문자 표시)
+    if (selectedGroup === '미정' || selectedGroup === '라브리1' || selectedGroup === '라브리2' || selectedGroup === '라브리3') {
+      // 성인 방문자는 미정 또는 각 라브리 탭에서도 참고할 수 있도록 표시
+      return currentSundayNamedVisitors.filter(v => v.category === '성인')
+    }
+    return []
+  }, [isVisitorTab, childMode, selectedGroup, currentSundayNamedVisitors])
+
+  // 신규 기명 방문자 추가 입력 폼 상태
+  const [newVisitorName, setNewVisitorName] = useState('')
+  const [newVisitorCategory, setNewVisitorCategory] = useState<VisitorCategory>('성인')
+  const [isAddingVisitor, setIsAddingVisitor] = useState(false)
+
+  // DB 기록에서 선택 상태·메모 파생
   interface AttendanceRow { user_id?: string; dependent_id?: string; status: string; note?: string }
   const derivedFromDB = useMemo(() => {
     const selections: Record<string, 'ATTEND' | 'ABSENT'> = {}
@@ -157,7 +212,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     return { selections, notes }
   }, [rawRecords, rawChildRecords])
 
-  // 제출 후 즉시 화면에 반영할 override (캐시 갱신 전 낙관적 업데이트)
   const [selectionsOverride, setSelectionsOverride] = useState<Record<string, 'ATTEND' | 'ABSENT'> | null>(null)
   const [notesOverride, setNotesOverride] = useState<Record<string, string> | null>(null)
 
@@ -166,23 +220,32 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const setCheckSelections = setSelectionsOverride
   const setCheckNotes = setNotesOverride
 
+  // 지금 화면에 보여줄 등록 교인 대상 (어른 성도 또는 자녀)
+  const targetMembers = useMemo(() => {
+    if (!selectedGroup || isVisitorTab) return []
+    if (childMode) return sortChildrenForGroupDisplay(childEntries.filter(c => c.childLabriId === selectedGroup))
+    const group = selectedGroup === '미정'
+      ? members.filter(u => !u.labriId || u.labriId === '미정')
+      : members.filter(u => u.labriId === selectedGroup)
+    return sortAdultsForGroupDisplay(group)
+  }, [selectedGroup, childMode, isVisitorTab, childEntries, members])
+
   const attendedCount = targetMembers.filter(m => checkSelections[m.id] === 'ATTEND').length
-  // 표시한 사람만 저장합니다. 표시하지 않은 사람은 "미지정"으로 남습니다.
-  //
-  // 예전에는 **전원 표시해야만** 제출할 수 있었습니다. 그런데 늦게 오신 분이나
-  // 확인이 안 되는 분 때문에 한 명이라도 비면 아무것도 저장하지 못하고,
-  // 리더가 앱을 닫으면 그 주 출석이 통째로 날아갔습니다.
-  // → 이제 아는 것부터 저장하고 나중에 채울 수 있습니다.
-  //   (미지정이 남아 있으면 서버가 담당자에게 계속 알려줍니다)
   const checkedMembers = targetMembers.filter(m => !!checkSelections[m.id])
   const unsetCount = targetMembers.length - checkedMembers.length
-  const canSubmit = checkedMembers.length > 0
+
+  // 방문자 총 인원 수
+  const totalVisitorCount = useMemo(() => {
+    const counterSum = Object.values(visitorCounters).reduce((a, b) => a + b, 0)
+    return counterSum + currentSundayNamedVisitors.length
+  }, [visitorCounters, currentSundayNamedVisitors])
+
+  const canSubmit = isVisitorTab ? true : checkedMembers.length > 0
 
   const relevantIds = targetMembers.map(m => m.id)
   const hasSubmittedAttendance =
     relevantIds.length > 0 && relevantIds.every(id => !!checkSelections[id])
 
-  // 이미 선택된 상태(출석/결석)를 다시 누르면 "미지정" 상태로 되돌립니다.
   const toggleCheckSelection = (memberId: string, status: 'ATTEND' | 'ABSENT') => {
     setCheckSelections(prev => {
       const base = prev ?? derivedFromDB.selections
@@ -194,8 +257,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
       }
       return next
     })
-    // 🐛 과거 버그: 결석으로 표시하고 사유(#아파요)를 고른 뒤 다시 '출석'으로 정정해도
-    // 사유가 그대로 남아 저장됐습니다. 나중에 보고서에는 "출석했는데 아팠음"으로 나옵니다.
     if (status === 'ATTEND') {
       setCheckNotes(prev => {
         const base = prev ?? derivedFromDB.notes
@@ -207,10 +268,71 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     }
   }
 
+  // ── 방문자 추가 핸들러 ──
+  const handleAddNamedVisitor = async (nameToAdd?: string, catToAdd?: VisitorCategory) => {
+    const name = (nameToAdd || newVisitorName).trim()
+    const category = catToAdd || newVisitorCategory
+    if (!name) {
+      showToast('방문자 이름을 입력해 주세요.', true)
+      return
+    }
+
+    setIsAddingVisitor(true)
+    const res = await dbAddNamedVisitor(targetSundayDateStr, name, category, currentUser.id)
+    setIsAddingVisitor(false)
+
+    if (res.error) {
+      showToast(res.error.message || '방문자 추가 실패', true)
+    } else {
+      showToast(`${name} 방문자(${category})를 추가했습니다.`)
+      setNewVisitorName('')
+      refetchVisitorRecords()
+      refetchAllNamedVisitors()
+    }
+  }
+
+  // ── 방문자 삭제 핸들러 ──
+  const handleDeleteVisitor = async (id: string, name: string | null) => {
+    const confirmName = name ? `'${name}' 방문자` : '방문자 기록'
+    if (!confirm(`${confirmName}을(를) 삭제하시겠습니까?`)) return
+
+    const res = await dbDeleteVisitorRecord(id)
+    if (res.error) {
+      showToast('방문자 삭제 실패', true)
+    } else {
+      showToast('삭제되었습니다.')
+      refetchVisitorRecords()
+      refetchAllNamedVisitors()
+    }
+  }
+
   const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false)
 
   const handleSubmitAttendance = async () => {
     if (isSubmittingAttendance) return
+
+    if (isVisitorTab) {
+      // 방문자 탭 저장: 익명 카운터 저장
+      setIsSubmittingAttendance(true)
+      const countersPayload = VISITOR_CATEGORIES.map(cat => ({
+        category: cat,
+        count: visitorCounters[cat] || 0
+      }))
+      const res = await dbSaveVisitorCounters(targetSundayDateStr, countersPayload, currentUser.id)
+      setIsSubmittingAttendance(false)
+
+      if (res.error) {
+        showToast('방문자 출석 저장 중 오류가 발생했습니다.', true)
+        return
+      }
+      refetchVisitorRecords()
+      setCheckSubmitted(true)
+      setTimeout(() => {
+        setCheckSubmitted(false)
+        setShowAttendanceModal(false)
+      }, 1200)
+      return
+    }
 
     if (!canSubmit) {
       showToast('한 명 이상 출석/결석을 표시해 주세요.', true)
@@ -259,7 +381,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   }
 
   if (!canCheck) return null
-  // 선생님인데 담당할 자녀가 아직 한 명도 없으면 버튼을 숨깁니다.
   if (availableGroups.length === 0) return null
 
   const showGroupTabs = availableGroups.length > 1
@@ -276,6 +397,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
         onClick={() => {
           if (!isTeacher) refetchAttendance()
           refetchChildAttendance()
+          refetchVisitorRecords()
+          refetchAllNamedVisitors()
           setShowAttendanceModal(true)
         }}
         className={`px-2.5 py-1.5 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition-all ${
@@ -297,113 +420,316 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
               <div>
                 <h3 className="font-black text-sm">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
                 <p className="text-2xs text-blue-200 mt-0.5">
-                  {selectedGroup} · 출석 {attendedCount}/{targetMembers.length}명
+                  {isVisitorTab
+                    ? `방문자 출석 · 총 ${totalVisitorCount}명`
+                    : `${selectedGroup} · 출석 ${attendedCount}/${targetMembers.length}명${departmentLinkedVisitors.length > 0 ? ` (방문자 +${departmentLinkedVisitors.length}명)` : ''}`}
                 </p>
               </div>
               <button onClick={() => setShowAttendanceModal(false)} className="p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
             </div>
 
             <div className="overflow-y-auto flex-1 p-4 space-y-3">
-              {/* 그룹 선택 탭 (어른 라브리 + 자녀 그룹) */}
+              {/* 그룹 선택 탭 (어른 라브리 + 자녀 그룹 + 방문자) */}
               {showGroupTabs && (
                 <div className="bg-slate-100 p-1.5 rounded-xl space-y-1">
                   <div className="flex justify-between items-center px-1">
                     <span className="text-2xs font-bold text-slate-600">🏛️ 그룹 선택</span>
                     <span className="text-2xs font-bold text-[#335f87] bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                      {selectedGroup === '미정' ? '미정/새가족' : selectedGroup} ({targetMembers.length}명)
+                      {isVisitorTab
+                        ? `방문자 (${totalVisitorCount}명)`
+                        : `${selectedGroup === '미정' ? '미정/새가족' : selectedGroup} (${targetMembers.length}명)`}
                     </span>
                   </div>
                   <div className="grid grid-cols-4 gap-1">
-                    {availableGroups.map(group => (
-                      <button
-                        key={group}
-                        type="button"
-                        onClick={() => setSelectedGroup(group)}
-                        className={`py-1.5 px-0.5 rounded-lg text-2xs font-bold transition-all ${
-                          selectedGroup === group
-                            ? 'bg-[#335f87] text-white shadow-xs'
-                            : isChildGroup(group)
-                              ? 'bg-white text-emerald-700 hover:bg-emerald-50'
-                              : 'bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {group === '미정' ? '미정/새가족' : group}
-                      </button>
-                    ))}
+                    {availableGroups.map(group => {
+                      const isSelected = selectedGroup === group
+                      const isVis = group === '방문자'
+                      return (
+                        <button
+                          key={group}
+                          type="button"
+                          onClick={() => setSelectedGroup(group)}
+                          className={`py-1.5 px-0.5 rounded-lg text-2xs font-bold transition-all ${
+                            isSelected
+                              ? 'bg-[#335f87] text-white shadow-xs'
+                              : isVis
+                                ? 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                                : isChildGroup(group)
+                                  ? 'bg-white text-emerald-700 hover:bg-emerald-50'
+                                  : 'bg-white text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {group === '미정' ? '미정/새가족' : group === '방문자' ? '🏷️ 방문자' : group}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCheckSelections(prev => {
-                      const next = { ...(prev ?? derivedFromDB.selections) }
-                      targetMembers.forEach(m => { next[m.id] = 'ATTEND' })
-                      return next
-                    })
-                  }}
-                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-2xs font-bold hover:bg-emerald-700"
-                >⚡ 전원 출석</button>
-              </div>
-
-              {targetMembers.length === 0 && (
-                <p className="py-8 text-center text-xs text-gray-400">이 그룹에 해당하는 사람이 없습니다.</p>
-              )}
-
-              {targetMembers.map(member => {
-                const sel = checkSelections[member.id]
-                return (
-                  <div key={member.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <div>
-                        <span className="font-bold text-gray-900">{member.name}</span>
-                        {/* 자녀는 부모 이름을 붙이지 않습니다 (줄이 길어지고 굳이 필요 없음) */}
-                        {!childMode && member.duty && (
-                          <span className="text-2xs text-gray-400 ml-1.5">{member.duty}</span>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => toggleCheckSelection(member.id, 'ATTEND')}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                            sel === 'ATTEND' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-600'
-                          }`}
-                        >✅ 출석</button>
-                        <button
-                          onClick={() => toggleCheckSelection(member.id, 'ABSENT')}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                            sel === 'ABSENT' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-600'
-                          }`}
-                        >❌ 결석</button>
-                      </div>
+              {/* ────────────────────────────────────────────────────────── */}
+              {/* 1. 방문자 탭 렌더링 (isVisitorTab) */}
+              {/* ────────────────────────────────────────────────────────── */}
+              {isVisitorTab ? (
+                <div className="space-y-4">
+                  {/* 익명 방문자 숫자 카운터 */}
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-950">🔢 부서별 숫자 카운터 (익명 방문자)</span>
+                      <span className="text-2xs font-bold text-amber-700">
+                        계: {Object.values(visitorCounters).reduce((a, b) => a + b, 0)}명
+                      </span>
                     </div>
-
-                    {sel === 'ABSENT' && (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex gap-1 flex-wrap text-2xs">
-                          {ABSENCE_TAGS.map(tag => (
+                    <div className="grid grid-cols-2 gap-2">
+                      {VISITOR_CATEGORIES.map(cat => (
+                        <div key={cat} className="flex items-center justify-between bg-white px-2.5 py-2 rounded-xl border border-amber-200 shadow-2xs">
+                          <span className="text-xs font-bold text-gray-800">{cat}</span>
+                          <div className="flex items-center gap-2">
                             <button
-                              key={tag}
                               type="button"
-                              onClick={() => setCheckNotes(p => ({ ...(p ?? derivedFromDB.notes), [member.id]: checkNotes[member.id] === tag ? '' : tag }))}
-                              className={`px-2 py-0.5 rounded-md border ${checkNotes[member.id] === tag ? 'bg-rose-100 border-rose-300 text-rose-800 font-bold' : 'bg-white border-gray-200 text-gray-500'}`}
-                            >#{tag}</button>
-                          ))}
+                              onClick={() => setVisitorCounters(prev => ({ ...prev, [cat]: Math.max(0, (prev[cat] || 0) - 1) }))}
+                              className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-xs active:scale-95"
+                            >
+                              -
+                            </button>
+                            <span className="w-5 text-center font-black text-xs text-amber-900">
+                              {visitorCounters[cat] || 0}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setVisitorCounters(prev => ({ ...prev, [cat]: (prev[cat] || 0) + 1 }))}
+                              className="w-6 h-6 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center text-xs active:scale-95"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-amber-700/80 font-medium">
+                      * 이름을 모르는 방문자나 단체 방문객은 숫자 카운터로 간편하게 증감할 수 있습니다.
+                    </p>
+                  </div>
+
+                  {/* 기명 방문자 직접 입력 폼 */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
+                    <span className="text-xs font-black text-slate-800">✍️ 이름 직접 입력 (성도/학생 방문자)</span>
+                    <div className="space-y-2">
+                      <div className="flex gap-1.5">
                         <input
                           type="text"
-                          placeholder="결석 사유 직접 입력 (선택사항)..."
-                          value={checkNotes[member.id] || ''}
-                          onChange={e => setCheckNotes(p => ({ ...(p ?? derivedFromDB.notes), [member.id]: e.target.value }))}
-                          className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none text-gray-900 font-medium"
+                          placeholder="방문자 이름 입력..."
+                          value={newVisitorName}
+                          onChange={e => setNewVisitorName(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleAddNamedVisitor() }}
+                          className="flex-1 px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs text-gray-900 font-bold focus:outline-none focus:border-[#335f87]"
                         />
+                        <button
+                          type="button"
+                          onClick={() => handleAddNamedVisitor()}
+                          disabled={isAddingVisitor || !newVisitorName.trim()}
+                          className="px-3.5 py-2 bg-[#335f87] hover:bg-[#284b6b] disabled:bg-gray-300 text-white text-xs font-bold rounded-xl flex items-center gap-1 shrink-0 transition-all"
+                        >
+                          <Plus size={14} /> 추가
+                        </button>
+                      </div>
+
+                      {/* 부서 선택 라디오/칩 (성인 | 중고등부 | 초등부 | 유아유치부) */}
+                      <div className="grid grid-cols-4 gap-1">
+                        {VISITOR_CATEGORIES.map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setNewVisitorCategory(cat)}
+                            className={`py-1.5 text-2xs font-bold rounded-lg border transition-all ${
+                              newVisitorCategory === cat
+                                ? 'bg-[#335f87] border-[#335f87] text-white shadow-2xs'
+                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 최근 기명 방문자 추천 (누르면 바로 입력창에 반영) */}
+                      {allNamedVisitors && allNamedVisitors.length > 0 && (
+                        <div className="pt-1 space-y-1">
+                          <span className="text-[10px] text-gray-400 font-bold">💡 최근 방문자 빠른 추가:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.from(new Set(allNamedVisitors.map(v => `${v.name}::${v.category}`)))
+                              .slice(0, 6)
+                              .map(key => {
+                                const [name, cat] = key.split('::') as [string, VisitorCategory]
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => handleAddNamedVisitor(name, cat)}
+                                    className="px-2 py-0.5 bg-white hover:bg-blue-50 border border-gray-200 rounded-md text-[10px] text-gray-700 font-medium transition-all"
+                                  >
+                                    +{name} <span className="text-gray-400 text-[9px]">({cat})</span>
+                                  </button>
+                                )
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 해당 주일 기명 방문자 명단 */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-black text-gray-800">
+                      📋 오늘 등록된 기명 방문자 ({currentSundayNamedVisitors.length}명)
+                    </span>
+                    {currentSundayNamedVisitors.length === 0 ? (
+                      <p className="py-4 text-center text-2xs text-gray-400 bg-gray-50 rounded-xl">
+                        등록된 기명 방문자가 없습니다.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {currentSundayNamedVisitors.map(v => (
+                          <div
+                            key={v.id}
+                            className="flex items-center justify-between p-2.5 bg-amber-50/50 rounded-xl border border-amber-200/60"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-gray-900">{v.name}</span>
+                              <span className="text-2xs font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
+                                {v.category}
+                              </span>
+                              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 py-0.5 rounded">
+                                ✅ 출석
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteVisitor(v.id, v.name)}
+                              className="p-1 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors"
+                              title="삭제"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                )
-              })}
+                </div>
+              ) : (
+                /* ────────────────────────────────────────────────────────── */
+                /* 2. 일반 부서/라브리 탭 렌더링 */
+                /* ────────────────────────────────────────────────────────── */
+                <>
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCheckSelections(prev => {
+                          const next = { ...(prev ?? derivedFromDB.selections) }
+                          targetMembers.forEach(m => { next[m.id] = 'ATTEND' })
+                          return next
+                        })
+                      }}
+                      className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-2xs font-bold hover:bg-emerald-700"
+                    >
+                      ⚡ 전원 출석
+                    </button>
+                  </div>
+
+                  {targetMembers.length === 0 && (
+                    <p className="py-8 text-center text-xs text-gray-400">이 그룹에 해당하는 사람이 없습니다.</p>
+                  )}
+
+                  {/* 정규 교인 명단 */}
+                  {targetMembers.map(member => {
+                    const sel = checkSelections[member.id]
+                    return (
+                      <div key={member.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <div>
+                            <span className="font-bold text-gray-900">{member.name}</span>
+                            {!childMode && member.duty && (
+                              <span className="text-2xs text-gray-400 ml-1.5">{member.duty}</span>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => toggleCheckSelection(member.id, 'ATTEND')}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                sel === 'ATTEND' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-600'
+                              }`}
+                            >✅ 출석</button>
+                            <button
+                              onClick={() => toggleCheckSelection(member.id, 'ABSENT')}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                sel === 'ABSENT' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-600'
+                              }`}
+                            >❌ 결석</button>
+                          </div>
+                        </div>
+
+                        {sel === 'ABSENT' && (
+                          <div className="space-y-1.5 pt-1">
+                            <div className="flex gap-1 flex-wrap text-2xs">
+                              {ABSENCE_TAGS.map(tag => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => setCheckNotes(p => ({ ...(p ?? derivedFromDB.notes), [member.id]: checkNotes[member.id] === tag ? '' : tag }))}
+                                  className={`px-2 py-0.5 rounded-md border ${checkNotes[member.id] === tag ? 'bg-rose-100 border-rose-300 text-rose-800 font-bold' : 'bg-white border-gray-200 text-gray-500'}`}
+                                >#{tag}</button>
+                              ))}
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="결석 사유 직접 입력 (선택사항)..."
+                              value={checkNotes[member.id] || ''}
+                              onChange={e => setCheckNotes(p => ({ ...(p ?? derivedFromDB.notes), [member.id]: e.target.value }))}
+                              className="w-full text-xs p-2 bg-white rounded-lg border border-rose-200 focus:outline-none text-gray-900 font-medium"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  {/* Option 2 연동: 해당 부서에 등록된 기명 방문자 목록 표시 */}
+                  {departmentLinkedVisitors.length > 0 && (
+                    <div className="pt-2 space-y-1.5 border-t border-dashed border-amber-300">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-2xs font-bold text-amber-800 flex items-center gap-1">
+                          🏷️ 이 부서 방문자 ({departmentLinkedVisitors.length}명)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGroup('방문자')}
+                          className="text-[10px] text-[#335f87] font-bold hover:underline"
+                        >
+                          방문자 탭에서 관리 →
+                        </button>
+                      </div>
+                      {departmentLinkedVisitors.map(v => (
+                        <div
+                          key={v.id}
+                          className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200 flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-gray-900">{v.name}</span>
+                            <span className="text-[10px] font-bold bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded">
+                              🏷️방문
+                            </span>
+                          </div>
+                          <span className="text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            ✅ 출석
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* 출석체크 제출 버튼 */}
@@ -412,6 +738,17 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                 <div className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-xl text-center">
                   ✅ 출석체크가 명단에 정상 반영되었습니다!
                 </div>
+              ) : isVisitorTab ? (
+                <button
+                  onClick={handleSubmitAttendance}
+                  disabled={isSubmittingAttendance}
+                  className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <CheckSquare size={16} />
+                  {isSubmittingAttendance
+                    ? '저장 중...'
+                    : `✅ 방문자 카운터 저장하기 (총 ${totalVisitorCount}명)`}
+                </button>
               ) : (
                 <div className="space-y-2">
                   {unsetCount > 0 && checkedMembers.length > 0 && (

@@ -94,7 +94,7 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
         <ScheduleCalendar isLeaderOrAdmin={isLeaderOrAdmin} addressBookEntries={addressBookEntries} allUsers={allUsers} />
       </div>
       <div className={subTab === 'members' ? '' : 'hidden'}>
-        <AddressBook addressBookEntries={directoryEntries} allUsers={allUsers} />
+        <AddressBook addressBookEntries={directoryEntries} allUsers={allUsers} currentUser={currentUser} />
       </div>
     </div>
   )

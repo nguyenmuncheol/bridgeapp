@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, Fragment } from 'react'
-import { ChevronRight, Users, Search, Triangle } from 'lucide-react'
+import { ChevronRight, Users, Search, Triangle, UserCheck } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
 import {
   buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE,
@@ -10,6 +10,8 @@ import {
 import { formatBirthdayMonthDayOnly } from '../../lib/dateUtils'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import ProfileImageLightbox from '../ProfileImageLightbox'
+import { useCachedQuery } from '../../lib/dataCache'
+import { dbFetchAllNamedVisitors, VisitorRecordRow } from '../../lib/db'
 
 // 주소록 편성상태 필터: 라브리1~3 / 교회학교 / 라브리 미정(❤️)
 const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => boolean }[] = [
@@ -25,20 +27,85 @@ const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => 
 // 라브리/미정 필터에서 "관리자 or 라브리리더 부부 최상단 고정" 규칙이 적용되는 필터 키 목록
 const LABRI_FILTER_KEYS = ['라브리1', '라브리2', '라브리3', '미정']
 
-// 나이 계산·자녀 판별·부부 묶음 정렬은 familyInfo.ts의 공용 함수를 씁니다
-// (출석체크 명단도 같은 함수를 써서 두 화면의 정렬이 어긋나지 않게 합니다).
-
 interface AddressBookProps {
   addressBookEntries: UserProfile[]
   allUsers: UserProfile[]
+  currentUser?: UserProfile
 }
 
 // ── 주소록 (검색 + 편성상태 필터 + 상세 펼치기) ──
-export default function AddressBook({ addressBookEntries, allUsers }: AddressBookProps) {
+export default function AddressBook({ addressBookEntries, allUsers, currentUser }: AddressBookProps) {
   const [addressFilter, setAddressFilter] = useState<string>('전체')
   const [expandedMember, setExpandedMember] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [lightboxMember, setLightboxMember] = useState<UserProfile | null>(null)
+
+  // 관리자, 리더, 선생님 권한 확인
+  const canSeeVisitors = currentUser && ['ADMIN', 'LEADER', 'TEACHER'].includes(currentUser.role)
+
+  // 기명 방문자 전체 기록 조회 (미정 탭에서 권한자에게만 표시)
+  const { data: allNamedVisitors } = useCachedQuery(
+    'allNamedVisitors',
+    () => dbFetchAllNamedVisitors(),
+    { enabled: !!canSeeVisitors }
+  )
+
+  // 기명 방문자별 총 출석 횟수 및 정보 요약
+  interface VisitorSummary {
+    key: string
+    name: string
+    category: string
+    visitCount: number
+    recentDate: string
+    dates: string[]
+  }
+
+  const visitorSummaries = useMemo<VisitorSummary[]>(() => {
+    if (!allNamedVisitors || allNamedVisitors.length === 0) return []
+    const map = new Map<string, { name: string; category: string; dates: string[] }>()
+
+    allNamedVisitors.forEach((v: VisitorRecordRow) => {
+      if (!v.name) return
+      const k = `${v.name.trim()}__${v.category}`
+      const existing = map.get(k)
+      if (existing) {
+        existing.dates.push(v.date_str)
+      } else {
+        map.set(k, {
+          name: v.name.trim(),
+          category: v.category,
+          dates: [v.date_str]
+        })
+      }
+    })
+
+    return Array.from(map.entries()).map(([key, info]) => {
+      const sortedDates = [...info.dates].sort().reverse()
+      return {
+        key,
+        name: info.name,
+        category: info.category,
+        visitCount: info.dates.length,
+        recentDate: sortedDates[0],
+        dates: sortedDates,
+      }
+    }).sort((a, b) => {
+      // 1. 최근 방문일 내림차순
+      if (a.recentDate !== b.recentDate) return b.recentDate.localeCompare(a.recentDate)
+      // 2. 방문 횟수 내림차순
+      if (a.visitCount !== b.visitCount) return b.visitCount - a.visitCount
+      // 3. 이름 가나다순
+      return a.name.localeCompare(b.name, 'ko')
+    })
+  }, [allNamedVisitors])
+
+  // 검색어가 적용된 방문자 목록 (미정 탭에서 표시용)
+  const filteredVisitors = useMemo(() => {
+    if (!canSeeVisitors || addressFilter !== '미정') return []
+    const q = searchQuery.trim()
+    if (!q) return visitorSummaries
+    return visitorSummaries.filter(v => matchesKoreanSearch(v.name, q) || matchesKoreanSearch(v.category, q))
+  }, [canSeeVisitors, addressFilter, searchQuery, visitorSummaries])
 
   // 주소록 필터 (검색어 우선, 그 다음 편성상태 필터) + 필터별 정렬 규칙 적용
   const displayedMembers = useMemo(() => {
@@ -54,12 +121,10 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         ? kidsEntries.filter(m => matchesKoreanSearch(m.name, q) || (m.parentName && matchesKoreanSearch(m.parentName, q)))
         : kidsEntries
 
-      // ① "교회학교" 탭: 중고등부 -> 초등부 -> 유아유치부 -> 영아부 순으로 부서별로 모아서 나열 (생일 미입력자 포함)
       return sortChildrenByDepartment(filteredKids)
     }
 
     // ② 성인 성도 중심 목록 (전체 / 라브리1~3 / 미정): 자녀 카드는 숨기고 성인 카드만 렌더링
-    // 검색 시: 본인 이름뿐 아니라 자녀 이름으로도 부모 성도를 찾을 수 있도록 매칭
     const adultEntries = addressBookEntries.filter(m => !isChildLike(m))
     const filteredAdults = q
       ? adultEntries.filter(m => {
@@ -95,7 +160,6 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
     }
 
     // 라브리1/2/3/미정 필터: 해당 라브리 리더 부부(없으면 관리자 부부, 없으면 목사님 부부) 최상단 고정, 나머지는 나이순
-    // (출석체크 명단도 같은 함수를 씁니다 — sortAdultsForGroupDisplay in familyInfo.ts)
     if (LABRI_FILTER_KEYS.includes(addressFilter)) {
       return sortAdultsForGroupDisplay(filtered)
     }
@@ -193,6 +257,9 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                 ? `검색 결과 총 ${displayedMembers.length}명 (${displayedChurchSchoolBreakdown})`
                 : `검색 결과 총 ${displayedMembers.length}명`
             }
+            if (addressFilter === '미정' && canSeeVisitors && filteredVisitors.length > 0) {
+              return `검색 결과: 성도 ${displayedMembers.length}명 + 방문자 ${filteredVisitors.length}명`
+            }
             return `검색 결과 총 ${displayedMembers.length}명`
           }
           if (addressFilter === '교회학교') {
@@ -203,18 +270,23 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
           if (addressFilter === '전체') {
             return `전체 총 ${countingStats.total}명 (성인 ${countingStats.adults}명 + 교회학교 ${countingStats.churchSchool}명)`
           }
+          if (addressFilter === '미정' && canSeeVisitors && visitorSummaries.length > 0) {
+            return `미정 성도 총 ${displayedMembers.length}명 (방문자 ${visitorSummaries.length}명 등록됨)`
+          }
           return `${addressFilter} 성도 총 ${displayedMembers.length}명`
         })()}
       </p>
 
       <div className="space-y-2">
-        {displayedMembers.length === 0 && (
+        {displayedMembers.length === 0 && filteredVisitors.length === 0 && (
           <div className="py-8 text-center text-xs text-gray-400">
             {searchQuery.trim()
               ? `'${searchQuery.trim()}' 검색 결과가 없습니다.`
               : '표시할 성도가 없습니다.'}
           </div>
         )}
+
+        {/* ── 등록 교인 명단 ── */}
         {displayedMembers.map((member, index) => {
           const isChurchSchoolTab = addressFilter === '교회학교'
           const currentDept = getChildGroupLabel(member.childLabriId) || '기타'
@@ -290,7 +362,6 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
                       </>
                     ) : (
                       <>
-                        {/* 연락처 — 눌러서 바로 전화를 걸 수 있습니다 */}
                         {member.phone && (
                           <div className="flex items-center gap-2 text-gray-600">
                             <span className="w-3 text-center text-2xs">📞</span>
@@ -307,6 +378,78 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
             </Fragment>
           )
         })}
+
+        {/* ── [미정 탭 전용] 관리자/리더/교사에게만 보이는 기명 방문자 섹션 ── */}
+        {addressFilter === '미정' && canSeeVisitors && filteredVisitors.length > 0 && (
+          <div className="pt-4 space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-amber-900 flex items-center gap-1">
+                🏷️ 교회 방문자 명단 ({filteredVisitors.length}명)
+              </span>
+              <span className="text-[10px] text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                관리자·리더·교사만 확인 가능
+              </span>
+            </div>
+
+            {filteredVisitors.map(v => (
+              <div
+                key={v.key}
+                className="bg-amber-50/40 rounded-2xl border border-amber-200/80 shadow-2xs overflow-hidden"
+              >
+                <button
+                  onClick={() => setExpandedMember(expandedMember === `vis_${v.key}` ? null : `vis_${v.key}`)}
+                  className="w-full p-3.5 flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                      {getInitials(v.name)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-gray-900 text-sm">{v.name}</span>
+                        <span className="text-2xs font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                          🏷️방문자
+                        </span>
+                        <span className="text-2xs text-gray-500 font-medium">
+                          ({v.category})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {/* 작은 버튼식 출석 횟수 표시 */}
+                        <span className="inline-flex items-center gap-0.5 text-2xs font-black bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-full shadow-2xs">
+                          <UserCheck size={11} className="text-amber-600" />
+                          {v.visitCount}회 출석
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          최근 {v.recentDate}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === `vis_${v.key}` ? 'rotate-90' : ''}`} />
+                </button>
+
+                {expandedMember === `vis_${v.key}` && (
+                  <div className="px-4 pb-3.5 space-y-1.5 text-xs border-t border-amber-100/80 pt-2.5 bg-white/60">
+                    <div className="text-2xs text-gray-600 font-bold">
+                      🗓️ 출석 일자 기록 ({v.dates.length}회):
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {v.dates.map(dateStr => (
+                        <span
+                          key={dateStr}
+                          className="px-2 py-0.5 bg-amber-100/70 border border-amber-200 text-amber-900 rounded-md text-[10px] font-semibold"
+                        >
+                          {dateStr}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {lightboxMember?.avatarUrl && (
