@@ -167,25 +167,28 @@ export default function MembersTab({
   }
 
   // ── 탈퇴 처리 / 복구 / 완전 삭제 (가입자·미가입 성도 공통) ──
+  // 목록에서 바로 누르면 오조작하기 쉬워서, 수정 모달을 연 상태에서만 처리할 수 있게 했습니다.
   const [leavingId, setLeavingId] = useState<string | null>(null)
-  const handleMarkLeft = async (member: UserProfile) => {
-    if (leavingId) return
+  /** 실제로 탈퇴 처리됐으면 true, 취소·거절·실패면 false — 호출 쪽에서 모달을 닫을지 판단합니다. */
+  const handleMarkLeft = async (member: UserProfile): Promise<boolean> => {
+    if (leavingId) return false
     // 등급을 낮출 때와 동일한 보호: 마지막 남은 총괄 관리자를 탈퇴 처리하면
     // 아무도 관리자 화면에 들어올 수 없게 됩니다.
     if (member.role === 'ADMIN' && allUsers.filter(u => u.role === 'ADMIN' && u.id !== member.id).length === 0) {
       alert('마지막 남은 총괄 관리자입니다.\n탈퇴 처리하면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 처리해 주세요.')
-      return
+      return false
     }
-    if (!confirm(`${member.name}님을 탈퇴 처리할까요?\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return
+    if (!confirm(`${member.name}님을 탈퇴 처리할까요?\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return false
     setLeavingId(member.id)
     const { error } = await dbMarkMemberLeft(member.id, member.role)
     setLeavingId(null)
     if (error) {
       showToast(`⚠️ 처리하지 못했습니다: ${error.message || ''}`)
-      return
+      return false
     }
     onUpdateUsers?.(prev => prev.map(u => u.id === member.id ? { ...u, role: 'LEFT' as Role, previousRole: member.role } : u))
     showToast(`${member.name}님을 탈퇴 처리했습니다.`)
+    return true
   }
 
   const [restoringId, setRestoringId] = useState<string | null>(null)
@@ -846,16 +849,6 @@ export default function MembersTab({
                       <Edit2 size={13} />
                     </button>
                   )}
-                  {!isLeader && (
-                    <button
-                      onClick={() => handleMarkLeft(member)}
-                      disabled={leavingId === member.id}
-                      title="탈퇴 처리"
-                      className="p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg text-rose-500 transition-all disabled:opacity-50"
-                    >
-                      <UserMinus size={13} />
-                    </button>
-                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-2xs text-gray-500 pl-14">
@@ -1174,6 +1167,23 @@ export default function MembersTab({
                 <label className="text-2xs text-gray-400 font-semibold">기타 메모</label>
                 <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
               </div>
+
+              {/* 탈퇴 처리 — 목록에서 바로 안 보이게 여기로만 옮겼습니다(오조작 방지) */}
+              {!isLeader && (
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const left = await handleMarkLeft(editingMember)
+                      if (left) setEditingMember(null)
+                    }}
+                    disabled={leavingId === editingMember.id}
+                    className="w-full py-2 text-2xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    <UserMinus size={13} /> {leavingId === editingMember.id ? '처리 중...' : '이 성도 탈퇴 처리'}
+                  </button>
+                </div>
+              )}
 
               {/* 버튼 */}
               <div className="flex gap-2 pt-2">
