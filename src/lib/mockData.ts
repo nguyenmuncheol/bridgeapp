@@ -1,11 +1,14 @@
 // REJECTED: 가입이 거절된 계정. 예전에는 profiles 행을 아예 삭제했는데, 로그인 계정은
 // 남아있어서 그분이 앱을 다시 열면 승인 대기 목록에 무한히 다시 올라왔습니다.
 // TEACHER: 자녀(교회학교) 출석만 담당하는 선생님. 성도 자격은 일반 성도와 똑같습니다.
-export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON' | 'REJECTED' | 'TEACHER'
+// LEFT: 관리자가 탈퇴 처리한 성도(가입자·미가입 성도 공통). REJECTED와 같은 소프트
+// 삭제 방식 — 출석·식수 등 기록은 그대로 두고 role만 바꿔서 명단에서만 뺍니다.
+// (previous_role에 원래 등급을 저장해 뒀다가 복구 시 그대로 되돌립니다)
+export type Role = 'PENDING' | 'MEMBER' | 'LEADER' | 'ADMIN' | 'COUPON' | 'REJECTED' | 'TEACHER' | 'LEFT'
 
 /** 승인이 끝나 실제로 교회 명단에 포함되는 성도인지 (주소록/출석/통계 대상) */
 export function isApprovedMember(role: Role | undefined | null): boolean {
-  return role !== 'PENDING' && role !== 'REJECTED' && role !== undefined && role !== null
+  return role !== 'PENDING' && role !== 'REJECTED' && role !== 'LEFT' && role !== undefined && role !== null
 }
 
 /**
@@ -72,6 +75,8 @@ export interface UserProfile {
    * 그때 출석·식수 기록이 그대로 새 계정으로 넘어갑니다.
    */
   isUnregistered?: boolean
+  /** role이 'LEFT'(탈퇴 처리)일 때만 값이 있음 — 복구 시 되돌릴 원래 등급 */
+  previousRole?: Role
   /** 최근 접속 및 활동 일시 (ISO 문자열) */
   lastActiveAt?: string
   /** 홈화면 앱(PWA Standalone)으로 실행 중인지 */

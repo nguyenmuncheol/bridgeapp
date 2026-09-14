@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Search, Edit2, Save, X, Camera, UserPlus } from 'lucide-react'
+import { Search, Edit2, Save, X, Camera, UserPlus, UserMinus, Trash2 } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
-import { dbMergeCouponsIntoFamily, dbUpdateProfile, dbCreateUnregisteredMember, dbClaimUnregisteredMember } from '../../lib/db'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
+import { dbMergeCouponsIntoFamily, dbUpdateProfile, dbCreateUnregisteredMember, dbClaimUnregisteredMember, dbMarkMemberLeft, dbRestoreMember, dbHasAttendanceHistory, dbDeleteMemberPermanently } from '../../lib/db'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, CHILD_ATTENDANCE_GROUPS, parseTeachGroups, serializeTeachGroups, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -28,6 +28,9 @@ export default function MembersTab({
 }: MembersTabProps) {
   // ── 성도관리 탭 상태 ──
   const approvedMembers = allUsers.filter(u => isApprovedMember(u.role))
+  // 탈퇴 처리된 성도 (가입자·미가입 공통) — 명단에는 안 보이지만 관리자는 여기서 복구할 수 있습니다.
+  const leftMembers = allUsers.filter(u => u.role === 'LEFT')
+  const [showLeftMembers, setShowLeftMembers] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null)
   useModalDismiss(!!editingMember, () => setEditingMember(null))
@@ -161,6 +164,75 @@ export default function MembersTab({
         : u))
     setClaimTarget(null)
     showToast(`✅ ${claimTarget.name}님을 가입 계정과 연결했습니다.`)
+  }
+
+  // ── 탈퇴 처리 / 복구 / 완전 삭제 (가입자·미가입 성도 공통) ──
+  const [leavingId, setLeavingId] = useState<string | null>(null)
+  const handleMarkLeft = async (member: UserProfile) => {
+    if (leavingId) return
+    // 등급을 낮출 때와 동일한 보호: 마지막 남은 총괄 관리자를 탈퇴 처리하면
+    // 아무도 관리자 화면에 들어올 수 없게 됩니다.
+    if (member.role === 'ADMIN' && allUsers.filter(u => u.role === 'ADMIN' && u.id !== member.id).length === 0) {
+      alert('마지막 남은 총괄 관리자입니다.\n탈퇴 처리하면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 처리해 주세요.')
+      return
+    }
+    if (!confirm(`${member.name}님을 탈퇴 처리할까요?\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return
+    setLeavingId(member.id)
+    const { error } = await dbMarkMemberLeft(member.id, member.role)
+    setLeavingId(null)
+    if (error) {
+      showToast(`⚠️ 처리하지 못했습니다: ${error.message || ''}`)
+      return
+    }
+    onUpdateUsers?.(prev => prev.map(u => u.id === member.id ? { ...u, role: 'LEFT' as Role, previousRole: member.role } : u))
+    showToast(`${member.name}님을 탈퇴 처리했습니다.`)
+  }
+
+  const [restoringId, setRestoringId] = useState<string | null>(null)
+  const handleRestoreMember = async (member: UserProfile) => {
+    if (restoringId) return
+    const restoreTo = member.previousRole || 'MEMBER'
+    if (!confirm(`${member.name}님을 다시 활동 명단으로 되돌릴까요?`)) return
+    setRestoringId(member.id)
+    const { error } = await dbRestoreMember(member.id, restoreTo)
+    setRestoringId(null)
+    if (error) {
+      showToast(`⚠️ 복구하지 못했습니다: ${error.message || ''}`)
+      return
+    }
+    onUpdateUsers?.(prev => prev.map(u => u.id === member.id ? { ...u, role: restoreTo, previousRole: undefined } : u))
+    showToast(`${member.name}님을 복구했습니다.`)
+  }
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const handleDeletePermanently = async (member: UserProfile) => {
+    if (deletingId) return
+    // 이 목록의 member.role은 이미 'LEFT'이므로, 탈퇴 전 등급은 previousRole에 있습니다.
+    if (member.previousRole === 'ADMIN' && allUsers.filter(u => u.role === 'ADMIN').length === 0) {
+      alert('탈퇴 전 마지막 총괄 관리자였던 분입니다. 복구용으로 남겨두어야 하니 완전 삭제할 수 없습니다.')
+      return
+    }
+    setDeletingId(member.id)
+    // 출석 기록이 하나라도 있으면 완전 삭제를 막습니다 — 몇 년치 기록을 실수로 되돌릴 수 없이
+    // 날리는 사고를 막기 위한 안전장치입니다. 그런 분은 탈퇴 처리만 가능합니다.
+    const hasHistory = await dbHasAttendanceHistory(member.id)
+    if (hasHistory) {
+      setDeletingId(null)
+      showToast(`⚠️ ${member.name}님은 출석 기록이 있어 완전 삭제할 수 없습니다. 탈퇴 처리만 가능합니다.`)
+      return
+    }
+    if (!confirm(`${member.name}님을 명단에서 완전히 삭제할까요?\n\n출석 기록은 없는 것을 확인했습니다. 이 작업은 되돌릴 수 없습니다.`)) {
+      setDeletingId(null)
+      return
+    }
+    const { error } = await dbDeleteMemberPermanently(member.id)
+    setDeletingId(null)
+    if (error) {
+      showToast(`⚠️ 삭제하지 못했습니다: ${error.message || ''}`)
+      return
+    }
+    onUpdateUsers?.(prev => prev.filter(u => u.id !== member.id))
+    showToast(`${member.name}님을 명단에서 삭제했습니다.`)
   }
 
   /**
@@ -694,6 +766,53 @@ export default function MembersTab({
           </div>
         </div>
 
+        {/* 탈퇴 처리된 성도 — 명단·출석에는 안 보이지만 여기서 복구하거나(기록 보존)
+            기록이 전혀 없는 경우에 한해 완전 삭제할 수 있습니다. */}
+        {!isLeader && leftMembers.length > 0 && (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowLeftMembers(v => !v)}
+              className="w-full p-3 flex items-center justify-between text-left"
+            >
+              <span className="text-2xs font-bold text-gray-500">🚪 탈퇴 처리된 성도 ({leftMembers.length}명)</span>
+              <span className="text-2xs text-gray-400">{showLeftMembers ? '접기 ▲' : '펼치기 ▼'}</span>
+            </button>
+            {showLeftMembers && (
+              <div className="px-3 pb-3 space-y-1.5">
+                {leftMembers.map(member => (
+                  <div key={member.id} className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-700 truncate">{member.name}</p>
+                      <p className="text-2xs text-gray-400">
+                        {member.previousRole ? `이전 등급: ${member.previousRole}` : ''}
+                        {member.isUnregistered ? ' · 미가입' : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleRestoreMember(member)}
+                        disabled={restoringId === member.id}
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-2xs font-bold rounded-lg disabled:opacity-50"
+                      >
+                        복구
+                      </button>
+                      <button
+                        onClick={() => handleDeletePermanently(member)}
+                        disabled={deletingId === member.id}
+                        title="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
+                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg disabled:opacity-50"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 성도 리스트 (장기결석자 우선 정렬 + 부부는 한 쌍으로 묶어서 표시) */}
         {sortedMemberUnits.map(unit => {
           const cards = unit.members.map(({ member }) => (
@@ -721,6 +840,16 @@ export default function MembersTab({
                   {!isLeader && (
                     <button onClick={() => handleStartEditMember(member)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
                       <Edit2 size={13} />
+                    </button>
+                  )}
+                  {!isLeader && (
+                    <button
+                      onClick={() => handleMarkLeft(member)}
+                      disabled={leavingId === member.id}
+                      title="탈퇴 처리"
+                      className="p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg text-rose-500 transition-all disabled:opacity-50"
+                    >
+                      <UserMinus size={13} />
                     </button>
                   )}
                 </div>
@@ -831,22 +960,35 @@ export default function MembersTab({
                 </select>
               </div>
 
-              {/* 담당 자녀 그룹 — 선생님에게만 보입니다 */}
+              {/* 담당 자녀 그룹 — 선생님에게만 보입니다. 여러 부서를 겸임할 수 있어 체크박스로 고릅니다. */}
               {editMemberData.role === 'TEACHER' && (
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">담당 자녀 그룹</label>
-                  <select
-                    value={editMemberData.teachGroup}
-                    onChange={e => setEditMemberData(p => ({ ...p, teachGroup: e.target.value }))}
-                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none"
-                  >
-                    <option value="">전체 담당 (모든 자녀 그룹)</option>
-                    {CHILD_LABRI_OPTIONS.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
+                  <label className="text-2xs text-gray-400 font-semibold">담당 자녀 그룹 (복수 선택 가능)</label>
+                  <div className="mt-1 grid grid-cols-2 gap-1.5">
+                    {CHILD_ATTENDANCE_GROUPS.map(g => {
+                      const selected = parseTeachGroups(editMemberData.teachGroup).includes(g)
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setEditMemberData(p => {
+                            const cur = parseTeachGroups(p.teachGroup)
+                            const next = cur.includes(g) ? cur.filter(x => x !== g) : [...cur, g]
+                            return { ...p, teachGroup: serializeTeachGroups(next) }
+                          })}
+                          className={`px-2.5 py-2 rounded-xl text-2xs font-bold border transition-all ${
+                            selected
+                              ? 'bg-[#335f87] text-white border-[#335f87]'
+                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          {selected ? '✓ ' : ''}{g}
+                        </button>
+                      )
+                    })}
+                  </div>
                   <p className="text-2xs text-gray-400 mt-1">
-                    비워두면 모든 자녀 그룹을 담당합니다. 선생님이 여러 분으로 나뉘면 그때 각자 지정하시면 됩니다.
+                    하나도 고르지 않으면 모든 자녀 그룹을 담당합니다.
                   </p>
                 </div>
               )}

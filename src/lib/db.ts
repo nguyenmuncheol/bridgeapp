@@ -45,6 +45,7 @@ interface ProfileRow {
   device_platform?: string | null
   browser_name?: string | null
   is_unregistered?: boolean | null
+  previous_role?: string | null
 }
 
 // ==========================================
@@ -80,6 +81,7 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     devicePlatform: d.device_platform || undefined,
     browserName: d.browser_name || undefined,
     isUnregistered: d.is_unregistered === true,
+    previousRole: (d.previous_role || undefined) as Role | undefined,
   }))
 }
 
@@ -258,6 +260,53 @@ export async function dbRejectUser(userId: string) {
 export async function dbReapplyUser(userId: string) {
   // signup_requested_at도 함께 새로 채워야 관리자 알림 트리거가 다시 발동합니다.
   const res = await supabase.from('profiles').update({ role: 'PENDING', signup_requested_at: new Date().toISOString() }).eq('id', userId)
+  if (!res.error) invalidateCache('profiles', { exact: true })
+  return res
+}
+
+/**
+ * 성도 탈퇴 처리 (관리자 전용) — 가입자·미가입 성도 공통.
+ *
+ * REJECTED와 같은 소프트 삭제 방식입니다: 행을 지우지 않고 role만 'LEFT'로 바꿉니다.
+ * 라브리·직분·가족·자녀 등 다른 정보는 그대로 두므로, 복구는 role만 되돌리면 됩니다.
+ * 되돌릴 값은 previous_role에 저장해 둡니다.
+ */
+export async function dbMarkMemberLeft(userId: string, currentRole: Role) {
+  const res = await supabase.from('profiles').update({ role: 'LEFT', previous_role: currentRole }).eq('id', userId)
+  if (!res.error) invalidateCache('profiles', { exact: true })
+  return res
+}
+
+/** 탈퇴 처리를 되돌립니다. previous_role이 없으면(예전 데이터) 일반 성도로 되돌립니다. */
+export async function dbRestoreMember(userId: string, previousRole: Role) {
+  const res = await supabase.from('profiles').update({ role: previousRole || 'MEMBER', previous_role: null }).eq('id', userId)
+  if (!res.error) invalidateCache('profiles', { exact: true })
+  return res
+}
+
+/**
+ * 이 성도의 출석 기록이 하나라도 있는지 (완전 삭제를 허용해도 되는지 판단하는 안전장치).
+ *
+ * 몇 년치 출석 기록이 있는 분을 실수로 완전 삭제하면 되돌릴 수 없습니다. 이름을 잘못
+ * 쳐서 만든 중복 항목처럼 기록이 전혀 없을 때만 완전 삭제 버튼을 보여주기 위해 씁니다.
+ */
+export async function dbHasAttendanceHistory(userId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('attendance_records')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  if (error) return true // 확인이 안 되면 안전하게 "기록 있음"으로 취급해 완전 삭제를 막습니다.
+  return (count || 0) > 0
+}
+
+/**
+ * 성도를 완전히 삭제합니다 (관리자 전용, 되돌릴 수 없음).
+ *
+ * dbHasAttendanceHistory로 기록이 없는 것을 확인한 뒤에만 호출해야 합니다.
+ * 이름을 잘못 입력해 만든 중복 항목 등, 남길 이력이 전혀 없는 행을 정리하는 용도입니다.
+ */
+export async function dbDeleteMemberPermanently(userId: string) {
+  const res = await supabase.from('profiles').delete().eq('id', userId)
   if (!res.error) invalidateCache('profiles', { exact: true })
   return res
 }

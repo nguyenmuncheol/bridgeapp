@@ -167,6 +167,19 @@ export function getChildGroupLabel(group?: string): string {
 /** 출석체크·통계 대상이 되는 그룹만 (출석 미적용 제외) */
 export const CHILD_ATTENDANCE_GROUPS = ['영아부', '유아·유치부', '초등부', '중고등부'] as const
 
+/**
+ * 선생님(TEACHER)이 담당하는 교회학교 그룹 — 여러 개 겸임할 수 있습니다.
+ *
+ * DB 마이그레이션 없이 콤마로 이어 붙인 문자열로 profiles.teach_group에 그대로 저장합니다
+ * ("영아부,유아·유치부"). 빈 문자열/undefined는 "미지정 = 전체 담당"을 뜻합니다(기존과 동일).
+ */
+export function parseTeachGroups(raw?: string | null): string[] {
+  return (raw || '').split(',').map(s => s.trim()).filter(Boolean)
+}
+export function serializeTeachGroups(groups: string[]): string {
+  return groups.filter(Boolean).join(',')
+}
+
 export interface FamilyChildInfo {
   id: string
   name: string

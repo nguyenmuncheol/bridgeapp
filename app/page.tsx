@@ -342,12 +342,16 @@ export default function Home() {
   const isPending = !isGuest && currentUser.role === 'PENDING' && !!currentUser.signupRequestedAt
   const isUnrequestedPending = !isGuest && currentUser.role === 'PENDING' && !currentUser.signupRequestedAt
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
+  // 관리자가 탈퇴 처리한 계정 — REJECTED와 마찬가지로 로그인은 되지만 명단/탭에는
+  // 못 들어갑니다. 복구는 관리자만 할 수 있어 본인이 누르는 버튼은 없습니다(REJECTED와
+  // 달리 "다시 신청" 버튼이 없는 이유).
+  const isLeft = !isGuest && currentUser.role === 'LEFT'
 
   // ── 안 읽은 알림 개수 확인 ──
   // 폰이 울리는 푸시가 아니라 앱 안 알림이므로, 앱을 보고 있을 때만 가볍게 확인합니다.
   // (승인 대기·거절 상태에서는 알림이 올 일이 없어 건너뜁니다)
   useEffect(() => {
-    if (isGuest || isPending || isUnrequestedPending || isRejected) return
+    if (isGuest || isPending || isUnrequestedPending || isRejected || isLeft) return
     let stopped = false
 
     const check = () => {
@@ -367,7 +371,7 @@ export default function Home() {
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [isGuest, isPending, isUnrequestedPending, isRejected, currentUserId])
+  }, [isGuest, isPending, isUnrequestedPending, isRejected, isLeft, currentUserId])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
@@ -380,6 +384,7 @@ export default function Home() {
     !isPending &&
     !isUnrequestedPending &&
     !isRejected &&
+    !isLeft &&
     !showProfileSetup &&
     !!currentUser &&
     currentUser.id !== 'guest' &&
@@ -635,7 +640,7 @@ export default function Home() {
           <>
             {/* 1. 홈 탭 (누구나 열람 가능) */}
             {currentTab === 'home' && (
-              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isUnrequestedPending || isRejected} />
+              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isUnrequestedPending || isRejected || isLeft} />
             )}
 
             {/* 2. 비회원(isGuest) 접근 차단 카드 */}
@@ -755,8 +760,26 @@ export default function Home() {
               </div>
             )}
 
+            {/* 3-2. 관리자가 탈퇴 처리한 계정 안내 (REJECTED와 달리 본인이 되돌릴 수 없습니다 —
+                관리자만 [성도 관리 > 탈퇴 처리된 성도]에서 복구합니다) */}
+            {currentTab !== 'home' && isLeft && (
+              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-gray-200 shadow-2xs mt-2 animate-fade-in">
+                <div className="w-16 h-16 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-3xl mx-auto">
+                  🚪
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="font-bold text-base text-gray-900">탈퇴 처리된 계정입니다</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    다시 교회에 나오시게 되면 교회 사무실로 연락해 주세요.<br />
+                    관리자가 확인 후 계정을 복구해 드립니다.
+                  </p>
+                </div>
+                <p className="text-2xs text-gray-400">문의: 교회 사무실</p>
+              </div>
+            )}
+
             {/* 4. 정회원 이상 승인 완료자만 접근 가능한 탭들 */}
-            {currentTab !== 'home' && !isGuest && !isPending && !isUnrequestedPending && !isRejected && (
+            {currentTab !== 'home' && !isGuest && !isPending && !isUnrequestedPending && !isRejected && !isLeft && (
               <>
                 {/* 우리소식 탭 */}
                 {currentTab === 'news' && (
