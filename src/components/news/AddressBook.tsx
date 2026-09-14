@@ -3,8 +3,11 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight, Users, Search } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
-import { buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE, FAMILY_ROLE_ORDER } from '../../lib/familyInfo'
-import { formatBirthdayMonthDayOnly, calculateAge } from '../../lib/dateUtils'
+import {
+  buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE,
+  isChildLike, sortChildrenForGroupDisplay, sortAdultsForGroupDisplay, groupCouplesInScope, sortUnitsByAge,
+} from '../../lib/familyInfo'
+import { formatBirthdayMonthDayOnly } from '../../lib/dateUtils'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 
@@ -22,58 +25,8 @@ const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => 
 // 라브리/미정 필터에서 "관리자 or 라브리리더 부부 최상단 고정" 규칙이 적용되는 필터 키 목록
 const LABRI_FILTER_KEYS = ['라브리1', '라브리2', '라브리3', '미정']
 
-// 나이 계산 실패(생일 연도 미상 등) 시 -1로 처리해 정렬 시 맨 뒤로 보냅니다.
-const ageOf = (m: UserProfile): number => {
-  const age = calculateAge(m.birthday)
-  return age === null ? -1 : age
-}
-
-/**
- * "자녀로 볼 사람"인지 판단합니다.
- * ① 계정이 없는 자녀(가상 항목)
- * ② 자녀가 커서 직접 가입한 경우 — 실제 계정이지만 가족에서의 역할이 '자녀'
- */
-function isChildLike(m: UserProfile): boolean {
-  return !!m.isDependent || m.familyRole === '자녀'
-}
-
-// 부부 묶기: 전달된 scope(현재 화면에 표시될 후보 목록) 안에 familyRole이 '부'/'모'인 두 사람이
-// 같은 familyGroupId로 모두 존재할 때만 한 쌍으로 묶습니다. 배우자가 다른 라브리라 scope에
-// 없으면 억지로 데려오지 않고 단독으로 취급합니다.
-function groupCouplesInScope(scope: UserProfile[]): { members: UserProfile[]; sortAge: number }[] {
-  const paired = new Set<string>()
-  const units: { members: UserProfile[]; sortAge: number }[] = []
-
-  scope.filter(m => !isChildLike(m)).forEach(m => {
-    if (paired.has(m.id)) return
-    const isSpouseRole = m.familyRole === '부' || m.familyRole === '모'
-    const spouse = m.familyGroupId
-      ? scope.find(o => o.id !== m.id && !paired.has(o.id) && o.familyGroupId === m.familyGroupId && (isSpouseRole ? (o.familyRole === '부' || o.familyRole === '모' || !o.familyRole) : true))
-      : undefined
-
-    if (spouse) {
-      paired.add(m.id)
-      paired.add(spouse.id)
-      const pairSorted = [m, spouse].sort((a, b) =>
-        (FAMILY_ROLE_ORDER[a.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.familyRole || ''] || 10)
-      )
-      units.push({ members: pairSorted, sortAge: Math.max(ageOf(m), ageOf(spouse)) })
-    } else {
-      paired.add(m.id)
-      units.push({ members: [m], sortAge: ageOf(m) })
-    }
-  })
-
-  return units
-}
-
-// 나이 내림차순(연장자 우선) 정렬. 나이가 같거나 알 수 없으면 이름 가나다순.
-function sortUnitsByAge(units: { members: UserProfile[]; sortAge: number }[]) {
-  return [...units].sort((a, b) => {
-    if (a.sortAge !== b.sortAge) return b.sortAge - a.sortAge
-    return (a.members[0]?.name || '').localeCompare(b.members[0]?.name || '', 'ko')
-  })
-}
+// 나이 계산·자녀 판별·부부 묶음 정렬은 familyInfo.ts의 공용 함수를 씁니다
+// (출석체크 명단도 같은 함수를 써서 두 화면의 정렬이 어긋나지 않게 합니다).
 
 interface AddressBookProps {
   addressBookEntries: UserProfile[]
@@ -101,10 +54,7 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         ? kidsEntries.filter(m => matchesKoreanSearch(m.name, q) || (m.parentName && matchesKoreanSearch(m.parentName, q)))
         : kidsEntries
 
-      return [...filteredKids].sort((a, b) => {
-        const diff = ageOf(b) - ageOf(a)
-        return diff !== 0 ? diff : a.name.localeCompare(b.name, 'ko')
-      })
+      return sortChildrenForGroupDisplay(filteredKids)
     }
 
     // ② 성인 성도 중심 목록 (전체 / 라브리1~3 / 미정): 자녀 카드는 숨기고 성인 카드만 렌더링
@@ -144,32 +94,9 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
     }
 
     // 라브리1/2/3/미정 필터: 해당 라브리 리더 부부(없으면 관리자 부부, 없으면 목사님 부부) 최상단 고정, 나머지는 나이순
+    // (출석체크 명단도 같은 함수를 씁니다 — sortAdultsForGroupDisplay in familyInfo.ts)
     if (LABRI_FILTER_KEYS.includes(addressFilter)) {
-      const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
-      const leaders = filtered.filter(m => !m.isDependent && m.role === 'LEADER')
-      const admins = filtered.filter(m => !m.isDependent && m.role === 'ADMIN')
-      const pastors = filtered.filter(isSeniorPastor)
-      const pinnedBase = leaders.length > 0 ? leaders : (admins.length > 0 ? admins : pastors)
-
-      const pinnedIds = new Set<string>()
-      const pinnedBlock: UserProfile[] = []
-      pinnedBase.forEach(lead => {
-        if (pinnedIds.has(lead.id)) return
-        const spouse = (lead.familyRole === '부' || lead.familyRole === '모') && lead.familyGroupId
-          ? filtered.find(o => o.id !== lead.id && !pinnedIds.has(o.id) && o.familyGroupId === lead.familyGroupId && (o.familyRole === '부' || o.familyRole === '모'))
-          : (lead.familyGroupId
-              ? filtered.find(o => o.id !== lead.id && !pinnedIds.has(o.id) && o.familyGroupId === lead.familyGroupId)
-              : undefined)
-        const unit = spouse
-          ? [lead, spouse].sort((a, b) => (FAMILY_ROLE_ORDER[a.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.familyRole || ''] || 10))
-          : [lead]
-        unit.forEach(u => pinnedIds.add(u.id))
-        pinnedBlock.push(...unit)
-      })
-
-      const rest = filtered.filter(m => !pinnedIds.has(m.id))
-      const restSorted = sortUnitsByAge(groupCouplesInScope(rest)).flatMap(u => u.members)
-      return [...pinnedBlock, ...restSorted]
+      return sortAdultsForGroupDisplay(filtered)
     }
 
     return filtered

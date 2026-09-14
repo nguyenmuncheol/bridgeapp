@@ -19,6 +19,7 @@
  * 데이터가 사라지지 않고 그대로 보존됩니다.
  */
 import type { UserProfile } from './mockData'
+import { calculateAge } from './dateUtils'
 
 export const FAMILY_ROLE_ORDER: Record<string, number> = {
   '조부': 1,
@@ -32,14 +33,117 @@ export const FAMILY_ROLE_ORDER: Record<string, number> = {
   '기타': 9,
 }
 
+// ────────────────────────────────────────────────────────────────
+// 주소록 정렬 기준 — 출석체크 명단도 이 기준을 그대로 씁니다(요청: "출석체크 정렬은
+// 주소록 정렬 기준과 동일하게"). 두 화면이 각자 정렬을 따로 두면 시간이 지나며
+// 조금씩 어긋나기 쉬우므로, 정렬 로직은 여기 한 곳에만 둡니다.
+// ────────────────────────────────────────────────────────────────
+
+// 나이 계산 실패(생일 연도 미상 등) 시 -1로 처리해 정렬 시 맨 뒤로 보냅니다.
+export function ageOf(m: UserProfile): number {
+  const age = calculateAge(m.birthday)
+  return age === null ? -1 : age
+}
+
+/**
+ * "자녀로 볼 사람"인지 판단합니다.
+ * ① 계정이 없는 자녀(가상 항목)
+ * ② 자녀가 커서 직접 가입한 경우 — 실제 계정이지만 가족에서의 역할이 '자녀'
+ */
+export function isChildLike(m: UserProfile): boolean {
+  return !!m.isDependent || m.familyRole === '자녀'
+}
+
+interface MemberUnit { members: UserProfile[]; sortAge: number }
+
+// 부부 묶기: 전달된 scope(현재 화면에 표시될 후보 목록) 안에 familyRole이 '부'/'모'인 두 사람이
+// 같은 familyGroupId로 모두 존재할 때만 한 쌍으로 묶습니다. 배우자가 다른 라브리라 scope에
+// 없으면 억지로 데려오지 않고 단독으로 취급합니다.
+export function groupCouplesInScope(scope: UserProfile[]): MemberUnit[] {
+  const paired = new Set<string>()
+  const units: MemberUnit[] = []
+
+  scope.filter(m => !isChildLike(m)).forEach(m => {
+    if (paired.has(m.id)) return
+    const isSpouseRole = m.familyRole === '부' || m.familyRole === '모'
+    const spouse = m.familyGroupId
+      ? scope.find(o => o.id !== m.id && !paired.has(o.id) && o.familyGroupId === m.familyGroupId && (isSpouseRole ? (o.familyRole === '부' || o.familyRole === '모' || !o.familyRole) : true))
+      : undefined
+
+    if (spouse) {
+      paired.add(m.id)
+      paired.add(spouse.id)
+      const pairSorted = [m, spouse].sort((a, b) =>
+        (FAMILY_ROLE_ORDER[a.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.familyRole || ''] || 10)
+      )
+      units.push({ members: pairSorted, sortAge: Math.max(ageOf(m), ageOf(spouse)) })
+    } else {
+      paired.add(m.id)
+      units.push({ members: [m], sortAge: ageOf(m) })
+    }
+  })
+
+  return units
+}
+
+// 나이 내림차순(연장자 우선) 정렬. 나이가 같거나 알 수 없으면 이름 가나다순.
+export function sortUnitsByAge(units: MemberUnit[]) {
+  return [...units].sort((a, b) => {
+    if (a.sortAge !== b.sortAge) return b.sortAge - a.sortAge
+    return (a.members[0]?.name || '').localeCompare(b.members[0]?.name || '', 'ko')
+  })
+}
+
+/**
+ * 성인 그룹(라브리1~3·미정 등) 한 그룹 안에서의 표시 순서.
+ * 리더 부부(없으면 관리자 부부, 없으면 목사님 부부)를 최상단에 고정하고,
+ * 나머지는 부부를 묶어 나이 내림차순(동률·미상이면 이름순)으로 정렬합니다.
+ */
+export function sortAdultsForGroupDisplay(members: UserProfile[]): UserProfile[] {
+  const isSeniorPastor = (m: UserProfile) => !m.isDependent && (m.name === '정제호' || m.duty?.includes('목사'))
+  const leaders = members.filter(m => !m.isDependent && m.role === 'LEADER')
+  const admins = members.filter(m => !m.isDependent && m.role === 'ADMIN')
+  const pastors = members.filter(isSeniorPastor)
+  const pinnedBase = leaders.length > 0 ? leaders : (admins.length > 0 ? admins : pastors)
+
+  const pinnedIds = new Set<string>()
+  const pinnedBlock: UserProfile[] = []
+  pinnedBase.forEach(lead => {
+    if (pinnedIds.has(lead.id)) return
+    const spouse = (lead.familyRole === '부' || lead.familyRole === '모') && lead.familyGroupId
+      ? members.find(o => o.id !== lead.id && !pinnedIds.has(o.id) && o.familyGroupId === lead.familyGroupId && (o.familyRole === '부' || o.familyRole === '모'))
+      : (lead.familyGroupId
+          ? members.find(o => o.id !== lead.id && !pinnedIds.has(o.id) && o.familyGroupId === lead.familyGroupId)
+          : undefined)
+    const unit = spouse
+      ? [lead, spouse].sort((a, b) => (FAMILY_ROLE_ORDER[a.familyRole || ''] || 10) - (FAMILY_ROLE_ORDER[b.familyRole || ''] || 10))
+      : [lead]
+    unit.forEach(u => pinnedIds.add(u.id))
+    pinnedBlock.push(...unit)
+  })
+
+  const rest = members.filter(m => !pinnedIds.has(m.id))
+  const restSorted = sortUnitsByAge(groupCouplesInScope(rest)).flatMap(u => u.members)
+  return [...pinnedBlock, ...restSorted]
+}
+
+/** 자녀 그룹(교회학교 부서별) 안에서의 표시 순서: 나이 내림차순, 동률·미상이면 이름순. */
+export function sortChildrenForGroupDisplay(children: UserProfile[]): UserProfile[] {
+  return [...children].sort((a, b) => {
+    const diff = ageOf(b) - ageOf(a)
+    return diff !== 0 ? diff : a.name.localeCompare(b.name, 'ko')
+  })
+}
+
 /**
  * 자녀가 속한 교회학교 그룹. **관리자만 지정합니다**(부모 화면에는 선택칸이 없습니다).
  *
  * 값에 따라 자녀가 어디에 보이는지:
  * - 미지정(빈 값): 아무 데도 안 나옵니다. 부모의 가족현황 줄과 관리자 자녀 목록에만
- *   보이며, 관리자가 그룹을 정해 주면 그때부터 표시됩니다.
- * - 출석 미적용: **생일 달력·이달의 생일에만** 나옵니다.
- *   (교회학교에 다니지 않지만 생일은 함께 챙기는 자녀)
+ *   보이며, **관리자 화면에 "그룹을 정해 주세요" 배너로 계속 뜹니다.**
+ * - 출석 미적용: 미지정과 똑같이 아무 데도 안 나오지만, 관리자 배너에서는 빠집니다.
+ *   즉 **"교회학교에 다니지 않는 것을 확인했으니 그만 알려도 된다"는 표시**입니다.
+ *   생일도 표시하지 않고, 부모에게 생일 입력을 재촉하지도 않습니다.
  * - 영아부~중고등부: 주소록 교회학교 탭 · 생일 · 출석체크 · 교회학교 인원수 모두 포함.
  *
  * 주소록은 교회학교 출석 관리용 명단이라, 교회학교에 다니지 않는 자녀는 넣지 않습니다.
@@ -175,11 +279,14 @@ export function buildAddressRequestUpdate(user: UserProfile, requested: boolean)
 /**
  * 생일이 아직 안 적힌 자녀 목록 (마이페이지 "생일 입력 알림"용).
  *
- * 교회학교 그룹이 **지정된** 자녀만 대상으로 합니다.
- * 미지정 자녀는 생일 달력에도 안 나오므로 굳이 생일을 재촉하지 않습니다.
+ * 교회학교 부서가 **실제로 지정된** 자녀만 재촉합니다.
+ * 미지정·출석 미적용 자녀는 생일 달력에 나오지 않으므로, 받아도 쓸 데가 없는
+ * 생일을 부모에게 요구하지 않습니다.
  */
 export function getMissingBirthdayChildren(user: UserProfile, allUsers: UserProfile[]): FamilyChildInfo[] {
-  return getSharedChildren(user, allUsers).filter(c => !c.birthday && !!c.labriId)
+  return getSharedChildren(user, allUsers).filter(c =>
+    !c.birthday && (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.labriId || '')
+  )
 }
 
 // 주소록 등에 보여줄 "배우자:xxx / 자녀:xxx/xxx" 형태의 요약 문자열 생성
@@ -291,18 +398,21 @@ function buildAllDependentEntries(users: UserProfile[]): UserProfile[] {
 /**
  * 화면(주소록·생일·출석)에 보여줄 자녀 목록.
  *
- * 교회학교 그룹이 없는 자녀(미지정)는 여기서 빠집니다. 그룹은 관리자가 정해 주며,
- * 정해지기 전까지 자녀는 부모의 가족현황 줄과 관리자 자녀 목록에만 보입니다.
+ * **교회학교 부서가 실제로 지정된 자녀만** 남습니다. 미지정(빈 값)과 출석 미적용은
+ * 둘 다 빠지며, 그 자녀들은 부모의 가족현황 줄과 관리자 자녀 목록에만 보입니다.
  */
 export function buildDependentEntries(users: UserProfile[]): UserProfile[] {
-  return buildAllDependentEntries(users).filter(c => !!(c.childLabriId || '').trim())
+  return buildAllDependentEntries(users).filter(c =>
+    (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.childLabriId || '')
+  )
 }
 
 /**
- * 관리자가 아직 교회학교 그룹을 정해 주지 않은 자녀들.
+ * 관리자가 아직 교회학교 그룹을 정해 주지 않은 자녀들 (관리자 화면 배너용).
  *
  * 부모가 자녀를 등록해도 그룹이 없으면 어느 명단에도 나오지 않으므로,
- * 관리자 화면에서 이 목록을 알려 주어 빠뜨리지 않게 합니다.
+ * 관리자에게 알려 주어 빠뜨리지 않게 합니다.
+ * "출석 미적용"은 관리자가 이미 확인한 것이므로 여기서 제외합니다.
  */
 export function getUnassignedChildren(users: UserProfile[]): UserProfile[] {
   return buildAllDependentEntries(users).filter(c => !(c.childLabriId || '').trim())

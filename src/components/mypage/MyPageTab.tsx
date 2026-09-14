@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
-import { FamilyChildInfo, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
+import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayDisplay } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -730,9 +730,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     <p className="text-2xs text-gray-300">등록된 자녀가 없습니다.</p>
                   )}
                   {editChildren.map(child => {
-                    // 교회학교 그룹이 지정된 자녀만 생일을 챙깁니다.
-                    // (미지정 자녀는 생일을 비워두셔도 되고, 생일 달력에도 안 나옵니다)
-                    const needsBirthday = !!child.labriId && !child.birthday
+                    // 교회학교 부서가 지정된 자녀만 생일을 챙깁니다.
+                    // (미지정·출석 미적용 자녀는 생일 달력에 안 나오므로 비워두셔도 됩니다)
+                    const needsBirthday = !child.birthday
+                      && (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(child.labriId || '')
                     const birthParts = childBirthParts[child.id] || { year: '', month: '', day: '' }
                     const childDays = Array.from(
                       { length: daysInMonth(birthParts.year ? Number(birthParts.year) : null, birthParts.month ? Number(birthParts.month) : 1) },

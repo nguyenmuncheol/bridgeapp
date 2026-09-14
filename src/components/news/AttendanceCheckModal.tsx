@@ -7,7 +7,7 @@ import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
 } from '../../lib/db'
-import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
+import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
@@ -128,11 +128,15 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   )
 
   // 지금 화면에 보여줄 대상 (어른 성도 또는 자녀)
+  // 정렬은 주소록과 동일한 기준(리더/관리자/목사님 부부 최상단 고정 + 나이 내림차순,
+  // 자녀는 나이 내림차순)을 씁니다 — familyInfo.ts의 공용 함수라 두 화면이 어긋나지 않습니다.
   const targetMembers = useMemo(() => {
     if (!selectedGroup) return []
-    if (childMode) return childEntries.filter(c => c.childLabriId === selectedGroup)
-    if (selectedGroup === '미정') return members.filter(u => !u.labriId || u.labriId === '미정')
-    return members.filter(u => u.labriId === selectedGroup)
+    if (childMode) return sortChildrenForGroupDisplay(childEntries.filter(c => c.childLabriId === selectedGroup))
+    const group = selectedGroup === '미정'
+      ? members.filter(u => !u.labriId || u.labriId === '미정')
+      : members.filter(u => u.labriId === selectedGroup)
+    return sortAdultsForGroupDisplay(group)
   }, [selectedGroup, childMode, childEntries, members])
 
   // ── DB에서 출석 기록 로드 ──
