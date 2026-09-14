@@ -111,14 +111,17 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
     )
     const totalChurchSchoolKids = kids.length
 
-    const deptCounts = {
-      msHs: kids.filter(m => getDepartmentRank(m.childLabriId) === 0).length, // 중고등부
-      elem: kids.filter(m => getDepartmentRank(m.childLabriId) === 1).length, // 초등부
-      kinder: kids.filter(m => getDepartmentRank(m.childLabriId) === 2).length, // 유아·유치부
-      infant: kids.filter(m => getDepartmentRank(m.childLabriId) === 3).length, // 영아부
-    }
+    const deptList = [
+      { name: '중고등부', count: kids.filter(m => getDepartmentRank(m.childLabriId) === 0).length },
+      { name: '초등부', count: kids.filter(m => getDepartmentRank(m.childLabriId) === 1).length },
+      { name: '유아·유치부', count: kids.filter(m => getDepartmentRank(m.childLabriId) === 2).length },
+      { name: '영아부', count: kids.filter(m => getDepartmentRank(m.childLabriId) === 3).length },
+    ]
 
-    const churchSchoolBreakdown = `중고등부 ${deptCounts.msHs}명, 초등부 ${deptCounts.elem}명, 유아·유치부 ${deptCounts.kinder}명, 영아부 ${deptCounts.infant}명`
+    const churchSchoolBreakdown = deptList
+      .filter(d => d.count > 0)
+      .map(d => `${d.name} ${d.count}명`)
+      .join(', ')
 
     return {
       adults: totalAdults,
@@ -131,13 +134,16 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
   // 교회학교 탭 검색 시 필터링된 결과의 부서별 인원 계산용
   const displayedChurchSchoolBreakdown = useMemo(() => {
     if (addressFilter !== '교회학교') return ''
-    const deptCounts = {
-      msHs: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 0).length,
-      elem: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 1).length,
-      kinder: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 2).length,
-      infant: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 3).length,
-    }
-    return `중고등부 ${deptCounts.msHs}명, 초등부 ${deptCounts.elem}명, 유아·유치부 ${deptCounts.kinder}명, 영아부 ${deptCounts.infant}명`
+    const deptList = [
+      { name: '중고등부', count: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 0).length },
+      { name: '초등부', count: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 1).length },
+      { name: '유아·유치부', count: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 2).length },
+      { name: '영아부', count: displayedMembers.filter(m => getDepartmentRank(m.childLabriId) === 3).length },
+    ]
+    return deptList
+      .filter(d => d.count > 0)
+      .map(d => `${d.name} ${d.count}명`)
+      .join(', ')
   }, [addressFilter, displayedMembers])
 
   return (
@@ -183,12 +189,16 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
         {(() => {
           if (searchQuery.trim()) {
             if (addressFilter === '교회학교') {
-              return `검색 결과 총 ${displayedMembers.length}명 (${displayedChurchSchoolBreakdown})`
+              return displayedChurchSchoolBreakdown
+                ? `검색 결과 총 ${displayedMembers.length}명 (${displayedChurchSchoolBreakdown})`
+                : `검색 결과 총 ${displayedMembers.length}명`
             }
             return `검색 결과 총 ${displayedMembers.length}명`
           }
           if (addressFilter === '교회학교') {
-            return `교회학교 총 ${displayedMembers.length}명 (${countingStats.churchSchoolBreakdown})`
+            return countingStats.churchSchoolBreakdown
+              ? `교회학교 총 ${displayedMembers.length}명 (${countingStats.churchSchoolBreakdown})`
+              : `교회학교 총 ${displayedMembers.length}명`
           }
           if (addressFilter === '전체') {
             return `전체 총 ${countingStats.total}명 (성인 ${countingStats.adults}명 + 교회학교 ${countingStats.churchSchool}명)`
