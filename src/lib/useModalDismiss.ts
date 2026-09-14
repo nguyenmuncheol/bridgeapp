@@ -7,6 +7,13 @@ import { useEffect, useRef } from 'react'
  *
  * 🐛 과거 불편: 팝업이 떠 있을 때 뒤로가기를 누르면 팝업은 그대로 있고 페이지(탭)가
  * 바뀌어버렸습니다. 안드로이드 사용자는 뒤로가기를 습관적으로 눌러서 자주 겪는 문제였습니다.
+ *
+ * 🐛 과거 버그: 내용이 길어 팝업 안에서 스크롤이 필요한 화면(행사사진 상세, 공지 등)은
+ * 배경 페이지의 스크롤이 잠겨 있지 않았습니다. 팝업 안을 위/아래로 밀다가 팝업의 스크롤이
+ * 끝(맨 위/맨 아래)에 닿으면, 그 드래그가 그대로 배경 페이지로 새어나가 뒤에서 페이지가
+ * 같이 스크롤되거나(출석체크 모달에서 먼저 발견된 것과 같은 문제) 당겨서 새로고침이
+ * 걸렸습니다. → useWriteModalGuard(글쓰기 모달)에는 이미 있던 잠금을, 훨씬 많은 화면이
+ * 쓰는 이 훅에도 걸어서 한 곳만 고치면 모든 팝업에 적용되게 합니다.
  */
 export function useModalDismiss(isOpen: boolean, onClose: () => void) {
   const closedByBackRef = useRef(false)
@@ -28,6 +35,21 @@ export function useModalDismiss(isOpen: boolean, onClose: () => void) {
       if (!closedByBackRef.current) history.back()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const prevBodyOverflow = document.body.style.overflow
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
+    const prevDocOverscroll = document.documentElement.style.overscrollBehaviorY
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehaviorY = 'none'
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll
+      document.documentElement.style.overscrollBehaviorY = prevDocOverscroll
+    }
   }, [isOpen])
 }
 

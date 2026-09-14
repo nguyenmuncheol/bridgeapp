@@ -94,6 +94,23 @@ export default function NotificationPanel({
   const [isLoading, setIsLoading] = useState(items.length === 0)
   const [error, setError] = useState('')
 
+  // 이 패널은 부모가 조건부로만 mount하므로(showNotifications && <NotificationPanel/>),
+  // mount ~ unmount 구간 동안 배경 스크롤을 잠급니다. 알림이 많아 목록이 내부 스크롤될 때
+  // 끝까지 당기면 그 드래그가 배경 페이지로 새어나가던 문제를 막습니다(다른 팝업들과 동일한 조치).
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
+    const prevDocOverscroll = document.documentElement.style.overscrollBehaviorY
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehaviorY = 'none'
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll
+      document.documentElement.style.overscrollBehaviorY = prevDocOverscroll
+    }
+  }, [])
+
   // 열 때마다 최신 알림을 다시 받아옵니다.
   useEffect(() => {
     let cancelled = false

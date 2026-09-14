@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface ProfileSetupModalProps {
   initialName: string
@@ -36,6 +36,23 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   // 🔒 이 팝업은 실수로 닫히면 승인 신청 절차를 다시 밟아야 해서, 배경 클릭·뒤로가기로는
   // 닫히지 않게 하고 팝업 안의 X 버튼과 하단 취소 버튼으로만 닫히도록 합니다.
   // (다른 팝업들이 공용으로 쓰는 useModalDismiss/backdropClose를 여기서만 의도적으로 빼둔 것입니다)
+  //
+  // 단, 배경 스크롤 잠금은 useModalDismiss를 안 써도 필요합니다 — 폼이 길어 안에서
+  // 스크롤하다 끝에 닿으면 그 드래그가 배경 페이지로 새어나가던 문제는 이 팝업도 같습니다.
+  // 이 컴포넌트는 부모가 조건부로만 mount하므로 mount~unmount 구간에 잠급니다.
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
+    const prevDocOverscroll = document.documentElement.style.overscrollBehaviorY
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehaviorY = 'none'
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll
+      document.documentElement.style.overscrollBehaviorY = prevDocOverscroll
+    }
+  }, [])
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">

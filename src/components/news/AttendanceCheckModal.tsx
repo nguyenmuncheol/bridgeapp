@@ -7,7 +7,7 @@ import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
 } from '../../lib/db'
-import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay } from '../../lib/familyInfo'
+import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 
@@ -32,24 +32,10 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   const canCheck = canEditChildAttendance(currentUser.role)
 
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
+  // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss가 공통으로 처리합니다
+  // (예전에는 여기만 따로 잠갔는데, 같은 문제가 다른 팝업에도 있어 훅으로 옮겼습니다).
   useModalDismiss(showAttendanceModal, () => setShowAttendanceModal(false))
   const [checkSubmitted, setCheckSubmitted] = useState(false)
-
-  // 🐛 모바일 스크롤 및 풀-투-리프레시 잠금 (ImageViewerModal 등과 동일한 관례)
-  // 명단이 길어 모달 안에서 스크롤이 꼭 필요한데, 이 잠금이 없으면 배경 페이지가
-  // scrollY=0인 상태에서 모달 안을 아래로 드래그할 때마다 usePullToRefresh가 이를
-  // "당겨서 새로고침" 동작으로 가로채 스크롤이 안 되고 화면이 새로고침됐습니다.
-  useEffect(() => {
-    if (!showAttendanceModal) return
-    const prevBodyOverflow = document.body.style.overflow
-    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
-    document.body.style.overflow = 'hidden'
-    document.body.style.overscrollBehaviorY = 'none'
-    return () => {
-      document.body.style.overflow = prevBodyOverflow
-      document.body.style.overscrollBehaviorY = prevBodyOverscroll
-    }
-  }, [showAttendanceModal])
 
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
@@ -72,9 +58,10 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     const activeChildGroups = CHILD_ATTENDANCE_GROUPS.filter(g => childEntries.some(c => c.childLabriId === g))
 
     if (isTeacher) {
-      // 담당 그룹을 지정하지 않은 선생님 = 모든 자녀 그룹 담당
-      const mine = (currentUser.teachGroup || '').trim()
-      return mine ? activeChildGroups.filter(g => g === mine) : [...activeChildGroups]
+      // 담당 그룹을 하나도 지정하지 않은 선생님 = 모든 자녀 그룹 담당.
+      // 여러 부서를 겸임할 수 있어 teachGroup은 "영아부,중고등부"처럼 콤마로 이어 붙어 저장됩니다.
+      const mine = parseTeachGroups(currentUser.teachGroup)
+      return mine.length > 0 ? activeChildGroups.filter(g => mine.includes(g)) : [...activeChildGroups]
     }
     if (isAdmin) return [...ADULT_GROUPS, ...activeChildGroups]
     if (isLeader) return [currentUser.labriId || '미정']
