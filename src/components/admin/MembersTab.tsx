@@ -422,7 +422,8 @@ export default function MembersTab({
         address: finalSelfAddress,
         birthday: editMemberData.birthday,
         role: editMemberData.role,
-        teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
+        // TEACHER/ADMIN/LEADER는 담당 부서를 저장하고, 그 외 등급으로 바뀌면 의미가 없으니 비웁니다.
+        teachGroup: ['TEACHER', 'ADMIN', 'LEADER'].includes(editMemberData.role) ? editMemberData.teachGroup : '',
         duty: editMemberData.duty,
         labriId: editMemberData.labriId || undefined,
         familyGroupId: resolvedFid,
@@ -510,7 +511,8 @@ export default function MembersTab({
             address: finalSelfAddress,
             birthday: editMemberData.birthday,
             role: editMemberData.role,
-            teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
+            // TEACHER/ADMIN/LEADER는 담당 부서를 저장하고, 그 외 등급으로 바뀌면 의미가 없으니 비웁니다.
+        teachGroup: ['TEACHER', 'ADMIN', 'LEADER'].includes(editMemberData.role) ? editMemberData.teachGroup : '',
             duty: editMemberData.duty,
             labriId: editMemberData.labriId || undefined,
             familyGroupId: resolvedFid || undefined,
@@ -531,7 +533,8 @@ export default function MembersTab({
         address: editMemberData.address,
         birthday: editMemberData.birthday,
         role: editMemberData.role,
-        teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
+        // TEACHER/ADMIN/LEADER는 담당 부서를 저장하고, 그 외 등급으로 바뀌면 의미가 없으니 비웁니다.
+        teachGroup: ['TEACHER', 'ADMIN', 'LEADER'].includes(editMemberData.role) ? editMemberData.teachGroup : '',
         duty: editMemberData.duty,
         labriId: editMemberData.labriId || undefined,
         familyGroupId: '',
@@ -552,7 +555,8 @@ export default function MembersTab({
             address: editMemberData.address,
             birthday: editMemberData.birthday,
             role: editMemberData.role,
-            teachGroup: editMemberData.role === 'TEACHER' ? editMemberData.teachGroup : '',
+            // TEACHER/ADMIN/LEADER는 담당 부서를 저장하고, 그 외 등급으로 바뀌면 의미가 없으니 비웁니다.
+        teachGroup: ['TEACHER', 'ADMIN', 'LEADER'].includes(editMemberData.role) ? editMemberData.teachGroup : '',
             duty: editMemberData.duty,
             labriId: editMemberData.labriId || undefined,
             familyGroupId: undefined,
@@ -960,8 +964,15 @@ export default function MembersTab({
                 </select>
               </div>
 
-              {/* 담당 자녀 그룹 — 선생님에게만 보입니다. 여러 부서를 겸임할 수 있어 체크박스로 고릅니다. */}
-              {editMemberData.role === 'TEACHER' && (
+              {/*
+                담당 자녀 그룹 — 교회학교 출석을 만질 수 있는 역할(선생님·리더·관리자) 모두에게 보입니다.
+                🐛 과거 문제: 선생님(TEACHER)에게만 이 칸을 보여줬습니다. 그래서 목사님처럼
+                관리자 등급으로 특정 부서(중고등부 등)를 직접 담당하시는 분은 자신의 부서를
+                지정할 방법이 없었고, "부서 미지정 알림"은 부서 미지정 선생님들에게 뭉뚱그려
+                가서, 정작 담당자는 알림을 못 받고 무관한 선생님이 받는 일이 있었습니다.
+                → 아래에서 선택한 부서만 정확히 그 사람에게 보내도록 서버 함수도 함께 고쳤습니다.
+              */}
+              {(editMemberData.role === 'TEACHER' || editMemberData.role === 'ADMIN' || editMemberData.role === 'LEADER') && (
                 <div>
                   <label className="text-2xs text-gray-400 font-semibold">담당 자녀 그룹 (복수 선택 가능)</label>
                   <div className="mt-1 grid grid-cols-2 gap-1.5">
@@ -988,7 +999,9 @@ export default function MembersTab({
                     })}
                   </div>
                   <p className="text-2xs text-gray-400 mt-1">
-                    하나도 고르지 않으면 모든 자녀 그룹을 담당합니다.
+                    {editMemberData.role === 'TEACHER'
+                      ? '하나도 고르지 않으면 모든 자녀 그룹을 담당하는 것으로 보고, 미완료 부서가 있을 때마다 전체 요약 알림을 받습니다.'
+                      : '고른 부서의 출석체크 미완료 알림만 이 분께 갑니다. 출석체크 자체는 부서 선택과 무관하게 모든 부서를 할 수 있습니다.'}
                   </p>
                 </div>
               )}
