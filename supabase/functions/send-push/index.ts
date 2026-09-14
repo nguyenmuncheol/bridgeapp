@@ -53,12 +53,7 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
-  const { data: jobs, error: jobsError } = await supabase
-    .from('push_jobs')
-    .select('id, notification_id, user_id, payload, notifications(id, user_id, type, title, body, actor_name)')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-    .limit(50)
+  const { data: jobs, error: jobsError } = await supabase.rpc('claim_push_jobs', { p_limit: 50 })
 
   if (jobsError) {
     return Response.json({ error: jobsError.message }, { status: 500 })
@@ -71,12 +66,11 @@ Deno.serve(async (req) => {
   let failed = 0
 
   for (const job of jobs) {
-    const notif = Array.isArray(job.notifications) ? job.notifications[0] : job.notifications
     // 알림 1건짜리 발송이면 그 알림에서, 요약(digest) 발송이면 push_jobs에 직접 담긴 값에서 가져옵니다.
-    const targetUserId = notif?.user_id ?? job.user_id
+    const targetUserId = job.notif_user_id ?? job.user_id
     // tag: 같은 알림이 혹시라도 두 번 전달돼도 기기에서 하나로 합쳐지도록 알림/작업마다 고유값을 줍니다.
-    const payloadSource = notif
-      ? { title: notif.title || CHURCH_NAME, body: notif.body || '', url: urlFor(notif.type), tag: job.notification_id }
+    const payloadSource = job.notif_id
+      ? { title: job.notif_title || CHURCH_NAME, body: job.notif_body || '', url: urlFor(job.notif_type || ''), tag: job.notification_id }
       : job.payload
         ? { title: job.payload.title || CHURCH_NAME, body: job.payload.body || '', url: job.payload.url || '/', tag: job.id }
         : null
@@ -87,8 +81,9 @@ Deno.serve(async (req) => {
       continue
     }
 
-    // 조용한 시간대엔 가입 승인 요청 외에는 미뤄둡니다 (pending으로 남겨 다음 실행 때 다시 시도).
-    if (quietHoursNow && notif?.type !== 'SIGNUP_REQUEST') {
+    // 조용한 시간대엔 가입 승인 요청 외에는 미뤄둡니다 (pending으로 되돌려 다음 실행 때 다시 시도).
+    if (quietHoursNow && job.notif_type !== 'SIGNUP_REQUEST') {
+      await supabase.from('push_jobs').update({ status: 'pending' }).eq('id', job.id)
       continue
     }
 
