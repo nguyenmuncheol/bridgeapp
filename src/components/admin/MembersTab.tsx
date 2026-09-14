@@ -182,7 +182,7 @@ export default function MembersTab({
       return false
     }
     const accessNote = keepAppAccess
-      ? '\n\n나눔·교우소식·일정은 계속 이용하실 수 있고, 주소록·생일·성도수·출석·식사신청 참여에서는 빠집니다.'
+      ? '\n\n탈퇴 처리 후에도 홈페이지 접근은 허용되며(나눔·교우소식·일정), 주소록·생일·성도수·출석·식사신청 참여에서는 빠집니다.'
       : '\n\n로그인해도 앱을 쓸 수 없게 됩니다.'
     if (!confirm(`${member.name}님을 탈퇴 처리할까요?${accessNote}\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return false
     setLeavingId(member.id)
