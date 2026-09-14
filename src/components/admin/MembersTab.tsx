@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Search, Edit2, Save, X, Camera } from 'lucide-react'
+import { Search, Edit2, Save, X, Camera, UserPlus } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
-import { dbMergeCouponsIntoFamily, dbUpdateProfile } from '../../lib/db'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
+import { dbMergeCouponsIntoFamily, dbUpdateProfile, dbCreateUnregisteredMember, dbClaimUnregisteredMember } from '../../lib/db'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -42,6 +42,143 @@ export default function MembersTab({
   const [editChildren, setEditChildren] = useState<FamilyChildInfo[]>([])
   // 부부의 주소가 서로 다를 때 어느 쪽으로 맞출지 — 고르기 전에는 양쪽을 그대로 둡니다.
   const [addressSyncChoice, setAddressSyncChoice] = useState<'keep' | 'self' | 'spouse'>('keep')
+
+  // ── 미가입 성도 (앱을 쓰지 않는 분을 명단에만 올리기) ──
+  const [showAddUnregistered, setShowAddUnregistered] = useState(false)
+  useModalDismiss(showAddUnregistered, () => setShowAddUnregistered(false))
+  // familyMemberId: 가족으로 묶을 상대 성도의 id입니다.
+  // (가족 선택 목록의 값은 가족 번호가 아니라 그 가정의 대표 성도 id입니다)
+  const [newMember, setNewMember] = useState({
+    name: '', phone: '', birthday: '', duty: '성도',
+    labriId: '', familyMemberId: '', familyRole: '',
+  })
+  const [isSavingNewMember, setIsSavingNewMember] = useState(false)
+
+  const openAddUnregistered = () => {
+    setNewMember({ name: '', phone: '', birthday: '', duty: '성도', labriId: '', familyMemberId: '', familyRole: '' })
+    setShowAddUnregistered(true)
+  }
+
+  const handleCreateUnregistered = async () => {
+    if (isSavingNewMember) return
+    const name = newMember.name.trim()
+    if (!name) {
+      showToast('⚠️ 이름을 입력해 주세요.')
+      return
+    }
+    setIsSavingNewMember(true)
+    // 가족으로 묶으려면 상대에게 가족 번호가 있어야 합니다. 아직 단독이면 여기서 만들어
+    // 양쪽에 붙입니다(그래야 식수 쿠폰 가정 이름이 두 분 이름으로 나옵니다).
+    let familyGroupId = ''
+    const familyTarget = newMember.familyMemberId
+      ? allUsers.find(u => u.id === newMember.familyMemberId)
+      : undefined
+    if (familyTarget) {
+      if (familyTarget.familyGroupId) {
+        familyGroupId = familyTarget.familyGroupId
+      } else {
+        const fresh = `fam_${Date.now().toString(36)}`
+        const { error } = await dbUpdateProfile(familyTarget.id, { familyGroupId: fresh })
+        if (error) {
+          setIsSavingNewMember(false)
+          showToast(`⚠️ 가족 연결에 실패했습니다: ${error.message || ''}`)
+          return
+        }
+        onUpdateUsers?.(prev => prev.map(u => u.id === familyTarget.id ? { ...u, familyGroupId: fresh } : u))
+        familyGroupId = fresh
+      }
+    }
+
+    const { data, error } = await dbCreateUnregisteredMember({
+      name,
+      phone: newMember.phone,
+      birthday: newMember.birthday,
+      duty: newMember.duty,
+      labriId: newMember.labriId,
+      familyGroupId,
+      familyRole: newMember.familyRole,
+    })
+    setIsSavingNewMember(false)
+    if (error || !data) {
+      showToast(`⚠️ 추가하지 못했습니다: ${error?.message || ''}`)
+      return
+    }
+    onUpdateUsers?.(prev => [...prev, {
+      id: (data as { id: string }).id,
+      name,
+      email: '',
+      phone: newMember.phone.trim(),
+      address: '',
+      role: 'MEMBER' as Role,
+      duty: newMember.duty || '성도',
+      labriId: newMember.labriId || undefined,
+      familyGroupId: familyGroupId || undefined,
+      familyRole: newMember.familyRole || undefined,
+      birthday: newMember.birthday || undefined,
+      createdAt: todayLocalDateStr(),
+      isUnregistered: true,
+    }])
+    setShowAddUnregistered(false)
+    showToast(`✅ ${name}님을 명단에 추가했습니다.`)
+  }
+
+  // ── 미가입 성도를 실제 가입 계정과 연결 ──
+  const [claimTarget, setClaimTarget] = useState<UserProfile | null>(null)
+  useModalDismiss(!!claimTarget, () => setClaimTarget(null))
+  const [claimAccountId, setClaimAccountId] = useState('')
+  const [isClaiming, setIsClaiming] = useState(false)
+
+  const openClaimModal = (member: UserProfile) => {
+    setClaimTarget(member)
+    setClaimAccountId('')
+  }
+
+  const handleClaim = async () => {
+    if (!claimTarget || isClaiming) return
+    const account = allUsers.find(u => u.id === claimAccountId)
+    if (!account) {
+      showToast('⚠️ 연결할 계정을 골라 주세요.')
+      return
+    }
+    if (!confirm(
+      `명단의 "${claimTarget.name}" 을(를) 가입 계정 "${account.name}"(${account.email || '이메일 없음'}) 에 연결합니다.\n\n` +
+      `${claimTarget.name}님의 출석·식수 기록이 그 계정으로 넘어가고, 방금 가입하며 만들어진 빈 프로필은 지워집니다.\n` +
+      `되돌리기 어려우니 같은 분이 맞는지 확인해 주세요.\n\n계속할까요?`
+    )) return
+
+    setIsClaiming(true)
+    const { error } = await dbClaimUnregisteredMember(claimTarget.id, account.id)
+    setIsClaiming(false)
+    if (error) {
+      showToast(`⚠️ 연결하지 못했습니다: ${error.message || ''}`)
+      return
+    }
+    // 명단 행이 가입 계정 번호로 바뀌었고 빈 행은 사라졌습니다. 화면도 같은 모양으로 맞춥니다.
+    onUpdateUsers?.(prev => prev
+      .filter(u => u.id !== account.id)
+      .map(u => u.id === claimTarget.id
+        ? { ...u, id: account.id, email: u.email || account.email, avatarUrl: u.avatarUrl || account.avatarUrl, isUnregistered: false }
+        : u))
+    setClaimTarget(null)
+    showToast(`✅ ${claimTarget.name}님을 가입 계정과 연결했습니다.`)
+  }
+
+  /**
+   * 이름이 같은 "미가입 명단"과 "가입 계정"이 함께 있는 경우.
+   *
+   * 관리자가 연결을 깜빡하면 같은 분이 명단에 둘로 남아 출석 명단에도 두 번 뜹니다.
+   * 승인할 때마다 묻지는 않고, 여기서 조용히 알려만 줍니다.
+   */
+  const claimSuggestions = useMemo(() => {
+    const registered = allUsers.filter(u => !u.isUnregistered && isApprovedMember(u.role))
+    return allUsers
+      .filter(u => u.isUnregistered)
+      .map(placeholder => ({
+        placeholder,
+        match: registered.find(r => r.name.trim() === placeholder.name.trim()),
+      }))
+      .filter((x): x is { placeholder: UserProfile; match: UserProfile } => !!x.match)
+  }, [allUsers])
 
   // ── 자녀 프로필 사진 (관리자가 대신 올려줄 수 있게) ──
   // 자녀는 자기 계정이 없어서 본인이 올릴 수 없으므로, 관리자도 편집 모달에서 올려줄 수 있습니다.
@@ -505,19 +642,56 @@ export default function MembersTab({
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        {/* 같은 이름의 미가입 명단과 가입 계정이 함께 있으면 조용히 알려줍니다.
+            연결을 깜빡하면 같은 분이 출석 명단에 두 번 뜹니다. */}
+        {claimSuggestions.length > 0 && !isLeader && (
+          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 space-y-1.5">
+            <p className="text-2xs font-bold text-sky-900">
+              🔗 같은 이름으로 가입한 분이 있습니다 ({claimSuggestions.length}명)
+            </p>
+            <p className="text-2xs text-sky-700 leading-snug">
+              명단에 있는 미가입 성도와 이름이 같은 계정이 있습니다. 같은 분이면 연결해 주세요.
+              연결하면 출석·식수 기록이 그대로 넘어갑니다. 동명이인이면 그냥 두시면 됩니다.
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {claimSuggestions.map(({ placeholder }) => (
+                <button
+                  key={placeholder.id}
+                  type="button"
+                  onClick={() => openClaimModal(placeholder)}
+                  className="px-2 py-1 bg-white border border-sky-200 rounded-lg text-2xs font-bold text-sky-900 hover:bg-sky-100 transition-colors"
+                >
+                  {placeholder.name} 연결하기
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2">
           <p className="text-2xs text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
-          {/* 성도 정보 CSV — 출석 CSV와 같은 모양의 작은 버튼. 개인정보라 목사님만 보입니다. */}
-          {currentUser?.role === 'ADMIN' && (
-            <button
-              onClick={handleDownloadMembersCSV}
-              title="성도 명단 CSV 다운로드"
-              aria-label="성도 명단 CSV 다운로드"
-              className="w-8 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
-            >
-              📥
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 앱을 쓰지 않는 분을 명단에 직접 추가합니다 (출석체크·식수 가정에 포함) */}
+            {!isLeader && (
+              <button
+                onClick={openAddUnregistered}
+                className="px-2.5 h-8 bg-[#335f87] hover:bg-[#2b5072] text-white rounded-lg text-2xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 transition-all"
+              >
+                <UserPlus size={13} /> 미가입 성도
+              </button>
+            )}
+            {/* 성도 정보 CSV — 출석 CSV와 같은 모양의 작은 버튼. 개인정보라 목사님만 보입니다. */}
+            {currentUser?.role === 'ADMIN' && (
+              <button
+                onClick={handleDownloadMembersCSV}
+                title="성도 명단 CSV 다운로드"
+                aria-label="성도 명단 CSV 다운로드"
+                className="w-8 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
+              >
+                📥
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 성도 리스트 (장기결석자 우선 정렬 + 부부는 한 쌍으로 묶어서 표시) */}
@@ -541,6 +715,9 @@ export default function MembersTab({
                     member.role === 'TEACHER' ? 'bg-emerald-100 text-emerald-700' :
                     'bg-gray-100 text-gray-600'
                   }`}>{member.role}</span>
+                  {member.isUnregistered && (
+                    <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">미가입</span>
+                  )}
                   {!isLeader && (
                     <button onClick={() => handleStartEditMember(member)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
                       <Edit2 size={13} />
@@ -562,6 +739,19 @@ export default function MembersTab({
                   <span className="row-start-3 col-start-2">📝 {parseFamilyInfo(member.familyInfo).note}</span>
                 )}
               </div>
+
+              {/* 이 분이 앱에 가입하셨다면, 관리자가 그 계정과 이어 붙입니다.
+                  출석·식수 기록이 새 계정으로 그대로 넘어갑니다. */}
+              {member.isUnregistered && !isLeader && (
+                <div className="pl-14">
+                  <button
+                    onClick={() => openClaimModal(member)}
+                    className="text-2xs font-bold text-[#335f87] bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                  >
+                    가입 계정과 연결하기 ›
+                  </button>
+                </div>
+              )}
             </div>
           ))
 
@@ -635,7 +825,9 @@ export default function MembersTab({
                   <option value="라브리1">라브리1</option>
                   <option value="라브리2">라브리2</option>
                   <option value="라브리3">라브리3</option>
-
+                  {/* 출석을 따로 챙기지 않는 분(주로 미가입 배우자)을 출석체크 명단에서 뺍니다.
+                      출석 그룹은 라브리1~3·미정뿐이라 이 값이면 어느 명단에도 뜨지 않습니다. */}
+                  <option value={NO_ATTENDANCE}>출석 미적용 (출석체크 명단에서 제외)</option>
                 </select>
               </div>
 
@@ -833,6 +1025,197 @@ export default function MembersTab({
                 <button onClick={() => setEditingMember(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
                 <button onClick={handleSaveMemberEdit} className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1">
                   <Save size={13} /> 저장
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 미가입 성도 추가 모달 ── */}
+      {showAddUnregistered && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowAddUnregistered(false))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#335f87] text-white px-5 py-4">
+              <h3 className="font-black text-sm">미가입 성도 추가</h3>
+              <p className="text-2xs text-blue-200 mt-0.5">앱을 쓰지 않는 분을 명단에만 올립니다</p>
+            </div>
+
+            <div className="p-5 space-y-3 text-xs">
+              <p className="text-2xs text-gray-500 bg-gray-50 rounded-xl p-2.5 leading-relaxed">
+                출석체크 명단과 식수 쿠폰의 가정 이름에 들어갑니다.
+                <strong className="text-gray-700"> 주소록과 생일 달력에는 나오지 않습니다.</strong>
+                <br />
+                나중에 본인이 앱에 가입하면 이 명단과 연결해 출석 기록을 그대로 이어줄 수 있습니다.
+              </p>
+
+              <div>
+                <label className="text-2xs text-gray-400 font-semibold">이름 <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  value={newMember.name}
+                  onChange={e => setNewMember(p => ({ ...p, name: e.target.value }))}
+                  placeholder="예: 홍길순"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-2xs text-gray-400 font-semibold">직분</label>
+                  <select
+                    value={newMember.duty}
+                    onChange={e => setNewMember(p => ({ ...p, duty: e.target.value }))}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                  >
+                    {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-2xs text-gray-400 font-semibold">연락처</label>
+                  <input
+                    type="tel"
+                    value={newMember.phone}
+                    onChange={e => setNewMember(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="선택"
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-2xs text-gray-400 font-semibold">출석 그룹</label>
+                <select
+                  value={newMember.labriId}
+                  onChange={e => setNewMember(p => ({ ...p, labriId: e.target.value }))}
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                >
+                  <option value="">라브리 미정 (출석체크 "미정" 명단에 표시)</option>
+                  <option value="라브리1">라브리1</option>
+                  <option value="라브리2">라브리2</option>
+                  <option value="라브리3">라브리3</option>
+                  <option value={NO_ATTENDANCE}>출석 미적용 (출석체크 명단에서 제외)</option>
+                </select>
+                <p className="text-2xs text-gray-400 mt-1">
+                  실제로 예배에 나오시는 분은 라브리를, 배우자로만 표기하면 되는 분은 &apos;출석 미적용&apos;을 고르세요.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-2xs text-gray-400 font-semibold">가족 연결</label>
+                  <select
+                    value={newMember.familyMemberId}
+                    onChange={e => setNewMember(p => ({ ...p, familyMemberId: e.target.value }))}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                  >
+                    <option value="">단독 (가족 없음)</option>
+                    {getFamilyGroupOptions(allUsers).map(opt => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-2xs text-gray-400 font-semibold">가족 내 호칭</label>
+                  <select
+                    value={newMember.familyRole}
+                    onChange={e => setNewMember(p => ({ ...p, familyRole: e.target.value }))}
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                  >
+                    <option value="">미지정</option>
+                    {['조부', '조모', '부', '모', '자녀', '기타'].map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-2xs text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
+                <input
+                  type="text"
+                  value={newMember.birthday}
+                  onChange={e => setNewMember(p => ({ ...p, birthday: e.target.value }))}
+                  placeholder="선택 · 예: 1990-08-15"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setShowAddUnregistered(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+                <button
+                  onClick={handleCreateUnregistered}
+                  disabled={isSavingNewMember}
+                  className="flex-1 py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                >
+                  {isSavingNewMember ? '추가 중...' : '명단에 추가'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 미가입 성도 ↔ 가입 계정 연결 모달 ── */}
+      {claimTarget && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setClaimTarget(null))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#335f87] text-white px-5 py-4">
+              <h3 className="font-black text-sm">{claimTarget.name}님 — 가입 계정과 연결</h3>
+              <p className="text-2xs text-blue-200 mt-0.5">출석·식수 기록을 그대로 이어 붙입니다</p>
+            </div>
+
+            <div className="p-5 space-y-3 text-xs">
+              <p className="text-2xs text-gray-500 bg-gray-50 rounded-xl p-2.5 leading-relaxed">
+                이 분이 앱에 가입하셨다면, 그 계정을 골라 주세요. 명단에 쌓인 출석·식수 기록이
+                <strong className="text-gray-700"> 그 계정으로 그대로 넘어갑니다.</strong>
+                <br />
+                가입하며 만들어진 빈 프로필은 지워지고, 명단에 있던 라브리·가족 정보가 유지됩니다.
+              </p>
+
+              <div>
+                <label className="text-2xs text-gray-400 font-semibold">연결할 가입 계정</label>
+                <select
+                  value={claimAccountId}
+                  onChange={e => setClaimAccountId(e.target.value)}
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
+                >
+                  <option value="">계정을 고르세요</option>
+                  {allUsers
+                    .filter(u => !u.isUnregistered && u.id !== claimTarget.id && u.role !== 'REJECTED')
+                    // 이름이 같은 분을 맨 위로 올려 주되, 고르는 것은 관리자 판단입니다.
+                    .sort((a, b) => {
+                      const aMatch = a.name.trim() === claimTarget.name.trim() ? 0 : 1
+                      const bMatch = b.name.trim() === claimTarget.name.trim() ? 0 : 1
+                      return aMatch !== bMatch ? aMatch - bMatch : a.name.localeCompare(b.name, 'ko')
+                    })
+                    .map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}{u.email ? ` · ${u.email}` : ''}{u.role === 'PENDING' ? ' (승인 대기)' : ''}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-2xs text-rose-500 mt-1 leading-snug">
+                  이름이 같아도 다른 분일 수 있습니다. 반드시 이메일까지 확인하고 고르세요.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setClaimTarget(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+                <button
+                  onClick={handleClaim}
+                  disabled={isClaiming || !claimAccountId}
+                  className="flex-1 py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                >
+                  {isClaiming ? '연결 중...' : '연결하기'}
                 </button>
               </div>
             </div>

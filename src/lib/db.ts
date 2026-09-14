@@ -44,6 +44,7 @@ interface ProfileRow {
   is_pwa?: boolean | null
   device_platform?: string | null
   browser_name?: string | null
+  is_unregistered?: boolean | null
 }
 
 // ==========================================
@@ -78,6 +79,7 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     isPwa: d.is_pwa === true,
     devicePlatform: d.device_platform || undefined,
     browserName: d.browser_name || undefined,
+    isUnregistered: d.is_unregistered === true,
   }))
 }
 
@@ -110,6 +112,64 @@ export async function dbUpdateProfile(userId: string, updates: Partial<{
   if (updates.teachGroup !== undefined) payload.teach_group = updates.teachGroup || null
 
   const res = await supabase.from('profiles').update(payload).eq('id', userId)
+  if (!res.error) invalidateCache('profiles', { exact: true })
+  return res
+}
+
+/**
+ * 앱에 가입하지 않은 성도를 명단에 추가합니다 (관리자 전용).
+ *
+ * 실제로 출석하시지만 앱을 쓰지 않는 분, 또는 배우자로만 표기하면 되는 분을
+ * 출석체크·식수 가정에 포함시키기 위한 기능입니다.
+ *
+ * 계정이 없으므로 번호(id)를 앱에서 만들어 넣습니다. 로그인 계정 번호와는
+ * 절대 겹치지 않으므로 이 행으로 로그인할 수 있는 경로는 없습니다.
+ * 나중에 본인이 가입하면 dbClaimUnregisteredMember 로 이어 붙입니다.
+ */
+export async function dbCreateUnregisteredMember(input: {
+  name: string
+  phone?: string
+  address?: string
+  birthday?: string
+  labriId?: string
+  duty?: string
+  familyGroupId?: string
+  familyRole?: string
+}) {
+  const payload: Record<string, unknown> = {
+    id: crypto.randomUUID(),
+    name: input.name.trim(),
+    email: '',
+    phone: input.phone?.trim() || '',
+    address: input.address?.trim() || '',
+    birthday: input.birthday?.trim() || null,
+    role: 'MEMBER',
+    duty: input.duty?.trim() || '성도',
+    labri_id: input.labriId || null,
+    family_group_id: input.familyGroupId || null,
+    family_role: input.familyRole || null,
+    is_unregistered: true,
+  }
+  const res = await supabase.from('profiles').insert(payload).select().maybeSingle()
+  if (!res.error) invalidateCache('profiles', { exact: true })
+  return res
+}
+
+/**
+ * 미가입 성도 명단을 실제로 가입한 계정에 이어 붙입니다 (관리자 전용).
+ *
+ * 서버 함수가 한 트랜잭션에서 처리합니다: 새로 가입하며 생긴 빈 프로필을 지우고,
+ * 기존 명단 행의 번호를 그 계정 번호로 바꿉니다. 외래키가 ON UPDATE CASCADE라
+ * 출석·식수·게시글 기록이 전부 새 번호를 따라옵니다.
+ *
+ * 이름이 같은지는 보지 않습니다 — 동명이인일 때 남의 기록이 붙는 사고를 막기 위해
+ * 관리자가 화면에서 직접 두 사람을 지목하게 합니다.
+ */
+export async function dbClaimUnregisteredMember(placeholderId: string, newUserId: string) {
+  const res = await supabase.rpc('claim_unregistered_member', {
+    placeholder_id: placeholderId,
+    new_user_id: newUserId,
+  })
   if (!res.error) invalidateCache('profiles', { exact: true })
   return res
 }

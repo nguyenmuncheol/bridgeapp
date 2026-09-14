@@ -45,8 +45,12 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
   const isLeaderOrAdmin = currentUser.role === 'LEADER' || currentUser.role === 'ADMIN'
 
   // 주소록/일정용 대상: 승인대기자·쿠폰관리자 제외 + 미가입 자녀 등 가상 항목 포함 (생일 달력에도 사용)
+  //
+  // 앱에 가입하지 않은 성도(관리자가 명단에만 올린 분)는 여기서 뺍니다.
+  // 연락처가 없고 본인이 관리하는 정보가 아니라 주소록·생일에 올릴 내용이 없습니다.
+  // 배우자로서의 이름은 buildFamilyStatusText가 allUsers 전체에서 찾아 그대로 보여줍니다.
   const members = useMemo(
-    () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON'),
+    () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON' && !u.isUnregistered),
     [allUsers]
   )
   const addressBookEntries = useMemo(() => [...members, ...buildDependentEntries(members)], [members])

@@ -63,6 +63,15 @@ export interface UserProfile {
   childLabriId?: string
   /** 선생님(TEACHER)이 담당하는 자녀 그룹. 비워두면 모든 자녀 그룹 담당입니다. */
   teachGroup?: string
+  /**
+   * 앱에 가입하지 않은 성도 — 관리자가 명단에만 올린 분입니다.
+   *
+   * 출석체크 명단과 식수 쿠폰의 가정 이름에는 들어가지만, 주소록과 생일 달력에는
+   * 나오지 않습니다(연락처가 없고 본인이 관리하지 않는 정보이므로).
+   * 나중에 본인이 가입하면 관리자가 [성도 관리]에서 그 계정과 연결해 주며,
+   * 그때 출석·식수 기록이 그대로 새 계정으로 넘어갑니다.
+   */
+  isUnregistered?: boolean
   /** 최근 접속 및 활동 일시 (ISO 문자열) */
   lastActiveAt?: string
   /** 홈화면 앱(PWA Standalone)으로 실행 중인지 */
