@@ -1186,7 +1186,7 @@ export default function MembersTab({
                       onChange={e => setLeaveKeepsAccess(e.target.checked)}
                       className="rounded border-gray-300"
                     />
-                    탈퇴 후에도 나눔·교우소식·일정은 계속 쓰게 허용 (좋게 마무리된 경우)
+                    탈퇴 처리 후 홈페이지 접근 허용 (좋게 마무리된 경우)
                   </label>
                   <button
                     type="button"
@@ -1228,8 +1228,8 @@ export default function MembersTab({
 
             <div className="p-5 space-y-3 text-xs">
               <p className="text-2xs text-gray-500 bg-gray-50 rounded-xl p-2.5 leading-relaxed">
-                출석체크 명단과 식수 쿠폰의 가정 이름에 들어갑니다.
-                <strong className="text-gray-700"> 주소록과 생일 달력에는 나오지 않습니다.</strong>
+                출석체크 명단과 식수 쿠폰의 가정 이름, 주소록에 이름·소속이 들어갑니다.
+                <strong className="text-gray-700"> 주소록 세부정보는 공란으로 표시되고, 생일 달력에는 나오지 않습니다.</strong>
                 <br />
                 나중에 본인이 앱에 가입하면 이 명단과 연결해 출석 기록을 그대로 이어줄 수 있습니다.
               </p>

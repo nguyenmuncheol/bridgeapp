@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronRight, Users, Search } from 'lucide-react'
+import { ChevronRight, Users, Search, Triangle } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
 import {
   buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE,
@@ -186,11 +186,21 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
           >
             <button onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)} className="w-full p-3.5 flex items-center justify-between text-left">
               <div className="flex items-center gap-2.5">
-                <div
-                  onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
-                  className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
-                >
-                  {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
+                <div className="relative shrink-0">
+                  <div
+                    onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
+                    className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
+                  >
+                    {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
+                  </div>
+                  {member.isUnregistered && (
+                    <span
+                      title="미가입 성도"
+                      className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-xs ring-1 ring-white"
+                    >
+                      <Triangle size={9} className="text-amber-400" fill="currentColor" strokeWidth={0} />
+                    </span>
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -212,7 +222,9 @@ export default function AddressBook({ addressBookEntries, allUsers }: AddressBoo
             </button>
             {expandedMember === member.id && (
               <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
-                {member.isDependent ? (
+                {member.isUnregistered ? (
+                  <p className="text-2xs text-gray-300">앱에 가입하지 않아 등록된 정보가 없습니다.</p>
+                ) : member.isDependent ? (
                   <>
                     <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
                     {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}

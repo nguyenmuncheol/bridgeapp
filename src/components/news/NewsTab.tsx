@@ -44,16 +44,24 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
 
   const isLeaderOrAdmin = currentUser.role === 'LEADER' || currentUser.role === 'ADMIN'
 
-  // 주소록/일정용 대상: 승인대기자·쿠폰관리자 제외 + 미가입 자녀 등 가상 항목 포함 (생일 달력에도 사용)
+  // 일정(생일 달력)용 대상: 승인대기자·쿠폰관리자·미가입 성도 제외 + 미가입 자녀 등 가상 항목 포함
   //
   // 앱에 가입하지 않은 성도(관리자가 명단에만 올린 분)는 여기서 뺍니다.
-  // 연락처가 없고 본인이 관리하는 정보가 아니라 주소록·생일에 올릴 내용이 없습니다.
+  // 연락처가 없고 본인이 관리하는 정보가 아니라 생일 달력에 올릴 내용이 없습니다.
   // 배우자로서의 이름은 buildFamilyStatusText가 allUsers 전체에서 찾아 그대로 보여줍니다.
   const members = useMemo(
     () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON' && !u.isUnregistered),
     [allUsers]
   )
   const addressBookEntries = useMemo(() => [...members, ...buildDependentEntries(members)], [members])
+
+  // 주소록용 대상: 위와 달리 미가입 성도와 그 자녀도 포함합니다 — 이름·소속만 보여주고
+  // (연락처·생일 등 세부정보는 AddressBook에서 공란 처리) 명단 존재 자체는 확인할 수 있게 합니다.
+  const directoryMembers = useMemo(
+    () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON'),
+    [allUsers]
+  )
+  const directoryEntries = useMemo(() => [...directoryMembers, ...buildDependentEntries(directoryMembers)], [directoryMembers])
 
   return (
     <div className="space-y-5 pb-6 relative">
@@ -86,7 +94,7 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
         <ScheduleCalendar isLeaderOrAdmin={isLeaderOrAdmin} addressBookEntries={addressBookEntries} allUsers={allUsers} />
       </div>
       <div className={subTab === 'members' ? '' : 'hidden'}>
-        <AddressBook addressBookEntries={addressBookEntries} allUsers={allUsers} />
+        <AddressBook addressBookEntries={directoryEntries} allUsers={allUsers} />
       </div>
     </div>
   )
