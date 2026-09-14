@@ -342,16 +342,22 @@ export default function Home() {
   const isPending = !isGuest && currentUser.role === 'PENDING' && !!currentUser.signupRequestedAt
   const isUnrequestedPending = !isGuest && currentUser.role === 'PENDING' && !currentUser.signupRequestedAt
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
-  // 관리자가 탈퇴 처리한 계정 — REJECTED와 마찬가지로 로그인은 되지만 명단/탭에는
-  // 못 들어갑니다. 복구는 관리자만 할 수 있어 본인이 누르는 버튼은 없습니다(REJECTED와
-  // 달리 "다시 신청" 버튼이 없는 이유).
+  // 관리자가 탈퇴 처리한 계정. 복구는 관리자만 할 수 있어 본인이 누르는 버튼은 없습니다
+  // (REJECTED와 달리 "다시 신청" 버튼이 없는 이유).
+  //
+  // 좋게 마무리된 탈퇴(예: 한국 복귀 등)는 keepAppAccess를 켜서, 주소록·생일·성도수·
+  // 출석·식사신청 참여에서는 여전히 빠지지만(=role 자체가 LEFT라 그 판단들은 그대로 동작)
+  // 나눔·교우소식·일정 같은 커뮤니티 기능은 계속 쓸 수 있게 둡니다. isLeft는 "탈퇴 상태
+  // 자체"(신청 탭 숨김 등에 사용), isLeftBlocked는 "화면을 아예 막아야 하는 탈퇴"(커뮤니티
+  // 접근도 없는 경우)로 나눠 씁니다.
   const isLeft = !isGuest && currentUser.role === 'LEFT'
+  const isLeftBlocked = isLeft && !currentUser.keepAppAccess
 
   // ── 안 읽은 알림 개수 확인 ──
   // 폰이 울리는 푸시가 아니라 앱 안 알림이므로, 앱을 보고 있을 때만 가볍게 확인합니다.
   // (승인 대기·거절 상태에서는 알림이 올 일이 없어 건너뜁니다)
   useEffect(() => {
-    if (isGuest || isPending || isUnrequestedPending || isRejected || isLeft) return
+    if (isGuest || isPending || isUnrequestedPending || isRejected || isLeftBlocked) return
     let stopped = false
 
     const check = () => {
@@ -371,7 +377,7 @@ export default function Home() {
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [isGuest, isPending, isUnrequestedPending, isRejected, isLeft, currentUserId])
+  }, [isGuest, isPending, isUnrequestedPending, isRejected, isLeftBlocked, currentUserId])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
@@ -640,7 +646,7 @@ export default function Home() {
           <>
             {/* 1. 홈 탭 (누구나 열람 가능) */}
             {currentTab === 'home' && (
-              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isUnrequestedPending || isRejected || isLeft} />
+              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isUnrequestedPending || isRejected || isLeftBlocked} />
             )}
 
             {/* 2. 비회원(isGuest) 접근 차단 카드 */}
@@ -760,9 +766,10 @@ export default function Home() {
               </div>
             )}
 
-            {/* 3-2. 관리자가 탈퇴 처리한 계정 안내 (REJECTED와 달리 본인이 되돌릴 수 없습니다 —
-                관리자만 [성도 관리 > 탈퇴 처리된 성도]에서 복구합니다) */}
-            {currentTab !== 'home' && isLeft && (
+            {/* 3-2. 관리자가 탈퇴 처리한 계정 안내 — 커뮤니티 접근이 없는 경우에만 화면을 막습니다.
+                (REJECTED와 달리 본인이 되돌릴 수 없습니다 — 관리자만 [성도 관리 > 탈퇴 처리된 성도]
+                에서 복구합니다) */}
+            {currentTab !== 'home' && isLeftBlocked && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-gray-200 shadow-2xs mt-2 animate-fade-in">
                 <div className="w-16 h-16 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-3xl mx-auto">
                   🚪
@@ -778,8 +785,9 @@ export default function Home() {
               </div>
             )}
 
-            {/* 4. 정회원 이상 승인 완료자만 접근 가능한 탭들 */}
-            {currentTab !== 'home' && !isGuest && !isPending && !isUnrequestedPending && !isRejected && !isLeft && (
+            {/* 4. 정회원 이상 승인 완료자만 접근 가능한 탭들 (커뮤니티 접근이 남은 탈퇴 계정도 포함 —
+                그 경우 신청 탭만 아래에서 따로 숨깁니다) */}
+            {currentTab !== 'home' && !isGuest && !isPending && !isUnrequestedPending && !isRejected && !isLeftBlocked && (
               <>
                 {/* 우리소식 탭 */}
                 {currentTab === 'news' && (
@@ -801,14 +809,21 @@ export default function Home() {
                   />
                 )}
 
-                {/* 신청 탭 */}
-                {currentTab === 'request' && (
+                {/* 신청 탭 — 탈퇴 처리된 계정(커뮤니티 접근을 유지 중이어도)은 식사 신청 대상이
+                    아니므로 제외합니다. */}
+                {currentTab === 'request' && !isLeft && (
                   <RequestTab
                     currentUser={currentUser}
                     allUsers={users}
                     openSubTab={subTabRequest.tab === 'request' ? subTabRequest.sub : ''}
                     openToken={subTabRequest.token}
                   />
+                )}
+                {currentTab === 'request' && isLeft && (
+                  <div className="bg-white rounded-3xl p-8 text-center space-y-2 border border-gray-100 shadow-2xs mt-2 animate-fade-in">
+                    <div className="w-14 h-14 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-2xl mx-auto">🍚</div>
+                    <p className="text-xs text-gray-500">식사 신청은 현재 교회 명단에 계신 분들만 이용하실 수 있습니다.</p>
+                  </div>
                 )}
 
                 {/* 마이페이지 탭 */}
@@ -885,7 +900,7 @@ export default function Home() {
       )}
 
       {/* 하단 네비게이션 바 */}
-      <BottomNav currentTab={currentTab} setCurrentTab={handleSetCurrentTab} />
+      <BottomNav currentTab={currentTab} setCurrentTab={handleSetCurrentTab} hiddenTabIds={isLeft ? ['request'] : undefined} />
     </div>
   )
 }

@@ -77,6 +77,13 @@ export interface UserProfile {
   isUnregistered?: boolean
   /** role이 'LEFT'(탈퇴 처리)일 때만 값이 있음 — 복구 시 되돌릴 원래 등급 */
   previousRole?: Role
+  /**
+   * role이 'LEFT'일 때만 의미가 있음. 좋게 마무리된 탈퇴(예: 한국 복귀 등 불가피한 경우)에
+   * 한해 true로 켜서, 주소록·생일·성도수·출석·식사신청 참여에서는 여전히 빠지지만
+   * (role='LEFT' 자체가 그 판단을 이미 막습니다) 나눔·교우소식·일정 같은 커뮤니티 기능은
+   * 계속 쓸 수 있게 합니다. app/page.tsx의 로그인 라우팅에서만 사용됩니다.
+   */
+  keepAppAccess?: boolean
   /** 최근 접속 및 활동 일시 (ISO 문자열) */
   lastActiveAt?: string
   /** 홈화면 앱(PWA Standalone)으로 실행 중인지 */

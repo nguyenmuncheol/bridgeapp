@@ -46,6 +46,7 @@ interface ProfileRow {
   browser_name?: string | null
   is_unregistered?: boolean | null
   previous_role?: string | null
+  keep_app_access?: boolean | null
 }
 
 // ==========================================
@@ -82,6 +83,7 @@ export async function dbFetchProfiles(): Promise<UserProfile[]> {
     browserName: d.browser_name || undefined,
     isUnregistered: d.is_unregistered === true,
     previousRole: (d.previous_role || undefined) as Role | undefined,
+    keepAppAccess: d.keep_app_access === true,
   }))
 }
 
@@ -271,15 +273,19 @@ export async function dbReapplyUser(userId: string) {
  * 라브리·직분·가족·자녀 등 다른 정보는 그대로 두므로, 복구는 role만 되돌리면 됩니다.
  * 되돌릴 값은 previous_role에 저장해 둡니다.
  */
-export async function dbMarkMemberLeft(userId: string, currentRole: Role) {
-  const res = await supabase.from('profiles').update({ role: 'LEFT', previous_role: currentRole }).eq('id', userId)
+export async function dbMarkMemberLeft(userId: string, currentRole: Role, keepAppAccess: boolean = false) {
+  const res = await supabase.from('profiles')
+    .update({ role: 'LEFT', previous_role: currentRole, keep_app_access: keepAppAccess })
+    .eq('id', userId)
   if (!res.error) invalidateCache('profiles', { exact: true })
   return res
 }
 
 /** 탈퇴 처리를 되돌립니다. previous_role이 없으면(예전 데이터) 일반 성도로 되돌립니다. */
 export async function dbRestoreMember(userId: string, previousRole: Role) {
-  const res = await supabase.from('profiles').update({ role: previousRole || 'MEMBER', previous_role: null }).eq('id', userId)
+  const res = await supabase.from('profiles')
+    .update({ role: previousRole || 'MEMBER', previous_role: null, keep_app_access: false })
+    .eq('id', userId)
   if (!res.error) invalidateCache('profiles', { exact: true })
   return res
 }

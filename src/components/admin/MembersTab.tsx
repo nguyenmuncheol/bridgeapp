@@ -169,8 +169,11 @@ export default function MembersTab({
   // ── 탈퇴 처리 / 복구 / 완전 삭제 (가입자·미가입 성도 공통) ──
   // 목록에서 바로 누르면 오조작하기 쉬워서, 수정 모달을 연 상태에서만 처리할 수 있게 했습니다.
   const [leavingId, setLeavingId] = useState<string | null>(null)
+  // 탈퇴 처리 시 커뮤니티 접근(나눔·교우소식·일정)을 계속 허용할지 — 좋게 마무리된 경우에만 켭니다.
+  // 어느 쪽이든 주소록·생일·성도수·출석·식사신청 참여에서는 이미 빠집니다(role='LEFT' 자체가 막음).
+  const [leaveKeepsAccess, setLeaveKeepsAccess] = useState(false)
   /** 실제로 탈퇴 처리됐으면 true, 취소·거절·실패면 false — 호출 쪽에서 모달을 닫을지 판단합니다. */
-  const handleMarkLeft = async (member: UserProfile): Promise<boolean> => {
+  const handleMarkLeft = async (member: UserProfile, keepAppAccess: boolean): Promise<boolean> => {
     if (leavingId) return false
     // 등급을 낮출 때와 동일한 보호: 마지막 남은 총괄 관리자를 탈퇴 처리하면
     // 아무도 관리자 화면에 들어올 수 없게 됩니다.
@@ -178,15 +181,18 @@ export default function MembersTab({
       alert('마지막 남은 총괄 관리자입니다.\n탈퇴 처리하면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 처리해 주세요.')
       return false
     }
-    if (!confirm(`${member.name}님을 탈퇴 처리할까요?\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return false
+    const accessNote = keepAppAccess
+      ? '\n\n나눔·교우소식·일정은 계속 이용하실 수 있고, 주소록·생일·성도수·출석·식사신청 참여에서는 빠집니다.'
+      : '\n\n로그인해도 앱을 쓸 수 없게 됩니다.'
+    if (!confirm(`${member.name}님을 탈퇴 처리할까요?${accessNote}\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return false
     setLeavingId(member.id)
-    const { error } = await dbMarkMemberLeft(member.id, member.role)
+    const { error } = await dbMarkMemberLeft(member.id, member.role, keepAppAccess)
     setLeavingId(null)
     if (error) {
       showToast(`⚠️ 처리하지 못했습니다: ${error.message || ''}`)
       return false
     }
-    onUpdateUsers?.(prev => prev.map(u => u.id === member.id ? { ...u, role: 'LEFT' as Role, previousRole: member.role } : u))
+    onUpdateUsers?.(prev => prev.map(u => u.id === member.id ? { ...u, role: 'LEFT' as Role, previousRole: member.role, keepAppAccess } : u))
     showToast(`${member.name}님을 탈퇴 처리했습니다.`)
     return true
   }
@@ -299,6 +305,7 @@ export default function MembersTab({
 
   const handleStartEditMember = (member: UserProfile) => {
     setEditingMember(member)
+    setLeaveKeepsAccess(false)
     // 현재 같은 가족 그룹으로 묶인 다른 성도 찾기
     const linkedUser = member.familyGroupId
       ? allUsers.find(u => u.id !== member.id && u.familyGroupId === member.familyGroupId)
@@ -794,6 +801,7 @@ export default function MembersTab({
                       <p className="text-2xs text-gray-400">
                         {member.previousRole ? `이전 등급: ${member.previousRole}` : ''}
                         {member.isUnregistered ? ' · 미가입' : ''}
+                        {member.keepAppAccess ? ' · 🟢 커뮤니티 접근 유지' : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -1170,11 +1178,20 @@ export default function MembersTab({
 
               {/* 탈퇴 처리 — 목록에서 바로 안 보이게 여기로만 옮겼습니다(오조작 방지) */}
               {!isLeader && (
-                <div className="pt-2 border-t border-gray-100">
+                <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-2xs text-gray-500 px-0.5">
+                    <input
+                      type="checkbox"
+                      checked={leaveKeepsAccess}
+                      onChange={e => setLeaveKeepsAccess(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    탈퇴 후에도 나눔·교우소식·일정은 계속 쓰게 허용 (좋게 마무리된 경우)
+                  </label>
                   <button
                     type="button"
                     onClick={async () => {
-                      const left = await handleMarkLeft(editingMember)
+                      const left = await handleMarkLeft(editingMember, leaveKeepsAccess)
                       if (left) setEditingMember(null)
                     }}
                     disabled={leavingId === editingMember.id}
