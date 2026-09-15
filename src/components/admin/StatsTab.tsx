@@ -48,6 +48,11 @@ export default function StatsTab({
   // 선생님은 자녀(교회학교) 출석만 봅니다. 어른 출석 통계는 숨깁니다.
   const isTeacher = currentUser?.role === 'TEACHER'
 
+  // 명단 표의 "소속" 칸은 "라브리1/2/3/미정" 대신 "1/2/3/미정"으로 짧게 표기합니다.
+  // 줄어든 칸 너비는 성도명·결석사유 칸이 자동으로 넓게 가져갑니다(표 레이아웃 auto).
+  const shortLabriLabel = (labriId: string | undefined) =>
+    normalizeLabriLabel(labriId).replace('라브리', '').trim() || '미정'
+
   // 출석/결석 명단(성인, 교회학교) 펼침 상태: 기본값은 닫아둡니다.
   const [showAdultRoster, setShowAdultRoster] = useState(false)
   const [showChildRoster, setShowChildRoster] = useState(false)
@@ -306,6 +311,23 @@ export default function StatsTab({
       totalTotal: rows.reduce((sum, r) => sum + r.total, 0),
     }
   }, [childRecords, safeStart, safeEnd])
+
+  // 상단 "🧒 교회학교 출석" 카드 전용: 하단 기간출석률과 달리, 선택한 주일 하루만 봅니다.
+  // 🐛 과거 버그: 이 카드가 하단 기간(safeStart~safeEnd) 통계를 그대로 재사용해서,
+  // 상단에서 "선택한 주일"을 바꿔도 반영되지 않고 하단 기간 선택을 따라갔습니다.
+  const childStatsSelectedDate = useMemo(() => {
+    const onDate = (childRecords || []).filter((r: ChildAttendanceRow) => String(r.date_str) === selectedStatsDate)
+    const rows = CHILD_ATTENDANCE_GROUPS.map(group => {
+      const list = onDate.filter((r: ChildAttendanceRow) => r.labri_id === group)
+      const attend = list.filter((r: ChildAttendanceRow) => r.status === 'ATTEND').length
+      return { label: group, attend, total: list.length }
+    }).filter(r => r.total > 0)
+    return {
+      rows,
+      totalAttend: rows.reduce((sum, r) => sum + r.attend, 0),
+      totalTotal: rows.reduce((sum, r) => sum + r.total, 0),
+    }
+  }, [childRecords, selectedStatsDate])
 
   // 자녀 결석 연속 주수 계산 — 성인 출석(getAbsenceStreak)과 같은 방식이지만,
   // 교회학교 출석은 별도 표(child_attendance_records)에 저장되어 이 화면에서 직접 계산합니다.
@@ -583,22 +605,22 @@ export default function StatsTab({
             <table className="w-full text-[12px] text-left">
               <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
                 <tr>
-                  <th className="p-2">성도명</th>
-                  <th className="p-2">소속</th>
-                  <th className="p-2 text-center">출석여부</th>
-                  <th className="p-2">결석사유</th>
-                  <th className="p-2 text-right">수정</th>
+                  <th className="p-2 text-center">성도명</th>
+                  <th className="p-2 text-center">소속</th>
+                  <th className="p-2 text-center">출석</th>
+                  <th className="p-2 text-center">결석사유</th>
+                  <th className="p-2 text-center">수정</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-gray-700">
                 {sortedAttendanceRows.map(({ user, status, note, absenceStreak }) => (
                   <tr key={user.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="p-2 font-bold text-gray-800">{user.name} {user.duty}</td>
-                    <td className="p-2 text-gray-500">{normalizeLabriLabel(user.labriId)}</td>
+                    <td className="p-2 text-center text-gray-500">{shortLabriLabel(user.labriId)}</td>
                     <td className="p-2 text-center">
                       {status ? (
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'ABSENT' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                          {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅ 출석'}
+                          {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅'}
                         </span>
                       ) : (
                         <span className="text-gray-300 text-[10px]">미기록</span>
@@ -636,16 +658,16 @@ export default function StatsTab({
         <Card className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[12px] text-gray-900">🧒 교회학교 출석</h3>
-            <span className="text-[10px] text-gray-400">{rangeLabel}</span>
+            <span className="text-[10px] text-gray-400">{selectedStatsDate || '선택한 주일'}</span>
           </div>
 
-          {childStats.rows.length === 0 ? (
+          {childStatsSelectedDate.rows.length === 0 ? (
             <p className="py-4 text-center text-[10px] text-gray-400">
-              이 기간에 입력된 교회학교 출석이 없습니다.
+              이 주일에 입력된 교회학교 출석이 없습니다.
             </p>
           ) : (
             <>
-              {childStats.rows.map(({ label, attend, total }) => {
+              {childStatsSelectedDate.rows.map(({ label, attend, total }) => {
                 const rate = total > 0 ? Math.round((attend / total) * 100) : 0
                 return (
                   <div key={label} className="space-y-1">
@@ -663,8 +685,8 @@ export default function StatsTab({
               <div className="pt-2 border-t border-gray-200 flex justify-between text-[12px]">
                 <span className="font-black text-gray-900">교회학교 합계</span>
                 <span className="font-black text-indigo-600">
-                  {childStats.totalAttend}/{childStats.totalTotal}명 (
-                  {childStats.totalTotal > 0 ? Math.round((childStats.totalAttend / childStats.totalTotal) * 100) : 0}%)
+                  {childStatsSelectedDate.totalAttend}/{childStatsSelectedDate.totalTotal}명 (
+                  {childStatsSelectedDate.totalTotal > 0 ? Math.round((childStatsSelectedDate.totalAttend / childStatsSelectedDate.totalTotal) * 100) : 0}%)
                 </span>
               </div>
             </>
