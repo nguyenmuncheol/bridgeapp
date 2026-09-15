@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { CommentItem, UserProfile } from '../lib/mockData'
 import { dbUpdateComment, dbDeleteComment } from '../lib/db'
 import Avatar from './news/Avatar'
+import { askConfirm } from './ConfirmDialog'
 
 interface CommentListProps {
   postId: string
@@ -65,7 +66,7 @@ export default function CommentList({
   }
 
   const removeComment = async (c: CommentItem) => {
-    if (!confirm('이 댓글을 지울까요?\n지운 댓글은 되돌릴 수 없습니다.')) return
+    if (!await askConfirm('이 댓글을 지울까요?\n지운 댓글은 되돌릴 수 없습니다.', { confirmLabel: '삭제', tone: 'danger' })) return
     setBusyId(c.id)
     const { error } = await dbDeleteComment(c.id)
     setBusyId(null)

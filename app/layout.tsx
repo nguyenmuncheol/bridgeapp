@@ -3,6 +3,7 @@ import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "../src/components/PwaRegister";
 import UserActivityTracker from "../src/components/UserActivityTracker";
+import { ConfirmProvider } from "../src/components/ConfirmDialog";
 
 // 본문 글꼴은 globals.css 가 Pretendard 로 지정합니다.
 // 예전엔 여기서 Geist 를 subsets:["latin"] 으로 받았는데, 화면의 거의 모든 글자인 한글에는
@@ -158,7 +159,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-gray-100 text-gray-900 break-keep selection:bg-brand selection:text-white">
         <PwaRegister />
         <UserActivityTracker />
-        {children}
+        {/* 앱 안에서 뜨는 "정말 하시겠습니까?" 창. 화면 어디서든 useConfirm() 으로 부릅니다. */}
+        <ConfirmProvider>{children}</ConfirmProvider>
       </body>
     </html>
   );

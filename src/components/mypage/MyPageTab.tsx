@@ -13,6 +13,9 @@ import { getPushUiState, subscribeToPush, unsubscribeFromPush, type PushUiState 
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import PwaInstallButton from '../PwaInstallButton'
 import ProfileImageLightbox from '../ProfileImageLightbox'
+import { askConfirm } from '../ConfirmDialog'
+import Card from '../ui/Card'
+import SectionTitle from '../ui/SectionTitle'
 
 interface MyPageTabProps {
   currentUser: UserProfile
@@ -77,10 +80,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         : ''
     })
   }
-  const removeEditChild = (id: string) => {
+  const removeEditChild = async (id: string) => {
     const child = editChildren.find(c => c.id === id)
     const label = child?.name?.trim() || '이 자녀'
-    if (!confirm(`${label} 정보를 목록에서 지울까요?\n저장하면 배우자 계정에서도 함께 지워집니다.`)) return
+    if (!await askConfirm(`${label} 정보를 목록에서 지울까요?\n저장하면 배우자 계정에서도 함께 지워집니다.`, { confirmLabel: '지우기', tone: 'danger' })) return
     setEditChildren(prev => prev.filter(c => c.id !== id))
   }
 
@@ -527,9 +530,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       </section>
 
       {/* ── 내 기도제목 모아보기 ── */}
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+      <Card as="section" padding="none" className="overflow-hidden">
         <div className="p-4 border-b border-gray-50">
-          <h3 className="font-bold text-xs text-gray-900">🙏 내 기도제목 ({myPrayers.length})</h3>
+          <SectionTitle size="sm">🙏 내 기도제목 ({myPrayers.length})</SectionTitle>
         </div>
         <div className="p-4 space-y-2">
           {myPrayers.length > 0 ? myPrayers.map(p => (
@@ -544,15 +547,15 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
           )) : <p className="text-xs text-gray-400 text-center py-4">작성한 기도제목이 없습니다.</p>}
         </div>
-      </section>
+      </Card>
 
       {/* ── 휴대폰 알림(푸시) 스위치 ── */}
       {pushState !== 'unsupported' && pushState !== 'loading' && (
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2">
+        <Card as="section" className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-brand" />
-              <h3 className="font-bold text-xs text-gray-900">📱 휴대폰 알림 받기</h3>
+              <SectionTitle size="sm">📱 휴대폰 알림 받기</SectionTitle>
             </div>
             {pushState !== 'ios-not-installed' && (
               <button
@@ -572,15 +575,15 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             {pushState === 'denied' && '알림이 차단되어 있습니다. 홈 화면의 앱을 지우고 다시 추가하시면 다시 여쭤봅니다.'}
             {pushState === 'ios-not-installed' && '아이폰은 먼저 홈 화면에 앱을 추가하셔야 알림을 받을 수 있습니다 (아래 가이드 참고).'}
           </p>
-        </section>
+        </Card>
       )}
 
       {/* ── PWA 홈화면 추가 가이드 ── */}
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+      <Card as="section" padding="none" className="overflow-hidden">
         <button onClick={() => setAccordionOpen(!accordionOpen)} className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-all">
           <div className="flex items-center gap-2">
             <Smartphone size={16} className="text-brand" />
-            <h3 className="font-bold text-xs text-gray-900">📱 홈 화면에 앱 추가하기 (PWA 가이드)</h3>
+            <SectionTitle size="sm">📱 홈 화면에 앱 추가하기 (PWA 가이드)</SectionTitle>
           </div>
           {accordionOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
         </button>
@@ -598,7 +601,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
           </div>
         )}
-      </section>
+      </Card>
 
       {/* ── 로그아웃 ── (예전에는 알림함 안에만 있어서 찾기 어려웠습니다) */}
       {onLogout && (
@@ -618,7 +621,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         >
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-              <h3 className="font-bold text-sm text-gray-900">✏️ 내 정보 & 프로필 수정</h3>
+              <SectionTitle>✏️ 내 정보 & 프로필 수정</SectionTitle>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 font-bold">✕</button>
             </div>
             <div className="space-y-3 text-xs">
@@ -843,7 +846,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-2">
               <div>
-                <h3 className="font-bold text-sm text-gray-900">{selectedPrayer.title}</h3>
+                <SectionTitle>{selectedPrayer.title}</SectionTitle>
                 <p className="text-2xs text-gray-400">{selectedPrayer.createdAt}</p>
               </div>
               <button onClick={() => setSelectedPrayer(null)} className="text-gray-400 font-bold">✕</button>

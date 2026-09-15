@@ -8,6 +8,8 @@ import { getUserDisplayName } from '../../lib/mockData'
 import { SkeletonList } from '../SkeletonCard'
 import PrayerCard from './PrayerCard'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
+import { askConfirm } from '../ConfirmDialog'
+import SectionTitle from '../ui/SectionTitle'
 
 // 고정글 우선(최근 고정순), 그 다음 미완료(기도 중)를 완료보다 위로 정렬 (최신 작성순 유지)
 export const sortPrayers = (list: PostItem[]) =>
@@ -186,7 +188,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
     // 삭제가 실패해도 화면에서는 사라졌습니다(다른 성도 화면에는 그대로 남음).
     let title = '이 기도제목'
     setPrayers(prev => { const t = prev.find(x => x.id === id); if (t?.title) title = `'${t.title}'` ; return prev })
-    if (!confirm(`${title} 을(를) 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return
+    if (!await askConfirm(`${title} 을(를) 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`, { confirmLabel: '삭제', tone: 'danger' })) return
 
     const { error } = await dbDeletePost(id)
     if (error) {
@@ -298,12 +300,12 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
           <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 기도제목 수정</h3>
+              <SectionTitle size="lg">✏️ 기도제목 수정</SectionTitle>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (hasUnsavedEdit) {
-                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setEditingPrayer(null)
                 }}
@@ -376,9 +378,9 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
             <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (hasUnsavedEdit) {
-                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setEditingPrayer(null)
                 }}

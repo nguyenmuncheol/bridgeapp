@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { UserProfile } from '../../lib/mockData'
 import { getBirthdayMonthDay } from '../../lib/dateUtils'
 import Avatar from './Avatar'
+import Card from '../ui/Card'
 
 interface BirthdayListProps {
   addressBookEntries: UserProfile[]
@@ -23,7 +24,7 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
   }, [addressBookEntries, calMonth])
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2.5">
+    <Card className="space-y-2.5">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
           <span>🎂</span> {calMonth + 1}월 생일 성도
@@ -57,6 +58,6 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
           {calMonth + 1}월에는 등록된 생일 성도가 없습니다.
         </p>
       )}
-    </div>
+    </Card>
   )
 }

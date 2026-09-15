@@ -9,6 +9,9 @@ import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_A
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
+import { askConfirm } from '../ConfirmDialog'
+import Card from '../ui/Card'
+import SectionTitle from '../ui/SectionTitle'
 
 interface MembersTabProps {
   currentUser?: UserProfile
@@ -143,7 +146,7 @@ export default function MembersTab({
       showToast('⚠️ 연결할 계정을 골라 주세요.')
       return
     }
-    if (!confirm(
+    if (!await askConfirm(
       `명단의 "${claimTarget.name}" 을(를) 가입 계정 "${account.name}"(${account.email || '이메일 없음'}) 에 연결합니다.\n\n` +
       `${claimTarget.name}님의 출석·식수 기록이 그 계정으로 넘어가고, 방금 가입하며 만들어진 빈 프로필은 지워집니다.\n` +
       `되돌리기 어려우니 같은 분이 맞는지 확인해 주세요.\n\n계속할까요?`
@@ -178,13 +181,13 @@ export default function MembersTab({
     // 등급을 낮출 때와 동일한 보호: 마지막 남은 총괄 관리자를 탈퇴 처리하면
     // 아무도 관리자 화면에 들어올 수 없게 됩니다.
     if (member.role === 'ADMIN' && allUsers.filter(u => u.role === 'ADMIN' && u.id !== member.id).length === 0) {
-      alert('마지막 남은 총괄 관리자입니다.\n탈퇴 처리하면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 처리해 주세요.')
+      showToast('⚠️ 마지막 남은 총괄 관리자입니다.\n탈퇴 처리하면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 처리해 주세요.')
       return false
     }
     const accessNote = keepAppAccess
       ? '\n\n탈퇴 처리 후에도 홈페이지 접근은 허용되며(나눔·교우소식·일정), 주소록·생일·성도수·출석·식사신청 참여에서는 빠집니다.'
       : '\n\n로그인해도 앱을 쓸 수 없게 됩니다.'
-    if (!confirm(`${member.name}님을 탈퇴 처리할까요?${accessNote}\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`)) return false
+    if (!await askConfirm(`${member.name}님을 탈퇴 처리할까요?${accessNote}\n\n출석·식수 등 기록은 그대로 남으며, 나중에 다시 복구할 수 있습니다.`, { confirmLabel: '탈퇴 처리', tone: 'danger' })) return false
     setLeavingId(member.id)
     const { error } = await dbMarkMemberLeft(member.id, member.role, keepAppAccess)
     setLeavingId(null)
@@ -201,7 +204,7 @@ export default function MembersTab({
   const handleRestoreMember = async (member: UserProfile) => {
     if (restoringId) return
     const restoreTo = member.previousRole || 'MEMBER'
-    if (!confirm(`${member.name}님을 다시 활동 명단으로 되돌릴까요?`)) return
+    if (!await askConfirm(`${member.name}님을 다시 활동 명단으로 되돌릴까요?`)) return
     setRestoringId(member.id)
     const { error } = await dbRestoreMember(member.id, restoreTo)
     setRestoringId(null)
@@ -218,7 +221,7 @@ export default function MembersTab({
     if (deletingId) return
     // 이 목록의 member.role은 이미 'LEFT'이므로, 탈퇴 전 등급은 previousRole에 있습니다.
     if (member.previousRole === 'ADMIN' && allUsers.filter(u => u.role === 'ADMIN').length === 0) {
-      alert('탈퇴 전 마지막 총괄 관리자였던 분입니다. 복구용으로 남겨두어야 하니 완전 삭제할 수 없습니다.')
+      showToast('⚠️ 탈퇴 전 마지막 총괄 관리자였던 분입니다. 복구용으로 남겨두어야 하니 완전 삭제할 수 없습니다.')
       return
     }
     setDeletingId(member.id)
@@ -230,7 +233,7 @@ export default function MembersTab({
       showToast(`⚠️ ${member.name}님은 출석 기록이 있어 완전 삭제할 수 없습니다. 탈퇴 처리만 가능합니다.`)
       return
     }
-    if (!confirm(`${member.name}님을 명단에서 완전히 삭제할까요?\n\n출석 기록은 없는 것을 확인했습니다. 이 작업은 되돌릴 수 없습니다.`)) {
+    if (!await askConfirm(`${member.name}님을 명단에서 완전히 삭제할까요?\n\n출석 기록은 없는 것을 확인했습니다. 이 작업은 되돌릴 수 없습니다.`, { confirmLabel: '삭제', tone: 'danger' })) {
       setDeletingId(null)
       return
     }
@@ -376,7 +379,7 @@ export default function MembersTab({
     if (isSavingMember) return
 
     if (!editMemberData.name?.trim()) {
-      alert('이름을 입력해 주세요.')
+      showToast('⚠️ 이름을 입력해 주세요.')
       return
     }
 
@@ -385,11 +388,11 @@ export default function MembersTab({
     if (wasAdmin && !willBeAdmin) {
       const otherAdmins = allUsers.filter(u => u.role === 'ADMIN' && u.id !== editingMember.id)
       if (otherAdmins.length === 0) {
-        alert('마지막 남은 총괄 관리자입니다.\n등급을 낮추면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 변경해 주세요.')
+        showToast('⚠️ 마지막 남은 총괄 관리자입니다.\n등급을 낮추면 아무도 관리자 기능을 사용할 수 없게 됩니다.\n\n먼저 다른 분을 총괄 관리자로 지정한 뒤 변경해 주세요.')
         return
       }
       if (currentUser && editingMember.id === currentUser.id) {
-        if (!confirm('본인의 등급을 낮추려고 합니다.\n저장하면 관리자 화면에 더 이상 들어올 수 없습니다.\n\n계속할까요?')) return
+        if (!await askConfirm('본인의 등급을 낮추려고 합니다.\n저장하면 관리자 화면에 더 이상 들어올 수 없습니다.\n\n계속할까요?', { confirmLabel: '등급 낮추기', tone: 'danger' })) return
       }
     }
 
@@ -413,7 +416,7 @@ export default function MembersTab({
         const dropped = parseFamilyInfo(targetMember.familyInfo).children.filter(c => !editIds.has(c.id))
         if (dropped.length > 0) {
           const names = dropped.map(c => c.name?.trim() || '이름 없음').join(', ')
-          if (!confirm(`${targetMember.name} 님 계정에 등록된 자녀(${names})가 아래 목록에 없습니다.\n이대로 저장하면 해당 자녀 정보가 지워집니다.\n\n계속할까요?`)) {
+          if (!await askConfirm(`${targetMember.name} 님 계정에 등록된 자녀(${names})가 아래 목록에 없습니다.\n이대로 저장하면 해당 자녀 정보가 지워집니다.\n\n계속할까요?`)) {
             return
           }
         }
@@ -441,7 +444,7 @@ export default function MembersTab({
         familyRole: editMemberData.familyRole
       })
       if (selfUpdateError) {
-        alert(`저장 중 오류가 발생했습니다: ${selfUpdateError.message}\n다시 시도해 주세요.`)
+        showToast(`⚠️ 저장 중 오류가 발생했습니다: ${selfUpdateError.message}\n다시 시도해 주세요.`)
         return
       }
 
@@ -449,7 +452,7 @@ export default function MembersTab({
       if (targetMember && targetMember.familyGroupId !== resolvedFid) {
         const { error: linkedUpdateError } = await dbUpdateProfile(targetMember.id, { familyGroupId: resolvedFid })
         if (linkedUpdateError) {
-          alert(`가족 연결 대상(${targetMember.name})의 정보 저장 중 오류가 발생했습니다: ${linkedUpdateError.message}`)
+          showToast(`⚠️ 가족 연결 대상(${targetMember.name})의 정보 저장 중 오류가 발생했습니다: ${linkedUpdateError.message}`)
         }
       }
 
@@ -460,7 +463,7 @@ export default function MembersTab({
         const syncedTargetFamilyInfo = serializeFamilyInfo({ note: targetNote, children: editChildren, addressRequestedAt: targetAddressRequestedAt })
         const { error: childSyncError } = await dbUpdateProfile(targetMember.id, { familyInfo: syncedTargetFamilyInfo })
         if (childSyncError) {
-          alert(`자녀 정보를 배우자 계정과 동기화하는 중 오류가 발생했습니다: ${childSyncError.message}`)
+          showToast(`⚠️ 자녀 정보를 배우자 계정과 동기화하는 중 오류가 발생했습니다: ${childSyncError.message}`)
         } else {
           onUpdateUsers?.(prev => prev.map(u => u.id === targetMember.id ? { ...u, familyInfo: syncedTargetFamilyInfo } : u))
         }
@@ -483,7 +486,7 @@ export default function MembersTab({
       if (isSpousePair && targetMember && shouldPushAddressToSpouse) {
         const { error: addressSyncError } = await dbUpdateProfile(targetMember.id, { address: editMemberData.address })
         if (addressSyncError) {
-          alert(`배우자(${targetMember.name}) 계정 주소 동기화 중 오류가 발생했습니다: ${addressSyncError.message}`)
+          showToast(`⚠️ 배우자(${targetMember.name}) 계정 주소 동기화 중 오류가 발생했습니다: ${addressSyncError.message}`)
         } else {
           onUpdateUsers?.(prev => prev.map(u => u.id === targetMember.id ? { ...u, address: editMemberData.address } : u))
         }
@@ -508,7 +511,7 @@ export default function MembersTab({
       } catch (err: unknown) {
         console.error('쿠폰 병합 실패:', err)
         const msg = (err as { message?: string })?.message || String(err)
-        alert(`가족 연결은 완료되었으나, 개인 쿠폰 통합 중 오류가 발생했습니다: ${msg}`)
+        showToast(`⚠️ 가족 연결은 완료되었으나, 개인 쿠폰 통합 중 오류가 발생했습니다: ${msg}`)
       }
 
       // 로컬 상태 동기화
@@ -552,7 +555,7 @@ export default function MembersTab({
         familyRole: editMemberData.familyRole
       })
       if (soloUpdateError) {
-        alert(`저장 중 오류가 발생했습니다: ${soloUpdateError.message}\n다시 시도해 주세요.`)
+        showToast(`⚠️ 저장 중 오류가 발생했습니다: ${soloUpdateError.message}\n다시 시도해 주세요.`)
         return
       }
 
@@ -831,14 +834,14 @@ export default function MembersTab({
         {/* 성도 리스트 (장기결석자 우선 정렬 + 부부는 한 쌍으로 묶어서 표시) */}
         {sortedMemberUnits.map(unit => {
           const cards = unit.members.map(({ member }) => (
-            <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
+            <Card key={member.id} className="space-y-2">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
                   <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
                     {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : getInitials(member.name)}
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(member, '')}</h3>
+                    <SectionTitle>{getUserDisplayName(member, '')}</SectionTitle>
                     <p className="text-2xs text-gray-400 mt-0.5">{member.email || '이메일 없음'}</p>
                   </div>
                 </div>
@@ -886,7 +889,7 @@ export default function MembersTab({
                   </button>
                 </div>
               )}
-            </div>
+            </Card>
           ))
 
           if (unit.members.length < 2) return cards[0]

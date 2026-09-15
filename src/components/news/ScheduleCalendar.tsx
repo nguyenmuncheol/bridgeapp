@@ -8,6 +8,9 @@ import { dbFetchChurchEvents, dbCreateChurchEvent, dbUpdateChurchEvent, dbDelete
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import BirthdayList from './BirthdayList'
+import { askConfirm } from '../ConfirmDialog'
+import Card from '../ui/Card'
+import SectionTitle from '../ui/SectionTitle'
 
 type EventType = 'sunday' | 'special'
 interface ChurchEvent {
@@ -135,7 +138,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
   }
 
   const handleDeleteEvent = async (evId: string) => {
-    if (!confirm('이 일정을 삭제하시겠습니까?')) return
+    if (!await askConfirm('이 일정을 삭제하시겠습니까?', { confirmLabel: '삭제', tone: 'danger' })) return
     const { error } = await dbDeleteChurchEvent(evId)
     if (error) {
       showToast('일정 삭제 중 오류가 발생했습니다. 다시 시도해 주세요.', true)
@@ -152,7 +155,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+      <Card padding="none" className="overflow-hidden">
         <div className="bg-brand text-white px-4 py-3 flex items-center justify-between">
           <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
           <div className="text-center">
@@ -198,11 +201,11 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
             )
           })}
         </div>
-      </div>
+      </Card>
 
       {/* 이달 일정 리스트 */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2">
-        <h3 className="font-bold text-xs text-gray-900">이달 교회 일정</h3>
+      <Card className="space-y-2">
+        <SectionTitle size="sm">이달 교회 일정</SectionTitle>
         <div className="space-y-1.5">
           {Array.from({ length: daysInMonth }).flatMap((_, i) => getEventsForDate(i + 1)).map((ev, idx) => (
             <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
@@ -219,7 +222,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />특별일정</span>
           <span className="flex items-center gap-1">🎂 생일</span>
         </div>
-      </div>
+      </Card>
 
       <BirthdayList addressBookEntries={birthdayEntries} allUsers={allUsers} calMonth={calMonth} />
 
@@ -231,7 +234,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
         >
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-gray-900">📅 {calEditModal.dateStr} 일정 편집</h3>
+              <SectionTitle>📅 {calEditModal.dateStr} 일정 편집</SectionTitle>
               <button onClick={() => setCalEditModal(null)} className="text-gray-400 font-bold">✕</button>
             </div>
 

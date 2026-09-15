@@ -10,6 +10,9 @@ import Avatar from '../news/Avatar'
 import { SkeletonList } from '../SkeletonCard'
 import { todayLocalDateStr } from '../../lib/dateUtils'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
+import { askConfirm } from '../ConfirmDialog'
+import Card from '../ui/Card'
+import SectionTitle from '../ui/SectionTitle'
 
 interface PraiseBoardProps {
   currentUser: UserProfile
@@ -137,7 +140,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
   }
 
   const handleDeletePraise = async (id: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return
+    if (!await askConfirm('정말 삭제하시겠습니까?', { confirmLabel: '삭제', tone: 'danger' })) return
     await dbDeletePost(id)
     setPraises(p => p.filter(x => x.id !== id))
     if (selectedPraise?.id === id) setSelectedPraise(null)
@@ -186,10 +189,10 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         <div className="py-8 text-center text-xs text-gray-400">아직 등록된 찬양/묵상나눔이 없습니다.</div>
       )}
       {praises.map(praise => (
-        <div
+        <Card
           key={praise.id}
           onClick={() => setSelectedPraise(praise)}
-          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2 cursor-pointer hover:border-blue-200 transition-all active:scale-[0.99]"
+          className="space-y-2 cursor-pointer hover:border-blue-200 transition-all active:scale-[0.99]"
         >
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
@@ -212,7 +215,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               )}
             </div>
           </div>
-          <h3 className="font-bold text-sm text-gray-900">{praise.title}</h3>
+          <SectionTitle>{praise.title}</SectionTitle>
           <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{praise.content}</p>
           {praise.youtubeUrl ? (() => {
             const videoId = getYouTubeVideoId(praise.youtubeUrl)
@@ -267,7 +270,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <MessageCircle size={12} /> {(praise.comments || []).length}
             </span>
           </div>
-        </div>
+        </Card>
       ))}
 
       {/* ── 더보기 버튼: 전체를 한 번에 불러오지 않고 20개씩 이어서 로드 ── */}
@@ -291,7 +294,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             <div className="p-5 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-bold text-sm text-gray-900">{selectedPraise.title}</h3>
+                  <SectionTitle>{selectedPraise.title}</SectionTitle>
                   <p className="text-2xs text-gray-400 mt-0.5">{selectedPraise.authorName} · {selectedPraise.createdAt}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -394,12 +397,12 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
           <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 찬양/묵상 수정</h3>
+              <SectionTitle size="lg">✏️ 찬양/묵상 수정</SectionTitle>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (hasUnsavedPraiseEdit) {
-                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setEditingPraise(null)
                 }}
@@ -439,9 +442,9 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (hasUnsavedPraiseEdit) {
-                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setEditingPraise(null)
                 }}

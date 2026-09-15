@@ -6,6 +6,9 @@ import { UserProfile, Role, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdateProfile, dbReapplyUser } from '../../lib/db'
 import { FamilyChildInfo, parseFamilyInfo, serializeFamilyInfo, mergeChildrenLists } from '../../lib/familyInfo'
 import { getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
+import { askConfirm } from '../ConfirmDialog'
+import Card from '../ui/Card'
+import SectionTitle from '../ui/SectionTitle'
 
 interface ApprovalTabProps {
   allUsers: UserProfile[]
@@ -36,7 +39,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
 
   const handleRestore = async (user: UserProfile) => {
     if (restoringId) return
-    if (!confirm(`${user.name}님을 다시 "승인 대기" 상태로 되돌릴까요?`)) return
+    if (!await askConfirm(`${user.name}님을 다시 "승인 대기" 상태로 되돌릴까요?`)) return
     setRestoringId(user.id)
     const res = await dbReapplyUser(user.id)
     setRestoringId(null)
@@ -94,7 +97,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
         const newFamilyGroupId = `fam_${Date.now().toString(36)}`
         const { error: familyLinkError } = await dbUpdateProfile(targetMemberId, { familyGroupId: newFamilyGroupId })
         if (familyLinkError) {
-          alert(`가족 연결 저장 중 오류가 발생했습니다: ${familyLinkError.message}\n가족 연결 없이 승인만 계속 진행합니다.`)
+          showToast(`⚠️ 가족 연결 저장 중 오류가 발생했습니다: ${familyLinkError.message}\n가족 연결 없이 승인만 계속 진행합니다.`)
         } else {
           resolvedFamilyGroupId = newFamilyGroupId
           onUpdateUsers?.(prev => prev.map(u => u.id === targetMemberId ? { ...u, familyGroupId: resolvedFamilyGroupId } : u))
@@ -109,7 +112,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
         const syncedFamilyInfo = serializeFamilyInfo({ note: targetNote, children: mergedChildren, addressRequestedAt: targetAddressRequestedAt })
         const { error: childSyncError } = await dbUpdateProfile(targetMemberId, { familyInfo: syncedFamilyInfo })
         if (childSyncError) {
-          alert(`자녀 정보를 배우자 계정과 동기화하는 중 오류가 발생했습니다: ${childSyncError.message}`)
+          showToast(`⚠️ 자녀 정보를 배우자 계정과 동기화하는 중 오류가 발생했습니다: ${childSyncError.message}`)
         } else {
           onUpdateUsers?.(prev => prev.map(u => u.id === targetMemberId ? { ...u, familyInfo: syncedFamilyInfo } : u))
         }
@@ -134,7 +137,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const handleReject = async (user: UserProfile) => {
     if (rejectingId) return
-    if (!confirm(`${user.name}님의 가입 신청을 거절할까요?\n\n거절해도 기록은 남으며, 나중에 다시 승인할 수 있습니다.`)) return
+    if (!await askConfirm(`${user.name}님의 가입 신청을 거절할까요?\n\n거절해도 기록은 남으며, 나중에 다시 승인할 수 있습니다.`, { confirmLabel: '거절', tone: 'danger' })) return
     setRejectingId(user.id)
     const res = await onRejectUser(user.id)
     setRejectingId(null)
@@ -149,10 +152,10 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
     <div className="space-y-3">
       {pendingUsers.length > 0 ? (
         pendingUsers.map((pending) => (
-          <div key={pending.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+          <Card key={pending.id} className="space-y-3">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(pending)}</h3>
+                <SectionTitle>{getUserDisplayName(pending)}</SectionTitle>
                 <p className="text-xs text-gray-400 flex items-center gap-1 flex-wrap">
                   <span>{pending.phone} | 주소: {pending.address || '미입력'}</span>
                   <button
@@ -265,7 +268,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                 className="flex-1 py-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700"
               >가입 승인</button>
             </div>
-          </div>
+          </Card>
         ))
       ) : (
         <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-xs text-gray-400">현재 승인 대기 중인 신규 성도가 없습니다.</div>
@@ -273,7 +276,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
 
       {/* ── 거절된 신청 (접혀 있음) ── */}
       {rejectedUsers.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+        <Card padding="none" className="overflow-hidden">
           <button
             onClick={() => setShowRejected(v => !v)}
             className="w-full px-4 py-3 flex items-center justify-between text-left"
@@ -306,7 +309,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
               ))}
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   )

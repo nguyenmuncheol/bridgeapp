@@ -74,7 +74,8 @@ export async function requestAddressUpdate(
   const newFamilyInfo = buildAddressRequestUpdate(user, !currentlyRequested)
   const { error } = await dbUpdateProfile(user.id, { familyInfo: newFamilyInfo })
   if (error) {
-    alert(`주소 보완요청 처리 중 오류가 발생했습니다: ${error.message}`)
+    // 이 함수는 showToast 를 이미 넘겨받고 있으므로 브라우저 기본 창을 쓸 이유가 없습니다.
+    showToast(`⚠️ 주소 보완요청 처리 중 오류가 발생했습니다: ${error.message}`)
     return null
   }
   onUpdateUsers?.(prev => prev.map(u => u.id === user.id ? { ...u, familyInfo: newFamilyInfo } : u))

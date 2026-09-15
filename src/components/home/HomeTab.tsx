@@ -11,6 +11,8 @@ import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
 import ImageViewerModal from '../ImageViewerModal'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
+import { askConfirm } from '../ConfirmDialog'
+import SectionTitle from '../ui/SectionTitle'
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -146,7 +148,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   const handleDeleteNotice = async (noticeId: string) => {
     const target = notices.find(n => n.id === noticeId)
     // 🐛 과거 버그: 확인 창 없이 곧바로 삭제됐고, 실패해도 화면에서는 사라졌습니다.
-    if (!confirm(`'${target?.title || '이 공지'}' 를 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return
+    if (!await askConfirm(`'${target?.title || '이 공지'}' 를 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`, { confirmLabel: '삭제', tone: 'danger' })) return
 
     const res = await dbDeletePost(noticeId)
     if (res.error) {
@@ -522,7 +524,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
           <div className="bg-white rounded-3xl max-w-lg w-full h-[90vh] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 주보 수정 (관리자)</h3>
+              <SectionTitle size="lg">✏️ 주보 수정 (관리자)</SectionTitle>
               <button
                 type="button"
                 onClick={() => setShowBulletinEditModal(false)}
@@ -656,14 +658,14 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
           <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <h3 className="font-bold text-sm sm:text-base text-gray-900">
+              <SectionTitle size="lg">
                 {editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}
-              </h3>
+              </SectionTitle>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (hasUnsavedNotice) {
-                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setShowNoticeCreateModal(false)
                 }}
@@ -703,9 +705,9 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
             <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (hasUnsavedNotice) {
-                    if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?')) return
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setShowNoticeCreateModal(false)
                 }}
@@ -735,7 +737,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-sm text-gray-900">{selectedNoticeModal.title}</h3>
+                <SectionTitle>{selectedNoticeModal.title}</SectionTitle>
                 <p className="text-2xs text-gray-400">{selectedNoticeModal.createdAt}</p>
               </div>
               {currentUser.role === 'ADMIN' && (

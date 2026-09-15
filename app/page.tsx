@@ -25,6 +25,7 @@ import { isRunningStandalone } from '../src/lib/pwaInstall'
 import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw } from 'lucide-react'
+import { askConfirm, showAlert } from '../src/components/ConfirmDialog'
 
 export default function Home() {
   // 🐛 과거 불편: 어느 탭에 있는지가 화면 기억에만 있고 주소창에는 없어서,
@@ -277,7 +278,7 @@ export default function Home() {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-    if (error) alert(`구글 로그인 에러: ${error.message}`)
+    if (error) await showAlert(`구글 로그인 에러: ${error.message}`)
   }
 
   // 카카오 로그인 실행 (이메일 권한 요구 없이 닉네임/프로필만 요청)
@@ -292,12 +293,12 @@ export default function Home() {
         },
       },
     })
-    if (error) alert(`카카오 로그인 에러: ${error.message}`)
+    if (error) await showAlert(`카카오 로그인 에러: ${error.message}`)
   }
 
   // 로그아웃 (홈 탭으로 즉시 복귀)
   const handleLogout = async () => {
-    if (!confirm('로그아웃 하시겠습니까?')) return
+    if (!await askConfirm('로그아웃 하시겠습니까?')) return
     await supabase.auth.signOut()
     resetToGuest()
   }
@@ -721,10 +722,10 @@ export default function Home() {
                         // 화면이 곧 바뀌므로 alert 대신 상단 안내로 알려드립니다.
                         setJustApproved(true)
                       } else {
-                        alert('아직 승인되지 않았습니다. 교회 관리자에게 문의해 주세요.')
+                        await showAlert('아직 승인되지 않았습니다. 교회 관리자에게 문의해 주세요.')
                       }
                     } catch {
-                      alert('상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+                      await showAlert('상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.')
                     }
                   }}
                   className="w-full py-2.5 bg-brand text-white text-xs font-bold rounded-xl hover:bg-brand-hover transition-all"
@@ -752,11 +753,11 @@ export default function Home() {
                   onClick={async () => {
                     const res = await dbReapplyUser(currentUserId)
                     if (res.error) {
-                      alert('다시 신청하지 못했습니다. 잠시 후 시도하거나 교회 사무실로 문의해 주세요.')
+                      await showAlert('다시 신청하지 못했습니다. 잠시 후 시도하거나 교회 사무실로 문의해 주세요.')
                       return
                     }
                     setUsers(prev => prev.map(u => u.id === currentUserId ? { ...u, role: 'PENDING' as Role, signupRequestedAt: new Date().toISOString() } : u))
-                    alert('가입 신청이 다시 접수되었습니다. 관리자 승인을 기다려 주세요.')
+                    await showAlert('가입 신청이 다시 접수되었습니다. 관리자 승인을 기다려 주세요.')
                   }}
                   className="w-full py-3 bg-brand text-white text-xs font-bold rounded-xl hover:bg-brand-hover transition-all"
                 >

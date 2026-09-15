@@ -1,11 +1,13 @@
 'use client'
 
+import Card from './ui/Card'
+
 // 데이터 로딩 중 "아직 없습니다" 같은 빈 상태 문구가 잠깐 잘못 노출되는 걸 막기 위한
 // 공용 스켈레톤 카드. 실제 카드와 비슷한 크기의 회색 블록을 펄스 애니메이션으로 보여줍니다.
 // Tailwind의 기본 `animate-pulse` 유틸(별도 설정 없이 동작)만 사용합니다.
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-3 animate-pulse">
+    <Card className="space-y-3 animate-pulse">
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-full bg-gray-200" />
         <div className="h-3 w-20 bg-gray-200 rounded" />
@@ -15,7 +17,7 @@ export function SkeletonCard() {
         <div className="h-2.5 w-full bg-gray-100 rounded" />
         <div className="h-2.5 w-5/6 bg-gray-100 rounded" />
       </div>
-    </div>
+    </Card>
   )
 }
 

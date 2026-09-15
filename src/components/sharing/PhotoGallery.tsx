@@ -15,6 +15,8 @@ import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/us
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 import Avatar from '../news/Avatar'
 import { isChurchAuthor, CHURCH_AUTHOR_NAME } from '../../lib/churchIdentity'
+import { askConfirm } from '../ConfirmDialog'
+import SectionTitle from '../ui/SectionTitle'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -249,7 +251,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
     const target = photos.find(p => p.id === id)
     // 🐛 과거 버그: 어떤 글인지 안 알려주고 삭제했고, 삭제가 실패해도 화면에서는 사라졌습니다.
     // (사진은 특히 민감합니다 — 지웠다고 믿었는데 다른 성도 화면엔 그대로 남아있었습니다)
-    if (!confirm(`${target?.title ? `'${target.title}'` : '이 사진'} 을(를) 삭제할까요?\n사진 파일도 함께 삭제되며 되돌릴 수 없습니다.`)) return
+    if (!await askConfirm(`${target?.title ? `'${target.title}'` : '이 사진'} 을(를) 삭제할까요?\n사진 파일도 함께 삭제되며 되돌릴 수 없습니다.`, { confirmLabel: '삭제', tone: 'danger' })) return
 
     const { error: delError } = await dbDeletePost(id)
     if (delError) {
@@ -386,7 +388,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
         >
           <div className="bg-white rounded-3xl max-w-lg w-full h-[90vh] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <h3 className="font-bold text-sm sm:text-base text-gray-900">✏️ 행사사진 정보 수정</h3>
+              <SectionTitle size="lg">✏️ 행사사진 정보 수정</SectionTitle>
               <button
                 type="button"
                 onClick={() => setEditingPhoto(null)}
@@ -615,7 +617,7 @@ function PhotoDetailModal({
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold whitespace-nowrap">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <div className="min-w-0">
-            <h3 className="font-bold text-sm text-gray-900">{photo.title}</h3>
+            <SectionTitle>{photo.title}</SectionTitle>
             {/* 누가 언제 올렸는지 — 다른 게시판과 동일한 표기 */}
             <div className="flex items-center gap-1.5 text-2xs text-gray-400 mt-0.5">
               {renderAuthor(photo.authorId, photo.authorName)}

@@ -12,6 +12,7 @@ import {
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { askConfirm } from '../ConfirmDialog'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
@@ -307,7 +308,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   // ── 방문자 삭제 핸들러 ──
   const handleDeleteVisitor = async (id: string, name: string | null) => {
     const confirmName = name ? `'${name}' 방문자` : '방문자 기록'
-    if (!confirm(`${confirmName}을(를) 삭제하시겠습니까?`)) return
+    if (!await askConfirm(`${confirmName}을(를) 삭제하시겠습니까?`, { confirmLabel: '삭제', tone: 'danger' })) return
 
     const res = await dbDeleteVisitorRecord(id)
     if (res.error) {

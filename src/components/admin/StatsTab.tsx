@@ -10,6 +10,8 @@ import { normalizeLabriLabel } from '../../lib/adminHelpers'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { askConfirm } from '../ConfirmDialog'
+import Card from '../ui/Card'
 
 interface StatsTabProps {
   currentUser?: UserProfile
@@ -379,7 +381,7 @@ export default function StatsTab({
     // 🐛 과거 버그: '미기록'은 그 사람의 출석 기록과 결석 사유를 되돌릴 수 없이 지우는데,
     // 출석/결석 버튼과 똑같이 생긴 채로 나란히 있었고 확인 창도 없었습니다.
     if (status === 'NONE') {
-      if (!confirm(`${user.isDependent ? user.name : getUserDisplayName(user)}님의 ${dateStr} 출석 기록을 삭제할까요?\n결석 사유도 함께 지워지며 되돌릴 수 없습니다.`)) return
+      if (!await askConfirm(`${user.isDependent ? user.name : getUserDisplayName(user)}님의 ${dateStr} 출석 기록을 삭제할까요?\n결석 사유도 함께 지워지며 되돌릴 수 없습니다.`, { confirmLabel: '삭제', tone: 'danger' })) return
     }
 
     setIsSavingAttendance(true)
@@ -390,7 +392,7 @@ export default function StatsTab({
       if (status === 'NONE') {
         const { error } = await dbDeleteChildAttendance(depId, dateStr)
         if (error) {
-          alert(`출석 기록 삭제 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+          showToast(`⚠️ 출석 기록 삭제 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
           return
         }
       } else {
@@ -405,7 +407,7 @@ export default function StatsTab({
           recordedBy: currentUser?.id
         }])
         if (error) {
-          alert(`출석 정보 저장 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+          showToast(`⚠️ 출석 정보 저장 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
           return
         }
       }
@@ -425,7 +427,7 @@ export default function StatsTab({
         .eq('date_str', dateStr)
         .eq('user_id', user.id)
       if (error) {
-        alert(`출석 기록 삭제 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+        showToast(`⚠️ 출석 기록 삭제 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
         return
       }
     } else {
@@ -439,7 +441,7 @@ export default function StatsTab({
         recordedBy: currentUser?.id
       }])
       if (error) {
-        alert(`출석 정보 저장 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
+        showToast(`⚠️ 출석 정보 저장 중 오류가 발생했습니다: ${error.message}\n다시 시도해 주세요.`)
         return
       }
     }
@@ -498,7 +500,7 @@ export default function StatsTab({
       <div className="space-y-4">
         {/* ───────── 상단: 선택한 주일 하루 ───────── */}
         {!isTeacher && (
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
+        <Card className="space-y-4">
           <div className="space-y-1.5">
             <h3 className="font-bold text-[12px] text-gray-900">📊 선택한 주일 출석률</h3>
             <select
@@ -551,12 +553,12 @@ export default function StatsTab({
               </div>
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* 선택한 주일의 출석/결석 명단 (CSV는 아래 기간 카드에 있습니다) */}
         {!isTeacher && (
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+        <Card className="space-y-3">
           <button
             type="button"
             onClick={() => setShowAdultRoster(prev => !prev)}
@@ -632,11 +634,11 @@ export default function StatsTab({
               </tbody>
             </table>
           )}
-        </div>
+        </Card>
         )}
 
         {/* ── 자녀(교회학교) 출석 ── */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5">
+        <Card className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[12px] text-gray-900">🧒 교회학교 출석</h3>
             <span className="text-[10px] text-gray-400">{rangeLabel}</span>
@@ -672,9 +674,9 @@ export default function StatsTab({
               </div>
             </>
           )}
-        </div>
+        </Card>
         {/* 교회학교 명단 (선택한 주일) — 성인 명단과 같은 구성 */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+        <Card className="space-y-3">
           <button
             type="button"
             onClick={() => setShowChildRoster(prev => !prev)}
@@ -754,12 +756,12 @@ export default function StatsTab({
               </table>
             )
           )}
-        </div>
+        </Card>
 
         {/* ── 방문자 현황 (선택한 주일) ── */}
         {/* 순서 원칙: 이름을 아는 방문자가 먼저입니다. 익명 카운터는 총원을 맞추기 위한
             보조 숫자라서 아래쪽에 무채색으로 조용히 둡니다. */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+        <Card className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[12px] text-gray-900">
               🏷️ {selectedStatsDate || '선택한 주일'} 방문자 현황
@@ -830,10 +832,10 @@ export default function StatsTab({
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* ───────── 하단: 기간 통계 ───────── */}
-        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-2.5 text-[12px]">
+        <Card padding="sm" className="space-y-2.5 text-[12px]">
           <h3 className="font-bold text-[12px] text-gray-900">🗓️ 기간 출석률</h3>
           <div className="flex gap-2 items-end">
             <div className="flex-1">
@@ -876,11 +878,11 @@ export default function StatsTab({
             ))}
           </div>
 
-        </div>
+        </Card>
 
         {/* 기간 출석률 결과 + CSV */}
         {!isTeacher && (
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-4">
+        <Card className="space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-bold text-[12px] text-gray-900">기간 합산 결과</h3>
@@ -965,14 +967,14 @@ export default function StatsTab({
               )}
             </>
           )}
-        </div>
+        </Card>
         )}
 
         {/* ── 기간 방문자 (시작일 ~ 종료일) ── */}
         {/* 선택 주일 카드가 "그 날"이라면 이 카드는 "이 기간". 같은 사람이 여러 주 왔으면
             한 줄로 합쳐 방문 횟수를 세므로, 꾸준히 나오는 방문자가 위로 올라옵니다.
             교회학교 선생님도 자기 부서 방문자를 봐야 하므로 isTeacher로 막지 않습니다. */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+        <Card className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-bold text-[12px] text-gray-900">🏷️ 기간 방문자</h3>
@@ -1072,7 +1074,7 @@ export default function StatsTab({
               </div>
             </>
           )}
-        </div>
+        </Card>
 
       </div>
 

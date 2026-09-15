@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react'
 import { Bell, Send } from 'lucide-react'
 import { dbSendManualNotification } from '../../lib/db'
 import { UserProfile, getUserDisplayName, isChurchMember } from '../../lib/mockData'
+import { askConfirm } from '../ConfirmDialog'
+import SectionTitle from '../ui/SectionTitle'
 
 interface NotificationJobsTabProps {
   showToast: (msg: string) => void
@@ -116,7 +118,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
     if (!title.trim()) { showToast('제목을 입력해 주세요'); return }
     if (receiverCount === 0) { showToast('받는 사람이 없습니다'); return }
     // 알림은 되돌릴 수 없으므로 반드시 한 번 확인합니다.
-    if (!confirm(
+    if (!await askConfirm(
       `${receiverCount}명에게 알림을 보냅니다.\n\n` +
       `보낸 사람: ${senderName}\n제목: ${title.trim()}\n\n` +
       '보낸 알림은 되돌릴 수 없습니다. 계속할까요?'
@@ -142,7 +144,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-1.5">
           <Send size={14} className="text-brand" />
-          <h3 className="font-bold text-sm text-gray-900">알림 보내기</h3>
+          <SectionTitle>알림 보내기</SectionTitle>
         </div>
 
         <div className="space-y-1">
@@ -237,7 +239,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
         <div className="flex items-center gap-1.5">
           <Bell size={14} className="text-brand" />
-          <h3 className="font-bold text-sm text-gray-900">자동 알림</h3>
+          <SectionTitle>자동 알림</SectionTitle>
         </div>
         <p className="text-2xs text-gray-500 leading-relaxed">
           아래 알림들은 <strong>정해진 시각에 서버가 알아서</strong> 보냅니다. (시각은 모두 베트남 시각)<br />

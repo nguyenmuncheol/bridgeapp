@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { canInstall, isRunningStandalone, subscribeInstallState, triggerInstall } from '../lib/pwaInstall'
+import { showAlert } from './ConfirmDialog'
 
 // 안드로이드(Chrome 등)에서 버튼 한 번으로 홈 화면에 설치할 수 있게 합니다.
 // 아이폰(Safari)은 이 방식 자체를 지원하지 않아 버튼이 뜨지 않습니다 —
@@ -41,7 +42,7 @@ export default function PwaInstallButton() {
     const outcome = await triggerInstall()
     setBusy(false)
     if (outcome === 'unavailable') {
-      alert('지금은 설치를 시작할 수 없습니다. 아래 안내를 참고해 직접 추가해 주세요.')
+      await showAlert('지금은 설치를 시작할 수 없습니다. 아래 안내를 참고해 직접 추가해 주세요.')
     }
   }
 

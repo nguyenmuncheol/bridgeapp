@@ -5,6 +5,8 @@ import { X, Trash2, Bell } from 'lucide-react'
 import { NotificationItem, UserProfile, getUserDisplayName } from '../lib/mockData'
 import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification, dbDeleteAllNotifications } from '../lib/db'
 import { formatDateTimeShort } from '../lib/dateUtils'
+import { askConfirm } from './ConfirmDialog'
+import SectionTitle from './ui/SectionTitle'
 
 /** 교회 명의로 나가는 알림의 보낸 사람 이름 (서버 함수들과 같은 값) */
 const CHURCH_NAME = '더브릿지교회'
@@ -151,7 +153,7 @@ export default function NotificationPanel({
   const [isDeletingAll, setIsDeletingAll] = useState(false)
   const handleDeleteAll = async () => {
     if (isDeletingAll || items.length === 0) return
-    if (!confirm('알림을 모두 삭제할까요?\n삭제하면 되돌릴 수 없습니다.')) return
+    if (!await askConfirm('알림을 모두 삭제할까요?\n삭제하면 되돌릴 수 없습니다.', { confirmLabel: '삭제', tone: 'danger' })) return
     const backup = items
     setIsDeletingAll(true)
     setItems([])
@@ -171,7 +173,7 @@ export default function NotificationPanel({
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-1.5">
             <Bell size={14} className="text-brand" />
-            <h3 className="font-bold text-sm text-gray-900">알림</h3>
+            <SectionTitle>알림</SectionTitle>
           </div>
           <div className="flex items-center gap-2">
             {!isLoading && !error && items.length > 0 && (

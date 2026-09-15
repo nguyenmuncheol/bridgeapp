@@ -7,6 +7,8 @@ import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
+import { askConfirm } from '../ConfirmDialog'
+import SectionTitle from '../ui/SectionTitle'
 
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
@@ -62,9 +64,9 @@ export default function AddPostModal({
 
   if (!isOpen) return null
 
-  const handleCloseRequest = () => {
+  const handleCloseRequest = async () => {
     if (hasUnsaved) {
-      if (!confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?\n작성 중인 내용은 저장되지 않습니다.')) {
+      if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?\n작성 중인 내용은 저장되지 않습니다.')) {
         return
       }
     }
@@ -237,9 +239,9 @@ export default function AddPostModal({
       }`}>
         {/* 상단 고정 헤더 (제목 + 명시적 닫기 버튼) */}
         <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-          <h3 className="font-bold text-sm sm:text-base text-gray-900">
+          <SectionTitle size="lg">
             {subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
-          </h3>
+          </SectionTitle>
           <button
             type="button"
             onClick={handleCloseRequest}

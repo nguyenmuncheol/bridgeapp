@@ -8,6 +8,7 @@ import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealReg
 import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/familyKey'
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import SectionTitle from '../ui/SectionTitle'
 
 interface RequestTabProps {
   currentUser: UserProfile
@@ -481,7 +482,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
         >
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-gray-900">📋 행사 신청 관리 (관리자)</h3>
+              <SectionTitle>📋 행사 신청 관리 (관리자)</SectionTitle>
               <button onClick={() => setShowEventEditModal(false)} className="text-gray-400"><X size={16} /></button>
             </div>
             <div className="space-y-2.5 text-xs">

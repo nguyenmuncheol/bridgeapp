@@ -6,6 +6,8 @@ import { dbFetchMealRegistrations } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { UserProfile } from '../../lib/mockData'
 import { resolveFamilyKey, buildFamilyUnits } from '../../lib/familyKey'
+import Card from '../ui/Card'
+import SectionTitle from '../ui/SectionTitle'
 
 interface MealsTabProps {
   showToast: (msg: string) => void
@@ -194,7 +196,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
       {/* ── 아직 응답 안 한 가정 ── */}
       {/* 예전에는 "신청한 사람"만 보여서, 주방에서 몇 인분을 준비해야 할지 판단할 때
           "이 숫자가 전부인지, 아직 답을 안 한 가정이 남았는지" 알 수가 없었습니다. */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+      <Card padding="none" className="overflow-hidden">
         <button
           onClick={() => setShowPending(v => !v)}
           className="w-full flex items-center justify-between p-4"
@@ -262,14 +264,14 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* 신청자 목록 테이블 */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+      <Card className="space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-bold text-xs text-gray-900">
+          <SectionTitle size="sm">
             {upcomingSundays[forecastWeek]?.shortLabelStr} 식사 신청자 목록
-          </h3>
+          </SectionTitle>
           <span className="text-2xs bg-blue-50 text-brand font-bold px-2 py-0.5 rounded-full">
             성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명
           </span>
@@ -300,7 +302,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
             아직 식사를 신청한 성도가 없습니다.
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

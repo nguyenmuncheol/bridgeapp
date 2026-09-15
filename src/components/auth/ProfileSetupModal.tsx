@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { showAlert } from '../ConfirmDialog'
 
 interface ProfileSetupModalProps {
   initialName: string
@@ -18,10 +19,10 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   const [birthMonth, setBirthMonth] = useState('01')
   const [birthDay, setBirthDay] = useState('01')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !phone.trim() || !address.trim()) {
-      alert('모든 항목을 입력해 주세요.')
+      await showAlert('모든 항목을 입력해 주세요.')
       return
     }
     const birthday = `${birthYear}-${birthMonth}-${birthDay}`
