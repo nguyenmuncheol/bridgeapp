@@ -104,6 +104,62 @@ export default function StatsTab({
     }
   }, [selectedDateVisitors])
 
+  // ── 기간(시작~끝) 전체의 방문자 기록 ──
+  // 선택한 주일 카드가 "그 날 누가 왔나"를 보여 준다면, 이쪽은 "이 기간에 누가 몇 번 왔나"입니다.
+  // 같은 사람이 여러 주 방문했으면 한 줄로 합치고 방문 횟수를 세어, 꾸준히 나오는
+  // 방문자를 한눈에 알아볼 수 있게 합니다.
+  const rangeVisitorStats = useMemo(() => {
+    const inRange = (allVisitorRecords || []).filter(
+      (r: VisitorRecordRow) => r.date_str >= safeStart && r.date_str <= safeEnd
+    )
+    const anon = inRange.filter((r: VisitorRecordRow) => !r.name)
+    const named = inRange.filter((r: VisitorRecordRow) => !!r.name)
+
+    const adultAnonCount = anon
+      .filter(r => r.category === '성인')
+      .reduce((acc, r) => acc + r.count, 0)
+    // 예전 기록은 익명도 부서별로 쪼개져 있어서, 지금 기준인 '학생'으로 합쳐 셉니다.
+    const studentAnonCount = anon
+      .filter(r => r.category !== '성인')
+      .reduce((acc, r) => acc + r.count, 0)
+
+    // 사람 단위로 합치기 (이름 + 구분이 같으면 같은 사람)
+    const map = new Map<string, {
+      name: string; category: string; visitCount: number; dates: string[]
+      notes: { date: string; note: string }[]
+    }>()
+    named.forEach((r: VisitorRecordRow) => {
+      const key = `${(r.name || '').trim()}__${r.category}`
+      const cur = map.get(key) || {
+        name: (r.name || '').trim(), category: r.category, visitCount: 0,
+        dates: [] as string[], notes: [] as { date: string; note: string }[]
+      }
+      cur.visitCount += 1
+      cur.dates.push(r.date_str)
+      if (r.note && r.note.trim()) cur.notes.push({ date: r.date_str, note: r.note.trim() })
+      map.set(key, cur)
+    })
+
+    const people = Array.from(map.values())
+      .map(p => ({ ...p, recentDate: [...p.dates].sort().reverse()[0] }))
+      .sort((a, b) => {
+        // 자주 온 사람 → 최근에 온 사람 → 가나다 순
+        if (a.visitCount !== b.visitCount) return b.visitCount - a.visitCount
+        if (a.recentDate !== b.recentDate) return b.recentDate.localeCompare(a.recentDate)
+        return a.name.localeCompare(b.name, 'ko')
+      })
+
+    return {
+      people,
+      namedVisitCount: named.length,
+      adultAnonCount,
+      studentAnonCount,
+      anonTotal: adultAnonCount + studentAnonCount,
+      totalCount: adultAnonCount + studentAnonCount + named.length,
+      sundayCount: new Set(inRange.map((r: VisitorRecordRow) => r.date_str)).size
+    }
+  }, [allVisitorRecords, safeStart, safeEnd])
+
   // 기간 단축 버튼 (자주 쓰는 범위를 한 번에)
   const applyQuickRange = (weeksBack: number) => {
     const end = getMostRecentSunday().dateStr
@@ -696,34 +752,22 @@ export default function StatsTab({
         </div>
 
         {/* ── 방문자 현황 (선택한 주일) ── */}
+        {/* 순서 원칙: 이름을 아는 방문자가 먼저입니다. 익명 카운터는 총원을 맞추기 위한
+            보조 숫자라서 아래쪽에 무채색으로 조용히 둡니다. */}
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-[12px] text-gray-900">
-                🏷️ {selectedStatsDate || '선택한 주일'} 방문자 현황
-              </h3>
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                총 {visitorStats.totalCount}명
-              </span>
-            </div>
+            <h3 className="font-bold text-[12px] text-gray-900">
+              🏷️ {selectedStatsDate || '선택한 주일'} 방문자 현황
+            </h3>
+            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+              총 {visitorStats.totalCount}명
+            </span>
           </div>
 
-          {/* 익명 카운터 요약 */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-amber-50/50 border border-amber-200/70 rounded-xl p-2.5 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-amber-950">성인 방문자 (익명)</span>
-              <span className="text-xs font-black text-amber-900">{visitorStats.adultAnonCount}명</span>
-            </div>
-            <div className="bg-amber-50/50 border border-amber-200/70 rounded-xl p-2.5 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-amber-950">학생 방문자 (익명)</span>
-              <span className="text-xs font-black text-amber-900">{visitorStats.studentAnonCount}명</span>
-            </div>
-          </div>
-
-          {/* 기명 방문자 명단 */}
-          <div className="space-y-1.5 pt-1">
-            <div className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
-              <span>기명 방문자 명단 ({visitorStats.namedVisitors.length}명)</span>
+          {/* 1. 기명 방문자 명단 (주인공) */}
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-bold text-gray-700">
+              기명 방문자 <span className="text-[#335f87]">{visitorStats.namedVisitors.length}명</span>
             </div>
             {visitorStats.namedVisitors.length === 0 ? (
               <p className="py-2.5 text-center text-[10px] text-gray-400 bg-gray-50 rounded-xl">
@@ -735,22 +779,16 @@ export default function StatsTab({
                   <tr>
                     <th className="p-2">이름</th>
                     <th className="p-2">구분</th>
-                    <th className="p-2 text-center">출석여부</th>
                     <th className="p-2 text-center">Note</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 text-gray-700">
                   {visitorStats.namedVisitors.map((v: VisitorRecordRow) => (
                     <tr key={v.id} className="hover:bg-gray-50/70 transition-colors">
-                      <td className="p-2 font-bold text-gray-800">{v.name}</td>
-                      <td className="p-2 text-gray-500">
-                        <span className="text-[10px] font-bold bg-amber-100/80 text-amber-900 px-1.5 py-0.5 rounded">
+                      <td className="p-2 font-bold text-gray-900">{v.name}</td>
+                      <td className="p-2">
+                        <span className="text-[10px] font-bold bg-[#335f87]/10 text-[#335f87] px-1.5 py-0.5 rounded">
                           {v.category}
-                        </span>
-                      </td>
-                      <td className="p-2 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                          ✅ 출석
                         </span>
                       </td>
                       <td className="p-2 text-center">
@@ -758,7 +796,7 @@ export default function StatsTab({
                           <button
                             type="button"
                             onClick={() => setNotePopup({ name: `${v.name} (${v.category} 방문자)`, note: v.note! })}
-                            className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                            className="px-2 py-0.5 bg-[#335f87]/5 hover:bg-[#335f87]/15 text-[#335f87] border border-[#335f87]/25 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
                           >
                             📝 Note
                           </button>
@@ -771,6 +809,21 @@ export default function StatsTab({
                 </tbody>
               </table>
             )}
+          </div>
+
+          {/* 2. 익명 카운터 (보조 숫자 — 무채색) */}
+          <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-400 shrink-0">익명 카운터</span>
+            <div className="flex-1 flex gap-1.5">
+              <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
+                <span className="text-[10px] font-medium text-gray-500">성인</span>
+                <span className="text-[11px] font-bold text-gray-700">{visitorStats.adultAnonCount}</span>
+              </div>
+              <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
+                <span className="text-[10px] font-medium text-gray-500">학생</span>
+                <span className="text-[11px] font-bold text-gray-700">{visitorStats.studentAnonCount}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -909,6 +962,112 @@ export default function StatsTab({
           )}
         </div>
         )}
+
+        {/* ── 기간 방문자 (시작일 ~ 종료일) ── */}
+        {/* 선택 주일 카드가 "그 날"이라면 이 카드는 "이 기간". 같은 사람이 여러 주 왔으면
+            한 줄로 합쳐 방문 횟수를 세므로, 꾸준히 나오는 방문자가 위로 올라옵니다.
+            교회학교 선생님도 자기 부서 방문자를 봐야 하므로 isTeacher로 막지 않습니다. */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-[12px] text-gray-900">🏷️ 기간 방문자</h3>
+              <span className="text-[10px] text-gray-400 font-medium">
+                {rangeLabel} · 방문 기록 {rangeVisitorStats.sundayCount}주일
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
+              연인원 {rangeVisitorStats.totalCount}명
+            </span>
+          </div>
+
+          {rangeVisitorStats.totalCount === 0 ? (
+            <p className="text-[12px] text-gray-400 py-2 text-center">이 기간에는 방문자 기록이 없습니다.</p>
+          ) : (
+            <>
+              {/* 1. 기명 방문자 — 사람 단위로 합친 명단 */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-bold text-gray-700">
+                  기명 방문자 <span className="text-[#335f87]">{rangeVisitorStats.people.length}명</span>
+                  {rangeVisitorStats.namedVisitCount !== rangeVisitorStats.people.length && (
+                    <span className="font-medium text-gray-400"> · 연 {rangeVisitorStats.namedVisitCount}회</span>
+                  )}
+                </div>
+                {rangeVisitorStats.people.length === 0 ? (
+                  <p className="py-2.5 text-center text-[10px] text-gray-400 bg-gray-50 rounded-xl">
+                    이 기간에는 기명 방문자가 없습니다.
+                  </p>
+                ) : (
+                  <table className="w-full text-[12px] text-left">
+                    <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                      <tr>
+                        <th className="p-2">이름</th>
+                        <th className="p-2">구분</th>
+                        <th className="p-2 text-center">방문</th>
+                        <th className="p-2">최근</th>
+                        <th className="p-2 text-center">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 text-gray-700">
+                      {rangeVisitorStats.people.map(pv => (
+                        <tr key={`${pv.name}-${pv.category}`} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="p-2 font-bold text-gray-900">{pv.name}</td>
+                          <td className="p-2">
+                            <span className="text-[10px] font-bold bg-[#335f87]/10 text-[#335f87] px-1.5 py-0.5 rounded">
+                              {pv.category}
+                            </span>
+                          </td>
+                          <td className="p-2 text-center font-bold text-gray-800">
+                            {pv.visitCount}회
+                          </td>
+                          <td className="p-2 text-[10px] text-gray-500">{pv.recentDate}</td>
+                          <td className="p-2 text-center">
+                            {pv.notes.length > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => setNotePopup({
+                                  name: `${pv.name} (${pv.category} 방문자 · ${pv.visitCount}회 방문)`,
+                                  // 여러 주에 걸친 특이사항은 날짜와 함께 최신순으로 이어 붙입니다.
+                                  note: [...pv.notes]
+                                    .sort((a, b) => b.date.localeCompare(a.date))
+                                    .map(n => `[${n.date}]\n${n.note}`)
+                                    .join('\n\n')
+                                })}
+                                className="px-2 py-0.5 bg-[#335f87]/5 hover:bg-[#335f87]/15 text-[#335f87] border border-[#335f87]/25 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                              >
+                                📝 {pv.notes.length}
+                              </button>
+                            ) : (
+                              <span className="text-gray-300 text-[10px]">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* 2. 익명 카운터 합계 (보조 숫자 — 무채색) */}
+              <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-400 shrink-0">익명 합계</span>
+                <div className="flex-1 flex gap-1.5">
+                  <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
+                    <span className="text-[10px] font-medium text-gray-500">성인</span>
+                    <span className="text-[11px] font-bold text-gray-700">{rangeVisitorStats.adultAnonCount}</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
+                    <span className="text-[10px] font-medium text-gray-500">학생</span>
+                    <span className="text-[11px] font-bold text-gray-700">{rangeVisitorStats.studentAnonCount}</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
+                    <span className="text-[10px] font-medium text-gray-500">계</span>
+                    <span className="text-[11px] font-bold text-gray-700">{rangeVisitorStats.anonTotal}</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
       </div>
 

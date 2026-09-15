@@ -1520,6 +1520,19 @@ export interface VisitorRecordRow {
   created_at: string
 }
 
+/**
+ * 방문자 기록 뮤테이션 뒤 캐시 무효화.
+ *
+ * 화면마다 키가 달라서(모달은 주일별 `visitorRecords:<날짜>`, 주소록은 `allNamedVisitors`,
+ * 관리자 출석탭은 `allVisitorRecords`) 한 군데라도 빠뜨리면 그 화면만 옛 숫자를 보여 줍니다.
+ * prefix 매칭으로는 `allVisitorRecords`가 잡히지 않으므로 반드시 따로 지워야 합니다.
+ */
+function invalidateVisitorCaches() {
+  invalidateCache('visitorRecords:')
+  invalidateCache('allNamedVisitors', { exact: true })
+  invalidateCache('allVisitorRecords', { exact: true })
+}
+
 /** 특정 주일의 방문자 출석 기록 전체 조회 */
 export async function dbFetchVisitorRecords(dateStr: string): Promise<VisitorRecordRow[]> {
   const { data, error } = await supabase
@@ -1558,12 +1571,12 @@ export async function dbSaveVisitorCounters(
     }))
 
   if (toInsert.length === 0) {
-    invalidateCache('visitorRecords:')
+    invalidateVisitorCaches()
     return { error: null }
   }
 
   const res = await supabase.from('visitor_records').insert(toInsert)
-  if (!res.error) invalidateCache('visitorRecords:')
+  if (!res.error) invalidateVisitorCaches()
   return res
 }
 
@@ -1587,20 +1600,14 @@ export async function dbAddNamedVisitor(
     recorded_by: recordedBy || null
   }])
 
-  if (!res.error) {
-    invalidateCache('visitorRecords:')
-    invalidateCache('allNamedVisitors')
-  }
+  if (!res.error) invalidateVisitorCaches()
   return res
 }
 
 /** 방문자 기록 삭제 (개별 삭제) */
 export async function dbDeleteVisitorRecord(id: string) {
   const res = await supabase.from('visitor_records').delete().eq('id', id)
-  if (!res.error) {
-    invalidateCache('visitorRecords:')
-    invalidateCache('allNamedVisitors')
-  }
+  if (!res.error) invalidateVisitorCaches()
   return res
 }
 

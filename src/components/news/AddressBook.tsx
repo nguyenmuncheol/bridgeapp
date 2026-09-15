@@ -5,7 +5,7 @@ import { ChevronRight, Users, Search, Triangle, UserCheck } from 'lucide-react'
 import { UserProfile, getInitials } from '../../lib/mockData'
 import {
   buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE,
-  isChildLike, sortChildrenForGroupDisplay, sortChildrenByDepartment, getDepartmentRank, sortAdultsForGroupDisplay, groupCouplesInScope, sortUnitsByAge,
+  isChildLike, sortChildrenByDepartment, getDepartmentRank, sortAdultsForGroupDisplay, groupCouplesInScope, sortUnitsByAge,
 } from '../../lib/familyInfo'
 import { formatBirthdayMonthDayOnly } from '../../lib/dateUtils'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'

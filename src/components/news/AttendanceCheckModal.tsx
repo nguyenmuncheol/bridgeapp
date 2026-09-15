@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { CheckSquare, Plus, Trash2, Users } from 'lucide-react'
+import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import { UserProfile, isApprovedMember, canEditChildAttendance } from '../../lib/mockData'
 import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
   dbFetchVisitorRecords, dbSaveVisitorCounters, dbAddNamedVisitor, dbDeleteVisitorRecord,
-  dbFetchAllNamedVisitors, AnonymousVisitorCategory, NamedVisitorCategory, VisitorRecordRow
+  dbFetchAllNamedVisitors, AnonymousVisitorCategory, NamedVisitorCategory
 } from '../../lib/db'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -139,27 +139,40 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     { enabled: canCheck }
   )
 
-  // 방문자 카운터 로컬 상태 ({ 성인: 0, 학생: 0 })
-  const [visitorCounters, setVisitorCounters] = useState<Record<AnonymousVisitorCategory, number>>({
-    '성인': 0,
-    '학생': 0,
-  })
-
-  // DB에서 불러온 카운터로 초기화
-  useEffect(() => {
-    if (visitorRecords) {
-      const counts: Record<AnonymousVisitorCategory, number> = {
-        '성인': 0,
-        '학생': 0,
+  // ── 방문자 익명 카운터 ──
+  // 🐛 과거 버그: DB 기록을 useEffect + setState로 로컬 상태에 "복사"해 두었더니,
+  //    기명 방문자를 추가·삭제해 목록을 다시 불러올 때마다 그 효과가 다시 돌면서
+  //    아직 저장하지 않은 카운터 입력이 DB 값으로 되돌아갔습니다.
+  // → 출석 체크(selectionsOverride)와 똑같이, DB 값을 그대로 파생시키고
+  //   사용자가 손댄 경우에만 override를 덮어씌우는 방식으로 바꿉니다.
+  const derivedVisitorCounters = useMemo<Record<AnonymousVisitorCategory, number>>(() => {
+    const counts: Record<AnonymousVisitorCategory, number> = { '성인': 0, '학생': 0 }
+    ;(visitorRecords || []).forEach(r => {
+      if (!r.name && (r.category === '성인' || r.category === '학생')) {
+        counts[r.category as AnonymousVisitorCategory] = r.count
       }
-      visitorRecords.forEach(r => {
-        if (!r.name && (r.category === '성인' || r.category === '학생')) {
-          counts[r.category as AnonymousVisitorCategory] = r.count
-        }
-      })
-      setVisitorCounters(counts)
-    }
+    })
+    return counts
   }, [visitorRecords])
+
+  // override에 날짜를 함께 담아 둡니다. 주일을 바꾸면 이전 주일에서 만지던 숫자가
+  // 따라오지 않고 자동으로 그 주일의 DB 값으로 돌아갑니다.
+  const [visitorCountersOverride, setVisitorCountersOverride] =
+    useState<{ dateStr: string; counters: Record<AnonymousVisitorCategory, number> } | null>(null)
+
+  const visitorCounters =
+    visitorCountersOverride && visitorCountersOverride.dateStr === targetSundayDateStr
+      ? visitorCountersOverride.counters
+      : derivedVisitorCounters
+
+  /** 익명 카운터 증감 (+1 / -1). 0 아래로는 내려가지 않습니다. */
+  const adjustVisitorCounter = (cat: AnonymousVisitorCategory, delta: number) => {
+    const base = visitorCounters
+    setVisitorCountersOverride({
+      dateStr: targetSundayDateStr,
+      counters: { ...base, [cat]: Math.max(0, (base[cat] || 0) + delta) }
+    })
+  }
 
   // 해당 주일의 기명 방문자 목록
   const currentSundayNamedVisitors = useMemo(() => {
@@ -325,6 +338,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
         showToast('방문자 출석 저장 중 오류가 발생했습니다.', true)
         return
       }
+      setVisitorCountersOverride(null)
       refetchVisitorRecords()
       setCheckSubmitted(true)
       setTimeout(() => {
@@ -471,49 +485,16 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
               {/* 1. 방문자 탭 렌더링 (isVisitorTab) */}
               {/* ────────────────────────────────────────────────────────── */}
               {isVisitorTab ? (
+                /* 순서 원칙: 이름을 남기는 방문자가 먼저입니다. 이름을 받아 두면 다음 주에
+                   심방·연락으로 이어지지만, 익명 숫자는 총원 집계에서만 쓰입니다.
+                   그래서 기명 영역에 포인트 컬러를 주고 익명 카운터는 아래에 무채색으로 둡니다. */
                 <div className="space-y-4">
-                  {/* 익명 방문자 숫자 카운터 */}
-                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5">
+                  {/* 1. 기명 방문자 직접 입력 폼 (주인공) */}
+                  <div className="bg-[#335f87]/5 border-2 border-[#335f87]/25 rounded-2xl p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-amber-950">🔢 익명 방문자 숫자 카운터 (성인/학생)</span>
-                      <span className="text-2xs font-bold text-amber-700">
-                        계: {Object.values(visitorCounters).reduce((a, b) => a + b, 0)}명
-                      </span>
+                      <span className="text-xs font-black text-[#335f87]">✍️ 기명 방문자 등록</span>
+                      <span className="text-2xs font-bold text-[#335f87]/70">이름을 아는 방문자</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {ANONYMOUS_CATEGORIES.map(cat => (
-                        <div key={cat} className="flex items-center justify-between bg-white px-2.5 py-2 rounded-xl border border-amber-200 shadow-2xs">
-                          <span className="text-xs font-bold text-gray-800">{cat}</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setVisitorCounters(prev => ({ ...prev, [cat]: Math.max(0, (prev[cat] || 0) - 1) }))}
-                              className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-xs active:scale-95"
-                            >
-                              -
-                            </button>
-                            <span className="w-5 text-center font-black text-xs text-amber-900">
-                              {visitorCounters[cat] || 0}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setVisitorCounters(prev => ({ ...prev, [cat]: (prev[cat] || 0) + 1 }))}
-                              className="w-6 h-6 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center text-xs active:scale-95"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-amber-700/80 font-medium">
-                      * 이름을 모르는 방문자는 성인/학생 숫자 카운터로 간편하게 증감할 수 있습니다.
-                    </p>
-                  </div>
-
-                  {/* 기명 방문자 직접 입력 폼 */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
-                    <span className="text-xs font-black text-slate-800">✍️ 이름 직접 입력 (성도/학생 방문자)</span>
                     <div className="space-y-2">
                       <div className="flex gap-1.5">
                         <input
@@ -522,7 +503,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                           value={newVisitorName}
                           onChange={e => setNewVisitorName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleAddNamedVisitor() }}
-                          className="flex-1 px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs text-gray-900 font-bold focus:outline-none focus:border-[#335f87]"
+                          className="flex-1 px-3 py-2 bg-white rounded-xl border border-[#335f87]/30 text-xs text-gray-900 font-bold focus:outline-none focus:border-[#335f87]"
                         />
                         <button
                           type="button"
@@ -534,7 +515,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         </button>
                       </div>
 
-                      {/* 부서 선택 라디오/칩 (성인 | 중고등부 | 초등부 | 유아유치부) */}
+                      {/* 부서 선택 칩 (성인 | 중고등부 | 초등부 | 유아유치부) */}
                       <div className="grid grid-cols-4 gap-1">
                         {NAMED_VISITOR_CATEGORIES.map(cat => (
                           <button
@@ -553,20 +534,18 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                       </div>
 
                       {/* 특이사항 텍스트 입력란 */}
-                      <div>
-                        <textarea
-                          placeholder="특이사항 (선택사항, 예: 인도자, 비고 등)..."
-                          value={newVisitorNote}
-                          onChange={e => setNewVisitorNote(e.target.value)}
-                          rows={2}
-                          className="w-full px-3 py-1.5 bg-white rounded-xl border border-gray-200 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#335f87] resize-none"
-                        />
-                      </div>
+                      <textarea
+                        placeholder="특이사항 (선택사항, 예: 인도자, 비고 등)..."
+                        value={newVisitorNote}
+                        onChange={e => setNewVisitorNote(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-1.5 bg-white rounded-xl border border-[#335f87]/30 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#335f87] resize-none"
+                      />
 
-                      {/* 최근 기명 방문자 추천 (누르면 바로 입력창에 반영) */}
+                      {/* 최근 기명 방문자 추천 (누르면 바로 등록) */}
                       {allNamedVisitors && allNamedVisitors.length > 0 && (
                         <div className="pt-1 space-y-1">
-                          <span className="text-[10px] text-gray-400 font-bold">💡 최근 방문자 빠른 추가:</span>
+                          <span className="text-[10px] text-[#335f87]/70 font-bold">💡 최근 방문자 빠른 추가:</span>
                           <div className="flex flex-wrap gap-1">
                             {Array.from(new Set(allNamedVisitors.map(v => `${v.name}::${v.category}`)))
                               .slice(0, 6)
@@ -577,7 +556,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                                     key={key}
                                     type="button"
                                     onClick={() => handleAddNamedVisitor(name, cat)}
-                                    className="px-2 py-0.5 bg-white hover:bg-blue-50 border border-gray-200 rounded-md text-[10px] text-gray-700 font-medium transition-all"
+                                    className="px-2 py-0.5 bg-white hover:bg-[#335f87]/10 border border-[#335f87]/25 rounded-md text-[10px] text-gray-700 font-medium transition-all"
                                   >
                                     +{name} <span className="text-gray-400 text-[9px]">({cat})</span>
                                   </button>
@@ -589,10 +568,11 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                     </div>
                   </div>
 
-                  {/* 해당 주일 기명 방문자 명단 */}
+                  {/* 2. 오늘 등록된 기명 방문자 명단 */}
                   <div className="space-y-1.5">
-                    <span className="text-xs font-black text-gray-800">
-                      📋 오늘 등록된 기명 방문자 ({currentSundayNamedVisitors.length}명)
+                    <span className="text-xs font-black text-gray-900">
+                      📋 오늘 등록된 기명 방문자{' '}
+                      <span className="text-[#335f87]">({currentSundayNamedVisitors.length}명)</span>
                     </span>
                     {currentSundayNamedVisitors.length === 0 ? (
                       <p className="py-4 text-center text-2xs text-gray-400 bg-gray-50 rounded-xl">
@@ -603,16 +583,13 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         {currentSundayNamedVisitors.map(v => (
                           <div
                             key={v.id}
-                            className="p-2.5 bg-amber-50/50 rounded-xl border border-amber-200/60 space-y-1.5"
+                            className="p-2.5 bg-white rounded-xl border border-gray-200 border-l-4 border-l-[#335f87] shadow-2xs space-y-1.5"
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-xs text-gray-900">{v.name}</span>
-                                <span className="text-2xs font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
+                                <span className="text-2xs font-bold text-[#335f87] bg-[#335f87]/10 px-1.5 py-0.5 rounded">
                                   {v.category}
-                                </span>
-                                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 py-0.5 rounded">
-                                  ✅ 출석
                                 </span>
                               </div>
                               <button
@@ -625,8 +602,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                               </button>
                             </div>
                             {v.note && (
-                              <div className="text-2xs text-amber-950 bg-amber-100/60 rounded-lg px-2 py-1 border border-amber-200/50 flex items-start gap-1">
-                                <span className="shrink-0 font-bold">📝 Note:</span>
+                              <div className="text-2xs text-gray-700 bg-gray-50 rounded-lg px-2 py-1 border border-gray-200 flex items-start gap-1">
+                                <span className="shrink-0 font-bold text-[#335f87]">📝 Note:</span>
                                 <span className="break-all">{v.note}</span>
                               </div>
                             )}
@@ -634,6 +611,45 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* 3. 익명 방문자 숫자 카운터 (보조 — 무채색) */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xs font-bold text-gray-500">🔢 익명 방문자 카운터</span>
+                      <span className="text-2xs font-bold text-gray-500">
+                        계: {Object.values(visitorCounters).reduce((a, b) => a + b, 0)}명
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {ANONYMOUS_CATEGORIES.map(cat => (
+                        <div key={cat} className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-gray-200">
+                          <span className="text-2xs font-bold text-gray-600">{cat}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => adjustVisitorCounter(cat, -1)}
+                              className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold flex items-center justify-center text-xs active:scale-95"
+                            >
+                              -
+                            </button>
+                            <span className="w-5 text-center font-bold text-xs text-gray-800">
+                              {visitorCounters[cat] || 0}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => adjustVisitorCounter(cat, 1)}
+                              className="w-6 h-6 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold flex items-center justify-center text-xs active:scale-95"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-400 font-medium">
+                      * 이름을 모르는 방문자만 숫자로 세어 주세요. 이름을 알면 위에 등록하는 편이 좋습니다.
+                    </p>
                   </div>
                 </div>
               ) : (
