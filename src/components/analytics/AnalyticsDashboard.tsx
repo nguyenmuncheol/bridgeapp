@@ -831,7 +831,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                         }`}
                       />
                     </div>
-                    <span className={`text-3xs font-mono ${h.hour % 4 === 0 ? 'text-slate-400' : 'text-transparent'}`}>
+                    <span className={`text-3xs tabular-nums ${h.hour % 4 === 0 ? 'text-slate-400' : 'text-transparent'}`}>
                       {h.hour}
                     </span>
                   </div>
@@ -873,7 +873,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                     <div key={t.date} className="space-y-0.5">
                       <div className="flex justify-between text-3xs text-slate-300 font-medium">
                         <span>{t.date} 주일</span>
-                        <span className="font-mono text-teal-300">{t.attend}명 출석 ({t.rate}%)</span>
+                        <span className="tabular-nums text-teal-300">{t.attend}명 출석 ({t.rate}%)</span>
                       </div>
                       <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden flex">
                         <div className="bg-teal-400 h-full rounded-full transition-all duration-500" style={{ width: `${t.rate}%` }} />
@@ -891,7 +891,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                   <Utensils size={12} className="text-amber-400" />
                   <span>이번 주 식사 신청 ({mealStats.targetSunday})</span>
                 </span>
-                <span className="text-amber-300 font-bold font-mono">총 {mealStats.totalMeals}명</span>
+                <span className="text-amber-300 font-bold tabular-nums">총 {mealStats.totalMeals}명</span>
               </div>
               <div className="flex items-center gap-1.5 text-3xs text-slate-400 pt-0.5">
                 <span className="text-emerald-400">🍚 {mealStats.attendingFamilyCount}가정</span>
@@ -1274,7 +1274,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                         </td>
 
                         {/* 가입일 */}
-                        <td className="p-3 whitespace-nowrap text-2xs text-slate-500 font-mono">
+                        <td className="p-3 whitespace-nowrap text-2xs text-slate-500 tabular-nums">
                           {member.createdAt}
                         </td>
                       </tr>
@@ -1359,7 +1359,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                                     <BellOff size={11} />
                                   </span>
                                 )}
-                                <span className={`px-1.5 py-0.5 rounded font-mono ${
+                                <span className={`px-1.5 py-0.5 rounded tabular-nums ${
                                   rel.level === 'recent' ? 'bg-emerald-500/20 text-emerald-300 font-bold' :
                                   rel.level === 'today' ? 'bg-blue-500/20 text-blue-300 font-bold' :
                                   'bg-slate-800 text-slate-400'

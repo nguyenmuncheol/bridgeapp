@@ -439,7 +439,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
             <h2 className="font-bold text-gray-900 text-sm">온라인 헌금 안내</h2>
           </div>
           <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl gap-2">
-            <span className="font-mono text-xs font-bold text-gray-800 leading-relaxed">
+            <span className="tabular-nums text-xs font-bold text-gray-800 leading-relaxed">
               우리은행 100-100-299503<br />
               <span className="text-2xs font-sans font-semibold text-gray-500">(예금주 : 임혜영 / LimHyeYoung)</span>
             </span>

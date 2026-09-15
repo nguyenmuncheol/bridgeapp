@@ -78,8 +78,14 @@
    */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
                "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
-  /* 숫자·날짜·오류코드에만 씁니다. 전부 라틴 문자라 Geist Mono 로 충분합니다. */
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /*
+   * 고정폭 글꼴. 앱 화면에서는 이제 쓰지 않습니다.
+   * 숫자를 자릿수 맞춰 보여줘야 하는 자리는 본문 글꼴(Pretendard) + tabular-nums 로
+   * 처리합니다. Pretendard 에 tnum(숫자 폭 고정) 기능이 들어 있어 숫자가 반듯하게
+   * 줄맞춤되고, 같은 줄의 한글도 본문과 같은 글꼴로 나옵니다.
+   * (Geist Mono 에는 한글이 없어 "우리은행 100-100-299503" 처럼 섞이면 글꼴이 갈라졌습니다)
+   */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, "Pretendard Variable", monospace;
   /* Tailwind 기본 스타일이 html 에 적용하는 글꼴을 위에서 정한 본문 글꼴로 못박습니다. */
   --default-font-family: var(--font-sans);
   --default-mono-font-family: var(--font-mono);

@@ -134,7 +134,7 @@ export default function ImageViewerModal({
       >
         <div className="flex items-center gap-2">
           {total > 1 && (
-            <span className="bg-white/20 backdrop-blur-md text-white text-xs font-mono px-3 py-1 rounded-full font-bold">
+            <span className="bg-white/20 backdrop-blur-md text-white text-xs tabular-nums px-3 py-1 rounded-full font-bold">
               {currentIndex + 1} / {total}
             </span>
           )}

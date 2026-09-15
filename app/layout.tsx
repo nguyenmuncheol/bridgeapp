@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "../src/components/PwaRegister";
 import UserActivityTracker from "../src/components/UserActivityTracker";
 import { ConfirmProvider } from "../src/components/ConfirmDialog";
 
 // 본문 글꼴은 globals.css 가 Pretendard 로 지정합니다.
-// 예전엔 여기서 Geist 를 subsets:["latin"] 으로 받았는데, 화면의 거의 모든 글자인 한글에는
-// 적용되지 않아 폰트만 내려받고 효과는 없는 상태였습니다.
-// 고정폭은 숫자·날짜·오류코드에만 쓰이고 그건 전부 라틴 문자라 Geist Mono 를 그대로 둡니다.
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+//
+// 🐛 예전엔 여기서 Geist 를 subsets:["latin"] 으로 받았는데, 화면의 거의 모든 글자인
+//    한글에는 적용되지 않아 폰트만 내려받고 효과는 없는 상태였습니다.
+//
+// 고정폭(Geist Mono)도 걷어냈습니다. 숫자를 자릿수 맞춰 보여줘야 하는 자리에 쓰고
+// 있었는데, 그 안에 한글이 섞이면(예: 헌금 계좌의 "우리은행") Geist Mono 에 한글이
+// 없어서 기기 기본 고정폭으로 떨어졌습니다. 한 줄 안에서 글꼴이 갈라져 어긋나 보였습니다.
+// → 그 자리들은 Pretendard + tabular-nums(숫자 폭 고정) 로 바꿨습니다. 한글도 본문과
+//   같은 글꼴이 되고, 숫자 정렬도 그대로이며, 폰트 하나를 덜 내려받습니다.
 
 // 검색/AI 크롤러에게 노출되는 유일한 공개 화면(비로그인 방문자용 랜딩+홈탭)의 메타데이터입니다.
 // 제목·설명은 실제 검색 의도(하노이 거주 한인이 "하노이 한인교회"를 찾는 상황)에 맞춰
@@ -148,7 +149,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <head>
         <script

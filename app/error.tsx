@@ -28,7 +28,7 @@ export default function Error({
             아래 버튼을 눌러 다시 시도해 주세요.
           </p>
           {error.message && (
-            <p className="text-2xs text-gray-400 bg-gray-50 p-2 rounded-lg font-mono break-all text-left">
+            <p className="text-2xs text-gray-400 bg-gray-50 p-2 rounded-lg tabular-nums break-all text-left">
               {error.message}
             </p>
           )}

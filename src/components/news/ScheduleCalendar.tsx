@@ -210,7 +210,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
           {Array.from({ length: daysInMonth }).flatMap((_, i) => getEventsForDate(i + 1)).map((ev, idx) => (
             <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
               <span className={`w-2 h-2 rounded-full shrink-0 ${ev.type === 'sunday' ? 'bg-blue-400' : 'bg-amber-400'}`} />
-              <span className="text-xs text-gray-500 font-mono shrink-0">{ev.date.slice(5).replace('-', '/')}</span>
+              <span className="text-xs text-gray-500 tabular-nums shrink-0">{ev.date.slice(5).replace('-', '/')}</span>
               <span className="text-xs font-bold text-gray-800 flex-1">{ev.title}</span>
               {ev.type === 'special' && <span className="text-2xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full">특별일정</span>}
             </div>
