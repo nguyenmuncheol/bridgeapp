@@ -34,7 +34,7 @@ export default function BottomNav({ currentTab, setCurrentTab, hiddenTabIds }: B
               key={id}
               onClick={() => setCurrentTab(id)}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-w-0 transition-all ${
-                isActive ? 'text-[#335f87]' : 'text-gray-400 hover:text-gray-600'
+                isActive ? 'text-brand' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               <div className={`relative flex items-center justify-center rounded-xl transition-all ${

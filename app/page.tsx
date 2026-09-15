@@ -526,7 +526,7 @@ export default function Home() {
       >
         <RefreshCw
           size={18}
-          className={`text-[#335f87] ${refreshing ? 'animate-spin' : ''}`}
+          className={`text-brand ${refreshing ? 'animate-spin' : ''}`}
           style={!refreshing ? { transform: `rotate(${(pullPx / threshold) * 360}deg)` } : undefined}
         />
       </div>
@@ -546,7 +546,7 @@ export default function Home() {
         {isGuest ? (
           <button
             onClick={() => setShowAuthModal(true)}
-            className="px-3.5 py-1.5 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1 transition-all active:scale-95"
+            className="px-3.5 py-1.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1 transition-all active:scale-95"
           >
             <LogIn size={13} /> 로그인 / 가입
           </button>
@@ -556,11 +556,11 @@ export default function Home() {
                 (내 정보 보기·로그아웃은 알림함 아래쪽으로 옮겼습니다) */}
             <button
               onClick={() => setShowNotifications(v => !v)}
-              className="relative flex items-center gap-1.5 bg-blue-50 text-[#335f87] font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
+              className="relative flex items-center gap-1.5 bg-blue-50 text-brand font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
               title="알림 · 내 정보"
               aria-label={unreadCount > 0 ? `알림 ${unreadCount}건` : '알림'}
             >
-              <span className="w-6 h-6 rounded-full bg-[#335f87] text-white flex items-center justify-center text-2xs font-bold shrink-0 overflow-hidden">
+              <span className="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-2xs font-bold shrink-0 overflow-hidden">
                 {currentUser.avatarUrl
                   ? <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
                   : getInitials(currentUser.name)
@@ -630,7 +630,7 @@ export default function Home() {
         {isLoading ? (
           // DB 로드 전 로딩 스피너 (더미 데이터 노출 방지)
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-            <div className="w-10 h-10 border-4 border-[#335f87]/20 border-t-[#335f87] rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
             <p className="text-xs text-gray-400 font-medium">더브릿지교회 로딩 중...</p>
           </div>
         ) : isAdminViewMode ? (
@@ -659,7 +659,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                  className="w-full py-3 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-xs transition-all"
                 >
                   로그인 / 회원가입 신청하기
                 </button>
@@ -681,7 +681,7 @@ export default function Home() {
                     setOauthEmail(currentUser.email || '')
                     setShowProfileSetup(true)
                   }}
-                  className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                  className="w-full py-3 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-xs transition-all"
                 >
                   가입 신청 이어하기
                 </button>
@@ -699,7 +699,7 @@ export default function Home() {
                   <p className="text-xs text-gray-500 leading-relaxed">
                     교회 관리자의 가입 승인 완료 후<br />소식, 나눔, 신청 기능을 이용하실 수 있습니다.
                   </p>
-                  <p className="text-2xs text-[#335f87] font-medium">
+                  <p className="text-2xs text-brand font-medium">
                     승인되면 이 화면이 자동으로 바뀝니다. 그대로 두셔도 됩니다.
                   </p>
                 </div>
@@ -727,7 +727,7 @@ export default function Home() {
                       alert('상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.')
                     }
                   }}
-                  className="w-full py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl hover:bg-[#2b5072] transition-all"
+                  className="w-full py-2.5 bg-brand text-white text-xs font-bold rounded-xl hover:bg-brand-hover transition-all"
                 >
                   승인 상태 새로고침
                 </button>
@@ -758,7 +758,7 @@ export default function Home() {
                     setUsers(prev => prev.map(u => u.id === currentUserId ? { ...u, role: 'PENDING' as Role, signupRequestedAt: new Date().toISOString() } : u))
                     alert('가입 신청이 다시 접수되었습니다. 관리자 승인을 기다려 주세요.')
                   }}
-                  className="w-full py-3 bg-[#335f87] text-white text-xs font-bold rounded-xl hover:bg-[#2b5072] transition-all"
+                  className="w-full py-3 bg-brand text-white text-xs font-bold rounded-xl hover:bg-brand-hover transition-all"
                 >
                   다시 가입 신청하기
                 </button>

@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/*
+ * ── 한글 본문용 웹폰트 (Pretendard) ──
+ *
+ * 🐛 과거 문제: layout.tsx 가 Geist 를 subsets:["latin"] 로 불러오고 있었습니다. 라틴 문자
+ *    전용이라 **화면의 거의 모든 글자인 한글에는 하나도 적용되지 않고** 기기 기본 폰트로
+ *    떨어졌습니다. iOS 는 Apple SD Gothic Neo, 안드로이드는 Noto Sans KR, 윈도우는 맑은 고딕
+ *    이라 같은 화면이 기기마다 다른 얼굴로 보였습니다. 폰트를 받아오면서 정작 한글에는
+ *    아무 효과가 없던 셈입니다.
+ *
+ * → Pretendard 로 교체합니다. 한글·라틴을 한 벌로 덮어 기기와 상관없이 같게 보입니다.
+ *
+ * 'dynamic-subset' 을 쓰는 이유: 전체 파일은 2MB 라 베트남 모바일 데이터로 열면 부담입니다.
+ * 이 방식은 글자 범위(unicode-range)별로 92개 조각으로 나눠 두고 **화면에 실제로 나온 글자가
+ * 속한 조각만** 내려받습니다. 보통 한글 화면 한 장이면 수백 KB 수준입니다.
+ * 파일은 node_modules 에서 빌드가 알아서 가져가므로 저장소에 폰트를 넣지 않습니다.
+ */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -8,8 +26,6 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 /*
@@ -50,6 +66,44 @@
  * 글자와 버튼·여백이 **함께** 커집니다.
  */
 @theme {
+  /*
+   * ── 글꼴 ──
+   *
+   * ⚠️ 여기는 반드시 `@theme inline` 이 아니라 그냥 `@theme` 이어야 합니다.
+   *    inline 은 값을 CSS 변수로 **내보내지 않고** 쓰는 자리에 바로 박아 넣는 모드라,
+   *    Tailwind 기본 스타일이 참조하는 --default-font-family 가 빈 값이 됩니다.
+   *    🐛 실제로 예전엔 여기 `@theme inline` 안에 --font-sans 가 있어서, 빌드된 CSS 어디에도
+   *       --font-sans 가 없었고 본문이 그냥 기기 기본 폰트로 렌더링됐습니다.
+   *       (= Geist 를 받아오면서 한글은커녕 영문에도 적용되지 않고 있었습니다.)
+   */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+               "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  /* 숫자·날짜·오류코드에만 씁니다. 전부 라틴 문자라 Geist Mono 로 충분합니다. */
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Tailwind 기본 스타일이 html 에 적용하는 글꼴을 위에서 정한 본문 글꼴로 못박습니다. */
+  --default-font-family: var(--font-sans);
+  --default-mono-font-family: var(--font-mono);
+
+  /*
+   * ── 브랜드 색 ──
+   *
+   * 🐛 과거 문제: 브랜드 남색이 파일마다 손으로 적혀 있었습니다(35개 파일, 325곳).
+   *    그러다 보니 "같은 역할인데 값만 다른" 색이 생겼습니다. 예를 들어 버튼 hover 는
+   *    어떤 화면은 #2b5072, 어떤 화면은 #284b6b 였습니다. 화면을 나란히 놓으면 미묘하게
+   *    안 맞고, 교회가 브랜드 색을 바꾸기로 하면 325곳을 일일이 찾아야 했습니다.
+   *
+   * → 역할별로 이름을 붙여 여기 한 곳에서만 정합니다. 값이 갈렸던 두 쌍
+   *   (#284b6b → brand-hover, #3d6d99 → brand-light)은 기준색으로 모았습니다.
+   *
+   * Tailwind 가 이 이름으로 bg-brand / text-brand / border-brand / from-brand-light 같은
+   * 클래스를 자동으로 만들어 줍니다. JS 문자열 안에서는 var(--color-brand) 으로 씁니다.
+   */
+  --color-brand: #335f87;         /* 기본 — 버튼, 강조 텍스트, 테두리 */
+  --color-brand-hover: #2b5072;   /* 기본색 버튼에 마우스를 올렸을 때 */
+  --color-brand-light: #3f76a3;   /* 그라데이션 시작점 */
+  --color-brand-mid: #2c5378;     /* 그라데이션 중간 */
+  --color-brand-deep: #1d3a54;    /* 그라데이션 어두운 쪽 끝 */
+
   --text-3xs: 0.625rem;             /* 10px — 매우 작은 보조 라벨 */
   --text-3xs--line-height: 0.875rem;
   --text-2xs: 0.75rem;              /* 12px — 날짜·작성자·작은 라벨 */

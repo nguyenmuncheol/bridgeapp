@@ -102,7 +102,7 @@ export default function CommentList({
                       <button
                         onClick={() => saveEdit(c)}
                         disabled={busy}
-                        className="px-2.5 py-1 bg-[#335f87] text-white font-bold rounded-lg disabled:opacity-50"
+                        className="px-2.5 py-1 bg-brand text-white font-bold rounded-lg disabled:opacity-50"
                       >{busy ? '저장 중...' : '저장'}</button>
                     </div>
                   </div>
@@ -156,7 +156,7 @@ export default function CommentList({
           onKeyDown={e => e.key === 'Enter' && submitComment()}
           className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
         />
-        <button onClick={submitComment} className="px-3 py-1 bg-[#335f87] text-white text-xs font-bold rounded-lg">등록</button>
+        <button onClick={submitComment} className="px-3 py-1 bg-brand text-white text-xs font-bold rounded-lg">등록</button>
       </div>
     </>
   )

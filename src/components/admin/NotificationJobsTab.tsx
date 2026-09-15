@@ -141,7 +141,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
       {/* ── 알림 직접 보내기 ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-1.5">
-          <Send size={14} className="text-[#335f87]" />
+          <Send size={14} className="text-brand" />
           <h3 className="font-bold text-sm text-gray-900">알림 보내기</h3>
         </div>
 
@@ -151,12 +151,12 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
             <button
               type="button"
               onClick={() => setUseChurchName(true)}
-              className={`py-2 rounded-xl text-2xs font-bold transition-all ${useChurchName ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
+              className={`py-2 rounded-xl text-2xs font-bold transition-all ${useChurchName ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}
             >⛪ {CHURCH_SENDER}</button>
             <button
               type="button"
               onClick={() => setUseChurchName(false)}
-              className={`py-2 rounded-xl text-2xs font-bold transition-all ${!useChurchName ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600'}`}
+              className={`py-2 rounded-xl text-2xs font-bold transition-all ${!useChurchName ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}
             >🙋 {currentUser ? getUserDisplayName(currentUser) : '관리자 본인'}</button>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
                 key={g.key}
                 type="button"
                 onClick={() => toggleGroup(g)}
-                className={`py-1.5 px-1 rounded-lg text-2xs font-bold transition-all ${isGroupOn(g) ? 'bg-[#335f87] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className={`py-1.5 px-1 rounded-lg text-2xs font-bold transition-all ${isGroupOn(g) ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >{g.label}</button>
             ))}
           </div>
@@ -193,7 +193,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
               key={m.id}
               type="button"
               onClick={() => togglePicked(m.id)}
-              className={`w-full text-left px-2 py-1.5 rounded-lg text-2xs transition-colors ${pickedIds.includes(m.id) ? 'bg-[#335f87]/10 text-[#335f87] font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`w-full text-left px-2 py-1.5 rounded-lg text-2xs transition-colors ${pickedIds.includes(m.id) ? 'bg-brand/10 text-brand font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               {pickedIds.includes(m.id) ? '☑' : '☐'} {getUserDisplayName(m)}
               <span className="text-gray-400 font-normal"> · {m.labriId || '미정'}</span>
@@ -206,24 +206,24 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="제목 (예: 이번 주 특별새벽기도 안내)"
-          className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+          className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand text-gray-900 font-medium"
         />
         <textarea
           rows={3}
           value={body}
           onChange={e => setBody(e.target.value)}
           placeholder="내용"
-          className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium"
+          className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand resize-none text-gray-900 font-medium"
         />
 
         <div className="flex items-center justify-between gap-2">
           <p className="text-2xs text-gray-500">
-            받는 사람 <strong className="text-[#335f87]">{receiverCount}명</strong>
+            받는 사람 <strong className="text-brand">{receiverCount}명</strong>
           </p>
           <button
             onClick={handleSend}
             disabled={sending || !title.trim() || receiverCount === 0}
-            className="px-3.5 py-2 rounded-xl bg-[#335f87] text-white text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
+            className="px-3.5 py-2 rounded-xl bg-brand text-white text-2xs font-bold flex items-center gap-1 disabled:opacity-40 active:scale-95 transition-all"
           >
             <Send size={11} />
             {sending ? '보내는 중' : '보내기'}
@@ -236,7 +236,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
         <div className="flex items-center gap-1.5">
-          <Bell size={14} className="text-[#335f87]" />
+          <Bell size={14} className="text-brand" />
           <h3 className="font-bold text-sm text-gray-900">자동 알림</h3>
         </div>
         <p className="text-2xs text-gray-500 leading-relaxed">
@@ -256,7 +256,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
                   📱 푸시
                 </span>
               )}
-              <span className="ml-1.5 text-2xs font-semibold text-[#335f87] bg-[#335f87]/8 px-1.5 py-0.5 rounded">
+              <span className="ml-1.5 text-2xs font-semibold text-brand bg-brand/8 px-1.5 py-0.5 rounded">
                 {job.when}
               </span>
             </p>

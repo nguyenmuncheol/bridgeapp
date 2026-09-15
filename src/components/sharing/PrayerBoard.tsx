@@ -322,7 +322,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   type="text"
                   value={editPrayerTitle}
                   onChange={e => setEditPrayerTitle(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   placeholder="기도제목"
                 />
               </div>
@@ -333,7 +333,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   rows={6}
                   value={editPrayerContent}
                   onChange={e => setEditPrayerContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="내용"
                 />
               </div>
@@ -390,7 +390,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                 type="button"
                 disabled={isSavingEdit}
                 onClick={handleSavePrayerEdit}
-                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSavingEdit ? '저장 중...' : '저장하기'}
               </button>

@@ -131,13 +131,18 @@ function PhotoSection({
 }
 
 // 실제 교회 사진이 준비되기 전까지 쓰는 placeholder 배경. 어둡게 깔아 흰 글씨가 항상 잘 보입니다.
+//
+// 시작점(밝은 쪽)은 브랜드 색 토큰을 그대로 씁니다. 나중에 교회 브랜드 색을 바꾸면
+// globals.css 한 곳만 고쳐도 이 배경까지 같이 따라옵니다.
+// 끝으로 갈수록 깔리는 아주 어두운 색들은 브랜드 색이 아니라 "글씨가 읽히게 어둡게 까는" 값이라
+// 여기 그대로 둡니다.
 const GRADIENTS = [
-  'radial-gradient(circle at 30% 20%, #3d6d99 0%, #1d3a54 60%, #10202f 100%)',
-  'radial-gradient(circle at 70% 30%, #335f87 0%, #1d3a54 55%, #0f1e2c 100%)',
-  'radial-gradient(circle at 40% 70%, #2c5378 0%, #17293b 60%, #0c1620 100%)',
-  'radial-gradient(circle at 60% 20%, #3d6d99 0%, #1a3349 55%, #0d1a26 100%)',
-  'radial-gradient(circle at 50% 60%, #335f87 0%, #182b3d 60%, #0b1620 100%)',
-  'radial-gradient(circle at 50% 40%, #2c5378 0%, #14232f 60%, #0a141c 100%)',
+  'radial-gradient(circle at 30% 20%, var(--color-brand-light) 0%, var(--color-brand-deep) 60%, #10202f 100%)',
+  'radial-gradient(circle at 70% 30%, var(--color-brand) 0%, var(--color-brand-deep) 55%, #0f1e2c 100%)',
+  'radial-gradient(circle at 40% 70%, var(--color-brand-mid) 0%, #17293b 60%, #0c1620 100%)',
+  'radial-gradient(circle at 60% 20%, var(--color-brand-light) 0%, #1a3349 55%, #0d1a26 100%)',
+  'radial-gradient(circle at 50% 60%, var(--color-brand) 0%, #182b3d 60%, #0b1620 100%)',
+  'radial-gradient(circle at 50% 40%, var(--color-brand-mid) 0%, #14232f 60%, #0a141c 100%)',
 ]
 
 export default function LandingPage({ onEnter }: LandingPageProps) {
@@ -254,7 +259,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           <Reveal from="up" delay={200}>
             <button
               onClick={onEnter}
-              className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-[#1d3a54] text-sm font-bold rounded-2xl shadow-lg active:scale-[0.97] transition-transform"
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-brand-deep text-sm font-bold rounded-2xl shadow-lg active:scale-[0.97] transition-transform"
             >
               홈페이지로 이동 <ArrowRight size={16} />
             </button>

@@ -370,7 +370,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <button
             type="button"
             onClick={() => currentUser.avatarUrl ? setShowAvatarLightbox(true) : openEditModal()}
-            className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-xl border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
+            className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center font-bold text-xl border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
             title={currentUser.avatarUrl ? '프로필 사진 크게 보기' : '프로필 사진 등록'}
           >
             {currentUser.avatarUrl
@@ -381,7 +381,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
-              <span className="text-2xs font-semibold bg-blue-50 text-[#335f87] px-2.5 py-0.5 rounded-full shrink-0">{currentUser.role}</span>
+              <span className="text-2xs font-semibold bg-blue-50 text-brand px-2.5 py-0.5 rounded-full shrink-0">{currentUser.role}</span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5 truncate">{currentUser.email}</p>
           </div>
@@ -407,7 +407,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               </div>
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
-              <Smartphone size={14} className="text-[#335f87] shrink-0 mt-1" />
+              <Smartphone size={14} className="text-brand shrink-0 mt-1" />
               <div>
                 <span className="text-gray-400 text-2xs">연락처</span>
                 <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.phone || '연락처 미입력'}</p>
@@ -422,7 +422,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
           </div>
           <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
-            <MapPin size={14} className="text-[#335f87] shrink-0 mt-1" />
+            <MapPin size={14} className="text-brand shrink-0 mt-1" />
             <div>
               <span className="text-gray-400 text-2xs">거주지 주소</span>
               <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.address || '주소 미입력'}</p>
@@ -475,7 +475,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         <section>
           <button
             onClick={onNavigateAdmin}
-            className="w-full bg-gradient-to-r from-[#1d3a54] to-[#335f87] text-white rounded-2xl p-4 shadow-sm flex items-center justify-between group hover:from-[#162d42] hover:to-[#2b5072] transition-all"
+            className="w-full bg-gradient-to-r from-brand-deep to-brand text-white rounded-2xl p-4 shadow-sm flex items-center justify-between group hover:from-[#162d42] hover:to-brand-hover transition-all"
           >
             <div className="flex items-center gap-3">
               <span className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg">
@@ -551,7 +551,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs p-4 space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Bell size={16} className="text-[#335f87]" />
+              <Bell size={16} className="text-brand" />
               <h3 className="font-bold text-xs text-gray-900">📱 휴대폰 알림 받기</h3>
             </div>
             {pushState !== 'ios-not-installed' && (
@@ -560,7 +560,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 onClick={handleTogglePush}
                 disabled={pushBusy || pushState === 'denied'}
                 aria-pressed={pushState === 'on'}
-                className={`w-11 h-6 rounded-full shrink-0 transition-all relative disabled:opacity-40 ${pushState === 'on' ? 'bg-[#335f87]' : 'bg-gray-200'}`}
+                className={`w-11 h-6 rounded-full shrink-0 transition-all relative disabled:opacity-40 ${pushState === 'on' ? 'bg-brand' : 'bg-gray-200'}`}
               >
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${pushState === 'on' ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
@@ -579,7 +579,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
         <button onClick={() => setAccordionOpen(!accordionOpen)} className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-all">
           <div className="flex items-center gap-2">
-            <Smartphone size={16} className="text-[#335f87]" />
+            <Smartphone size={16} className="text-brand" />
             <h3 className="font-bold text-xs text-gray-900">📱 홈 화면에 앱 추가하기 (PWA 가이드)</h3>
           </div>
           {accordionOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
@@ -589,7 +589,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             {/* 안드로이드는 버튼 한 번으로 설치 가능하면 여기 자동으로 뜸(지원 안 되면 아무것도 안 뜸) */}
             <PwaInstallButton />
             <div className="p-3 bg-blue-50/50 rounded-xl space-y-1">
-              <span className="font-bold text-[#335f87]">아이폰 (Safari)</span>
+              <span className="font-bold text-brand">아이폰 (Safari)</span>
               <p className="text-gray-600 text-2xs">하단 공유 버튼(공유 아이콘) 클릭 ➔ &apos;홈 화면에 추가&apos; 선택</p>
             </div>
             <div className="p-3 bg-emerald-50/50 rounded-xl space-y-1">
@@ -623,7 +623,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             </div>
             <div className="space-y-3 text-xs">
               <div className="flex flex-col items-center gap-2">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#335f87] text-white flex items-center justify-center font-bold text-2xl border-2 border-blue-100 shadow-md">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center font-bold text-2xl border-2 border-blue-100 shadow-md">
                   {avatarPreview ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : getInitials(currentUser.name)}
                 </div>
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
@@ -639,7 +639,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   placeholder="예: 홍길동"
-                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-500"
                   required
                 />
               </div>
@@ -650,7 +650,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
                   placeholder="예: 037-123-4567 또는 010-1234-5678"
-                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-500"
                 />
               </div>
               <div>
@@ -660,7 +660,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   value={editAddress}
                   onChange={e => setEditAddress(e.target.value)}
                   placeholder="예: 경남 A동 1023호 / 미딩 골든펠리스"
-                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500"
+                  className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-500"
                 />
               </div>
               <div>
@@ -672,7 +672,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   <select
                     value={editBirthYear}
                     onChange={e => setEditBirthYear(e.target.value)}
-                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
+                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand"
                   >
                     <option value="">년</option>
                     {years.map(y => (
@@ -682,7 +682,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   <select
                     value={editBirthMonth}
                     onChange={e => setEditBirthMonth(e.target.value)}
-                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
+                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand"
                   >
                     <option value="">월</option>
                     {months.map(m => (
@@ -692,7 +692,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                   <select
                     value={editBirthDay}
                     onChange={e => setEditBirthDay(e.target.value)}
-                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87]"
+                    className="p-2 bg-gray-50 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand"
                   >
                     <option value="">일</option>
                     {days.map(d => (
@@ -711,7 +711,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     value={editSpouseName}
                     onChange={e => setEditSpouseName(e.target.value)}
                     placeholder="예: 홍길순 (배우자가 있을 경우 입력)"
-                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-400 text-xs"
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-400 text-xs"
                   />
                 </div>
               )}
@@ -720,7 +720,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               <div className="pt-1 border-t border-gray-100">
                 <div className="flex items-center justify-between mt-2">
                   <label className="text-2xs text-gray-400 font-bold">자녀 정보</label>
-                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <p className="text-2xs text-gray-400 mt-1">
                   동그라미를 누르면 자녀 사진을 넣거나 바꿀 수 있습니다.
@@ -752,7 +752,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             disabled={isUploadingAvatar}
                             title="자녀 사진 넣기 / 바꾸기"
                             aria-label={`${child.name || '자녀'} 사진 넣기`}
-                            className="w-10 h-10 shrink-0 rounded-full overflow-hidden bg-[#335f87]/10 text-[#335f87] text-2xs font-bold flex items-center justify-center border border-[#335f87]/20 active:scale-95 transition-transform disabled:opacity-50"
+                            className="w-10 h-10 shrink-0 rounded-full overflow-hidden bg-brand/10 text-brand text-2xs font-bold flex items-center justify-center border border-brand/20 active:scale-95 transition-transform disabled:opacity-50"
                           >
                             {child.avatarUrl
                               ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
@@ -763,7 +763,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             value={child.name}
                             onChange={e => updateEditChild(child.id, { name: e.target.value })}
                             placeholder="자녀 이름"
-                            className="flex-1 min-w-0 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                            className="flex-1 min-w-0 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                           />
                           <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0" title="이 자녀 지우기">
                             <X size={13} />
@@ -815,7 +815,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               <button
                 onClick={handleSaveProfile}
                 disabled={isSavingProfile || isUploadingAvatar}
-                className="flex-1 py-3 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                className="flex-1 py-3 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
               >
                 {/* 사진 업로드가 끝나기 전에 저장하면 예전 사진이 저장되던 문제 방지 */}
                 {isSavingProfile ? '저장 중...' : isUploadingAvatar ? '사진 업로드 중...' : '저장'}

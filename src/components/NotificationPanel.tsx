@@ -170,7 +170,7 @@ export default function NotificationPanel({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-1.5">
-            <Bell size={14} className="text-[#335f87]" />
+            <Bell size={14} className="text-brand" />
             <h3 className="font-bold text-sm text-gray-900">알림</h3>
           </div>
           <div className="flex items-center gap-2">
@@ -259,7 +259,7 @@ export default function NotificationPanel({
         <div className="border-t border-gray-100 p-2 space-y-1 bg-gray-50/60">
           <button
             onClick={() => { onGoMyPage(); onClose() }}
-            className="w-full py-2 text-xs font-bold text-[#335f87] rounded-lg hover:bg-white transition-colors"
+            className="w-full py-2 text-xs font-bold text-brand rounded-lg hover:bg-white transition-colors"
           >
             {getUserDisplayName(currentUser)} · 내 정보 보기
           </button>

@@ -104,9 +104,9 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
     <div className="space-y-4 pb-6 relative">
       {/* 서브탭 */}
       <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold">
-        <button onClick={() => goSubTab('prayer')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'prayer' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🙏 기도제목</button>
-        <button onClick={() => goSubTab('photo')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'photo' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>📸 행사사진</button>
-        <button onClick={() => goSubTab('praise')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'praise' ? 'bg-[#335f87] text-white font-bold' : 'text-gray-500'}`}>🎵 찬양/묵상나눔</button>
+        <button onClick={() => goSubTab('prayer')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'prayer' ? 'bg-brand text-white font-bold' : 'text-gray-500'}`}>🙏 기도제목</button>
+        <button onClick={() => goSubTab('photo')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'photo' ? 'bg-brand text-white font-bold' : 'text-gray-500'}`}>📸 행사사진</button>
+        <button onClick={() => goSubTab('praise')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'praise' ? 'bg-brand text-white font-bold' : 'text-gray-500'}`}>🎵 찬양/묵상나눔</button>
       </div>
 
       <div className={subTab === 'prayer' ? '' : 'hidden'}>

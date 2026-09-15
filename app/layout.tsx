@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "../src/components/PwaRegister";
 import UserActivityTracker from "../src/components/UserActivityTracker";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
+// 본문 글꼴은 globals.css 가 Pretendard 로 지정합니다.
+// 예전엔 여기서 Geist 를 subsets:["latin"] 으로 받았는데, 화면의 거의 모든 글자인 한글에는
+// 적용되지 않아 폰트만 내려받고 효과는 없는 상태였습니다.
+// 고정폭은 숫자·날짜·오류코드에만 쓰이고 그건 전부 라틴 문자라 Geist Mono 를 그대로 둡니다.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -134,6 +133,9 @@ export const viewport: Viewport = {
   // 어르신이 많은 교회인데 화면 확대(핀치줌)를 막아두면, 작은 글씨를 키울 방법이
   // 아예 없어집니다. 안드로이드는 이 설정을 실제로 따르기 때문에 확대가 불가능했습니다.
   viewportFit: "cover",
+  // ⚠️ 여기만 브랜드 색을 숫자로 적습니다. 이 값은 CSS 가 아니라 안드로이드 주소창·작업전환
+  //    화면이 읽어가는 메타데이터라서 var(--color-brand) 를 쓸 수 없습니다.
+  //    globals.css 의 --color-brand 를 바꾸면 이 줄도 같이 맞춰 주세요.
   themeColor: "#335f87",
 };
 
@@ -145,7 +147,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
     >
       <head>
         <script
@@ -153,7 +155,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-gray-100 text-gray-900 break-keep selection:bg-[#335f87] selection:text-white">
+      <body className="min-h-full flex flex-col bg-gray-100 text-gray-900 break-keep selection:bg-brand selection:text-white">
         <PwaRegister />
         <UserActivityTracker />
         {children}

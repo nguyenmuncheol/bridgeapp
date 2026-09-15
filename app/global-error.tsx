@@ -24,7 +24,7 @@ export default function GlobalError({
           </p>
           <button
             onClick={() => reset()}
-            className="w-full py-3 bg-[#335f87] text-white font-bold text-xs rounded-xl shadow-xs"
+            className="w-full py-3 bg-brand text-white font-bold text-xs rounded-xl shadow-xs"
           >
             다시 시도
           </button>

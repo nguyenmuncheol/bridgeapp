@@ -241,7 +241,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                   <div>
                     {/* 발급/차감 날짜 뱃지는 뺐습니다 — 최근 사용순으로 정렬되므로 순서만 보면 됩니다. */}
                     <h4 className="font-bold text-gray-800">{acc.familyName}</h4>
-                    <p className="text-2xs text-gray-400 mt-0.5">잔여 쿠폰: <strong className="text-[#335f87]">{acc.balance}장</strong></p>
+                    <p className="text-2xs text-gray-400 mt-0.5">잔여 쿠폰: <strong className="text-brand">{acc.balance}장</strong></p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -252,7 +252,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                     >
                       <Minus size={12} />
                     </button>
-                    <span className="font-bold text-[#335f87] w-6 text-center text-sm">{acc.balance}</span>
+                    <span className="font-bold text-brand w-6 text-center text-sm">{acc.balance}</span>
                     <button
                       onClick={() => handleUpdateCoupon(acc.familyGroupId, acc.familyName, 1)}
                       disabled={pendingFamilyId !== null}
@@ -306,7 +306,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
               </p>
               <button
                 onClick={() => setShowQrModal(false)}
-                className="w-full py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#2b5072] transition-all"
+                className="w-full py-2.5 bg-brand text-white text-xs font-bold rounded-xl shadow-xs hover:bg-brand-hover transition-all"
               >
                 확인 / 닫기
               </button>

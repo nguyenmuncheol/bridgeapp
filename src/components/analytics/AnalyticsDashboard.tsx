@@ -686,7 +686,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
           {onGoHome && (
             <button
               onClick={onGoHome}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#335f87] hover:bg-[#2b5072] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
             >
               <Home size={14} />
               <span>홈으로</span>

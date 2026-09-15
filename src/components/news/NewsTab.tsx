@@ -75,15 +75,15 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
       <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-bold text-center">
         <button
           onClick={() => goSubTab('schedule')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'schedule' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+          className={`py-2 rounded-lg transition-all ${subTab === 'schedule' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
         >📅 교회일정</button>
         <button
           onClick={() => goSubTab('memberNews')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'memberNews' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+          className={`py-2 rounded-lg transition-all ${subTab === 'memberNews' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
         >📣 가족소식</button>
         <button
           onClick={() => goSubTab('members')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'members' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+          className={`py-2 rounded-lg transition-all ${subTab === 'members' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
         >📖 주소록</button>
       </div>
 

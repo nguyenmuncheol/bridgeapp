@@ -244,7 +244,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
         <span className="text-xs text-gray-500 font-semibold">더브릿지 가족 News</span>
         <button
           onClick={() => setShowAddNewsModal(true)}
-          className="px-2.5 py-1 bg-[#335f87] text-white text-2xs font-bold rounded-lg hover:bg-[#2b5072] flex items-center gap-1"
+          className="px-2.5 py-1 bg-brand text-white text-2xs font-bold rounded-lg hover:bg-brand-hover flex items-center gap-1"
         ><Plus size={12} /> 소식 나누기</button>
       </div>
 
@@ -323,14 +323,14 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                 }`}
                 onClick={() => setPostAsChurch(v => !v)}
               >
-                <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${postAsChurch ? 'bg-[#335f87]' : 'bg-gray-300'}`}>
+                <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${postAsChurch ? 'bg-brand' : 'bg-gray-300'}`}>
                   <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${postAsChurch ? 'translate-x-5' : 'translate-x-0'}`} />
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                   {postAsChurch ? (
                     <>
                       <img src="/logo-square.png" alt="" className="w-5 h-5 rounded-full border border-gray-200 shrink-0" loading="lazy" decoding="async" />
-                      <span className="text-2xs font-bold text-[#335f87] truncate">더브릿지 교회 이름으로 올리기</span>
+                      <span className="text-2xs font-bold text-brand truncate">더브릿지 교회 이름으로 올리기</span>
                     </>
                   ) : (
                     <span className="text-2xs font-semibold text-gray-400">교회 이름으로 올리기 (현재: 내 이름)</span>
@@ -348,7 +348,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   placeholder="소식 제목 (예: 박성도 성도님 득남 축하)"
                   value={newNewsTitle}
                   onChange={e => setNewNewsTitle(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
               </div>
 
@@ -359,7 +359,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   placeholder="축하, 기도, 소식 등 성도들과 함께 나눌 상세 내용을 작성해 주세요..."
                   value={newNewsContent}
                   onChange={e => setNewNewsContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
             </div>
@@ -382,7 +382,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                 type="button"
                 onClick={handleCreateNews}
                 disabled={isCreatingNews}
-                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl disabled:opacity-60 shadow-md transition-all cursor-pointer"
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-60 shadow-md transition-all cursor-pointer"
               >
                 {isCreatingNews ? '등록 중...' : '등록하기'}
               </button>
@@ -424,7 +424,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   type="text"
                   value={editNewsTitle}
                   onChange={e => setEditNewsTitle(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   placeholder="제목"
                 />
               </div>
@@ -435,7 +435,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   rows={6}
                   value={editNewsContent}
                   onChange={e => setEditNewsContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="내용"
                 />
               </div>
@@ -458,7 +458,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
               <button
                 type="button"
                 onClick={handleSaveNewsEdit}
-                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
               >
                 저장하기
               </button>

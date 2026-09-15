@@ -225,7 +225,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
           placeholder="성도 또는 자녀 이름으로 검색..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs text-gray-900 font-medium"
+          className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand shadow-2xs text-gray-900 font-medium"
         />
         {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
       </div>
@@ -245,7 +245,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
               onClick={() => setAddressFilter(opt.key)}
               style={{ flex: `${flexRatio} ${flexRatio} 0%` }}
               className={`py-2 px-1 rounded-lg transition-all whitespace-nowrap text-center truncate ${
-                addressFilter === opt.key ? 'bg-white text-[#335f87] shadow-xs font-bold' : 'text-gray-500 hover:text-gray-700'
+                addressFilter === opt.key ? 'bg-white text-brand shadow-xs font-bold' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {opt.label}
@@ -310,7 +310,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                     <span className="text-xs font-bold text-gray-700">
                       {currentDept === '중고등부' ? '🏫' : currentDept === '초등부' ? '🎒' : currentDept.includes('유아') ? '🎨' : '🍼'} {currentDept}
                     </span>
-                    <span className="text-2xs font-semibold text-[#335f87] bg-sky-50 px-1.5 py-0.5 rounded-md">
+                    <span className="text-2xs font-semibold text-brand bg-sky-50 px-1.5 py-0.5 rounded-md">
                       {currentDeptCount}명
                     </span>
                   </div>
@@ -326,7 +326,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                     <div className="relative shrink-0">
                       <div
                         onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
-                        className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
+                        className={`w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
                       >
                         {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : getInitials(member.name)}
                       </div>
@@ -346,11 +346,11 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                       </div>
                       {member.isDependent ? (
                         getChildGroupLabel(member.childLabriId) && (
-                          <span className="text-2xs text-[#335f87] font-medium">{getChildGroupLabel(member.childLabriId)}</span>
+                          <span className="text-2xs text-brand font-medium">{getChildGroupLabel(member.childLabriId)}</span>
                         )
                       ) : (
                         member.labriId && member.labriId !== '미정' && (
-                          <span className="text-2xs text-[#335f87] font-medium">{member.labriId}</span>
+                          <span className="text-2xs text-brand font-medium">{member.labriId}</span>
                         )
                       )}
                     </div>
@@ -371,7 +371,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                         {member.phone && (
                           <div className="flex items-center gap-2 text-gray-600">
                             <span className="w-3 text-center text-2xs">📞</span>
-                            <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a>
+                            <a href={`tel:${member.phone}`} className="font-bold text-brand hover:underline">{member.phone}</a>
                           </div>
                         )}
                         {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
@@ -392,7 +392,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
               <span className="text-xs font-bold text-amber-900 flex items-center gap-1">
                 🏷️ 교회 방문자 명단 ({filteredVisitors.length}명)
               </span>
-              <span className="text-[10px] text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+              <span className="text-3xs text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                 관리자·리더·교사만 확인 가능
               </span>
             </div>
@@ -426,7 +426,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                           <UserCheck size={11} className="text-amber-600" />
                           {v.visitCount}회 출석
                         </span>
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-3xs text-gray-400">
                           최근 {v.recentDate}
                         </span>
                       </div>
@@ -445,7 +445,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                         {v.dates.map(dateStr => (
                           <span
                             key={dateStr}
-                            className="px-2 py-0.5 bg-amber-100/70 border border-amber-200 text-amber-900 rounded-md text-[10px] font-semibold"
+                            className="px-2 py-0.5 bg-amber-100/70 border border-amber-200 text-amber-900 rounded-md text-3xs font-semibold"
                           >
                             {dateStr}
                           </span>
@@ -465,7 +465,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                               key={idx}
                               className="p-2 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-gray-800 leading-relaxed"
                             >
-                              <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 mb-0.5">
+                              <div className="flex items-center gap-1 text-3xs font-bold text-amber-800 mb-0.5">
                                 <span>📅 {n.date}</span>
                               </div>
                               <div className="whitespace-pre-wrap">{n.note}</div>

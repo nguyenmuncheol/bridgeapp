@@ -696,7 +696,7 @@ export default function MembersTab({
             placeholder="이름, 전화번호, 이메일로 검색..."
             value={memberSearch}
             onChange={e => setMemberSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#335f87] shadow-2xs text-gray-900 font-medium"
+            className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand shadow-2xs text-gray-900 font-medium"
           />
           {memberSearch && <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
         </div>
@@ -761,7 +761,7 @@ export default function MembersTab({
             {!isLeader && (
               <button
                 onClick={openAddUnregistered}
-                className="px-2.5 h-8 bg-[#335f87] hover:bg-[#2b5072] text-white rounded-lg text-2xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 transition-all"
+                className="px-2.5 h-8 bg-brand hover:bg-brand-hover text-white rounded-lg text-2xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 transition-all"
               >
                 <UserPlus size={13} /> 미가입 성도
               </button>
@@ -834,7 +834,7 @@ export default function MembersTab({
             <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs space-y-2">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
-                  <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                  <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
                     {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : getInitials(member.name)}
                   </div>
                   <div>
@@ -860,7 +860,7 @@ export default function MembersTab({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-2xs text-gray-500 pl-14">
-                <span>📞 {member.phone ? <a href={`tel:${member.phone}`} className="font-bold text-[#335f87] hover:underline">{member.phone}</a> : '미입력'}</span>
+                <span>📞 {member.phone ? <a href={`tel:${member.phone}`} className="font-bold text-brand hover:underline">{member.phone}</a> : '미입력'}</span>
                 <span>🏠 {member.address || '미입력'}</span>
                 <span>🎂 {formatBirthdayDisplay(member.birthday) || '미입력'}</span>
                 <span>⛪ {member.labriId || '라브리 미정'}</span>
@@ -880,7 +880,7 @@ export default function MembersTab({
                 <div className="pl-14">
                   <button
                     onClick={() => openClaimModal(member)}
-                    className="text-2xs font-bold text-[#335f87] bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                    className="text-2xs font-bold text-brand bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
                   >
                     가입 계정과 연결하기 ›
                   </button>
@@ -893,7 +893,7 @@ export default function MembersTab({
 
           return (
             <div key={unit.members.map(({ member }) => member.id).join('-')} className="bg-blue-50/40 border border-blue-100 rounded-2xl p-2 space-y-2">
-              <p className="text-2xs font-bold text-[#335f87] px-1">👫 부부</p>
+              <p className="text-2xs font-bold text-brand px-1">👫 부부</p>
               {cards}
             </div>
           )
@@ -926,7 +926,7 @@ export default function MembersTab({
               {/* 이름 */}
               <div>
                 <label className="text-2xs text-gray-400 font-semibold">이름</label>
-                <input type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" />
+                <input type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" />
               </div>
 
               {/* 등급 + 직분 */}
@@ -990,7 +990,7 @@ export default function MembersTab({
                           })}
                           className={`px-2.5 py-2 rounded-xl text-2xs font-bold border transition-all ${
                             selected
-                              ? 'bg-[#335f87] text-white border-[#335f87]'
+                              ? 'bg-brand text-white border-brand'
                               : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                           }`}
                         >
@@ -1010,7 +1010,7 @@ export default function MembersTab({
               {/* 연락처 */}
               <div>
                 <label className="text-2xs text-gray-400 font-semibold">연락처</label>
-                <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="037-123-4567" />
+                <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="037-123-4567" />
               </div>
 
               {/* 주소 */}
@@ -1021,13 +1021,13 @@ export default function MembersTab({
                     <button
                       type="button"
                       onClick={() => handleRequestAddress(editingMember)}
-                      className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-[#335f87]'}`}
+                      className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-brand'}`}
                     >
                       {parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? '🏠 보완요청됨 (취소)' : '🏠 주소 보완요청'}
                     </button>
                   )}
                 </div>
-                <input type="text" value={editMemberData.address} onChange={e => setEditMemberData(p => ({ ...p, address: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="경남 A동 1023호" />
+                <input type="text" value={editMemberData.address} onChange={e => setEditMemberData(p => ({ ...p, address: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="경남 A동 1023호" />
 
                 {/* 부부의 주소가 서로 다를 때만 물어봅니다. 고르지 않으면 양쪽 다 그대로 둡니다. */}
                 {addressConflictSpouse && (
@@ -1061,7 +1061,7 @@ export default function MembersTab({
               {/* 생년월일 */}
               <div>
                 <label className="text-2xs text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
-                <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="1990-08-15" />
+                <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="1990-08-15" />
               </div>
 
               {/* 가족 연결 및 호칭 */}
@@ -1105,7 +1105,7 @@ export default function MembersTab({
                     type="text"
                     value={editSpouseName}
                     onChange={e => setEditSpouseName(e.target.value)}
-                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-xs"
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-xs"
                     placeholder="예: 홍길순 (배우자가 있을 경우 입력)"
                   />
                 </div>
@@ -1115,7 +1115,7 @@ export default function MembersTab({
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
-                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-[#335f87] px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {editChildren.length === 0 && (
@@ -1129,7 +1129,7 @@ export default function MembersTab({
                         disabled={isUploadingChildPhoto}
                         title="자녀 사진 넣기 / 바꾸기"
                         aria-label={`${child.name || '자녀'} 사진 넣기`}
-                        className="w-8 h-8 shrink-0 rounded-full overflow-hidden bg-[#335f87]/10 text-[#335f87] text-2xs font-bold flex items-center justify-center border border-[#335f87]/20 active:scale-95 transition-transform disabled:opacity-50"
+                        className="w-8 h-8 shrink-0 rounded-full overflow-hidden bg-brand/10 text-brand text-2xs font-bold flex items-center justify-center border border-brand/20 active:scale-95 transition-transform disabled:opacity-50"
                       >
                         {child.avatarUrl
                           ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
@@ -1140,20 +1140,20 @@ export default function MembersTab({
                         value={child.name}
                         onChange={e => updateEditChild(child.id, { name: e.target.value })}
                         placeholder="이름"
-                        className="w-[24%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                        className="w-[24%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                       />
                       <input
                         type="text"
                         value={child.birthday || ''}
                         onChange={e => updateEditChild(child.id, { birthday: e.target.value })}
                         placeholder="생일 YYYY-MM-DD"
-                        className="w-[36%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                        className="w-[36%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                       />
                       {/* 교회학교 그룹. 미지정이면 주소록 목록·생일 달력·출석체크에서 빠집니다. */}
                       <select
                         value={child.labriId || ''}
                         onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
-                        className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium text-2xs"
+                        className="w-[30%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                       >
                         <option value="">미지정</option>
                         {CHILD_LABRI_OPTIONS.map(g => (
@@ -1173,7 +1173,7 @@ export default function MembersTab({
               {/* 기타 메모 — 관리자만 보는 내부 메모(성도에게는 어디에도 노출되지 않음) */}
               <div>
                 <label className="text-2xs text-gray-400 font-semibold">기타 메모</label>
-                <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
+                <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
               </div>
 
               {/* 탈퇴 처리 — 목록에서 바로 안 보이게 여기로만 옮겼습니다(오조작 방지) */}
@@ -1221,7 +1221,7 @@ export default function MembersTab({
           onClick={backdropClose(() => setShowAddUnregistered(false))}
         >
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="bg-[#335f87] text-white px-5 py-4">
+            <div className="bg-brand text-white px-5 py-4">
               <h3 className="font-black text-sm">미가입 성도 추가</h3>
               <p className="text-2xs text-blue-200 mt-0.5">앱을 쓰지 않는 분을 명단에만 올립니다</p>
             </div>
@@ -1241,7 +1241,7 @@ export default function MembersTab({
                   value={newMember.name}
                   onChange={e => setNewMember(p => ({ ...p, name: e.target.value }))}
                   placeholder="예: 홍길순"
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
               </div>
 
@@ -1265,7 +1265,7 @@ export default function MembersTab({
                     value={newMember.phone}
                     onChange={e => setNewMember(p => ({ ...p, phone: e.target.value }))}
                     placeholder="선택"
-                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                    className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   />
                 </div>
               </div>
@@ -1324,7 +1324,7 @@ export default function MembersTab({
                   value={newMember.birthday}
                   onChange={e => setNewMember(p => ({ ...p, birthday: e.target.value }))}
                   placeholder="선택 · 예: 1990-08-15"
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
               </div>
 
@@ -1333,7 +1333,7 @@ export default function MembersTab({
                 <button
                   onClick={handleCreateUnregistered}
                   disabled={isSavingNewMember}
-                  className="flex-1 py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                  className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
                 >
                   {isSavingNewMember ? '추가 중...' : '명단에 추가'}
                 </button>
@@ -1350,7 +1350,7 @@ export default function MembersTab({
           onClick={backdropClose(() => setClaimTarget(null))}
         >
           <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="bg-[#335f87] text-white px-5 py-4">
+            <div className="bg-brand text-white px-5 py-4">
               <h3 className="font-black text-sm">{claimTarget.name}님 — 가입 계정과 연결</h3>
               <p className="text-2xs text-blue-200 mt-0.5">출석·식수 기록을 그대로 이어 붙입니다</p>
             </div>
@@ -1395,7 +1395,7 @@ export default function MembersTab({
                 <button
                   onClick={handleClaim}
                   disabled={isClaiming || !claimAccountId}
-                  className="flex-1 py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                  className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
                 >
                   {isClaiming ? '연결 중...' : '연결하기'}
                 </button>

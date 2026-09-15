@@ -37,7 +37,7 @@ export default function Error({
         <div className="flex flex-col gap-2 pt-2">
           <button
             onClick={() => reset()}
-            className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            className="w-full py-3 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             <RefreshCw size={14} />
             다시 시도하기

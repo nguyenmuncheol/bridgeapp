@@ -25,7 +25,7 @@ export default function AuthPending({ onGoogleLogin, onKakaoLogin, onRefreshStat
         </div>
         <button
           onClick={onRefreshStatus}
-          className="w-full max-w-xs py-2.5 bg-[#335f87] text-white text-xs font-bold rounded-xl"
+          className="w-full max-w-xs py-2.5 bg-brand text-white text-xs font-bold rounded-xl"
         >
           승인 상태 새로고침
         </button>

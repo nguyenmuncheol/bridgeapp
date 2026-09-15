@@ -22,13 +22,18 @@ interface StatsTabProps {
 }
 
 /*
- * ⚠️ 이 화면만 글자 크기를 **숫자로 고정**해 두었습니다.
+ * ⚠️ 이 화면만 글자 크기를 **숫자(px)로 고정**해 두었습니다. 의도한 예외입니다.
  *
  * 앱 전체 글자를 한 단계 키웠더니(본문 12→14px) 출석 통계의 표가 깨졌습니다.
  * 한 줄에 성도명·소속·출석여부·결석사유·수정 5칸이 들어가는데,
  * 글자가 커지면 칸이 서로 밀려 내용이 잘립니다.
  * → 여기만 예전 크기로 되돌립니다. 관리자만 보는 화면이라 큰 글씨가 덜 중요합니다.
  *   (나중에 "큰 글씨 모드"를 넣을 때도 이 화면은 제외 대상입니다)
+ *
+ * 앱 전체를 스케일 토큰(text-3xs/2xs/xs…)으로 정리할 때도 이 파일은 일부러 건너뛰었습니다.
+ * 토큰은 rem 이라 큰 글씨 모드에서 같이 커지는데, 그게 바로 여기서 피하려던 것입니다.
+ * 참고: "결석사유" 칸을 Note 버튼으로 바꾸면서 칸 밀림은 상당 부분 해소됐으니,
+ * 나중에 이 예외를 없애고 싶다면 그때 표를 다시 재보면 됩니다.
  */
 export default function StatsTab({
   currentUser, allUsers, showToast,
@@ -558,11 +563,11 @@ export default function StatsTab({
             className="w-full flex items-center justify-between text-left group"
           >
             <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-[#335f87] transition-colors">
+              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-brand transition-colors">
                 {selectedStatsDate || '선택한 주일'} 출석/결석 명단 ({sortedAttendanceRows.length}명)
               </h3>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-[#335f87]">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-brand">
               <span>{showAdultRoster ? '접기' : '펼치기'}</span>
               {showAdultRoster ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </div>
@@ -618,7 +623,7 @@ export default function StatsTab({
                           })
                         }}
                         disabled={!selectedStatsDate}
-                        className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
+                        className="px-2 py-1 bg-gray-100 hover:bg-brand hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
                       >
                         <Edit2 size={11} /> </button>
                     </td>
@@ -676,11 +681,11 @@ export default function StatsTab({
             className="w-full flex items-center justify-between text-left group"
           >
             <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-[#335f87] transition-colors">
+              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-brand transition-colors">
                 🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단 ({childRosterRows.length}명)
               </h3>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-[#335f87]">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-brand">
               <span>{showChildRoster ? '접기' : '펼치기'}</span>
               {showChildRoster ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </div>
@@ -739,7 +744,7 @@ export default function StatsTab({
                             note: row.note || ''
                           })}
                           disabled={!selectedStatsDate}
-                          className="px-2 py-1 bg-gray-100 hover:bg-[#335f87] hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
+                          className="px-2 py-1 bg-gray-100 hover:bg-brand hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
                         >
                           <Edit2 size={11} /> </button>
                       </td>
@@ -767,7 +772,7 @@ export default function StatsTab({
           {/* 1. 기명 방문자 명단 (주인공) */}
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold text-gray-700">
-              기명 방문자 <span className="text-[#335f87]">{visitorStats.namedVisitors.length}명</span>
+              기명 방문자 <span className="text-brand">{visitorStats.namedVisitors.length}명</span>
             </div>
             {visitorStats.namedVisitors.length === 0 ? (
               <p className="py-2.5 text-center text-[10px] text-gray-400 bg-gray-50 rounded-xl">
@@ -787,7 +792,7 @@ export default function StatsTab({
                     <tr key={v.id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="p-2 font-bold text-gray-900">{v.name}</td>
                       <td className="p-2">
-                        <span className="text-[10px] font-bold bg-[#335f87]/10 text-[#335f87] px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold bg-brand/10 text-brand px-1.5 py-0.5 rounded">
                           {v.category}
                         </span>
                       </td>
@@ -796,7 +801,7 @@ export default function StatsTab({
                           <button
                             type="button"
                             onClick={() => setNotePopup({ name: `${v.name} (${v.category} 방문자)`, note: v.note! })}
-                            className="px-2 py-0.5 bg-[#335f87]/5 hover:bg-[#335f87]/15 text-[#335f87] border border-[#335f87]/25 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                            className="px-2 py-0.5 bg-brand/5 hover:bg-brand/15 text-brand border border-brand/25 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
                           >
                             📝 Note
                           </button>
@@ -987,7 +992,7 @@ export default function StatsTab({
               {/* 1. 기명 방문자 — 사람 단위로 합친 명단 */}
               <div className="space-y-1.5">
                 <div className="text-[11px] font-bold text-gray-700">
-                  기명 방문자 <span className="text-[#335f87]">{rangeVisitorStats.people.length}명</span>
+                  기명 방문자 <span className="text-brand">{rangeVisitorStats.people.length}명</span>
                   {rangeVisitorStats.namedVisitCount !== rangeVisitorStats.people.length && (
                     <span className="font-medium text-gray-400"> · 연 {rangeVisitorStats.namedVisitCount}회</span>
                   )}
@@ -1012,7 +1017,7 @@ export default function StatsTab({
                         <tr key={`${pv.name}-${pv.category}`} className="hover:bg-gray-50/70 transition-colors">
                           <td className="p-2 font-bold text-gray-900">{pv.name}</td>
                           <td className="p-2">
-                            <span className="text-[10px] font-bold bg-[#335f87]/10 text-[#335f87] px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-bold bg-brand/10 text-brand px-1.5 py-0.5 rounded">
                               {pv.category}
                             </span>
                           </td>
@@ -1032,7 +1037,7 @@ export default function StatsTab({
                                     .map(n => `[${n.date}]\n${n.note}`)
                                     .join('\n\n')
                                 })}
-                                className="px-2 py-0.5 bg-[#335f87]/5 hover:bg-[#335f87]/15 text-[#335f87] border border-[#335f87]/25 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
+                                className="px-2 py-0.5 bg-brand/5 hover:bg-brand/15 text-brand border border-brand/25 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
                               >
                                 📝 {pv.notes.length}
                               </button>
@@ -1086,7 +1091,7 @@ export default function StatsTab({
                         : getUserDisplayName(editingAttendanceUser.user)} 출석 수정
                 </h3>
                 <p className="text-[10px] text-gray-400 mt-0.5">
-                  주일 날짜: <strong className="text-[#335f87]">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
+                  주일 날짜: <strong className="text-brand">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
                     ? (editingAttendanceUser.user.childLabriId || '미지정')
                     : (editingAttendanceUser.user.labriId || '라브리 미정')})
                 </p>
@@ -1150,7 +1155,7 @@ export default function StatsTab({
                   placeholder="결석 사유를 직접 입력하세요..."
                   value={editingAttendanceUser.note}
                   onChange={e => setEditingAttendanceUser(prev => prev ? { ...prev, note: e.target.value } : null)}
-                  className="w-full text-[12px] p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-[12px] p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
               </div>
             )}
@@ -1166,7 +1171,7 @@ export default function StatsTab({
               <button
                 type="button"
                 onClick={handleSaveIndividualAttendance}
-                className="flex-1 py-2.5 bg-[#335f87] text-white text-[12px] font-bold rounded-xl hover:bg-[#2b5072] shadow-xs"
+                className="flex-1 py-2.5 bg-brand text-white text-[12px] font-bold rounded-xl hover:bg-brand-hover shadow-xs"
               >
                 출석 정보 저장
               </button>
@@ -1211,7 +1216,7 @@ export default function StatsTab({
               <button
                 type="button"
                 onClick={() => setNotePopup(null)}
-                className="w-full py-2.5 bg-[#335f87] text-white font-bold text-[12px] rounded-xl shadow-xs hover:bg-[#284b6b] transition-all"
+                className="w-full py-2.5 bg-brand text-white font-bold text-[12px] rounded-xl shadow-xs hover:bg-brand-hover transition-all"
               >
                 확인
               </button>

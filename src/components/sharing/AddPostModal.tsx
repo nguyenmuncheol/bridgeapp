@@ -261,14 +261,14 @@ export default function AddPostModal({
             }`}
             onClick={() => setPostAsChurch(v => !v)}
           >
-            <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${postAsChurch ? 'bg-[#335f87]' : 'bg-gray-300'}`}>
+            <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${postAsChurch ? 'bg-brand' : 'bg-gray-300'}`}>
               <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${postAsChurch ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
             <div className="flex items-center gap-2 min-w-0">
               {postAsChurch ? (
                 <>
                   <img src="/logo-square.png" alt="" className="w-5 h-5 rounded-full border border-gray-200 shrink-0" />
-                  <span className="text-2xs font-bold text-[#335f87] truncate">더브릿지 교회 이름으로 올리기</span>
+                  <span className="text-2xs font-bold text-brand truncate">더브릿지 교회 이름으로 올리기</span>
                 </>
               ) : (
                 <span className="text-2xs font-semibold text-gray-400">교회 이름으로 올리기 (현재: 내 이름)</span>
@@ -286,7 +286,7 @@ export default function AddPostModal({
               placeholder={subTab === 'photo' ? '행사/사진 제목 입력' : '제목을 입력해 주세요'}
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
-              className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+              className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
             />
           </div>
 
@@ -299,7 +299,7 @@ export default function AddPostModal({
               placeholder={subTab === 'photo' ? '사진에 대한 이야기나 설명을 적어주세요...' : '내용을 자유롭고 편안하게 작성해 주세요...'}
               value={newContent}
               onChange={e => setNewContent(e.target.value)}
-              className={`w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed ${
+              className={`w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed ${
                 subTab === 'photo' ? 'min-h-[90px] max-h-[160px]' : 'min-h-[140px] max-h-[260px]'
               }`}
             />
@@ -325,7 +325,7 @@ export default function AddPostModal({
                 placeholder="https://youtu.be/... 또는 웹페이지 URL"
                 value={youtubeUrl}
                 onChange={e => setYoutubeUrl(e.target.value)}
-                className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
               />
               <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
                 유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
@@ -342,7 +342,7 @@ export default function AddPostModal({
                   placeholder="https://youtu.be/..."
                   value={youtubeUrl}
                   onChange={e => setYoutubeUrl(e.target.value)}
-                  className="w-full p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
                 <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
                   유튜브 주소만 됩니다. 사진 없이 영상만 올려도 괜찮습니다.
@@ -404,7 +404,7 @@ export default function AddPostModal({
                             type="button"
                             onClick={() => setSelectedTagChip(isSelected ? '' : tag)}
                             className={`px-2.5 py-1 rounded-lg border text-2xs font-semibold transition-all ${
-                              isSelected ? 'bg-[#335f87] text-white shadow-2xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                              isSelected ? 'bg-brand text-white shadow-2xs' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                             }`}
                           >
                             #{tag} {isSelected && '✓'}
@@ -430,13 +430,13 @@ export default function AddPostModal({
 
               {uploadProgress?.isUploading && (
                 <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl space-y-2 mt-2">
-                  <div className="flex justify-between items-center text-xs font-bold text-[#335f87]">
+                  <div className="flex justify-between items-center text-xs font-bold text-brand">
                     <span>🖼️ 사진 압축 및 업로드 중...</span>
                     <span>{uploadProgress.current} / {uploadProgress.total}장</span>
                   </div>
                   <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-[#335f87] h-full transition-all duration-300 rounded-full"
+                      className="bg-brand h-full transition-all duration-300 rounded-full"
                       style={{ width: `${uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%` }}
                     />
                   </div>
@@ -467,7 +467,7 @@ export default function AddPostModal({
             type="button"
             disabled={isSubmitting || uploadProgress?.isUploading}
             onClick={handleCreate}
-            className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
+            className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
           >
             {uploadProgress?.isUploading ? '업로드 중...' : isSubmitting ? '등록 중...' : '등록하기'}
           </button>

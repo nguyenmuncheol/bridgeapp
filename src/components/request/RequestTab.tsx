@@ -242,11 +242,11 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-bold text-center">
         <button
           onClick={() => goSubTab('meal')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'meal' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+          className={`py-2 rounded-lg transition-all ${subTab === 'meal' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
         >🍚 주일식사</button>
         <button
           onClick={() => goSubTab('event')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'event' ? 'bg-white text-[#335f87] shadow-xs' : 'text-gray-500'}`}
+          className={`py-2 rounded-lg transition-all ${subTab === 'event' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
         >📋 교회행사</button>
       </div>
 
@@ -255,7 +255,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       <section className="bg-white rounded-2xl p-5 border border-blue-50 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-[#f1f4fa] text-[#335f87] rounded-xl"><Utensils size={18} /></span>
+            <span className="p-2 bg-[#f1f4fa] text-brand rounded-xl"><Utensils size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">주일 식사 신청</h2>
           </div>
           <span className={`text-2xs font-semibold border px-2 py-0.5 rounded-full flex items-center gap-1 ${
@@ -309,7 +309,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
         <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-50 rounded-xl text-xs font-medium">
           {sundayDates.map((dateStr, idx) => (
             <button key={idx} onClick={() => handleSelectWeek(idx)}
-              className={`py-1.5 rounded-lg transition-all ${selectedWeek === idx ? 'bg-white text-[#335f87] font-bold shadow-xs' : 'text-gray-500'}`}
+              className={`py-1.5 rounded-lg transition-all ${selectedWeek === idx ? 'bg-white text-brand font-bold shadow-xs' : 'text-gray-500'}`}
             >{dateStr}</button>
           ))}
         </div>
@@ -321,7 +321,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
               <div className="flex bg-[#f1f4fa] p-1 rounded-xl text-xs font-bold">
                 <button
                   onClick={() => setCustomDraft({ attending: true, adult: tempAdult, child: tempChild })}
-                  className={`px-4 py-1.5 rounded-lg transition-all ${tempAttending ? 'bg-[#335f87] text-white shadow-xs' : 'text-gray-500'}`}
+                  className={`px-4 py-1.5 rounded-lg transition-all ${tempAttending ? 'bg-brand text-white shadow-xs' : 'text-gray-500'}`}
                 >식사함</button>
                 <button
                   onClick={() => setCustomDraft({ attending: false, adult: tempAdult, child: tempChild })}
@@ -358,7 +358,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                       aria-label={`${label} 인원 줄이기`}
                       className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >−</button>
-                    <span className="font-bold text-[#335f87] w-6 text-center text-sm tabular-nums">{val}</span>
+                    <span className="font-bold text-brand w-6 text-center text-sm tabular-nums">{val}</span>
                     <button
                       disabled={isLocked}
                       onClick={() => onChange(val + 1)}
@@ -376,7 +376,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
               onClick={handleSaveMeal}
               disabled={isSavingMeal}
               className={`w-full py-3 rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-60 ${
-                currentMealData.submitted ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-[#335f87] hover:bg-[#2b5072] text-white'
+                currentMealData.submitted ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-brand hover:bg-brand-hover text-white'
               }`}
             >
               {isSavingMeal
@@ -492,7 +492,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   placeholder="예: 2026 여름 수련회"
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
               </div>
               <div>
@@ -502,7 +502,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   placeholder="행사 일시, 장소, 신청 방법 등 안내 내용을 입력하세요..."
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-none text-gray-900 font-medium"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-none text-gray-900 font-medium"
                 />
               </div>
               <div>
@@ -512,7 +512,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   placeholder="https://forms.google.com/..."
                   value={editUrl}
                   onChange={e => setEditUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
                 <p className="text-2xs text-gray-400 mt-1">URL 미입력 시 &quot;담당자에게 직접 신청&quot; 안내 표시</p>
               </div>
@@ -523,7 +523,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   placeholder="예: 홍길동"
                   value={editManager}
                   onChange={e => setEditManager(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
                 <p className="text-2xs text-gray-400 mt-1">입력하면 &quot;담당자(홍길동)에게 직접 신청해 주세요&quot;로 표시됩니다</p>
               </div>
@@ -539,7 +539,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowEventEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSaveEventForm} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl">저장</button>
+              <button onClick={handleSaveEventForm} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
             </div>
           </div>
         </div>

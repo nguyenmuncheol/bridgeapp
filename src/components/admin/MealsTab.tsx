@@ -141,7 +141,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
                 }`}
               >
                 <span className="text-2xs block font-semibold">{s.displayStr}</span>
-                <p className={`font-bold text-sm ${forecastWeek === idx ? 'text-white' : 'text-[#335f87]'}`}>
+                <p className={`font-bold text-sm ${forecastWeek === idx ? 'text-white' : 'text-brand'}`}>
                   {stat.total}명
                 </p>
                 {/* 어느 주에 미응답이 많은지 한눈에 보이도록 표시합니다. */}
@@ -157,7 +157,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
       </div>
 
       {/* 식수 집계 카드 + 복사 버튼 (alert→토스트) */}
-      <div className="bg-[#335f87] text-white p-4 rounded-2xl shadow-sm space-y-3">
+      <div className="bg-brand text-white p-4 rounded-2xl shadow-sm space-y-3">
         <div className="flex justify-between items-start">
           <div>
             <span className="text-2xs text-blue-200 font-medium">
@@ -270,7 +270,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
           <h3 className="font-bold text-xs text-gray-900">
             {upcomingSundays[forecastWeek]?.shortLabelStr} 식사 신청자 목록
           </h3>
-          <span className="text-2xs bg-blue-50 text-[#335f87] font-bold px-2 py-0.5 rounded-full">
+          <span className="text-2xs bg-blue-50 text-brand font-bold px-2 py-0.5 rounded-full">
             성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명
           </span>
         </div>
@@ -288,7 +288,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
               {currentWeekStat.rows.map((row: { name: string; adult: number; child: number; updater: string }, idx: number) => (
                 <tr key={idx}>
                   <td className="p-2 font-bold text-gray-800">{row.name}</td>
-                  <td className="p-2 text-center font-bold text-[#335f87]">{row.adult}명</td>
+                  <td className="p-2 text-center font-bold text-brand">{row.adult}명</td>
                   <td className="p-2 text-center">{row.child}명</td>
                   <td className="p-2 text-right text-gray-400">{row.updater}</td>
                 </tr>

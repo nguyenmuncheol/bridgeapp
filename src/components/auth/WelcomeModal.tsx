@@ -25,7 +25,7 @@ export default function WelcomeModal({ currentUser, onClose }: WelcomeModalProps
         <img src="/logo-wide.png" alt="더브릿지교회" className="h-12 w-auto mx-auto" />
 
         <div className="space-y-1.5">
-          <h2 className="font-black text-lg text-[#335f87]">
+          <h2 className="font-black text-lg text-brand">
             환영합니다, {getSimpleUserName(currentUser)}!
           </h2>
           <p className="text-xs text-gray-600 leading-relaxed">
@@ -59,7 +59,7 @@ export default function WelcomeModal({ currentUser, onClose }: WelcomeModalProps
 
           <button
             onClick={onClose}
-            className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-2xl transition-all active:scale-[0.98]"
+            className="w-full py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-2xl transition-all active:scale-[0.98]"
           >
             시작하기
           </button>

@@ -153,7 +153,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
       )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
-        <div className="bg-[#335f87] text-white px-4 py-3 flex items-center justify-between">
+        <div className="bg-brand text-white px-4 py-3 flex items-center justify-between">
           <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
           <div className="text-center">
             <span className="font-black text-sm">{monthLabel}</span>
@@ -182,11 +182,11 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
                 key={day}
                 onClick={() => handleOpenEditModal(day)}
                 className={`aspect-square flex flex-col items-center justify-start pt-0.5 rounded-lg transition-all ${
-                  isToday ? 'bg-[#335f87]/10 ring-1 ring-[#335f87]/30' : ''
+                  isToday ? 'bg-brand/10 ring-1 ring-brand/30' : ''
                 } ${isLeaderOrAdmin ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
               >
                 <span className={`text-2xs font-bold ${
-                  isToday ? 'text-[#335f87]' : isSunday ? 'text-rose-500' : isSat ? 'text-blue-500' : 'text-gray-700'
+                  isToday ? 'text-brand' : isSunday ? 'text-rose-500' : isSat ? 'text-blue-500' : 'text-gray-700'
                 }`}>{day}</span>
                 <div className="flex flex-wrap gap-0.5 justify-center mt-0.5">
                   {dayEvents.map((ev, ei) => (
@@ -269,13 +269,13 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
                 placeholder="일정 이름 입력 (예: 주일 예배 + 세례식)"
                 value={editEventTitle}
                 onChange={e => setEditEventTitle(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
               />
               <div className="flex gap-2">
                 {editingEventId && (
                   <button onClick={() => { setEditingEventId(null); setEditEventTitle('') }} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
                 )}
-                <button onClick={handleSaveEvent} disabled={!editEventTitle.trim()} className="flex-1 py-2 bg-[#335f87] text-white text-xs font-bold rounded-xl disabled:opacity-40">
+                <button onClick={handleSaveEvent} disabled={!editEventTitle.trim()} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-40">
                   {editingEventId ? '저장하기' : '+ 추가하기'}
                 </button>
               </div>

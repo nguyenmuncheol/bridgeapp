@@ -277,7 +277,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
         <Filter size={14} className="text-gray-400 shrink-0" />
         {dynamicTags.map(tag => (
           <button key={tag} onClick={() => onTagChange(tag)}
-            className={`px-3 py-1 rounded-full shrink-0 transition-all text-xs ${selectedTag === tag ? 'bg-[#335f87] text-white font-bold' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>#{tag}</button>
+            className={`px-3 py-1 rounded-full shrink-0 transition-all text-xs ${selectedTag === tag ? 'bg-brand text-white font-bold' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>#{tag}</button>
         ))}
       </div>
       {error && (
@@ -338,7 +338,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               {photo.tags && photo.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {photo.tags.filter(t => t !== '전체').map(tag => (
-                    <span key={tag} className="text-2xs bg-blue-50 text-[#335f87] font-bold px-1.5 py-0.5 rounded-md">
+                    <span key={tag} className="text-2xs bg-blue-50 text-brand font-bold px-1.5 py-0.5 rounded-md">
                       #{tag}
                     </span>
                   ))}
@@ -432,7 +432,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   type="text"
                   value={editPhotoTitle}
                   onChange={e => setEditPhotoTitle(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   placeholder="제목"
                 />
               </div>
@@ -442,7 +442,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   rows={6}
                   value={editPhotoContent}
                   onChange={e => setEditPhotoContent(e.target.value)}
-                  className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="사진 설명이나 나눔 내용을 적어주세요..."
                 />
               </div>
@@ -452,7 +452,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   type="text"
                   value={editPhotoVideo}
                   onChange={e => setEditPhotoVideo(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   placeholder="https://youtu.be/..."
                 />
               </div>
@@ -462,7 +462,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   type="text"
                   value={editPhotoTag}
                   onChange={e => setEditPhotoTag(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   placeholder="예: 부활절, 수련회"
                 />
               </div>
@@ -480,7 +480,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 type="button"
                 onClick={handleSavePhotoEdit}
                 disabled={isSavingPhoto || isUploadingEditPhoto}
-                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl disabled:opacity-50 shadow-md transition-all cursor-pointer"
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-50 shadow-md transition-all cursor-pointer"
               >
                 {isSavingPhoto ? '저장 중...' : '저장하기'}
               </button>
@@ -625,7 +625,7 @@ function PhotoDetailModal({
             {photo.tags && (
               <div className="flex gap-1 mt-0.5">
                 {photo.tags.filter(t => t !== '전체').map(t => (
-                  <span key={t} className="text-2xs text-[#335f87] font-bold">#{t}</span>
+                  <span key={t} className="text-2xs text-brand font-bold">#{t}</span>
                 ))}
               </div>
             )}
@@ -676,7 +676,7 @@ function PhotoDetailModal({
         {hasImages && images.length > 1 && (
           <div className="flex gap-1 overflow-x-auto pb-1">
             {images.map((img, idx) => (
-              <button key={idx} onClick={() => setImgIdx(idx)} className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 ${imgIdx === idx ? 'border-[#335f87]' : 'border-transparent'}`}>
+              <button key={idx} onClick={() => setImgIdx(idx)} className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 ${imgIdx === idx ? 'border-brand' : 'border-transparent'}`}>
                 <img src={img} alt="thumb" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
@@ -697,7 +697,7 @@ function PhotoDetailModal({
           {hasImages && (
             <div className="flex gap-1.5">
               <button onClick={handleDownloadSingle} disabled={isSavingAll} className="px-2.5 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg text-2xs disabled:opacity-50">📷 이 사진 저장</button>
-              <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-[#335f87] text-white font-bold rounded-lg text-2xs disabled:opacity-50">
+              <button onClick={handleDownloadAll} disabled={isSavingAll} className="px-2.5 py-1.5 bg-brand text-white font-bold rounded-lg text-2xs disabled:opacity-50">
                 {isSavingAll ? '저장 중...' : `📦 전체 저장 (${images.length}장)`}
               </button>
             </div>

@@ -55,7 +55,7 @@ export default function Avatar({ allUsers, authorId, authorName, avatarUrl, size
     <>
       <div
         onClick={resolvedAvatarUrl ? (e) => { e.stopPropagation(); setShowLightbox(true) } : undefined}
-        className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden ${resolvedAvatarUrl ? 'cursor-pointer' : ''}`}
+        className={`${size} rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0 overflow-hidden ${resolvedAvatarUrl ? 'cursor-pointer' : ''}`}
       >
         {resolvedAvatarUrl ? (
           <img src={resolvedAvatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />

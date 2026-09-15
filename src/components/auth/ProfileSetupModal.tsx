@@ -67,7 +67,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
         </button>
 
         {/* 헤더 (상단 고정) */}
-        <div className="bg-[#335f87] text-white px-6 py-4 text-center space-y-1 relative shrink-0">
+        <div className="bg-brand text-white px-6 py-4 text-center space-y-1 relative shrink-0">
           <div className="text-2xl">🙌</div>
           <h2 className="font-black text-base">환영합니다!</h2>
           <p className="text-2xs text-blue-200 leading-relaxed">
@@ -111,7 +111,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="예: 홍길동"
-              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
+              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
             <p className="text-2xs text-gray-500 mt-1">💡 더브릿지 가족 확인을 위해 실명을 입력해 주세요.</p>
@@ -127,7 +127,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="예: 037-123-4567 또는 010-1234-5678"
-              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
+              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
             <p className="text-2xs text-gray-500 mt-1">💡 핸드폰 번호 숫자만 입력해 주세요.</p>
@@ -143,7 +143,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               value={address}
               onChange={e => setAddress(e.target.value)}
               placeholder="예: 경남 A동 1023호"
-              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
+              className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium placeholder:text-gray-500 placeholder:font-normal"
               required
             />
             <p className="text-2xs text-gray-500 mt-1">💡 현재 거주하시는 아파트+동+호수를 입력해 주세요.</p>
@@ -163,7 +163,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               <select
                 value={birthYear}
                 onChange={e => setBirthYear(e.target.value)}
-                className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-700 font-medium"
+                className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-700 font-medium"
               >
                 {years.map(y => (
                   <option key={y} value={y}>{y}년</option>
@@ -172,7 +172,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               <select
                 value={birthMonth}
                 onChange={e => setBirthMonth(e.target.value)}
-                className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-700 font-medium"
+                className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-700 font-medium"
               >
                 {months.map(m => (
                   <option key={m} value={m}>{Number(m)}월</option>
@@ -181,7 +181,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               <select
                 value={birthDay}
                 onChange={e => setBirthDay(e.target.value)}
-                className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-700 font-medium"
+                className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-700 font-medium"
               >
                 {days.map(d => (
                   <option key={d} value={d}>{Number(d)}일</option>
@@ -193,7 +193,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
           <div className="pt-2 space-y-2">
             <button
               type="submit"
-              className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white font-bold rounded-2xl shadow-sm transition-all"
+              className="w-full py-3 bg-brand hover:bg-brand-hover text-white font-bold rounded-2xl shadow-sm transition-all"
             >
               가입 완료 및 승인 신청
             </button>

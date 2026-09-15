@@ -221,11 +221,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             if (!videoId) {
               return (
                 <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-[#335f87] rounded-full flex items-center justify-center shrink-0 text-white">
+                  <span className="w-8 h-8 bg-brand rounded-full flex items-center justify-center shrink-0 text-white">
                     <ExternalLink size={14} />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#335f87]">웹페이지 링크</p>
+                    <p className="text-xs font-bold text-brand">웹페이지 링크</p>
                     <p className="text-2xs text-gray-500 truncate">{linkHostOf(praise.youtubeUrl)}</p>
                   </div>
                 </div>
@@ -249,7 +249,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               </div>
             )
           })() : (
-            <div className="text-2xs text-[#335f87] font-semibold flex items-center gap-1 opacity-60">탭하여 전체 내용 보기 →</div>
+            <div className="text-2xs text-brand font-semibold flex items-center gap-1 opacity-60">탭하여 전체 내용 보기 →</div>
           )}
 
           {/* 좋아요 · 댓글 수 */}
@@ -350,7 +350,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                         href={selectedPraise.youtubeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                        className="w-full py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
                       >
                         <ExternalLink size={14} /> 링크 열기 ({linkHostOf(selectedPraise.youtubeUrl)})
                       </a>
@@ -418,7 +418,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   type="text"
                   value={editPraiseTitle}
                   onChange={e => setEditPraiseTitle(e.target.value)}
-                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] text-gray-900 font-medium"
+                  className="w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                   placeholder="제목"
                 />
               </div>
@@ -429,7 +429,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   rows={6}
                   value={editPraiseContent}
                   onChange={e => setEditPraiseContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-[#335f87] resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="내용"
                 />
               </div>
@@ -452,7 +452,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <button
                 type="button"
                 onClick={handleSavePraiseEdit}
-                className="flex-1 py-3 bg-[#335f87] hover:bg-[#2b5072] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
               >
                 저장하기
               </button>
