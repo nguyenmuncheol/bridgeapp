@@ -34,8 +34,12 @@ interface StatsTabProps {
  *
  * 앱 전체를 스케일 토큰(text-3xs/2xs/xs…)으로 정리할 때도 이 파일은 일부러 건너뛰었습니다.
  * 토큰은 rem 이라 큰 글씨 모드에서 같이 커지는데, 그게 바로 여기서 피하려던 것입니다.
- * 참고: "결석사유" 칸을 Note 버튼으로 바꾸면서 칸 밀림은 상당 부분 해소됐으니,
- * 나중에 이 예외를 없애고 싶다면 그때 표를 다시 재보면 됩니다.
+ *
+ * 한때 칸 밀림을 줄이려고 "결석사유"를 눌러서 여는 Note 버튼으로 바꾼 적이 있는데,
+ * 결석사유는 명단을 훑으며 한눈에 읽어야 하는 정보라 **글로 그대로 보여주는 쪽으로
+ * 되돌렸습니다.** 눌러서 여는 방식은 방문자 특이사항 표에만 씁니다(그건 여러 주에 걸친
+ * 기록이 길게 쌓여서 표 안에 다 펼치기 어렵습니다).
+ * 즉 이 화면의 px 고정은 앞으로도 계속 필요합니다.
  */
 export default function StatsTab({
   currentUser, allUsers, showToast,
@@ -582,7 +586,7 @@ export default function StatsTab({
                   <th className="p-2">성도명</th>
                   <th className="p-2">소속</th>
                   <th className="p-2 text-center">출석여부</th>
-                  <th className="p-2 text-center">Note</th>
+                  <th className="p-2">결석사유</th>
                   <th className="p-2 text-right">수정</th>
                 </tr>
               </thead>
@@ -600,18 +604,9 @@ export default function StatsTab({
                         <span className="text-gray-300 text-[10px]">미기록</span>
                       )}
                     </td>
-                    <td className="p-2 text-center">
-                      {note ? (
-                        <button
-                          type="button"
-                          onClick={() => setNotePopup({ name: `${user.name} ${user.duty || ''}`, note })}
-                          className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
-                        >
-                          📝 Note
-                        </button>
-                      ) : (
-                        <span className="text-gray-300 text-[10px]">-</span>
-                      )}
+                    {/* 결석사유는 글로 바로 보여 줍니다. 눌러서 열어 보는 방식은 방문자 특이사항 전용입니다. */}
+                    <td className="p-2 text-gray-600 break-keep">
+                      {note || <span className="text-gray-300">-</span>}
                     </td>
                     <td className="p-2 text-right">
                       <button
@@ -705,7 +700,7 @@ export default function StatsTab({
                     <th className="p-2">이름</th>
                     <th className="p-2">부서</th>
                     <th className="p-2 text-center">출석여부</th>
-                    <th className="p-2 text-center">Note</th>
+                    <th className="p-2">결석사유</th>
                     <th className="p-2 text-right">수정</th>
                   </tr>
                 </thead>
@@ -723,18 +718,9 @@ export default function StatsTab({
                           <span className="text-gray-300 text-[10px]">미기록</span>
                         )}
                       </td>
-                      <td className="p-2 text-center">
-                        {row.note ? (
-                          <button
-                            type="button"
-                            onClick={() => setNotePopup({ name: `${row.child.name} (${row.child.childLabriId || ''})`, note: row.note! })}
-                            className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold inline-flex items-center gap-0.5 transition-colors"
-                          >
-                            📝 Note
-                          </button>
-                        ) : (
-                          <span className="text-gray-300 text-[10px]">-</span>
-                        )}
+                      {/* 결석사유는 글로 바로 보여 줍니다(방문자 특이사항만 눌러서 여는 방식입니다). */}
+                      <td className="p-2 text-gray-600 break-keep">
+                        {row.note || <span className="text-gray-300">-</span>}
                       </td>
                       <td className="p-2 text-right">
                         <button
