@@ -119,7 +119,13 @@ export default function Home() {
           duty: '',
           created_at: new Date().toISOString()
         }
-        await supabase.from('profiles').insert(newProfile)
+        // 이 경로는 handle_new_user 트리거가 어떤 이유로 행을 못 만들었을 때의 보완책입니다.
+        // 실패해도 로그인 흐름 자체는 막지 않되, 조용히 넘어가면 이후 저장이 전부 실패하는데
+        // 원인을 알 수 없게 되므로 기록은 반드시 남깁니다.
+        const { error: bootstrapError } = await supabase.from('profiles').insert(newProfile)
+        if (bootstrapError) {
+          console.error('[가입] 기본 프로필 생성 실패:', bootstrapError.message)
+        }
         profileData = newProfile
       }
 
@@ -255,13 +261,29 @@ export default function Home() {
   const handleProfileSetupSubmit = async (info: { name: string; phone: string; address: string; birthday: string }) => {
     if (!supabaseUser) return
     const requestedAt = new Date().toISOString()
-    await supabase.from('profiles').update({
+
+    // 🐛 과거 사고: 여기서 update 의 error 를 **확인하지 않았습니다.** 저장이 실패해도
+    //    창은 닫히고 화면 오른쪽 위에 이름까지 바뀌어 보여서, 성도는 신청을 마쳤다고
+    //    믿고 관리자는 아무것도 못 받는 상태가 됐습니다. 실제로 RLS 정책 오류로 저장이
+    //    막혔던 동안 두 분이 이렇게 묶여 있었고, 아무도 원인을 알 수 없었습니다.
+    // → 실패하면 창을 닫지 않고 그대로 두어 다시 시도할 수 있게 합니다.
+    const { error } = await supabase.from('profiles').update({
       name: info.name,
       phone: info.phone,
       address: info.address,
       birthday: info.birthday,
       signup_requested_at: requestedAt,
     }).eq('id', supabaseUser.id)
+
+    if (error) {
+      await showAlert(
+        '가입 신청을 저장하지 못했습니다.\n\n' +
+        '인터넷 상태를 확인하고 다시 시도해 주세요. 계속 안 되면 교회 사무실로 알려 주세요.\n\n' +
+        `(오류: ${error.message})`
+      )
+      return
+    }
+
     setShowProfileSetup(false)
     // 로컬 상태에도 즉시 반영
     setUsers(prev => prev.map(u => u.id === supabaseUser.id
