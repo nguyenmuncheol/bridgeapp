@@ -101,7 +101,9 @@ export async function trackUserActivity(userId?: string | null) {
     } catch {
       // 무시
     }
-  } catch (err: any) {
-    console.warn('[ActivityTracker] 트래킹 오류:', err?.message || err)
+  } catch (err) {
+    // 접속 기록은 실패해도 앱 사용에 지장이 없어야 하므로 경고만 남깁니다.
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn('[ActivityTracker] 트래킹 오류:', message)
   }
 }

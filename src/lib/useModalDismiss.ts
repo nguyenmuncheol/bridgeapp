@@ -71,7 +71,15 @@ export function useWriteModalGuard(
 ) {
   const closedByBackRef = useRef(false)
   const hasUnsavedRef = useRef(hasUnsavedChanges)
-  hasUnsavedRef.current = hasUnsavedChanges
+
+  // 🐛 예전엔 렌더 도중 곧바로 hasUnsavedRef.current 에 값을 넣었습니다. React 는 렌더를
+  //    "순수한 계산"으로 보고 도중에 버리거나 두 번 돌릴 수 있어서, 렌더 중에 바깥 값을
+  //    건드리면 예고 없이 어긋날 수 있습니다.
+  // → 렌더가 끝난 뒤(effect)에 옮겨 적습니다. 이 값을 읽는 쪽은 beforeunload/popstate
+  //   이벤트 핸들러뿐이고 그건 항상 렌더·effect 이후에 실행되므로 동작은 같습니다.
+  useEffect(() => {
+    hasUnsavedRef.current = hasUnsavedChanges
+  })
 
   useEffect(() => {
     if (!isOpen) return

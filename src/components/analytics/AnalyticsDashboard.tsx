@@ -3,12 +3,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   Users, Smartphone, Bell, BellOff, Clock, Search, RefreshCw,
-  Home, Shield, TrendingUp, AlertTriangle, Monitor, ExternalLink,
-  CheckCircle2, Flame, Calendar, Laptop, ChevronDown, Filter,
-  Copy, Check, Database, Download, Heart, Utensils, CalendarCheck,
-  UserCheck, Users2, Eye, FileSpreadsheet, Layers, Activity
+  Home, Shield, TrendingUp, AlertTriangle, Monitor,
+  Copy, Check, Database, Utensils, CalendarCheck,
+  Users2, FileSpreadsheet
 } from 'lucide-react'
-import { UserProfile, getUserDisplayName, isApprovedMember } from '../../lib/mockData'
+import { UserProfile, isApprovedMember } from '../../lib/mockData'
 import {
   dbFetchProfiles, dbFetchAllPushSubscriptions, dbFetchUserAccessLogs,
   dbFetchMemberActivityCounts, dbFetchAttendanceRecords, dbFetchMealRegistrations,
@@ -16,7 +15,7 @@ import {
 } from '../../lib/db'
 import { trackUserActivity } from '../../lib/activityTracker'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
-import { buildFamilyUnits, resolveFamilyKey, familyKeyOf, FamilyUnit } from '../../lib/familyKey'
+import { buildFamilyUnits, resolveFamilyKey } from '../../lib/familyKey'
 import { getUpcomingSundays } from '../../lib/dateUtils'
 import Avatar from '../news/Avatar'
 
@@ -24,6 +23,31 @@ interface AnalyticsDashboardProps {
   currentUser: UserProfile
   onGoHome?: () => void
 }
+
+/**
+ * 이 화면이 실제로 읽는 컬럼만 적은 행 모양입니다.
+ * 예전에는 any[] 로 받아서, 컬럼 이름을 오타 내도 화면이 조용히 빈칸으로만 나왔습니다.
+ */
+interface AttendanceRow {
+  date_str: string
+  user_id: string
+  status: 'ATTEND' | 'ABSENT'
+  note?: string | null
+}
+
+interface MealRegistrationRow {
+  id: string
+  date_str: string
+  family_group_id: string | null
+  attending: boolean
+  adult_count?: number | null
+  child_count?: number | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+/** 명단 정렬 기준 */
+type SortBy = 'recent' | 'name' | 'posts' | 'reactions' | 'absence' | 'created'
 
 /** 상대 시간 계산 헬퍼 (예: 방금 전, 5분 전, 3시간 전, 어제, 14일 전) */
 function formatRelativeTime(isoStr?: string | null): { text: string; level: 'recent' | 'today' | 'week' | 'old' | 'none' } {
@@ -49,8 +73,8 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [pushSubs, setPushSubs] = useState<PushSubscriptionInfo[]>([])
   const [accessLogs, setAccessLogs] = useState<AccessLogItem[]>([])
-  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([])
-  const [mealRegistrations, setMealRegistrations] = useState<any[]>([])
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRow[]>([])
+  const [mealRegistrations, setMealRegistrations] = useState<MealRegistrationRow[]>([])
   const [activityCounts, setActivityCounts] = useState<{
     postsByAuthor: Record<string, number>
     commentsByAuthor: Record<string, number>
@@ -65,9 +89,15 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
 
   const [isLoading, setIsLoading] = useState(true)
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('')
+  // 🐛 예전엔 아래 집계들이 저마다 렌더 도중 Date.now() 를 불렀습니다. 렌더는 순수해야 하는데
+  //    부를 때마다 값이 달라지는 함수라, React 가 렌더를 다시 돌리면 같은 데이터에서 다른 숫자가
+  //    나올 수 있습니다("7일 이내 접속" 같은 경계가 흔들립니다).
+  // → 데이터를 받아온 그 시각을 한 번만 기록해 두고, 모든 집계가 같은 기준시각을 씁니다.
+  //   화면에 보이는 "마지막 새로고침" 시각과도 정확히 같은 순간이 됩니다.
+  const [refreshedAtMs, setRefreshedAtMs] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'posts' | 'reactions' | 'absence' | 'created'>('recent')
+  const [sortBy, setSortBy] = useState<SortBy>('recent')
   const [viewMode, setViewMode] = useState<'individual' | 'family'>('individual')
   const [copiedSql, setCopiedSql] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -76,9 +106,12 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
   const upcomingSundayDateStrs = useMemo(() => upcomingSundays.map(s => s.dateStr), [upcomingSundays])
 
-  // 데이터 로딩
+  // 데이터 로딩.
+  // 🐛 예전엔 첫 줄에서 setIsLoading(true) 를 불렀는데, 이 함수를 effect 가 그대로 호출해서
+  //    "화면을 그리자마자 곧바로 다시 그리는" 모양이 됐습니다.
+  // → 처음 로딩은 isLoading 의 초기값(true)이 이미 담당하고, 새로고침 버튼은 아래
+  //   handleRefresh 가 직접 표시합니다. 여기서는 끝났을 때만 내립니다.
   const loadData = async () => {
-    setIsLoading(true)
     try {
       const [pList, pSubs, aLogs, actCounts, attendList, mealList] = await Promise.all([
         dbFetchProfiles().catch(() => []),
@@ -103,12 +136,20 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         lastActivityByAuthor: {},
         reactionsByUser: {}
       })
-      setAttendanceRecords(attendList || [])
-      setMealRegistrations(mealList || [])
-      setLastRefreshedAt(new Date().toLocaleTimeString('ko-KR'))
+      setAttendanceRecords((attendList || []) as AttendanceRow[])
+      setMealRegistrations((mealList || []) as MealRegistrationRow[])
+      const doneAt = new Date()
+      setRefreshedAtMs(doneAt.getTime())
+      setLastRefreshedAt(doneAt.toLocaleTimeString('ko-KR'))
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // 새로고침 버튼 전용. 버튼 클릭은 렌더가 아니라 이벤트라서 여기서는 바로 표시해도 됩니다.
+  const handleRefresh = () => {
+    setIsLoading(true)
+    loadData()
   }
 
   useEffect(() => {
@@ -201,7 +242,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     const targetSunday = upcomingSundays[0]?.dateStr || ''
     const sameDay = mealRegistrations.filter(r => r.date_str === targetSunday)
 
-    const byFamily = new Map<string, any>()
+    const byFamily = new Map<string, MealRegistrationRow>()
     sameDay.forEach(r => {
       const key = resolveFamilyKey(r.family_group_id, profiles) || `row_${r.id}`
       const prev = byFamily.get(key)
@@ -250,7 +291,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     const approved = actualMembers.filter(p => isApprovedMember(p.role)).length
     const pending = actualMembers.filter(p => p.role === 'PENDING').length
 
-    const now = Date.now()
+    const now = refreshedAtMs
     const oneDayMs = 24 * 60 * 60 * 1000
     const sevenDaysMs = 7 * oneDayMs
     const thirtyDaysMs = 30 * oneDayMs
@@ -313,7 +354,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       latestAttendanceRate,
       latestAttendCount,
     }
-  }, [actualMembers, pushSubUserMap, memberAttendanceStats, activityCounts, attendanceDatesDesc, attendanceByDate])
+  }, [actualMembers, pushSubUserMap, memberAttendanceStats, activityCounts, attendanceDatesDesc, attendanceByDate, refreshedAtMs])
 
   // ── 2. 기기 및 플랫폼 점유율 통계 ──
   const platformStats = useMemo(() => {
@@ -392,9 +433,9 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const filteredMembers = useMemo(() => {
     const q = searchQuery.trim()
     const oneDayMs = 24 * 60 * 60 * 1000
-    const now = Date.now()
+    const now = refreshedAtMs
 
-    let list = actualMembers.filter(p => {
+    const list = actualMembers.filter(p => {
       // 검색어 필터
       if (q) {
         const matchName = matchesKoreanSearch(p.name, q)
@@ -473,12 +514,12 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       }
       return 0
     })
-  }, [actualMembers, searchQuery, filterType, sortBy, pushSubUserMap, activityCounts, memberAttendanceStats])
+  }, [actualMembers, searchQuery, filterType, sortBy, pushSubUserMap, activityCounts, memberAttendanceStats, refreshedAtMs])
 
   // ── 6. 가족 단위 뷰용 가공 ──
   const familyViewUnits = useMemo(() => {
     const q = searchQuery.trim()
-    const now = Date.now()
+    const now = refreshedAtMs
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
     const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000
 
@@ -535,7 +576,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       if (sortBy === 'recent') return b.maxLastActiveMs - a.maxLastActiveMs
       return a.label.localeCompare(b.label, 'ko')
     })
-  }, [familyUnits, searchQuery, sortBy, pushSubUserMap, activityCounts, mealStats])
+  }, [familyUnits, searchQuery, sortBy, pushSubUserMap, activityCounts, mealStats, refreshedAtMs])
 
   // ── 7. 엑셀(CSV) 원클릭 다운로드 ──
   const handleExportCsv = () => {
@@ -633,7 +674,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
 
           {/* 새로고침 */}
           <button
-            onClick={loadData}
+            onClick={handleRefresh}
             disabled={isLoading}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
             title="새로고침"
@@ -1025,7 +1066,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             {/* 정렬 셀렉트 */}
             <select
               value={sortBy}
-              onChange={e => setSortBy(e.target.value as any)}
+              onChange={e => setSortBy(e.target.value as SortBy)}
               className="bg-slate-900/80 border border-slate-700 text-xs text-slate-200 font-semibold px-2.5 py-1.5 rounded-xl focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="recent">⏱️ 최근 접속순</option>

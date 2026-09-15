@@ -1277,7 +1277,7 @@ export default function MembersTab({
                   onChange={e => setNewMember(p => ({ ...p, labriId: e.target.value }))}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
                 >
-                  <option value="">라브리 미정 (출석체크 "미정" 명단에 표시)</option>
+                  <option value="">라브리 미정 (출석체크 &quot;미정&quot; 명단에 표시)</option>
                   <option value="라브리1">라브리1</option>
                   <option value="라브리2">라브리2</option>
                   <option value="라브리3">라브리3</option>

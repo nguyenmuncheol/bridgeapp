@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useModalDismiss } from '../lib/useModalDismiss'
@@ -23,11 +23,16 @@ interface ProfileImageLightboxProps {
  *   부모 요소로의 이벤트 전파를 100% 차단합니다.
  */
 export default function ProfileImageLightbox({ src, alt, onClose }: ProfileImageLightboxProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  // createPortal 은 document 가 있어야 하므로 서버 렌더 단계에서는 아무것도 그리지 않습니다.
+  // 🐛 예전엔 useState(false) + useEffect(setMounted(true)) 로 판별했는데, 그러면 화면이
+  //    뜰 때마다 의미 없는 렌더가 한 번 더 돌았습니다.
+  // → React 가 이 용도로 제공하는 useSyncExternalStore 를 씁니다. 구독할 외부 소스가 없어
+  //   구독 함수는 빈 정리 함수만 돌려주고, 서버에서는 false·브라우저에서는 true 입니다.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
 
   // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss가 처리합니다.
   // 🐛 예전엔 여기서도 따로 잠갔습니다. 같은 document.body 속성을 두 효과가 각자

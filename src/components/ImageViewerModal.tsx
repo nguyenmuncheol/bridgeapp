@@ -36,12 +36,17 @@ export default function ImageViewerModal({
   const touchStartY = useRef<number | null>(null)
   const isSwipingRef = useRef(false)
 
-  // 열릴 때 인덱스 동기화
-  useEffect(() => {
+  // 열릴 때 인덱스 동기화.
+  // 🐛 예전엔 effect 안에서 setCurrentIndex 를 불렀습니다. 그러면 "열림 → 0번으로 한 번 그림
+  //    → 다시 그림" 순서가 되어 잘못된 사진이 한 프레임 스쳐 보일 수 있었습니다.
+  // → React 가 권하는 방식대로, 열림 상태가 바뀐 그 렌더에서 바로 맞춥니다.
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
     if (isOpen) {
       setCurrentIndex(Math.min(Math.max(initialIndex, 0), Math.max(images.length - 1, 0)))
     }
-  }, [isOpen, initialIndex, images.length])
+  }
 
   // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss(아래)가 처리합니다.
   // 🐛 예전엔 여기서도 따로 잠갔습니다. 같은 document.body 속성을 두 효과가 각자

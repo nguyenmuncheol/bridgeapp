@@ -32,10 +32,21 @@ export function usePaginatedPosts(
   const tag = opts.tag && opts.tag !== '전체' ? opts.tag : null
   const [items, setItems] = useState<PostItem[]>([])
   const [hasMore, setHasMore] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
+
+  // 🐛 예전엔 effect 가 시작하자마자 setIsLoading(true)/setError(null) 을 불렀습니다.
+  //    React 는 effect 안의 즉시 setState 를 "한 번 그린 뒤 곧바로 다시 그리는" 낭비로 보고
+  //    경고합니다. 실제로도 카테고리를 바꾸면 옛 목록이 한 프레임 비쳤습니다.
+  // → 지금 보여주는 목록이 "어느 요청의 결과인지"를 키로 들고 있다가, 요청 키가 달라지면
+  //   그 자체로 로딩 중이라고 판단합니다. 카테고리를 바꾸는 순간 바로 로딩 상태가 됩니다.
+  const requestKey = `${category}|${limit}|${tag ?? ''}|${reloadToken}`
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
+  const [errorState, setErrorState] = useState<{ key: string; message: string } | null>(null)
+
+  const isLoading = loadedKey !== requestKey
+  // 오류도 요청 키와 함께 들고 있어야, 다른 카테고리로 옮겼을 때 남의 오류가 따라오지 않습니다.
+  const error = errorState && errorState.key === requestKey ? errorState.message : null
 
   const cursorRef = useRef<string | null>(null)
   // 상태(state)가 아니라 ref로 막아야 같은 순간에 두 번 눌려도 확실히 걸러집니다.
@@ -49,8 +60,6 @@ export function usePaginatedPosts(
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    setError(null)
     cursorRef.current = null
 
     dbFetchPostsPage(category, { limit, tag })
@@ -59,22 +68,23 @@ export function usePaginatedPosts(
         setItems(res.items)
         cursorRef.current = res.nextCursor
         setHasMore(!!res.nextCursor)
-        setIsLoading(false)
+        setLoadedKey(requestKey)
       })
       .catch(err => {
         if (cancelled) return
-        setError(err?.message || '목록을 불러오지 못했습니다.')
-        setIsLoading(false)
+        setErrorState({ key: requestKey, message: err?.message || '목록을 불러오지 못했습니다.' })
+        // 실패도 "이 요청은 끝났다"로 쳐야 로딩 표시가 멈추고 오류 화면이 보입니다.
+        setLoadedKey(requestKey)
       })
 
     return () => { cancelled = true }
-  }, [category, limit, tag, reloadToken])
+  }, [category, limit, tag, requestKey])
 
   const loadMore = () => {
     if (inFlightRef.current || !cursorRef.current) return
     inFlightRef.current = true
     setIsLoadingMore(true)
-    setError(null)
+    setErrorState(null)
 
     dbFetchPostsPage(category, { limit, tag, cursor: cursorRef.current })
       .then(res => {
@@ -83,7 +93,7 @@ export function usePaginatedPosts(
         setHasMore(!!res.nextCursor)
       })
       .catch(err => {
-        setError(err?.message || '더 불러오지 못했습니다.')
+        setErrorState({ key: requestKey, message: err?.message || '더 불러오지 못했습니다.' })
       })
       .finally(() => {
         inFlightRef.current = false
@@ -92,8 +102,8 @@ export function usePaginatedPosts(
   }
 
   const retry = () => {
-    setIsLoading(true)
-    setError(null)
+    // reloadToken 이 바뀌면 requestKey 가 바뀌고, 그것만으로 로딩 상태가 됩니다.
+    setErrorState(null)
     setReloadToken(t => t + 1)
   }
 
