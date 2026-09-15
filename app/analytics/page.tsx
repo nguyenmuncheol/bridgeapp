@@ -4,13 +4,19 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Lock, LogIn, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
 import { supabase } from '../../src/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 import { UserProfile, Role } from '../../src/lib/mockData'
 import { dbFetchProfiles } from '../../src/lib/db'
 import AnalyticsDashboard from '../../src/components/analytics/AnalyticsDashboard'
 
+/** 어떤 형태로 던져지든 사람이 읽을 메시지 한 줄로 만듭니다. */
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err ?? '')
+}
+
 export default function AnalyticsPage() {
   const router = useRouter()
-  const [sessionUser, setSessionUser] = useState<any>(null)
+  const [sessionUser, setSessionUser] = useState<User | null>(null)
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null)
   const [authChecking, setAuthChecking] = useState(true)
   const [loginEmail, setLoginEmail] = useState('')
@@ -20,48 +26,77 @@ export default function AnalyticsPage() {
 
   // 세션 및 관리자 권한 확인
   const verifyAuth = async () => {
-    setAuthChecking(true)
-    setAuthError('')
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) {
-        setSessionUser(null)
-        setCurrentProfile(null)
-        setAuthChecking(false)
-        return
-      }
+    // 첫 줄부터 await 로 시작합니다.
+    // 🐛 예전엔 try/finally 로 감싸고 첫 줄에서 setAuthChecking(true) 를 불렀습니다.
+    //    이 함수를 마운트 effect 가 그대로 호출하는데, getSession() 이 (드물지만) 동기적으로
+    //    던지면 catch/finally 안의 setState 까지 **렌더 직후 동기로** 실행됩니다.
+    //    그러면 "그리자마자 곧바로 다시 그리는" 모양이 됩니다.
+    // → 오류를 결과값으로 받아 처리해, await 이후에만 상태를 건드리도록 했습니다.
+    //   처음 확인은 authChecking 의 초기값(true)이 담당하고, 로그인 직후 재확인은
+    //   호출하는 쪽(이벤트 핸들러)에서 표시합니다.
+    const sessionResult = await supabase.auth.getSession()
+      .then(r => ({ ok: true as const, session: r.data.session ?? null }))
+      .catch((err: unknown) => ({ ok: false as const, err }))
 
-      setSessionUser(session.user)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .maybeSingle()
-
-      if (profile) {
-        setCurrentProfile({
-          id: profile.id,
-          name: profile.name || '',
-          email: profile.email || '',
-          phone: profile.phone || '',
-          role: (profile.role || 'PENDING') as Role,
-          duty: profile.duty || '',
-          createdAt: profile.created_at || '',
-          lastActiveAt: profile.last_active_at,
-          isPwa: profile.is_pwa === true,
-        })
-      }
-    } catch (err: any) {
-      console.error('Analytics auth verification error:', err)
+    if (!sessionResult.ok) {
+      console.error('Analytics auth verification error:', errorMessage(sessionResult.err))
       setAuthError('인증 상태를 확인하지 못했습니다.')
-    } finally {
       setAuthChecking(false)
+      return
     }
+
+    // 세션을 실제로 확인하고 나서 지난 오류 문구를 지웁니다.
+    setAuthError('')
+
+    const session = sessionResult.session
+    if (!session?.user) {
+      setSessionUser(null)
+      setCurrentProfile(null)
+      setAuthChecking(false)
+      return
+    }
+
+    setSessionUser(session.user)
+
+    const profile = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle()
+      .then(r => r.data, () => null)
+
+    if (profile) {
+      setCurrentProfile({
+        id: profile.id,
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        role: (profile.role || 'PENDING') as Role,
+        duty: profile.duty || '',
+        createdAt: profile.created_at || '',
+        lastActiveAt: profile.last_active_at,
+        isPwa: profile.is_pwa === true,
+      })
+    }
+
+    setAuthChecking(false)
   }
 
   useEffect(() => {
+    // 아래 두 억제는 성격이 다릅니다.
+    //
+    // set-state-in-effect: verifyAuth 안의 상태 변경은 **전부 첫 await 뒤**에 있습니다
+    //   (첫 줄이 await supabase.auth.getSession()... 이고, 동기적으로 던지더라도 그냥
+    //    거부된 프로미스가 될 뿐 setState 가 동기 실행되지 않습니다).
+    //   린트 규칙이 호출된 함수 안까지 따라 들어가지만 async 경계는 구분하지 못해 생기는
+    //   오탐입니다. 이 억제를 지우고 싶다면 함수를 effect 안으로 옮겨야 합니다.
+    //
+    // exhaustive-deps: 로그인 여부 확인은 화면에 들어올 때 한 번만 하면 됩니다.
+    //
+    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
     verifyAuth()
   }, [])
+
 
   // 이메일/비밀번호 로그인
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -82,9 +117,10 @@ export default function AnalyticsPage() {
         setAuthError(`로그인 실패: ${error.message}`)
         return
       }
+      setAuthChecking(true)
       await verifyAuth()
-    } catch (err: any) {
-      setAuthError(`로그인 중 오류가 발생했습니다: ${err.message || ''}`)
+    } catch (err) {
+      setAuthError(`로그인 중 오류가 발생했습니다: ${errorMessage(err)}`)
     } finally {
       setIsLoggingIn(false)
     }
@@ -99,8 +135,8 @@ export default function AnalyticsPage() {
           redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/analytics` : undefined,
         },
       })
-    } catch (err: any) {
-      setAuthError(`Google 로그인 오류: ${err.message || ''}`)
+    } catch (err) {
+      setAuthError(`Google 로그인 오류: ${errorMessage(err)}`)
     }
   }
 
