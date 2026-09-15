@@ -755,7 +755,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             className="w-10 h-10 shrink-0 rounded-full overflow-hidden bg-[#335f87]/10 text-[#335f87] text-2xs font-bold flex items-center justify-center border border-[#335f87]/20 active:scale-95 transition-transform disabled:opacity-50"
                           >
                             {child.avatarUrl
-                              ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
+                              ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                               : (photoChildId === child.id && isUploadingAvatar ? '…' : <Camera size={14} />)}
                           </button>
                           <input

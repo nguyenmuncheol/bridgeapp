@@ -328,7 +328,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                         onClick={member.avatarUrl ? (e) => { e.stopPropagation(); setLightboxMember(member) } : undefined}
                         className={`w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm overflow-hidden ${member.avatarUrl ? 'cursor-pointer' : ''}`}
                       >
-                        {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" /> : getInitials(member.name)}
+                        {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : getInitials(member.name)}
                       </div>
                       {member.isUnregistered && (
                         <span

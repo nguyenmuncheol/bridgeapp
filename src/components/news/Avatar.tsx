@@ -31,7 +31,7 @@ export default function Avatar({ allUsers, authorId, authorName, avatarUrl, size
           className={`${size} rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden border border-gray-200 cursor-pointer`}
           title={CHURCH_AUTHOR_NAME}
         >
-          <img src={CHURCH_AVATAR_URL} alt={CHURCH_AUTHOR_NAME} className="w-full h-full object-cover" />
+          <img src={CHURCH_AVATAR_URL} alt={CHURCH_AUTHOR_NAME} className="w-full h-full object-cover" loading="lazy" decoding="async" />
         </div>
         {showLightbox && (
           <ProfileImageLightbox src={CHURCH_AVATAR_URL} alt={CHURCH_AUTHOR_NAME} onClose={() => setShowLightbox(false)} />
@@ -58,7 +58,7 @@ export default function Avatar({ allUsers, authorId, authorName, avatarUrl, size
         className={`${size} rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold shrink-0 overflow-hidden ${resolvedAvatarUrl ? 'cursor-pointer' : ''}`}
       >
         {resolvedAvatarUrl ? (
-          <img src={resolvedAvatarUrl} alt="" className="w-full h-full object-cover" />
+          <img src={resolvedAvatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
         ) : (
           getInitials(authorName)
         )}

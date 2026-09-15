@@ -329,7 +329,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                 <div className="flex items-center gap-2 min-w-0">
                   {postAsChurch ? (
                     <>
-                      <img src="/logo-square.png" alt="" className="w-5 h-5 rounded-full border border-gray-200 shrink-0" />
+                      <img src="/logo-square.png" alt="" className="w-5 h-5 rounded-full border border-gray-200 shrink-0" loading="lazy" decoding="async" />
                       <span className="text-2xs font-bold text-[#335f87] truncate">더브릿지 교회 이름으로 올리기</span>
                     </>
                   ) : (

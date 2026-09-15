@@ -835,7 +835,7 @@ export default function MembersTab({
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
                   <div className="w-12 h-12 rounded-full bg-[#335f87] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
-                    {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" /> : getInitials(member.name)}
+                    {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : getInitials(member.name)}
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-gray-900">{getUserDisplayName(member, '')}</h3>
@@ -1132,7 +1132,7 @@ export default function MembersTab({
                         className="w-8 h-8 shrink-0 rounded-full overflow-hidden bg-[#335f87]/10 text-[#335f87] text-2xs font-bold flex items-center justify-center border border-[#335f87]/20 active:scale-95 transition-transform disabled:opacity-50"
                       >
                         {child.avatarUrl
-                          ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
+                          ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           : (photoChildId === child.id && isUploadingChildPhoto ? '…' : <Camera size={12} />)}
                       </button>
                       <input

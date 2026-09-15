@@ -313,7 +313,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : undefined)
                 return (
                   <>
-                    <img src={cover} alt={photo.title} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                    <img src={cover} alt={photo.title} className="w-full h-full object-cover group-hover:scale-105 transition-all" loading="lazy" decoding="async" />
                     {/* 영상이 있으면 사진 위에도 ▶ 표시를 얹어 한눈에 구분되게 합니다 */}
                     {videoId && (
                       <span className="absolute inset-0 bg-black/25 flex items-center justify-center">
@@ -677,7 +677,7 @@ function PhotoDetailModal({
           <div className="flex gap-1 overflow-x-auto pb-1">
             {images.map((img, idx) => (
               <button key={idx} onClick={() => setImgIdx(idx)} className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 ${imgIdx === idx ? 'border-[#335f87]' : 'border-transparent'}`}>
-                <img src={img} alt="thumb" className="w-full h-full object-cover" />
+                <img src={img} alt="thumb" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>

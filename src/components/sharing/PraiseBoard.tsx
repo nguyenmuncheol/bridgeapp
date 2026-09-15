@@ -235,7 +235,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <div className="relative rounded-xl overflow-hidden bg-slate-900 group/yt">
                 {thumbUrl ? (
                   <div className="h-36 relative">
-                    <img src={thumbUrl} alt="YouTube thumbnail" className="w-full h-full object-cover opacity-90 group-hover/yt:scale-105 transition-all" />
+                    <img src={thumbUrl} alt="YouTube thumbnail" className="w-full h-full object-cover opacity-90 group-hover/yt:scale-105 transition-all" loading="lazy" decoding="async" />
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                       <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg group-hover/yt:scale-110 transition-transform"><Play size={18} className="ml-0.5 fill-white" /></div>
                     </div>
