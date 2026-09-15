@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { showAlert } from '../ConfirmDialog'
+import { useBackgroundScrollLock } from '../../lib/useModalDismiss'
 
 interface ProfileSetupModalProps {
   initialName: string
@@ -41,19 +42,11 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   // 단, 배경 스크롤 잠금은 useModalDismiss를 안 써도 필요합니다 — 폼이 길어 안에서
   // 스크롤하다 끝에 닿으면 그 드래그가 배경 페이지로 새어나가던 문제는 이 팝업도 같습니다.
   // 이 컴포넌트는 부모가 조건부로만 mount하므로 mount~unmount 구간에 잠급니다.
-  useEffect(() => {
-    const prevBodyOverflow = document.body.style.overflow
-    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
-    const prevDocOverscroll = document.documentElement.style.overscrollBehaviorY
-    document.body.style.overflow = 'hidden'
-    document.body.style.overscrollBehaviorY = 'none'
-    document.documentElement.style.overscrollBehaviorY = 'none'
-    return () => {
-      document.body.style.overflow = prevBodyOverflow
-      document.body.style.overscrollBehaviorY = prevBodyOverscroll
-      document.documentElement.style.overscrollBehaviorY = prevDocOverscroll
-    }
-  }, [])
+  //
+  // 🐛 예전엔 여기서 직접 body 스타일을 저장했다 되돌렸습니다. 잠그는 곳이 여러 군데면
+  //    되돌리는 순서에 따라 스크롤이 잠긴 채 남을 수 있어, 공용 훅(잠근 팝업 수를 셈)으로
+  //    모았습니다.
+  useBackgroundScrollLock()
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">

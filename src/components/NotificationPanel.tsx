@@ -5,6 +5,7 @@ import { X, Trash2, Bell } from 'lucide-react'
 import { NotificationItem, UserProfile, getUserDisplayName } from '../lib/mockData'
 import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification, dbDeleteAllNotifications } from '../lib/db'
 import { formatDateTimeShort } from '../lib/dateUtils'
+import { useBackgroundScrollLock } from '../lib/useModalDismiss'
 import { askConfirm } from './ConfirmDialog'
 import SectionTitle from './ui/SectionTitle'
 
@@ -99,19 +100,12 @@ export default function NotificationPanel({
   // 이 패널은 부모가 조건부로만 mount하므로(showNotifications && <NotificationPanel/>),
   // mount ~ unmount 구간 동안 배경 스크롤을 잠급니다. 알림이 많아 목록이 내부 스크롤될 때
   // 끝까지 당기면 그 드래그가 배경 페이지로 새어나가던 문제를 막습니다(다른 팝업들과 동일한 조치).
-  useEffect(() => {
-    const prevBodyOverflow = document.body.style.overflow
-    const prevBodyOverscroll = document.body.style.overscrollBehaviorY
-    const prevDocOverscroll = document.documentElement.style.overscrollBehaviorY
-    document.body.style.overflow = 'hidden'
-    document.body.style.overscrollBehaviorY = 'none'
-    document.documentElement.style.overscrollBehaviorY = 'none'
-    return () => {
-      document.body.style.overflow = prevBodyOverflow
-      document.body.style.overscrollBehaviorY = prevBodyOverscroll
-      document.documentElement.style.overscrollBehaviorY = prevDocOverscroll
-    }
-  }, [])
+  //
+  // 🐛 예전엔 여기서 직접 body 스타일을 저장했다 되돌렸습니다. 그러면 "알림 모두 삭제"
+  //    확인창이 이 패널 위에 겹쳐 떴다가 둘이 거의 동시에 닫힐 때, 되돌리는 순서에 따라
+  //    페이지 스크롤이 잠긴 채로 남을 수 있었습니다. 공용 훅은 잠근 팝업 수를 세므로
+  //    순서와 무관하게 안전합니다.
+  useBackgroundScrollLock()
 
   // 열 때마다 최신 알림을 다시 받아옵니다.
   useEffect(() => {
