@@ -49,11 +49,16 @@ export default function BulletinView({
   const wrapRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
 
-  // 담는 칸의 너비를 재서 그만큼 축소합니다 (web 모드 전용).
+  // 담는 칸의 너비를 재서 그만큼 축소합니다.
+  //
+  // web 뿐 아니라 print 모드에서도 **화면에서는** 축소해야 합니다. 인쇄 화면을
+  // 폰으로 열면 한 쪽(561px)이 화면(≈390px)보다 넓어 잘려 보이기 때문입니다.
+  // 실제 인쇄할 때는 PRINT_CSS 가 zoom 을 1 로 되돌립니다(!important — 인라인
+  // 스타일보다 세게 걸어야 이깁니다).
+  //
   // ResizeObserver 는 observe() 직후 현재 크기로 한 번 호출되므로, effect 본문에서
   // 직접 setState 하지 않아도 첫 값이 들어옵니다.
   useEffect(() => {
-    if (mode !== 'web') return
     const el = wrapRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
 
@@ -65,7 +70,7 @@ export default function BulletinView({
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [mode])
+  }, [])
 
   // 설교 행은 다른 예배 순서와 같은 한 줄이되, 가운데에 설교 제목이 들어갑니다.
   const orderRow = (o: { item: string; by: string }, key: string) => (
@@ -97,7 +102,7 @@ export default function BulletinView({
     <div className={`bl-root bl-${mode}`} ref={wrapRef}>
       <style>{mode === 'print' ? CSS + PRINT_CSS : CSS}</style>
 
-      <div className="doc" style={mode === 'web' ? { zoom: scale } : undefined}>
+      <div className="doc" style={{ zoom: scale }}>
         {/* ══ 앞면 시트 : 4쪽 | 1쪽 ══ 배경색이 같고 위쪽 베이지 원이 접힘선에서 이어집니다 */}
         <section className="sheet">
           {/* ─── 4쪽 : 목회칼럼 · 섬김 · 공지 · 헌금 ─── */}
@@ -208,17 +213,17 @@ export default function BulletinView({
               ))}
             </div>
 
-            {/* 두 소식이 위쪽에 몰리지 않도록, 남는 공간을 사이에 둡니다 */}
-            <div className="spacer" />
-
-            <div><span className="pill soft">{c.memberNewsLabel}</span></div>
-            <div className="newsbox">
-              {c.memberNews.map((n, i) => (
-                <div className="block" key={i}>
-                  <h3>{n.title}</h3>
-                  <p>{multiline(n.body)}</p>
-                </div>
-              ))}
+            {/* 교우소식은 남는 공간의 가운데에 — 내용 길이에 따라 자동으로 자리잡습니다 */}
+            <div className="membernews">
+              <div><span className="pill soft">{c.memberNewsLabel}</span></div>
+              <div className="newsbox">
+                {c.memberNews.map((n, i) => (
+                  <div className="block" key={i}>
+                    <h3>{n.title}</h3>
+                    <p>{multiline(n.body)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {foot(2)}
@@ -278,6 +283,13 @@ const CSS = `
   --footh:9mm;
   --seam-top:58mm;
   --seam-bot:46mm;
+  /* 담는 칸 너비를 그대로 따라가게 합니다.
+     flex 아이템으로 놓일 때(예: <div class="flex justify-center">) 기본값이면
+     내용 너비(한 쪽 561px)로 부풀어, 칸을 재려던 측정이 늘 561 을 돌려주고
+     축소가 걸리지 않습니다. width:100% + min-width:0 으로 칸에 맞춥니다. */
+  display:block;
+  width:100%;
+  min-width:0;
   font-family:var(--sans);
   color:var(--ink);
   word-break:keep-all;
@@ -317,8 +329,10 @@ const CSS = `
 
 .bl-root .caps{font-size:8pt;letter-spacing:.34em;color:var(--mid);text-transform:uppercase}
 
-/* 남는 공간을 차지하는 빈 칸 (2쪽에서 두 소식 사이를 벌립니다) */
-.bl-root .spacer{flex:1 1 auto;min-height:6mm}
+/* 교우소식은 교회소식이 끝난 뒤 남는 공간의 **가운데**에 놓입니다.
+   위아래 margin 을 auto 로 두면 남는 공간이 반씩 나뉘어 자동으로 자리를 잡고,
+   교회소식이 길어 남는 공간이 없으면 그대로 바로 아래에 붙습니다. */
+.bl-root .membernews{margin-top:auto;margin-bottom:auto;padding:6mm 0}
 
 .bl-root .page > .foot{
   position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
@@ -434,7 +448,8 @@ const CSS = `
 const PRINT_CSS = `
 @page{size:A4 landscape;margin:0}
 @media print{
-  .bl-root .doc{display:block;gap:0;zoom:1}
+  /* 화면용 축소(인라인 style)를 이깁니다 — 종이에는 실물 크기로 나가야 합니다 */
+  .bl-root .doc{display:block;gap:0;zoom:1 !important}
   .bl-root .sheet{display:flex;flex-direction:row;width:297mm;height:210mm;
     break-after:page;page-break-after:always}
   .bl-root .sheet:last-child{break-after:auto;page-break-after:auto}

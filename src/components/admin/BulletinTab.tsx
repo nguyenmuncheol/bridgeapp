@@ -199,7 +199,10 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     </div>
   )
 
-  const inputCls = 'w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-blue-400'
+  // ⚠️ 여기에 폭(w-*)을 넣지 마세요. 쓰는 곳에서 w-full / flex-1 / w-20 을 붙이는데,
+  //    Tailwind 는 class 문자열 순서가 아니라 CSS 출력 순서로 이기기 때문에
+  //    여기 폭이 있으면 그쪽을 눌러 버립니다(절 내용·버튼이 화면 밖으로 밀려남).
+  const inputCls = 'p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs min-w-0 focus:outline-none focus:border-blue-400'
   const miniBtn = 'p-1.5 rounded-lg text-gray-400 hover:text-slate-900 hover:bg-gray-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
   const addBtn = 'w-full py-2 border border-dashed border-gray-300 rounded-lg text-2xs font-semibold text-gray-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer flex items-center justify-center gap-1'
 
@@ -209,13 +212,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       {list.map((o, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <input
-            className={inputCls + ' flex-1'}
+            className={inputCls + ' flex-1 basis-0'}
             value={o.item}
             placeholder="순서 이름"
             onChange={e => onChange(list.map((x, j) => j === i ? { ...x, item: e.target.value } : x))}
           />
           <input
-            className={inputCls + ' flex-1'}
+            className={inputCls + ' flex-1 basis-0'}
             value={o.by}
             placeholder="담당"
             onChange={e => onChange(list.map((x, j) => j === i ? { ...x, by: e.target.value } : x))}
@@ -238,7 +241,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
         <div key={i} className="p-2.5 bg-gray-50 rounded-xl space-y-1.5">
           <div className="flex items-center gap-1.5">
             <input
-              className={inputCls + ' flex-1 bg-white font-semibold'}
+              className={inputCls + ' flex-1 basis-0 bg-white font-semibold'}
               value={n.title}
               placeholder="소식 제목"
               onChange={e => onChange(list.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
@@ -248,7 +251,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             <button className={miniBtn} onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label="삭제"><Trash2 size={13} /></button>
           </div>
           <textarea
-            className={inputCls + ' bg-white leading-relaxed'}
+            className={inputCls + ' w-full bg-white leading-relaxed'}
             rows={2}
             value={n.body}
             placeholder="내용 (줄바꿈하면 주보에도 줄이 나뉩니다)"
@@ -313,7 +316,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           <select
             value={dateStr}
             onChange={e => setDateStr(e.target.value)}
-            className={inputCls + ' flex-1 font-bold cursor-pointer'}
+            className={inputCls + ' flex-1 basis-0 font-bold cursor-pointer'}
           >
             {sundays.map(s => (
               <option key={s.dateStr} value={s.dateStr}>{s.labelStr}</option>
@@ -381,7 +384,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
         <>
           <div>
             <label className="block text-2xs font-bold text-gray-500 mb-1">예배 안내 (날짜 옆 작은 글씨)</label>
-            <input className={inputCls} value={content.dateSub} placeholder="주일예배 · 오전 11:00"
+            <input className={inputCls + ' w-full'} value={content.dateSub} placeholder="주일예배 · 오전 11:00"
               onChange={e => patch({ dateSub: e.target.value })} />
           </div>
 
@@ -393,14 +396,14 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           <div className="p-2.5 bg-blue-50 rounded-xl space-y-1.5">
             <label className="block text-2xs font-bold text-blue-700">설교</label>
             <div className="flex gap-1.5">
-              <input className={inputCls + ' bg-white w-24'} value={content.sermon.label} placeholder="설    교"
+              <input className={inputCls + ' bg-white w-24 shrink-0'} value={content.sermon.label} placeholder="설    교"
                 onChange={e => patch({ sermon: { ...content.sermon, label: e.target.value } })} />
-              <input className={inputCls + ' bg-white flex-1'} value={content.sermon.by} placeholder="설교자"
+              <input className={inputCls + ' bg-white flex-1 basis-0'} value={content.sermon.by} placeholder="설교자"
                 onChange={e => patch({ sermon: { ...content.sermon, by: e.target.value } })} />
             </div>
-            <input className={inputCls + ' bg-white font-bold'} value={content.sermon.title} placeholder="설교 제목 (파란 박스 가운데)"
+            <input className={inputCls + ' w-full bg-white font-bold'} value={content.sermon.title} placeholder="설교 제목 (예배 순서 줄 가운데에 들어갑니다)"
               onChange={e => patch({ sermon: { ...content.sermon, title: e.target.value } })} />
-            <input className={inputCls + ' bg-white'} value={content.sermon.sub} placeholder="제목 아래 작은 줄 (비워도 됩니다)"
+            <input className={inputCls + ' w-full bg-white'} value={content.sermon.sub} placeholder="제목 아래 작은 줄 (비워도 됩니다)"
               onChange={e => patch({ sermon: { ...content.sermon, sub: e.target.value } })} />
           </div>
 
@@ -430,7 +433,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
         <>
           <div>
             <label className="block text-2xs font-bold text-gray-500 mb-1">본문</label>
-            <input className={inputCls} value={content.scriptureRef} placeholder="요한복음 3:1-12"
+            <input className={inputCls + ' w-full'} value={content.scriptureRef} placeholder="요한복음 3:1-12"
               onChange={e => patch({ scriptureRef: e.target.value })} />
           </div>
 
@@ -439,7 +442,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               본문 붙여넣기 — 절 번호가 붙어 있으면 그대로, 없으면 한 줄에 한 절
             </label>
             <textarea
-              className={inputCls + ' bg-white leading-relaxed'}
+              className={inputCls + ' w-full bg-white leading-relaxed'}
               rows={4}
               value={versePaste}
               placeholder={'1 바리새인 중에 니고데모라 하는 사람이 있으니…\n2 그가 밤에 예수께 와서 이르되…'}
@@ -463,13 +466,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             {content.verses.map((v, i) => (
               <div key={i} className="flex items-start gap-1.5">
                 <input
-                  className={inputCls + ' w-12 text-center shrink-0'}
+                  className={inputCls + ' w-11 shrink-0 text-center'}
                   value={v.n}
                   inputMode="numeric"
                   onChange={e => patch({ verses: content.verses.map((x, j) => j === i ? { ...x, n: Number(e.target.value) || x.n } : x) })}
                 />
                 <textarea
-                  className={inputCls + ' flex-1 leading-relaxed'}
+                  className={inputCls + ' flex-1 basis-0 leading-relaxed'}
                   rows={2}
                   value={v.t}
                   onChange={e => patch({ verses: content.verses.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })}
@@ -491,12 +494,12 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
         <>
           <div>
             <label className="block text-2xs font-bold text-gray-500 mb-1">메시지 제목 (줄바꿈 가능)</label>
-            <textarea className={inputCls + ' font-bold'} rows={2} value={content.messageTitle}
+            <textarea className={inputCls + ' w-full font-bold'} rows={2} value={content.messageTitle}
               onChange={e => patch({ messageTitle: e.target.value })} />
           </div>
           <div>
             <label className="block text-2xs font-bold text-gray-500 mb-1">메시지 본문 (5~7줄 권장)</label>
-            <textarea className={inputCls + ' leading-relaxed'} rows={6} value={content.messageBody}
+            <textarea className={inputCls + ' w-full leading-relaxed'} rows={6} value={content.messageBody}
               onChange={e => patch({ messageBody: e.target.value })} />
           </div>
 
@@ -515,7 +518,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             {content.servingMonths.map((m, mi) => (
               <div key={mi} className="p-2.5 bg-gray-50 rounded-xl space-y-1.5">
                 <input
-                  className={inputCls + ' bg-white font-bold w-24'}
+                  className={inputCls + ' bg-white font-bold w-20 shrink-0'}
                   value={m.head[0] || ''}
                   placeholder="9월"
                   onChange={e => patch({
@@ -526,13 +529,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 <div className="flex items-center gap-1.5 px-0.5">
                   <span className="w-9 shrink-0" />
                   <span className="flex-1 text-3xs font-bold text-gray-400">대표기도 (성도 선택)</span>
-                  <span className="w-20 shrink-0 text-3xs font-bold text-gray-400">식사 섬김</span>
+                  <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-400">식사</span>
                 </div>
                 {m.rows.map((r, ri) => (
                   <div key={ri} className="flex items-center gap-1.5">
                     <span className="w-9 text-2xs font-bold text-gray-500 shrink-0">{r[0]}</span>
                     <select
-                      className={inputCls + ' bg-white flex-1 min-w-0 cursor-pointer'}
+                      className={inputCls + ' bg-white flex-1 basis-0 cursor-pointer'}
                       value={prayerUserIdAt(mi, ri)}
                       onChange={e => assignPrayer(mi, ri, e.target.value)}
                     >
@@ -543,7 +546,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                     </select>
                     {/* 식사 섬김은 라브리 1·2·3 이 돌아가므로 드롭다운으로 좁게 둡니다 */}
                     <select
-                      className={inputCls + ' bg-white w-20 shrink-0 cursor-pointer'}
+                      className={inputCls + ' bg-white w-[4.5rem] shrink-0 cursor-pointer'}
                       value={MEAL_OPTIONS.includes(r[MEAL_COL] || '') ? r[MEAL_COL] : ''}
                       onChange={e => setMealCell(mi, ri, e.target.value)}
                     >
@@ -579,7 +582,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             <div className="space-y-1.5">
               {content.notices.map((n, i) => (
                 <div key={i} className="flex items-center gap-1.5">
-                  <input className={inputCls + ' flex-1'} value={n}
+                  <input className={inputCls + ' flex-1 basis-0'} value={n}
                     onChange={e => patch({ notices: content.notices.map((x, j) => j === i ? e.target.value : x) })} />
                   <button className={miniBtn} onClick={() => patch({ notices: content.notices.filter((_, j) => j !== i) })} aria-label="삭제">
                     <Trash2 size={13} />
@@ -598,7 +601,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             <div className="space-y-1.5">
               {content.offeringLines.map((l, i) => (
                 <div key={i} className="flex items-center gap-1.5">
-                  <input className={inputCls + ' flex-1'} value={l}
+                  <input className={inputCls + ' flex-1 basis-0'} value={l}
                     onChange={e => patch({ offeringLines: content.offeringLines.map((x, j) => j === i ? e.target.value : x) })} />
                   <button className={miniBtn} onClick={() => patch({ offeringLines: content.offeringLines.filter((_, j) => j !== i) })} aria-label="삭제">
                     <Trash2 size={13} />
@@ -609,7 +612,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 <Plus size={12} /> 줄 추가
               </button>
             </div>
-            <input className={inputCls + ' mt-1.5'} value={content.offeringQr}
+            <input className={inputCls + ' w-full mt-1.5'} value={content.offeringQr}
               placeholder="QR 이미지 주소 (비우면 QR 자리만 표시)"
               onChange={e => patch({ offeringQr: e.target.value })} />
           </div>
@@ -618,13 +621,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
       {/* ── 미리보기 ── */}
       {showPreview && (
-        <div className="bg-slate-200 rounded-2xl p-3 overflow-x-auto">
+        <div className="bg-slate-200 rounded-2xl p-3">
           <p className="text-2xs font-bold text-slate-500 mb-2">
-            미리보기 — 실제 지면 크기입니다. 글이 넘치면 아래가 잘립니다.
+            미리보기 — 화면 폭에 맞춰 줄여 보여 줍니다. 글이 넘치면 쪽 아래가 잘립니다.
           </p>
-          <div className="flex justify-center">
-            <BulletinView content={content} mode="web" />
-          </div>
+          {/* flex 로 감싸면 BulletinView 가 내용 너비(561px)로 부풀어 축소가 걸리지
+              않습니다. 가운데 정렬은 BulletinView 안쪽(.doc)이 이미 합니다. */}
+          <BulletinView content={content} mode="web" />
         </div>
       )}
 

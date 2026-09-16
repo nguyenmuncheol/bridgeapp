@@ -102,8 +102,10 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
 
 .caps{font-size:8pt;letter-spacing:.34em;color:var(--mid);text-transform:uppercase}
 
-/* 남는 공간을 차지하는 빈 칸 (2쪽에서 두 소식 사이를 벌립니다) */
-.spacer{flex:1 1 auto;min-height:6mm}
+/* 교우소식은 교회소식이 끝난 뒤 남는 공간의 **가운데**에 놓입니다.
+   위아래 margin 을 auto 로 두면 남는 공간이 반씩 나뉘어 자동으로 자리를 잡고,
+   교회소식이 길어 남는 공간이 없으면 그대로 바로 아래에 붙습니다. */
+.membernews{margin-top:auto;margin-bottom:auto;padding:6mm 0}
 
 /* 꼬릿말 : 네 쪽 모두 페이지 아래에서 똑같은 높이에 고정 ─────────────── */
 .page > .foot{
@@ -308,11 +310,11 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
       <div><span class="pill" id="church-news-label"></span></div>
       <div id="church-news"></div>
 
-      <!-- 두 소식이 위쪽에 몰리지 않도록, 남는 공간을 사이에 둡니다 -->
-      <div class="spacer"></div>
-
-      <div><span class="pill soft" id="member-news-label"></span></div>
-      <div class="newsbox" id="member-news"></div>
+      <!-- 교우소식은 남는 공간의 가운데에 — 내용 길이에 따라 자동으로 자리잡습니다 -->
+      <div class="membernews">
+        <div><span class="pill soft" id="member-news-label"></span></div>
+        <div class="newsbox" id="member-news"></div>
+      </div>
 
       <div class="foot" data-page="2"></div>
     </article>
