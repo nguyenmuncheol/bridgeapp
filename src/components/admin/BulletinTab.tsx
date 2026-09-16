@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Save, Eye, EyeOff, Printer,
-  RefreshCw, Copy, Sparkles, Bell, ChevronRight,
+  RefreshCw, Copy, Sparkles, ChevronRight,
 } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import {
@@ -27,8 +27,7 @@ import {
   parseVersesFromText, buildServingMonths, sampleBulletinContent,
 } from '../../lib/bulletinContent'
 import {
-  dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbUpsertBulletin,
-  dbSendManualNotification, BulletinData,
+  dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbUpsertBulletin, BulletinData,
 } from '../../lib/db'
 import { getUpcomingSundays, getMostRecentSunday, formatBulletinDisplay } from '../../lib/dateUtils'
 import BulletinView from '../bulletin/BulletinView'
@@ -39,9 +38,12 @@ interface BulletinTabProps {
   showToast: (msg: string) => void
 }
 
-/** 섬김표에서 대표기도 칸이 몇 번째 열인지 (주차 / 대표기도 / 식사 섬김) */
+/** 섬김표에서 각 칸이 몇 번째 열인지 (주차 / 대표기도 / 식사 섬김) */
 const PRAYER_COL = 1
 const MEAL_COL = 2
+
+/** 식사 섬김은 라브리 세 곳이 돌아가며 맡습니다 */
+const MEAL_OPTIONS = ['1라브리', '2라브리', '3라브리']
 
 export default function BulletinTab({ currentUser, allUsers, showToast }: BulletinTabProps) {
   // 고를 수 있는 주일: 지난 2주 + 이번 주 이후 4주
@@ -63,7 +65,6 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   const [showPreview, setShowPreview] = useState(false)
   const [open, setOpen] = useState<Record<string, boolean>>({ cover: true })
   const [versePaste, setVersePaste] = useState('')
-  const [isSendingPrayer, setIsSendingPrayer] = useState(false)
 
   /** 대표기도자로 고를 수 있는 사람: 실제 계정이 있는 성도만 (자녀 가상항목·미가입자 제외) */
   const selectableMembers = useMemo(
@@ -125,7 +126,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       messageBody: '',
       churchNews: [],
       memberNews: [],
-      // 알림 발송 기록은 이어받지 않습니다 (새 주보는 새로 보내야 합니다).
+      // 대표기도 배정은 달마다 정해지므로 그대로 가져옵니다.
       prayerAssignments: prev.prayerAssignments.map(a => ({ ...a, notifiedAt: undefined })),
     })
     setStatus('draft')
@@ -167,42 +168,6 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       showToast(nextStatus === 'published' ? '✅ 주보를 발행했습니다' : '💾 임시저장했습니다')
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  // ── 대표기도자 알림 ───────────────────────────────────────────────────
-  const pendingPrayerTargets = content.prayerAssignments.filter(a => a.userId && !a.notifiedAt)
-
-  const handleNotifyPrayerLeaders = async () => {
-    if (isSendingPrayer) return
-    if (pendingPrayerTargets.length === 0) {
-      showToast('⚠️ 알림 보낼 대표기도자가 없습니다')
-      return
-    }
-    setIsSendingPrayer(true)
-    try {
-      const userIds = [...new Set(pendingPrayerTargets.map(a => a.userId))]
-      const { sent, error } = await dbSendManualNotification({
-        title: '🙏 대표기도 부탁드립니다',
-        body: `${content.servingTitle} — 주보에 대표기도로 배정되셨습니다. 주보에서 날짜를 확인해 주세요.`,
-        target: 'USERS',
-        userIds,
-        senderName: '더브릿지교회',
-      })
-      if (error) {
-        showToast(`❌ 알림 발송 실패: ${error.message || '알 수 없는 오류'}`)
-        return
-      }
-      // 보낸 사람은 표시해 둡니다. 저장해야 기록이 남습니다.
-      const now = new Date().toISOString()
-      patch({
-        prayerAssignments: content.prayerAssignments.map(a =>
-          userIds.includes(a.userId) ? { ...a, notifiedAt: a.notifiedAt || now } : a
-        ),
-      })
-      showToast(`🔔 ${sent}명에게 알림을 보냈습니다 (저장해야 기록이 남습니다)`)
-    } finally {
-      setIsSendingPrayer(false)
     }
   }
 
@@ -318,6 +283,22 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     patch({
       servingMonths: months,
       prayerAssignments: userId ? [...others, { monthIndex: mi, rowIndex: ri, userId, name }] : others,
+    })
+  }
+
+  /** 섬김표의 식사 섬김 칸을 바꿉니다 */
+  const setMealCell = (mi: number, ri: number, value: string) => {
+    patch({
+      servingMonths: content.servingMonths.map((x, j) =>
+        j !== mi ? x : {
+          ...x,
+          rows: x.rows.map((rr, k) => {
+            if (k !== ri) return rr
+            const next = [...rr]
+            next[MEAL_COL] = value
+            return next
+          }),
+        }),
     })
   }
 
@@ -542,68 +523,54 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                       j === mi ? { ...x, head: [e.target.value, x.head[1] || '대표기도', x.head[2] || '식사 섬김'] } : x),
                   })}
                 />
+                <div className="flex items-center gap-1.5 px-0.5">
+                  <span className="w-9 shrink-0" />
+                  <span className="flex-1 text-3xs font-bold text-gray-400">대표기도 (성도 선택)</span>
+                  <span className="w-20 shrink-0 text-3xs font-bold text-gray-400">식사 섬김</span>
+                </div>
                 {m.rows.map((r, ri) => (
                   <div key={ri} className="flex items-center gap-1.5">
                     <span className="w-9 text-2xs font-bold text-gray-500 shrink-0">{r[0]}</span>
                     <select
-                      className={inputCls + ' bg-white flex-1 cursor-pointer'}
+                      className={inputCls + ' bg-white flex-1 min-w-0 cursor-pointer'}
                       value={prayerUserIdAt(mi, ri)}
                       onChange={e => assignPrayer(mi, ri, e.target.value)}
                     >
-                      <option value="">대표기도 — 선택 안 함</option>
+                      <option value="">— 선택 안 함 —</option>
                       {selectableMembers.map(u => (
                         <option key={u.id} value={u.id}>{u.name}{u.duty ? ` ${u.duty}` : ''}</option>
                       ))}
                     </select>
-                    <input
-                      className={inputCls + ' bg-white w-24'}
-                      value={r[MEAL_COL] || ''}
-                      placeholder="식사 섬김"
-                      onChange={e => patch({
-                        servingMonths: content.servingMonths.map((x, j) =>
-                          j !== mi ? x : {
-                            ...x,
-                            rows: x.rows.map((rr, k) => {
-                              if (k !== ri) return rr
-                              const next = [...rr]
-                              next[MEAL_COL] = e.target.value
-                              return next
-                            }),
-                          }),
-                      })}
-                    />
+                    {/* 식사 섬김은 라브리 1·2·3 이 돌아가므로 드롭다운으로 좁게 둡니다 */}
+                    <select
+                      className={inputCls + ' bg-white w-20 shrink-0 cursor-pointer'}
+                      value={MEAL_OPTIONS.includes(r[MEAL_COL] || '') ? r[MEAL_COL] : ''}
+                      onChange={e => setMealCell(mi, ri, e.target.value)}
+                    >
+                      <option value="">—</option>
+                      {MEAL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
                   </div>
                 ))}
               </div>
             ))}
 
-            {/* 대표기도자 알림 */}
-            <div className="p-2.5 bg-blue-50 rounded-xl space-y-2">
-              <p className="text-2xs text-blue-800 leading-relaxed">
-                대표기도로 <strong>고른 성도</strong>에게만 알림을 보냅니다. 이름을 직접 타이핑한 칸은
-                계정과 연결되지 않아 대상이 아닙니다.
-              </p>
-              {content.prayerAssignments.length > 0 && (
+            {/* 고른 성도는 계정과 연결되어 저장됩니다. 알림 발송 조건은 추후 별도로 정합니다. */}
+            {content.prayerAssignments.length > 0 && (
+              <div className="p-2.5 bg-blue-50 rounded-xl space-y-1.5">
+                <p className="text-2xs font-bold text-blue-800">
+                  대표기도 배정 {content.prayerAssignments.length}명 (계정 연결됨)
+                </p>
                 <div className="flex flex-wrap gap-1">
                   {content.prayerAssignments.map(a => (
                     <span key={`${a.monthIndex}-${a.rowIndex}`}
-                      className={`px-2 py-0.5 rounded-full text-3xs font-bold ${
-                        a.notifiedAt ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-blue-700 border border-blue-200'
-                      }`}>
-                      {a.name || '이름 없음'}{a.notifiedAt ? ' · 발송됨' : ''}
+                      className="px-2 py-0.5 rounded-full text-3xs font-bold bg-white text-blue-700 border border-blue-200">
+                      {a.name || '이름 없음'}
                     </span>
                   ))}
                 </div>
-              )}
-              <button
-                onClick={handleNotifyPrayerLeaders}
-                disabled={isSendingPrayer || pendingPrayerTargets.length === 0}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-2xs font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-              >
-                {isSendingPrayer ? <RefreshCw size={12} className="animate-spin" /> : <Bell size={12} />}
-                대표기도자 {pendingPrayerTargets.length}명에게 알림 보내기
-              </button>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* 공지 */}

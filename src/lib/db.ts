@@ -362,13 +362,19 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
 
   // 제목·본문·설교자·요약·이미지·본문(content)이 전부 빈 "빈 껍데기" 주보는
   // 화면에도 띄우지 않습니다 (notify_bulletin() 이 알림을 안 보내는 것과 같은 기준).
+  //
+  // 🐛 과거 버그: 작성 중인 주보(status='draft')도 홈 화면 "이번 주 주보" 에
+  //    그대로 올라왔습니다. 관리자가 주보 탭에서 **임시저장만 해도** 성도들이
+  //    미완성 주보를 보게 됩니다. 발행한 것만 보여 줍니다.
+  //    (status 칼럼이 없던 시절의 행은 null 이므로 published 로 봅니다.)
   const isFilled = (row: BulletinRow) =>
-    (row.image_urls?.length ?? 0) > 0 ||
-    !!row.content ||
-    !!row.title?.trim() ||
-    !!row.passage?.trim() ||
-    !!row.preacher?.trim() ||
-    !!row.summary?.trim()
+    (row.status ?? 'published') === 'published' &&
+    ((row.image_urls?.length ?? 0) > 0 ||
+      !!row.content ||
+      !!row.title?.trim() ||
+      !!row.passage?.trim() ||
+      !!row.preacher?.trim() ||
+      !!row.summary?.trim())
 
   // updated_at 내림차순으로 이미 정렬돼 있으므로, 날짜가 같으면 먼저 나온 행(더 최근 수정)이 이깁니다.
   let best: BulletinRow | null = null

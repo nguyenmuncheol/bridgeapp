@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { BulletinContent } from '../../lib/bulletinContent'
 
 /**
@@ -14,12 +15,19 @@ import { BulletinContent } from '../../lib/bulletinContent'
  *   display:contents 로 없애 네 쪽을 형제로 만든 뒤 CSS order 로 1,2,3,4 로 세웁니다.
  *   → 내용을 두 번 쓰지 않습니다.
  *
- * 디자인 원본은 public/bulletin.html 입니다. 그쪽을 고치면 여기도 같이 고쳐 주세요.
+ * ⚠️ 폭 맞추기 (web 모드)
+ *   한 쪽이 A5 실물 크기(148.5mm ≈ 561px)입니다. 이 앱은 max-w-lg(512px) 안에서
+ *   도는 모바일형 화면이라, 데스크톱 브라우저로 보면 창은 넓은데 **담는 칸이 좁아**
+ *   주보가 칸 밖으로 잘려 나갑니다. 예전에는 화면(viewport) 너비로 축소 여부를
+ *   정했기 때문에, 창이 넓으면 축소가 걸리지 않아 관리자 미리보기가 잘려 보였습니다.
+ *   → 이제 **담는 칸의 실제 너비**를 재서 그만큼 축소합니다. 어디에 넣어도 맞습니다.
  *
  * ⚠️ 스타일 격리: 이 컴포넌트의 CSS 선택자는 전부 .bl-root 아래로 한정됩니다.
  *    앱의 Tailwind 와 섞이지 않게 하기 위함이니, 규칙을 추가할 때도 접두사를 지키세요.
  *    @page / @media print 만은 한정할 수 없어서 mode="print" 일 때만 내보냅니다.
  *    (홈 화면에 얹힌 채로 @page 가 살아 있으면 홈을 인쇄할 때 용지가 가로로 돌아갑니다.)
+ *
+ * 디자인 원본은 public/bulletin.html 입니다. 그쪽을 고치면 여기도 같이 고쳐 주세요.
  */
 
 interface BulletinViewProps {
@@ -29,16 +37,37 @@ interface BulletinViewProps {
   logoSrc?: string
 }
 
+/** A5 한 쪽의 너비(148.5mm)를 화면 픽셀로. 96dpi 기준 148.5 / 25.4 * 96 */
+const PAGE_WIDTH_PX = 561
+
 export default function BulletinView({
   content,
   mode = 'web',
   logoSrc = '/logo-wide@2x.png',
 }: BulletinViewProps) {
   const c = content
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
 
-  // 설교 행은 다른 예배 순서와 똑같은 한 줄로 목록 맨 아래에 붙습니다.
-  const preRows = [...c.orderPre, { item: c.sermon.label, by: c.sermon.by }]
+  // 담는 칸의 너비를 재서 그만큼 축소합니다 (web 모드 전용).
+  // ResizeObserver 는 observe() 직후 현재 크기로 한 번 호출되므로, effect 본문에서
+  // 직접 setState 하지 않아도 첫 값이 들어옵니다.
+  useEffect(() => {
+    if (mode !== 'web') return
+    const el = wrapRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
 
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth
+      if (w <= 0) return
+      const next = Math.min(1, Math.round((w / PAGE_WIDTH_PX) * 1000) / 1000)
+      setScale(prev => (Math.abs(prev - next) < 0.002 ? prev : next))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mode])
+
+  // 설교 행은 다른 예배 순서와 같은 한 줄이되, 가운데에 설교 제목이 들어갑니다.
   const orderRow = (o: { item: string; by: string }, key: string) => (
     <li key={key}>
       <span className="bul" />
@@ -65,10 +94,10 @@ export default function BulletinView({
   )
 
   return (
-    <div className={`bl-root bl-${mode}`}>
+    <div className={`bl-root bl-${mode}`} ref={wrapRef}>
       <style>{mode === 'print' ? CSS + PRINT_CSS : CSS}</style>
 
-      <div className="doc">
+      <div className="doc" style={mode === 'web' ? { zoom: scale } : undefined}>
         {/* ══ 앞면 시트 : 4쪽 | 1쪽 ══ 배경색이 같고 위쪽 베이지 원이 접힘선에서 이어집니다 */}
         <section className="sheet">
           {/* ─── 4쪽 : 목회칼럼 · 섬김 · 공지 · 헌금 ─── */}
@@ -141,14 +170,22 @@ export default function BulletinView({
               <div className="s">{c.dateSub}</div>
             </div>
 
-            <ul className="order">{preRows.map((o, i) => orderRow(o, `pre-${i}`))}</ul>
+            <ul className="order">
+              {c.orderPre.map((o, i) => orderRow(o, `pre-${i}`))}
 
-            <div className="sermon">
-              <span className="t">{multiline(c.sermon.title)}</span>
-              {c.sermon.sub && <span className="s">{c.sermon.sub}</span>}
-            </div>
+              {/* 설교 : 설교 | 설교 제목(가운데, 한 단계 굵고 크게) | 설교자 */}
+              <li className="is-sermon">
+                <span className="bul" />
+                <span className="it">{c.sermon.label}</span>
+                <span className="stitle">
+                  {multiline(c.sermon.title)}
+                  {c.sermon.sub && <span className="ssub">{c.sermon.sub}</span>}
+                </span>
+                <span className="by">{c.sermon.by}</span>
+              </li>
 
-            <ul className="order">{c.orderPost.map((o, i) => orderRow(o, `post-${i}`))}</ul>
+              {c.orderPost.map((o, i) => orderRow(o, `post-${i}`))}
+            </ul>
 
             {foot(1)}
           </article>
@@ -171,7 +208,10 @@ export default function BulletinView({
               ))}
             </div>
 
-            <div style={{ marginTop: '8mm' }}><span className="pill soft">{c.memberNewsLabel}</span></div>
+            {/* 두 소식이 위쪽에 몰리지 않도록, 남는 공간을 사이에 둡니다 */}
+            <div className="spacer" />
+
+            <div><span className="pill soft">{c.memberNewsLabel}</span></div>
             <div className="newsbox">
               {c.memberNews.map((n, i) => (
                 <div className="block" key={i}>
@@ -184,7 +224,7 @@ export default function BulletinView({
             {foot(2)}
           </article>
 
-          {/* ─── 3쪽 : 성경말씀 · 묵상메모 ─── */}
+          {/* ─── 3쪽 : 성경말씀 · 설교메모 ─── */}
           <article className="page" style={{ ['--o' as string]: 3 }}>
             <div className="blob" style={{ width: '60mm', height: '60mm', background: 'var(--beige)', top: '78mm', right: '-30mm', opacity: 0.7 }} />
             <div className="blob seam-b-r" />
@@ -277,6 +317,9 @@ const CSS = `
 
 .bl-root .caps{font-size:8pt;letter-spacing:.34em;color:var(--mid);text-transform:uppercase}
 
+/* 남는 공간을 차지하는 빈 칸 (2쪽에서 두 소식 사이를 벌립니다) */
+.bl-root .spacer{flex:1 1 auto;min-height:6mm}
+
 .bl-root .page > .foot{
   position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
   height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
@@ -306,13 +349,14 @@ const CSS = `
 .bl-root .order .it{font-weight:700;color:var(--navy);white-space:pre}
 .bl-root .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
 
-/* 설교 제목 : 설교 행은 다른 순서와 똑같이 목록에 들어가고, 여기엔 제목만 */
-.bl-root .sermon{margin:4mm 0;background:var(--mid);color:#fff;
-  padding:4.6mm 5mm;text-align:center}
-.bl-root .sermon .t{display:block;font-size:13pt;font-weight:800;line-height:1.3;
-  letter-spacing:-.01em}
-.bl-root .sermon .s{display:block;margin-top:1.6mm;font-size:8.6pt;
-  color:rgba(255,255,255,.8);letter-spacing:.03em}
+/* 설교 행 : 설교 | 제목(가운데) | 설교자 — 별도 박스 없이 목록 안에 들어갑니다 */
+.bl-root .order li.is-sermon{padding:3mm 0}
+.bl-root .order li.is-sermon .bul{background:var(--navy)}
+.bl-root .order li.is-sermon .by{margin-left:0}
+.bl-root .order .stitle{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
+  font-size:11.5pt;font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
+.bl-root .order .ssub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
+  color:var(--mid);letter-spacing:.02em}
 
 /* 2쪽 · 소식 */
 .bl-root .block{margin-top:5.2mm}
@@ -361,6 +405,7 @@ const CSS = `
 .bl-root .tables th{background:var(--navy);color:#fff;font-size:8pt;font-weight:700;
   padding:1.9mm .6mm;letter-spacing:.02em}
 .bl-root .tables th:first-child{width:11mm}
+.bl-root .tables th:last-child{width:16mm}
 .bl-root .tables td{border:.3mm solid rgba(91,131,173,.45);background:rgba(255,255,255,.68);
   height:6.8mm;font-size:8pt;text-align:center;color:#365071;padding:.5mm}
 .bl-root .tables td:first-child{font-weight:700;color:var(--navy);background:rgba(255,255,255,.38);
@@ -383,10 +428,6 @@ const CSS = `
   background:#fff;display:flex;align-items:center;justify-content:center;
   font-size:7pt;letter-spacing:.2em;color:var(--muted);overflow:hidden}
 .bl-root .offering .qr img{width:100%;height:100%;object-fit:contain}
-
-/* 좁은 화면(폰)에서는 A5 실물 크기가 화면을 넘으므로 축소해서 보여 줍니다 */
-@media screen and (max-width:640px){ .bl-root .doc{zoom:.62} }
-@media screen and (min-width:641px) and (max-width:820px){ .bl-root .doc{zoom:.82} }
 `
 
 /* 인쇄 전용 — mode="print" 일 때만 문서에 들어갑니다 */

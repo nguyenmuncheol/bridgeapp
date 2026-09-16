@@ -102,6 +102,15 @@ export interface BulletinContent {
   offeringQr: string
 }
 
+/**
+ * 헌금 계좌 — 메인 화면 "온라인 헌금 안내"(HomeTab)에 적힌 것과 같은 계좌입니다.
+ * QR 이미지는 따로 받아 offeringQr 에 넣습니다.
+ */
+export const OFFERING_ACCOUNT_LINES = [
+  '우리은행 100-100-299503',
+  '예금주 : 임혜영 / LimHyeYoung',
+]
+
 /** 새 주보를 만들 때의 기본값. 매주 바뀌지 않는 항목은 미리 채워 둡니다. */
 export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   churchName: 'THE BRIDGE CHURCH · HANOI',
@@ -132,7 +141,7 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   scriptureLabel: '성경말씀',
   scriptureRef: '',
   verses: [],
-  memoLabel: '묵상 메모',
+  memoLabel: '설교 메모',
 
   messageLabel: 'MESSAGE',
   messageTitle: '',
@@ -143,7 +152,9 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   noticeTitle: '공지 사항',
   notices: [],
   offeringLabel: '헌금 계좌',
-  offeringLines: [],
+  // 메인 화면(HomeTab "온라인 헌금 안내")과 같은 계좌입니다. 둘 중 하나만 바뀌면
+  // 성도가 서로 다른 계좌를 보게 되므로, 계좌가 바뀌면 두 곳을 함께 고쳐야 합니다.
+  offeringLines: OFFERING_ACCOUNT_LINES,
   offeringQr: '',
 }
 
@@ -402,6 +413,6 @@ export function sampleBulletinContent(dateStr: string, displayDate: string): Bul
       '주보에 실을 소식은 매주 목요일까지 알려주시기 바랍니다.',
       '예배 중 휴대전화는 진동으로 전환해 주세요.',
     ],
-    offeringLines: ['○○은행 000-0000-0000', '예금주 : 더브릿지교회'],
+    offeringLines: OFFERING_ACCOUNT_LINES,
   }
 }

@@ -9,6 +9,8 @@ import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
+import BulletinView from '../bulletin/BulletinView'
+import { normalizeBulletinContent, BulletinContent } from '../../lib/bulletinContent'
 import ImageViewerModal from '../ImageViewerModal'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
@@ -42,6 +44,8 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   const [bulletinOverride, setBulletinOverride] = useState<{
     id?: string
     date: string; title: string; preacher: string; passage: string; summary?: string; imageUrls: string[]
+    // 앱에서 작성한 주보 본문. 사진으로 올린 주보에는 없습니다(null).
+    content?: BulletinContent | null
   } | null>(null)
 
   const bulletin = bulletinOverride ?? (latestBulletin ? {
@@ -51,6 +55,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
     preacher: latestBulletin.preacher,
     passage: latestBulletin.passage,
     summary: latestBulletin.summary,
+    content: latestBulletin.content ?? null,
     imageUrls: latestBulletin.imageUrls || []
   } : null)
 
@@ -468,6 +473,14 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               </div>
               <button onClick={() => setShowBulletinModal(false)} className="text-gray-400 font-bold text-lg px-1">✕</button>
             </div>
+
+            {/* 앱에서 작성한 주보 — 1 → 2 → 3 → 4쪽 순서로 이어서 보여 줍니다.
+                (사진으로 올린 주보는 아래 슬라이드로 계속 보입니다) */}
+            {bulletin.content && (
+              <div className="-mx-2">
+                <BulletinView content={normalizeBulletinContent(bulletin.content)} mode="web" />
+              </div>
+            )}
 
             {/* 다중 이미지 슬라이드 */}
             {bulletin.imageUrls && bulletin.imageUrls.length > 0 && (
