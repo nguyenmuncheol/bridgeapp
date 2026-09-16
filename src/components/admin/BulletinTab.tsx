@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Save, Eye, EyeOff, Printer,
-  RefreshCw, Copy, Sparkles, ChevronRight,
+  RefreshCw, Copy, Sparkles, ChevronRight, Undo2,
 } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import {
@@ -170,6 +170,16 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       setIsSaving(false)
     }
   }
+
+  /**
+   * 발행 상태를 뒤집습니다 — 발행 전이면 발행하고, 발행됨이면 발행을 거둡니다.
+   *
+   * 어느 쪽이든 지금 편집 중인 내용을 함께 저장하므로, 발행을 거두면서 고친 내용이
+   * 사라지지 않습니다. 저장이 끝나면 dbUpsertBulletin 이 'bulletin:latest' 캐시를
+   * 무효화하므로, 홈 화면으로 넘어가면 바뀐 상태가 그대로 반영됩니다
+   * (성도 화면은 status='published' 인 주보만 가져갑니다).
+   */
+  const handleTogglePublish = () => handleSave(status === 'published' ? 'draft' : 'published')
 
   // ── 목록 편집 공통 ────────────────────────────────────────────────────
   const moveItem = <T,>(list: T[], from: number, dir: -1 | 1): T[] => {
@@ -347,12 +357,20 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           >
             <Save size={13} /> 임시저장
           </button>
+          {/* 누를 때마다 발행 ↔ 발행 전이 뒤집힙니다 */}
           <button
-            onClick={() => handleSave('published')}
+            onClick={handleTogglePublish}
             disabled={isSaving}
-            className="py-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl text-xs font-bold text-white cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className={`py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+              status === 'published'
+                ? 'bg-emerald-600 hover:bg-emerald-500'
+                : 'bg-slate-900 hover:bg-slate-800'
+            }`}
           >
-            {isSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />} 발행하기
+            {isSaving
+              ? <RefreshCw size={13} className="animate-spin" />
+              : status === 'published' ? <Undo2 size={13} /> : <Save size={13} />}
+            {status === 'published' ? '발행 취소' : '발행하기'}
           </button>
         </div>
 
@@ -375,7 +393,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
         <p className="text-3xs text-gray-400 leading-relaxed">
           임시저장한 주보는 성도 화면에 나오지 않고 알림도 가지 않습니다.
-          내용을 다 채운 뒤 <strong>발행하기</strong>를 누르세요.
+          내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면 &ldquo;이번 주 주보&rdquo;에
+          올라갑니다. 한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
         </p>
       </div>
 

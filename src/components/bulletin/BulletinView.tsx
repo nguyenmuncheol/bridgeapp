@@ -90,6 +90,9 @@ export default function BulletinView({
       </span>
     ))
 
+  /** 메시지(목회칼럼)에 실제로 쓸 내용이 있는지 */
+  const hasMessage = Boolean(c.messageTitle.trim() || c.messageBody.trim())
+
   const foot = (page: number) => (
     <div className="foot">
       <span className="dot" />
@@ -110,12 +113,18 @@ export default function BulletinView({
             <div className="blob seam-t-l" />
             <div className="blob" style={{ width: '36mm', height: '36mm', background: '#fff', top: '98mm', left: '-14mm', opacity: 0.35 }} />
 
-            <div className="message">
-              <div className="dot" />
-              <div className="caps">{c.messageLabel}</div>
-              <h2 className="t">{multiline(c.messageTitle)}</h2>
-              <div className="body">{multiline(c.messageBody)}</div>
-            </div>
+            {/* 메시지가 비어 있으면 MESSAGE 머리글까지 빼고 다섯 줄 남짓한 빈 자리만
+                둡니다. 머리글만 덩그러니 남는 것보다 낫고, 그만큼 아래 섬김표가 올라옵니다. */}
+            {hasMessage ? (
+              <div className="message">
+                <div className="dot" />
+                <div className="caps">{c.messageLabel}</div>
+                <h2 className="t">{multiline(c.messageTitle)}</h2>
+                <div className="body">{multiline(c.messageBody)}</div>
+              </div>
+            ) : (
+              <div className="message-blank" />
+            )}
 
             <div style={{ marginTop: '5mm' }}>
               <div className="sec-title">{c.servingTitle}</div>
@@ -364,8 +373,8 @@ const CSS = `
 .bl-root .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
 
 /* 설교 행 : 설교 | 제목(가운데) | 설교자 — 별도 박스 없이 목록 안에 들어갑니다 */
+/* 설교 행도 다른 순서와 같은 색입니다 — 눈에 띄는 것은 가운데 제목 하나면 충분합니다 */
 .bl-root .order li.is-sermon{padding:3mm 0}
-.bl-root .order li.is-sermon .bul{background:var(--navy)}
 .bl-root .order li.is-sermon .by{margin-left:0}
 .bl-root .order .stitle{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
   font-size:11.5pt;font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
@@ -376,19 +385,27 @@ const CSS = `
 .bl-root .block{margin-top:5.2mm}
 .bl-root .block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
 .bl-root .block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
-.bl-root .newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm}
+/* 좌우 여백을 0 으로 둡니다. 안쪽 여백이 있으면 교우소식 글이 교회소식보다
+   그만큼 안으로 밀려 들어가 두 소식의 시작 위치가 어긋나 보입니다. */
+.bl-root .newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm 0}
 .bl-root .newsbox .block:first-child{margin-top:0}
 
 /* 3쪽 · 성경말씀 */
-.bl-root .refline{margin-top:5mm}
-.bl-root .refline .ref{display:inline-block;font-size:10.4pt;font-weight:600;color:#fff;
-  background:var(--mid);padding:1.8mm 4.4mm;letter-spacing:.02em}
+/* 성경 위치(요한복음 3:1-12)는 박스 없이 진한 남색 글자로만 둡니다.
+   위의 '성경말씀' 라벨까지 박스라 두 개가 겹쳐 답답해 보였습니다. */
+.bl-root .refline{margin-top:4.5mm}
+.bl-root .refline .ref{display:inline-block;font-size:11pt;font-weight:800;
+  color:var(--navy);letter-spacing:.01em}
 
 .bl-root .verses{margin-top:4.5mm;display:flex;flex-direction:column;gap:1.6mm}
-.bl-root .verses li{list-style:none;display:flex;gap:3.2mm;align-items:baseline}
-.bl-root .verses .n{flex:0 0 auto;min-width:7.6mm;text-align:center;background:var(--navy);color:#fff;
-  font-size:7.8pt;font-weight:700;border-radius:2mm;padding:1mm 1.6mm;
-  font-variant-numeric:tabular-nums;transform:translateY(-.4mm)}
+/* 🐛 예전에는 align-items:baseline 이었습니다. 절이 두 줄이 되면 번호가 첫 줄
+   글자의 기준선에 붙는데, 번호는 배경이 있는 네모라 한 줄짜리와 두 줄짜리가
+   서로 다른 높이에 놓여 목록 전체가 어긋나 보였습니다.
+   → 위쪽 정렬로 바꾸고, 번호를 첫 줄 글자 높이에 맞춰 살짝만 내립니다. */
+.bl-root .verses li{list-style:none;display:flex;gap:3mm;align-items:flex-start}
+.bl-root .verses .n{flex:0 0 auto;min-width:6.4mm;text-align:center;background:var(--navy);color:#fff;
+  font-size:7pt;font-weight:700;line-height:1;border-radius:1.4mm;padding:.9mm 1.1mm;
+  font-variant-numeric:tabular-nums;margin-top:.9mm}
 .bl-root .verses .t{font-size:9.4pt;line-height:1.6;color:#365071}
 
 .bl-root .memo{margin-top:6mm;background:var(--beige-soft);padding:4.6mm 5.4mm 5mm;
@@ -401,6 +418,9 @@ const CSS = `
     rgba(138,127,106,.5) calc(var(--rule) - .3mm), rgba(138,127,106,.5) var(--rule))}
 
 /* 4쪽 · 목회칼럼 · 섬김 · 공지 */
+/* 메시지가 비었을 때 두는 빈 자리 — 본문 9.4pt × 줄간격 1.72 ≈ 5.7mm 이므로
+   다섯 줄이면 약 28mm 입니다. */
+.bl-root .message-blank{height:28mm}
 .bl-root .message{text-align:center}
 .bl-root .message .dot{width:4.4mm;height:4.4mm;border-radius:50%;background:var(--navy);margin:0 auto}
 .bl-root .message .caps{margin-top:2.6mm;letter-spacing:.42em}
