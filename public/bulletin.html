@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>주보 · The Bridge Church Hanoi</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     주보 ― The Bridge Church Hanoi
+
+     · 화면(홈페이지)에서는  1 → 2 → 3 → 4  순서로 세로로 보입니다.
+     · 인쇄(Ctrl+P)하면 A4 가로 2장, 양면으로 나옵니다.
+         앞면 = [ 4 | 1 ]   뒷면 = [ 2 | 3 ]
+         → 반으로 접으면 A5 4쪽 주보가 됩니다.
+       인쇄 설정: 용지 A4 / 방향 가로 / 배율 100% / 여백 없음 / 배경 그래픽 켜기
+                  양면 인쇄는 "긴 쪽으로 넘기기(long edge)" 선택
+
+     · 접는 선은 일부러 넣지 않았습니다. 앞면(4·1쪽)은 배경색이 하나로 이어지고
+       접히는 자리의 베이지 원도 두 쪽이 반씩 맞물려 하나의 원이 됩니다.
+       뒷면(2·3쪽)도 마찬가지로 아래쪽 파란 원이 접힘선에서 이어집니다.
+
+     · 이 파일은 로고(logo-wide@2x.png)와 같은 폴더(public/)에 있어야 합니다.
+       그래야 file:// 로 직접 열어도, 서버로 열어도 로고가 똑같이 나옵니다.
+
+     ★ 매주 고치는 곳은 아래 DATA 블록 하나뿐입니다. 레이아웃은 건드리지 마세요.
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── 색상 (홈페이지 로고에서 가져온 팔레트) ───────────────────────────── */
+:root{
+  --navy:#1e3a5f;      /* 기본 네이비 */
+  --mid:#5b83ad;       /* 중간 블루 */
+  --light:#c5d8e8;     /* 연한 블루 */
+  --pale:#e8f0f8;      /* 아주 연한 블루 (교우소식 박스) */
+  --sky:#dbe7f3;       /* 앞면(1·4쪽) 배경 */
+  --cream:#f5f1e8;     /* 뒷면(2·3쪽) 배경 */
+  --beige:#e3d9c6;     /* 베이지 (공지·장식 원) */
+  --beige-soft:#ece5d6;
+  --ink:#24415f;
+  --muted:#9aa7b4;
+  --rulec:rgba(30,58,95,.16);   /* 목록 구분선 */
+
+  --sans:"Pretendard Variable",Pretendard,"맑은 고딕","Malgun Gothic",
+         "Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+
+  --pad:11mm;          /* 페이지 안쪽 여백 */
+  --footh:9mm;         /* 꼬릿말이 차지하는 높이 (네 쪽 모두 같은 자리) */
+
+  /* 접힘선에서 이어지는 원 — 지름을 바꾸면 양쪽이 같이 움직입니다 */
+  --seam-top:58mm;     /* 앞면(4·1쪽) 위쪽 베이지 원 지름 */
+  --seam-bot:46mm;     /* 뒷면(2·3쪽) 아래쪽 파란 원 지름 */
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
+     word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased}
+
+/* ── 툴바 (화면 전용) ───────────────────────────────────────────────── */
+.toolbar{position:sticky;top:0;z-index:50;display:flex;gap:10px;align-items:center;
+  padding:10px 16px;background:var(--navy);color:#fff;font-size:13px}
+.toolbar b{font-weight:700;letter-spacing:.02em}
+.toolbar span{opacity:.75;font-size:12px}
+.toolbar button{margin-left:auto;background:#fff;color:var(--navy);border:0;
+  border-radius:6px;padding:7px 16px;font:600 13px var(--sans);cursor:pointer}
+.toolbar button:hover{background:var(--light)}
+
+/* ── 문서 / 시트 / 페이지 ───────────────────────────────────────────── */
+.doc{display:flex;flex-direction:column;align-items:center;gap:22px;padding:22px 0 60px}
+.sheet{display:contents}                 /* 화면: 페이지가 문서의 직계 자식이 되어 order 적용 */
+.page{
+  order:var(--o);
+  position:relative;width:148.5mm;height:210mm;overflow:hidden;
+  background:var(--cream);
+  padding:var(--pad) var(--pad) calc(var(--pad) + var(--footh));
+  display:flex;flex-direction:column;
+  box-shadow:0 6px 24px rgba(0,0,0,.22);
+}
+.page.blue{background:var(--sky)}        /* 1쪽·4쪽 = 같은 배경 (앞면 한 장으로 이어짐) */
+
+/* 장식 원 */
+.blob{position:absolute;border-radius:50%;pointer-events:none}
+/* 접힘선에서 반씩 맞물려 하나의 원이 되는 짝 */
+.seam-t-l{width:var(--seam-top);height:var(--seam-top);background:var(--beige);
+  top:calc(var(--seam-top) / -2.4);right:calc(var(--seam-top) / -2)}
+.seam-t-r{width:var(--seam-top);height:var(--seam-top);background:var(--beige);
+  top:calc(var(--seam-top) / -2.4);left:calc(var(--seam-top) / -2)}
+.seam-b-l{width:var(--seam-bot);height:var(--seam-bot);background:var(--light);
+  bottom:calc(var(--seam-bot) / -2);right:calc(var(--seam-bot) / -2);opacity:.6}
+.seam-b-r{width:var(--seam-bot);height:var(--seam-bot);background:var(--light);
+  bottom:calc(var(--seam-bot) / -2);left:calc(var(--seam-bot) / -2);opacity:.6}
+
+/* 페이지 안 내용은 장식 원 위로 */
+.page > *:not(.blob){position:relative;z-index:1}
+
+/* ── 공통 부품 ──────────────────────────────────────────────────────── */
+.pill{display:inline-block;background:var(--navy);color:var(--cream);
+  font-size:12.5pt;font-weight:700;letter-spacing:.02em;padding:2.8mm 5.4mm;line-height:1}
+.pill.soft{background:var(--mid)}
+
+.caps{font-size:8pt;letter-spacing:.34em;color:var(--mid);text-transform:uppercase}
+
+/* 꼬릿말 : 네 쪽 모두 페이지 아래에서 똑같은 높이에 고정 ─────────────── */
+.page > .foot{
+  position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
+  height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
+  font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
+}
+.foot .dot{width:2.6mm;height:2.6mm;border-radius:50%;background:var(--navy);
+  flex:0 0 auto;transform:translateY(-.6mm)}
+.foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
+  font-variant-numeric:tabular-nums}
+
+/* ═══ 1쪽 · 표지 ══════════════════════════════════════════════════════ */
+.cover .top{display:flex;justify-content:center;padding-top:3mm}
+.cover .logo{width:64mm;height:auto;display:block;background:none}
+
+.datebar{margin-top:6mm;background:var(--navy);color:#fff;padding:3.4mm 5.4mm;
+  display:flex;align-items:baseline;gap:5mm}
+.datebar .d{font-size:15pt;font-weight:700;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.datebar .s{font-size:10pt;color:var(--light);letter-spacing:.06em;
+  margin-left:auto;text-align:right}
+
+/* 예배 순서 — 설교도 같은 목록 안에 들어가고, 제목만 아래로 펼쳐집니다 */
+.order{margin-top:5mm;display:flex;flex-direction:column}
+.order li{list-style:none;display:flex;align-items:center;gap:3.2mm;
+  padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:10pt}
+.order li:last-child{border-bottom:0}
+.order .bul{width:2.4mm;height:2.4mm;border-radius:50%;background:var(--mid);flex:0 0 auto}
+.order .it{font-weight:700;color:var(--navy)}
+.order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
+
+/* 설교 제목 : 설교 행은 다른 순서와 똑같이 목록에 들어가고,
+   이 파란 박스에는 제목만 가운데로 들어갑니다 ───────────────────── */
+.sermon{margin:4mm 0;background:var(--mid);color:#fff;
+  padding:4.6mm 5mm;text-align:center}
+.sermon .t{display:block;font-size:13pt;font-weight:800;line-height:1.3;
+  letter-spacing:-.01em}
+.sermon .s{display:block;margin-top:1.6mm;font-size:8.6pt;
+  color:rgba(255,255,255,.8);letter-spacing:.03em}
+.sermon .s:empty{display:none}
+
+/* ═══ 2쪽 · 소식 ══════════════════════════════════════════════════════ */
+.block{margin-top:5.2mm}
+.block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
+.newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm}
+.newsbox .block:first-child{margin-top:0}
+
+/* ═══ 3쪽 · 성경말씀 ══════════════════════════════════════════════════ */
+.refline{margin-top:5mm}
+.refline .ref{display:inline-block;font-size:10.4pt;font-weight:600;color:#fff;
+  background:var(--mid);padding:1.8mm 4.4mm;letter-spacing:.02em}
+
+.verses{margin-top:4.5mm;display:flex;flex-direction:column;gap:1.6mm}
+.verses li{list-style:none;display:flex;gap:3.2mm;align-items:baseline}
+.verses .n{flex:0 0 auto;min-width:7.6mm;text-align:center;background:var(--navy);color:#fff;
+  font-size:7.8pt;font-weight:700;border-radius:2mm;padding:1mm 1.6mm;
+  font-variant-numeric:tabular-nums;transform:translateY(-.4mm)}
+.verses .t{font-size:9.4pt;line-height:1.6;color:#365071}
+
+/* 묵상 메모 — 남는 공간을 아래 끝까지 채우고, 줄은 2줄 간격으로 자동 반복 */
+.memo{margin-top:6mm;background:var(--beige-soft);padding:4.6mm 5.4mm 5mm;
+  flex:1 1 auto;min-height:24mm;display:flex;flex-direction:column}
+.memo .lab{font-size:8.4pt;letter-spacing:.3em;color:#8a7f6a;flex:0 0 auto}
+.memo .lines{flex:1 1 auto;min-height:0;margin-top:2mm;
+  --rule:9.6mm;          /* 2줄 간격 (본문 9.4pt × 1.6 ≈ 4.8mm × 2) */
+  background-image:repeating-linear-gradient(to bottom,
+    transparent 0, transparent calc(var(--rule) - .3mm),
+    rgba(138,127,106,.5) calc(var(--rule) - .3mm), rgba(138,127,106,.5) var(--rule))}
+
+/* ═══ 4쪽 · 목회칼럼 · 섬김 · 공지 ═══════════════════════════════════ */
+.message{text-align:center}
+.message .dot{width:4.4mm;height:4.4mm;border-radius:50%;background:var(--navy);margin:0 auto}
+.message .caps{margin-top:2.6mm;letter-spacing:.42em}
+.message .t{margin-top:3.2mm;font-size:13.5pt;font-weight:800;color:var(--navy);
+  line-height:1.35;letter-spacing:-.01em}
+.message .body{margin-top:4.5mm;font-size:9.4pt;line-height:1.72;color:#41617f;
+  text-align:center;padding:0 2mm}
+
+.sec-title{display:flex;align-items:center;gap:2.6mm;font-size:11pt;font-weight:800;
+  color:var(--navy)}
+.sec-title::before{content:"";width:2.8mm;height:2.8mm;background:var(--mid);
+  transform:rotate(45deg);flex:0 0 auto}
+
+/* 기도 · 식사 섬김 — 월별로 좌우 두 표, 각 표에 4~5주차 ─────────────── */
+.tables{margin-top:3.4mm;display:flex;gap:4mm}
+.tables table{flex:1;min-width:0;border-collapse:collapse;table-layout:fixed}
+.tables th{background:var(--navy);color:#fff;font-size:8pt;font-weight:700;
+  padding:1.9mm .6mm;letter-spacing:.02em}
+.tables th:first-child{width:11mm}
+.tables td{border:.3mm solid rgba(91,131,173,.45);background:rgba(255,255,255,.68);
+  height:6.8mm;font-size:8pt;text-align:center;color:#365071;padding:.5mm}
+.tables td:first-child{font-weight:700;color:var(--navy);background:rgba(255,255,255,.38);
+  font-size:7.6pt}
+
+.notice{margin-top:5mm;background:var(--beige);padding:4.6mm 5.4mm}
+.notice h4{font-size:10.4pt;font-weight:800;color:var(--navy)}
+.notice ul{margin-top:2.4mm;display:flex;flex-direction:column;gap:1.4mm}
+.notice li{list-style:none;font-size:9pt;line-height:1.55;color:#574e3d;
+  padding-left:3.4mm;position:relative}
+.notice li::before{content:"·";position:absolute;left:.6mm;color:#8a7f6a;font-weight:700}
+
+.offering{margin-top:auto;padding-top:5mm;display:flex;align-items:flex-end;
+  justify-content:flex-end;gap:4mm}
+.offering .txt{text-align:right}
+.offering .lab{font-size:10pt;font-weight:800;color:var(--navy)}
+.offering .ln{margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
+  font-variant-numeric:tabular-nums}
+.offering .qr{width:19mm;height:19mm;flex:0 0 auto;border:.3mm solid var(--mid);
+  background:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:7pt;letter-spacing:.2em;color:var(--muted);overflow:hidden}
+.offering .qr img{width:100%;height:100%;object-fit:contain}
+
+/* ── 화면: 좁은 화면에서 축소 ───────────────────────────────────────── */
+@media screen and (max-width:640px){ .doc{zoom:.62} }
+@media screen and (min-width:641px) and (max-width:820px){ .doc{zoom:.82} }
+
+/* ── 인쇄: A4 가로에 두 쪽씩 (접는 선 없음) ─────────────────────────── */
+@page{size:A4 landscape;margin:0}
+@media print{
+  body{background:#fff}
+  .toolbar{display:none}
+  .doc{display:block;padding:0;gap:0;zoom:1}
+  .sheet{display:flex;flex-direction:row;width:297mm;height:210mm;
+    break-after:page;page-break-after:always}
+  .sheet:last-child{break-after:auto;page-break-after:auto}
+  .page{order:0;box-shadow:none;width:148.5mm}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <b>주보 미리보기</b>
+  <span>화면 1·2·3·4쪽 / 인쇄 A4 가로 양면 [4|1] [2|3]</span>
+  <button onclick="window.print()">인쇄 (Ctrl+P)</button>
+</div>
+
+<div class="doc">
+
+  <!-- ══ 앞면 시트 : 4쪽 | 1쪽  (배경색 동일 · 위쪽 베이지 원이 접힘선에서 이어짐) ══ -->
+  <section class="sheet">
+
+    <!-- ─────────────── 4쪽 : 목회칼럼 · 섬김 · 공지 · 헌금 ─────────── -->
+    <article class="page blue" style="--o:4">
+      <div class="blob seam-t-l"></div>
+      <div class="blob" style="width:36mm;height:36mm;background:#fff;
+           top:98mm;left:-14mm;opacity:.35"></div>
+
+      <div class="message">
+        <div class="dot"></div>
+        <div class="caps" id="msg-label"></div>
+        <h2 class="t" id="msg-title"></h2>
+        <div class="body" id="msg-body"></div>
+      </div>
+
+      <div style="margin-top:5mm">
+        <div class="sec-title" id="serving-title"></div>
+        <div class="tables" id="serving-tables"></div>
+      </div>
+
+      <div class="notice" id="notice"></div>
+
+      <div class="offering" id="offering"></div>
+
+      <div class="foot" data-page="4"></div>
+    </article>
+
+    <!-- ─────────────── 1쪽 : 표지 ──────────────────────────────────── -->
+    <article class="page blue cover" style="--o:1">
+      <div class="blob seam-t-r"></div>
+      <div class="blob" style="width:62mm;height:62mm;background:var(--light);
+           bottom:-26mm;right:-20mm;opacity:.6"></div>
+
+      <div class="top">
+        <!-- 상대경로 : file:// 로 직접 열어도, 서버로 열어도 똑같이 뜹니다 -->
+        <img class="logo" src="logo-wide@2x.png" alt="The Bridge Church Hanoi">
+      </div>
+
+      <div class="datebar">
+        <div class="d" id="cover-date"></div>
+        <div class="s" id="cover-sub"></div>
+      </div>
+
+      <ul class="order" id="order-pre"></ul>
+
+      <div class="sermon">
+        <span class="t" id="sermon-title"></span>
+        <span class="s" id="sermon-sub"></span>
+      </div>
+
+      <ul class="order" id="order-post"></ul>
+
+      <div class="foot" data-page="1"></div>
+    </article>
+  </section>
+
+  <!-- ══ 뒷면 시트 : 2쪽 | 3쪽  (아래쪽 파란 원이 접힘선에서 이어짐) ══ -->
+  <section class="sheet">
+
+    <!-- ─────────────── 2쪽 : 교회소식 · 교우소식 ───────────────────── -->
+    <article class="page" style="--o:2">
+      <div class="blob" style="width:56mm;height:56mm;background:var(--light);
+           top:-22mm;left:-16mm;opacity:.55"></div>
+      <div class="blob seam-b-l"></div>
+
+      <div><span class="pill" id="church-news-label"></span></div>
+      <div id="church-news"></div>
+
+      <div style="margin-top:8mm"><span class="pill soft" id="member-news-label"></span></div>
+      <div class="newsbox" id="member-news"></div>
+
+      <div class="foot" data-page="2"></div>
+    </article>
+
+    <!-- ─────────────── 3쪽 : 성경말씀 · 묵상메모 ───────────────────── -->
+    <article class="page" style="--o:3">
+      <div class="blob" style="width:60mm;height:60mm;background:var(--beige);
+           top:78mm;right:-30mm;opacity:.7"></div>
+      <div class="blob seam-b-r"></div>
+
+      <div><span class="pill" id="scripture-label"></span></div>
+
+      <div class="refline"><span class="ref" id="scripture-ref"></span></div>
+
+      <ul class="verses" id="verses"></ul>
+
+      <div class="memo" id="memo"></div>
+
+      <div class="foot" data-page="3"></div>
+    </article>
+  </section>
+
+</div>
+
+<script>
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║                                                                      ║
+   ║   ▼▼▼  매주 여기만 고치세요  ▼▼▼                                     ║
+   ║                                                                      ║
+   ║   · 항목을 지우고 싶으면 그 줄을 지우거나 배열을 [] 로 두세요.        ║
+   ║   · 따옴표(' ') 안에만 글을 넣고, 줄 끝 쉼표(,)는 지우지 마세요.      ║
+   ║                                                                      ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+const 주보 = {
+
+  /* 모든 쪽 아래에 들어가는 교회 이름 */
+  churchName: 'THE BRIDGE CHURCH · HANOI',
+
+  /* ── 1쪽 · 표지 ──────────────────────────────────────────────────── */
+  date: '2026. 9. 20.',
+  dateSub: '주일예배 · 오전 11:00',
+
+  /* 설교 앞 순서 */
+  orderPre: [
+    { item: '묵    도', by: '다같이' },
+    { item: '찬    송', by: '1장' },
+    { item: '신앙고백', by: '다같이' },
+    { item: '기    도', by: '홍길동 집사' },
+    { item: '성경봉독', by: '요한복음 3:1-12' },
+    { item: '찬    양', by: '찬양팀' },
+  ],
+
+  /* 설교 — label / by 는 다른 예배 순서와 똑같은 한 줄로 목록에 들어가고,
+     title 만 그 아래 파란 박스에 가운데로 들어갑니다.
+     sub 는 제목 아래 작은 줄입니다. 비워두면 ('') 나오지 않습니다. */
+  sermon: {
+    label: '설    교',
+    by:    '김목사',
+    title: '거듭남에 대하여',
+    sub:   '',
+  },
+
+  /* 설교 뒤 순서 */
+  orderPost: [
+    { item: '봉헌찬송', by: '다같이' },
+    { item: '봉헌기도', by: '김목사' },
+    { item: '광    고', by: '인도자' },
+    { item: '축    도', by: '김목사' },
+  ],
+
+  /* ── 2쪽 · 소식 ──────────────────────────────────────────────────── */
+  churchNewsLabel: '교회소식',
+  churchNews: [
+    {
+      title: '추석 연휴 예배 안내',
+      body: '9월 27일 주일예배는 평소와 같이 오전 11시에 드립니다.\n' +
+            '연휴 기간 중 새벽기도회는 쉽니다.',
+    },
+    {
+      title: '가을 전교인 수련회',
+      body: '10월 10일(금)부터 11일(토)까지 1박 2일로 진행합니다.\n' +
+            '신청은 9월 30일까지 각 부서 담당자에게 해주시기 바랍니다.',
+    },
+    {
+      title: '주일학교 교사 모집',
+      body: '함께 섬겨주실 교사를 기다립니다. 관심 있는 분은 교역자에게 문의해 주세요.',
+    },
+  ],
+
+  memberNewsLabel: '교우소식',
+  memberNews: [
+    { title: '새가족 환영', body: '이번 주 등록하신 ○○○ 성도님을 환영합니다.' },
+    { title: '기도 부탁', body: '건강 회복 중이신 ○○○ 집사님을 위해 기도해 주세요.' },
+  ],
+
+  /* ── 3쪽 · 성경말씀 ──────────────────────────────────────────────── */
+  scriptureLabel: '성경말씀',
+  scriptureRef: '요한복음 3:1-12',
+  verses: [
+    '바리새인 중에 니고데모라 하는 사람이 있으니 유대인의 지도자라',
+    '그가 밤에 예수께 와서 이르되 랍비여 우리가 당신은 하나님께로부터 오신 선생인 줄 아나이다',
+    '예수께서 대답하여 이르시되 진실로 진실로 네게 이르노니 사람이 거듭나지 아니하면',
+    '니고데모가 이르되 사람이 늙으면 어떻게 날 수 있사옵나이까',
+    '예수께서 대답하시되 진실로 진실로 네게 이르노니 사람이 물과 성령으로 나지 아니하면',
+    '육으로 난 것은 육이요 영으로 난 것은 영이니',
+    '내가 네게 거듭나야 하겠다 하는 말을 놀랍게 여기지 말라',
+    '바람이 임의로 불매 네가 그 소리는 들어도',
+    '니고데모가 대답하여 이르되 어찌 그러한 일이 있을 수 있나이까',
+    '예수께서 그에게 대답하여 이르시되 너는 이스라엘의 선생으로서 이러한 것들을 알지 못하느냐',
+    '진실로 진실로 네게 이르노니 우리는 아는 것을 말하고 본 것을 증언하노라',
+    '내가 땅의 일을 말하여도 너희가 믿지 아니하거든',
+  ],
+
+  /* 묵상 메모 — 성경 내용 길이에 따라 남는 공간을 아래 끝까지 자동으로 채웁니다 */
+  memoLabel: '묵상 메모',
+
+  /* ── 4쪽 · 목회칼럼 · 섬김 · 공지 · 헌금 ────────────────────────── */
+  messageLabel: 'MESSAGE',
+  messageTitle: '다시 태어난다는 것은\n무엇을 뜻하는가',
+  messageBody:
+    '니고데모는 밤에 예수님을 찾아왔습니다. 그는 율법을 아는 사람이었고,\n' +
+    '사람들의 존경을 받는 지도자였습니다. 그러나 그가 가진 지식과 지위는\n' +
+    '그를 하나님 나라로 데려가 주지 못했습니다.\n' +
+    '주님은 다시 태어나야 한다고 말씀하셨습니다. 그것은 내가 쌓아 올린 것을\n' +
+    '내려놓고, 성령께서 새롭게 하시는 일에 나를 맡기는 것입니다.\n' +
+    '이번 한 주, 우리 안에 새 생명이 자라나기를 소망합니다.',
+
+  /* 기도 · 식사 섬김 — 월별로 좌우 두 표. 주차 줄은 필요한 만큼 (4~5주) */
+  servingTitle: '기도 및 식사 섬김',
+  servingMonths: [
+    {
+      head: ['9월', '대표기도', '식사 섬김'],
+      rows: [
+        ['1주', '홍길동 집사', '1구역'],
+        ['2주', '', ''],
+        ['3주', '', ''],
+        ['4주', '', ''],
+        ['5주', '', ''],
+      ],
+    },
+    {
+      head: ['10월', '대표기도', '식사 섬김'],
+      rows: [
+        ['1주', '', ''],
+        ['2주', '', ''],
+        ['3주', '', ''],
+        ['4주', '', ''],
+        ['5주', '', ''],
+      ],
+    },
+  ],
+
+  noticeTitle: '공지 사항',
+  notices: [
+    '주보에 실을 소식은 매주 목요일까지 알려주시기 바랍니다.',
+    '예배 중 휴대전화는 진동으로 전환해 주세요.',
+    '주차는 건물 뒤편 주차장을 이용해 주시기 바랍니다.',
+  ],
+
+  offeringLabel: '헌금 계좌',
+  offeringLines: [
+    '○○은행 000-0000-0000',
+    '예금주 : 더브릿지교회',
+  ],
+  offeringQr: '',        /* QR 이미지 주소를 넣으면 QR 칸에 표시됩니다. 예: 'qr.png' */
+};
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║   ▲▲▲  여기까지만 고치면 됩니다  ▲▲▲                                 ║
+   ║   아래는 화면을 그리는 코드입니다. 수정하지 마세요.                   ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+(function render(d){
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const nl = (s) => esc(s).replace(/\n/g,'<br>');
+  const set = (id, html) => { const n = $(id); if (n) n.innerHTML = html; };
+  const txt = (id, s)   => set(id, esc(s));
+
+  /* 꼬릿말 : 교회 이름 + 쪽번호 (네 쪽 모두 같은 높이에 고정) */
+  document.querySelectorAll('.foot').forEach(f => {
+    f.innerHTML = `<span class="dot"></span><span>${esc(d.churchName)}</span>` +
+                  `<span class="pg">${esc(f.dataset.page)}</span>`;
+  });
+
+  /* 1쪽 · 표지 */
+  txt('cover-date', d.date);
+  txt('cover-sub',  d.dateSub);
+
+  const row = (o, cls) => `
+    <li class="${cls || ''}"><span class="bul"></span>
+        <span class="it">${esc(o.item)}</span>
+        <span class="by">${esc(o.by)}</span></li>`;
+
+  const s = d.sermon || {};
+  /* 설교 행도 다른 순서와 똑같은 한 줄로, 목록 맨 아래에 붙습니다 */
+  set('order-pre', [...(d.orderPre || []), { item: s.label, by: s.by }]
+                     .map(o => row(o)).join(''));
+  set('order-post', (d.orderPost || []).map(o => row(o)).join(''));
+
+  set('sermon-title', nl(s.title));
+  txt('sermon-sub',   s.sub || '');
+
+  /* 2쪽 · 소식 */
+  txt('church-news-label', d.churchNewsLabel);
+  txt('member-news-label', d.memberNewsLabel);
+
+  const blocks = (list) => (list || []).map(n => `
+    <div class="block"><h3>${esc(n.title)}</h3><p>${nl(n.body)}</p></div>`).join('');
+  set('church-news', blocks(d.churchNews));
+  set('member-news', blocks(d.memberNews));
+
+  /* 3쪽 · 성경말씀 */
+  txt('scripture-label', d.scriptureLabel);
+  txt('scripture-ref',   d.scriptureRef);
+
+  set('verses', (d.verses || []).map((v, i) => {
+    const isObj = v && typeof v === 'object';
+    const n = isObj ? v.n : i + 1;
+    const t = isObj ? v.t : v;
+    return `<li><span class="n">${esc(n)}</span><span class="t">${esc(t)}</span></li>`;
+  }).join(''));
+
+  set('memo', `<div class="lab">${esc(d.memoLabel)}</div><div class="lines"></div>`);
+
+  /* 4쪽 · 목회칼럼 · 섬김 · 공지 · 헌금 */
+  txt('msg-label', d.messageLabel);
+  set('msg-title', nl(d.messageTitle));
+  set('msg-body',  nl(d.messageBody));
+
+  txt('serving-title', d.servingTitle);
+  set('serving-tables', (d.servingMonths || []).map(m => `
+    <table>
+      <thead><tr>${(m.head || []).map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${(m.rows || []).map(r =>
+        `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`).join(''));
+
+  set('notice', `<h4>${esc(d.noticeTitle)}</h4>
+    <ul>${(d.notices || []).map(n => `<li>${nl(n)}</li>`).join('')}</ul>`);
+
+  set('offering', `
+    <div class="txt">
+      <div class="lab">${esc(d.offeringLabel)}</div>
+      <div class="ln">${(d.offeringLines || []).map(esc).join('<br>')}</div>
+    </div>
+    <div class="qr">${d.offeringQr
+      ? `<img src="${esc(d.offeringQr)}" alt="QR">` : 'QR'}</div>`);
+
+  document.title = `주보 ${d.date} · The Bridge Church Hanoi`;
+})(주보);
+</script>
+</body>
+</html>

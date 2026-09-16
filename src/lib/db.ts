@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { UserProfile, PostItem, Role, MealCouponAccount, NotificationItem } from './mockData'
 import { invalidateCache } from './dataCache'
 import { toLocalDateStr, bulletinDateToSortable } from './dateUtils'
+import { BulletinContent, normalizeBulletinContent } from './bulletinContent'
 
 // ────────────────────────────────────────────────────────────────
 // 조회 실패 처리 원칙
@@ -328,6 +329,13 @@ export interface BulletinData {
   passage: string
   summary: string
   imageUrls: string[]
+  /**
+   * 앱 안에서 작성한 구조화된 주보 본문(예배순서·소식·성경말씀·섬김표…).
+   * 스캔 이미지로 올린 과거 주보에는 없습니다(null). 두 방식은 공존합니다.
+   */
+  content?: BulletinContent | null
+  /** 'draft' = 작성 중 / 'published' = 발행됨. 기존 행은 모두 published 입니다. */
+  status?: 'draft' | 'published'
 }
 
 /**
@@ -352,10 +360,11 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
   throwIfFetchFailed(error, '주보')
   if (!data || data.length === 0) return null
 
-  // 제목·본문·설교자·요약·이미지가 전부 빈 "빈 껍데기" 주보는 화면에도 띄우지 않습니다
-  // (notify_bulletin() 이 알림을 안 보내는 것과 같은 기준).
+  // 제목·본문·설교자·요약·이미지·본문(content)이 전부 빈 "빈 껍데기" 주보는
+  // 화면에도 띄우지 않습니다 (notify_bulletin() 이 알림을 안 보내는 것과 같은 기준).
   const isFilled = (row: BulletinRow) =>
     (row.image_urls?.length ?? 0) > 0 ||
+    !!row.content ||
     !!row.title?.trim() ||
     !!row.passage?.trim() ||
     !!row.preacher?.trim() ||
@@ -375,15 +384,7 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
   }
   if (!best) return null
 
-  return {
-    id: best.id,
-    date: best.date_str,
-    title: best.title,
-    preacher: best.preacher,
-    passage: best.passage,
-    summary: best.summary || '',
-    imageUrls: best.image_urls || []
-  }
+  return bulletinRowToData(best)
 }
 
 interface BulletinRow {
@@ -394,7 +395,57 @@ interface BulletinRow {
   passage: string
   summary?: string | null
   image_urls?: string[] | null
+  content?: unknown
+  status?: string | null
   updated_at?: string
+}
+
+/** DB 행 한 줄을 화면이 쓰는 모양으로. content 는 jsonb 라 반드시 정규화합니다. */
+function bulletinRowToData(row: BulletinRow): BulletinData {
+  return {
+    id: row.id,
+    date: row.date_str,
+    title: row.title,
+    preacher: row.preacher,
+    passage: row.passage,
+    summary: row.summary || '',
+    imageUrls: row.image_urls || [],
+    content: row.content ? normalizeBulletinContent(row.content) : null,
+    status: row.status === 'draft' ? 'draft' : 'published',
+  }
+}
+
+/**
+ * 앱에서 작성한(content 가 있는) 주보를 최신순으로 몇 건.
+ * 주보 탭의 [지난 주보 불러오기] 가 씁니다 — 예배순서·섬김표·헌금계좌처럼
+ * 매주 거의 바뀌지 않는 항목을 그대로 가져오기 위한 것입니다.
+ */
+export async function dbFetchBulletinsWithContent(limit = 10): Promise<BulletinData[]> {
+  const { data, error } = await supabase
+    .from('bulletins')
+    .select('*')
+    .not('content', 'is', null)
+    .order('date_str', { ascending: false })
+    .limit(limit)
+  throwIfFetchFailed(error, '주보')
+  if (!data) return []
+  return (data as unknown as BulletinRow[]).map(bulletinRowToData)
+}
+
+/**
+ * 특정 주일 주보 1건. 인쇄 화면(/bulletin/print?date=YYYY-MM-DD)이 씁니다.
+ * 같은 날짜 행이 여러 개면 가장 최근에 수정된 것을 돌려줍니다.
+ */
+export async function dbFetchBulletinByDate(dateStr: string): Promise<BulletinData | null> {
+  const { data, error } = await supabase
+    .from('bulletins')
+    .select('*')
+    .eq('date_str', dateStr)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+  throwIfFetchFailed(error, '주보')
+  if (!data || data.length === 0) return null
+  return bulletinRowToData(data[0] as unknown as BulletinRow)
 }
 
 interface PostCommentRow {
@@ -437,7 +488,9 @@ interface PostRow {
  * @param bulletin.date 'YYYY-MM-DD' 형식으로 넘겨주세요(화면 표시는 formatBulletinDisplay 사용).
  */
 export async function dbUpsertBulletin(bulletin: BulletinData) {
-  const payload = {
+  // content 를 넘기지 않은 호출(기존 이미지 주보 편집 모달)은 content 칼럼을
+  // 건드리지 않습니다. payload 에 키 자체를 넣지 않아야 기존 본문이 지워지지 않습니다.
+  const payload: Record<string, unknown> = {
     date_str: bulletin.date,
     title: bulletin.title,
     preacher: bulletin.preacher,
@@ -446,6 +499,8 @@ export async function dbUpsertBulletin(bulletin: BulletinData) {
     image_urls: bulletin.imageUrls,
     updated_at: new Date().toISOString()
   }
+  if (bulletin.content !== undefined) payload.content = bulletin.content
+  if (bulletin.status !== undefined) payload.status = bulletin.status
 
   let res = await supabase.from('bulletins').upsert(payload, { onConflict: 'date_str' })
 

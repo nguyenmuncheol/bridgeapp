@@ -12,6 +12,7 @@ import CouponsTab from './CouponsTab'
 import MembersTab from './MembersTab'
 import StatsTab from './StatsTab'
 import NotificationJobsTab from './NotificationJobsTab'
+import BulletinTab from './BulletinTab'
 
 interface AdminDashboardProps {
   currentUser?: UserProfile
@@ -29,7 +30,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
   // 선생님은 출석 탭만 볼 수 있습니다 (성도 정보·식권·식사 집계는 안 보입니다)
   const isTeacher = currentUser?.role === 'TEACHER'
   const defaultTab = isCouponManager ? 'coupons' : isTeacher ? 'stats' : 'meals'
-  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts'>(defaultTab)
+  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts' | 'bulletin'>(defaultTab)
 
   const pendingCount = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt).length
 
@@ -112,29 +113,41 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
         </div>
       </div>
 
-      {/* 탭 메뉴 (권한별 동적 필터링: LEADER는 식사/출석만, COUPON은 쿠폰만, ADMIN은 전체) */}
-      <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold overflow-x-auto">
-        {[
+      {/* 탭 메뉴 (권한별 동적 필터링: LEADER는 식사/출석만, COUPON은 쿠폰만, ADMIN은 전체)
+          탭이 7개라 한 줄에 다 넣으면 글자가 뭉개집니다. 한 줄에 최대 4개씩 격자로
+          접어 두 줄로 보여 줍니다. 탭이 4개 이하인 권한에서는 예전처럼 한 줄입니다. */}
+      {(() => {
+        const tabs = [
           { id: 'meals', label: '🍱 식사', show: !isCouponManager && !isTeacher },
           { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, show: !isLeader && !isCouponManager && !isTeacher },
           { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}`, show: !isCouponManager && !isTeacher },
           { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader && !isTeacher },
           { id: 'stats', label: '📊 출석', show: !isCouponManager },
+          { id: 'bulletin', label: '📖 주보', show: currentUser?.role === 'ADMIN' },
           { id: 'alerts', label: '🔔 알림', show: currentUser?.role === 'ADMIN' },
-        ]
-          .filter(t => t.show)
-          .map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setAdminTab(id as typeof adminTab)}
-              className={`flex-1 py-2 px-1.5 rounded-lg shrink-0 transition-all ${
-                adminTab === id ? 'bg-slate-900 text-white font-bold' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-      </div>
+        ].filter(t => t.show)
+
+        const cols = Math.min(4, tabs.length)
+
+        return (
+          <div
+            className="grid gap-1 bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold"
+            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          >
+            {tabs.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setAdminTab(id as typeof adminTab)}
+                className={`py-2 px-1.5 rounded-lg transition-all whitespace-nowrap ${
+                  adminTab === id ? 'bg-slate-900 text-white font-bold' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* ── 식사 집계 탭 ── */}
       {adminTab === 'meals' && <MealsTab showToast={showToast} allUsers={allUsers} />}
@@ -166,6 +179,11 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           getAbsenceStreak={getAbsenceStreak}
           latestAttendanceDate={latestAttendanceDate}
         />
+      )}
+
+      {/* ── 주보 작성 탭 (관리자 전용) ── */}
+      {adminTab === 'bulletin' && (
+        <BulletinTab currentUser={currentUser} allUsers={allUsers} showToast={showToast} />
       )}
 
       {/* ── 자동 알림 점검 탭 (관리자 전용) ── */}
