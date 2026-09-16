@@ -289,7 +289,9 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const metrics = useMemo(() => {
     const total = actualMembers.length
     const approved = actualMembers.filter(p => isApprovedMember(p.role)).length
-    const pending = actualMembers.filter(p => p.role === 'PENDING').length
+    // 신청서를 열어만 보고 제출하지 않은 사람은 role만 PENDING 으로 자동 생성되고
+    // signupRequestedAt 은 비어 있습니다. 실제로 "신청"한 사람만 대기로 셉니다.
+    const pending = actualMembers.filter(p => p.role === 'PENDING' && !!p.signupRequestedAt).length
 
     const now = refreshedAtMs
     const oneDayMs = 24 * 60 * 60 * 1000
@@ -476,7 +478,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         if (memberTimeMs === 0) return true
         return (now - memberTimeMs >= 14 * oneDayMs)
       }
-      if (filterType === 'pending') return p.role === 'PENDING'
+      if (filterType === 'pending') return p.role === 'PENDING' && !!p.signupRequestedAt
       if (filterType === 'labri1') return p.labriId === '라브리1'
       if (filterType === 'labri2') return p.labriId === '라브리2'
       if (filterType === 'labri3') return p.labriId === '라브리3'
