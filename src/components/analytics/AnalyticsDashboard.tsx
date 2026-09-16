@@ -5,18 +5,20 @@ import {
   Users, Smartphone, Bell, BellOff, Clock, Search, RefreshCw,
   Home, Shield, TrendingUp, AlertTriangle, Monitor,
   Copy, Check, Database, Utensils, CalendarCheck,
-  Users2, FileSpreadsheet
+  Users2, FileSpreadsheet, Trash2, UserX
 } from 'lucide-react'
 import { UserProfile, isApprovedMember } from '../../lib/mockData'
 import {
   dbFetchProfiles, dbFetchAllPushSubscriptions, dbFetchUserAccessLogs,
   dbFetchMemberActivityCounts, dbFetchAttendanceRecords, dbFetchMealRegistrations,
+  dbHasAttendanceHistory, dbDeleteMemberPermanently,
   PushSubscriptionInfo, AccessLogItem
 } from '../../lib/db'
 import { trackUserActivity } from '../../lib/activityTracker'
 import { matchesKoreanSearch } from '../../lib/koreanSearch'
 import { buildFamilyUnits, resolveFamilyKey } from '../../lib/familyKey'
 import { getUpcomingSundays } from '../../lib/dateUtils'
+import { askConfirm, showAlert } from '../ConfirmDialog'
 import Avatar from '../news/Avatar'
 
 interface AnalyticsDashboardProps {
@@ -98,9 +100,10 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
   const [sortBy, setSortBy] = useState<SortBy>('recent')
-  const [viewMode, setViewMode] = useState<'individual' | 'family'>('individual')
+  const [viewMode, setViewMode] = useState<'individual' | 'family' | 'unregistered'>('individual')
   const [copiedSql, setCopiedSql] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // 다가오는 주일 날짜들 (식사 신청용)
   const upcomingSundays = useMemo(() => getUpcomingSundays(4), [])
@@ -168,10 +171,24 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     return map
   }, [pushSubs])
 
-  // 실제 성도 (COUPON 관리자 제외)
+  // 실제 성도 (COUPON 관리자, 미가입 성도 제외 — 미가입 성도는 앱을 아예 안 쓰므로
+  // PWA·푸시·접속 통계에 섞이면 이용률이 실제보다 낮게 나옵니다. 별도 탭에서 다룹니다)
   const actualMembers = useMemo(() => {
-    return profiles.filter(p => !p.isDependent && p.role !== 'COUPON')
+    return profiles.filter(p => !p.isDependent && p.role !== 'COUPON' && !p.isUnregistered)
   }, [profiles])
+
+  // 미가입 성도 명단 ("미가입 성도 추가"로 관리자가 직접 만든, 앱 계정이 없는 분)
+  const unregisteredMembers = useMemo(() => {
+    return profiles.filter(p => p.isUnregistered).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'))
+  }, [profiles])
+
+  const filteredUnregisteredMembers = useMemo(() => {
+    const q = searchQuery.trim()
+    if (!q) return unregisteredMembers
+    return unregisteredMembers.filter(p =>
+      matchesKoreanSearch(p.name, q) || (p.duty || '').includes(q) || (p.phone || '').includes(q) || (p.labriId || '').includes(q)
+    )
+  }, [unregisteredMembers, searchQuery])
 
   // ── 출석 데이터 가공 & 연속 결석 주수 계산 ──
   const { attendanceByDate, attendanceDatesDesc, memberAttendanceStats } = useMemo(() => {
@@ -292,6 +309,8 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     // 신청서를 열어만 보고 제출하지 않은 사람은 role만 PENDING 으로 자동 생성되고
     // signupRequestedAt 은 비어 있습니다. 실제로 "신청"한 사람만 대기로 셉니다.
     const pending = actualMembers.filter(p => p.role === 'PENDING' && !!p.signupRequestedAt).length
+    // 명단·삭제 대상 파악용: 신청 여부와 무관하게 PENDING 인 계정 전체 (정리 대상 포함)
+    const pendingAllCount = actualMembers.filter(p => p.role === 'PENDING').length
 
     const now = refreshedAtMs
     const oneDayMs = 24 * 60 * 60 * 1000
@@ -344,6 +363,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       total,
       approved,
       pending,
+      pendingAllCount,
       activeTodayCount,
       active7DaysCount,
       active7DaysRate: total > 0 ? Math.round((active7DaysCount / total) * 100) : 0,
@@ -438,6 +458,9 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     const now = refreshedAtMs
 
     const list = actualMembers.filter(p => {
+      // 승인 대기 계정(신청 여부 무관)은 '승인 대기' 탭에서만 보이도록, 다른 명단에서는 숨깁니다.
+      if (p.role === 'PENDING' && filterType !== 'pending') return false
+
       // 검색어 필터
       if (q) {
         const matchName = matchesKoreanSearch(p.name, q)
@@ -478,7 +501,8 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
         if (memberTimeMs === 0) return true
         return (now - memberTimeMs >= 14 * oneDayMs)
       }
-      if (filterType === 'pending') return p.role === 'PENDING' && !!p.signupRequestedAt
+      // 승인 대기 탭: 정식 신청자와 신청서만 열어본 계정을 모두 보여줘서 정리(삭제)할 수 있게 합니다.
+      if (filterType === 'pending') return p.role === 'PENDING'
       if (filterType === 'labri1') return p.labriId === '라브리1'
       if (filterType === 'labri2') return p.labriId === '라브리2'
       if (filterType === 'labri3') return p.labriId === '라브리3'
@@ -580,6 +604,38 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
     })
   }, [familyUnits, searchQuery, sortBy, pushSubUserMap, activityCounts, mealStats, refreshedAtMs])
 
+  /**
+   * 승인 대기 계정 삭제 (analytics 페이지 전용).
+   *
+   * 신청서를 열어만 보고 제출하지 않아 role만 PENDING 으로 자동 생성된 "정리 대상"
+   * 계정과, 실제로 신청했지만 거절하기로 한 계정을 여기서 바로 정리할 수 있게 합니다.
+   * 승인된 적이 없는 계정이라 출석 기록이 있을 가능성은 거의 없지만, MembersTab의
+   * 완전 삭제와 동일하게 안전장치(dbHasAttendanceHistory)를 그대로 거칩니다.
+   */
+  const handleDeletePendingMember = async (member: UserProfile) => {
+    if (deletingId) return
+    const desc = member.signupRequestedAt
+      ? '가입 신청을 제출한 계정입니다.'
+      : '신청서를 열어만 보고 제출하지는 않은 계정입니다.'
+    if (!await askConfirm(`${member.name || '이름 없음'}님을 명단에서 완전히 삭제할까요?\n\n${desc}\n이 작업은 되돌릴 수 없습니다.`, { confirmLabel: '삭제', tone: 'danger' })) {
+      return
+    }
+    setDeletingId(member.id)
+    const hasHistory = await dbHasAttendanceHistory(member.id)
+    if (hasHistory) {
+      setDeletingId(null)
+      await showAlert(`⚠️ ${member.name}님은 출석 기록이 있어 삭제할 수 없습니다.`)
+      return
+    }
+    const { error } = await dbDeleteMemberPermanently(member.id)
+    setDeletingId(null)
+    if (error) {
+      await showAlert(`⚠️ 삭제하지 못했습니다: ${(error as { message?: string }).message || ''}`)
+      return
+    }
+    setProfiles(prev => prev.filter(p => p.id !== member.id))
+  }
+
   // ── 7. 엑셀(CSV) 원클릭 다운로드 ──
   const handleExportCsv = () => {
     setIsExporting(true)
@@ -613,7 +669,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
           `"${m.labriId || '미정'}"`,
           `"${m.role || ''}"`,
           `"${rel}"`,
-          `"${m.isPwa ? '홈화면 PWA 앱' : '웹 브라우저'}"`,
+          `"${m.isUnregistered ? '미가입' : m.isPwa ? '홈화면 PWA 앱' : '웹 브라우저'}"`,
           `"${m.devicePlatform || '미상'}"`,
           `"${m.browserName || '미상'}"`,
           `"${pushText}"`,
@@ -1017,12 +1073,14 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
               <h2 className="text-xs font-bold text-white">
                 {viewMode === 'individual'
                   ? `성도별 상세 이용 현황 (${filteredMembers.length}명)`
-                  : `가족 단위 통합 접속 뷰 (${familyViewUnits.length}가정)`
+                  : viewMode === 'family'
+                  ? `가족 단위 통합 접속 뷰 (${familyViewUnits.length}가정)`
+                  : `미가입 성도 명단 (${filteredUnregisteredMembers.length}명)`
                 }
               </h2>
             </div>
 
-            {/* 뷰 모드 스위처 (개인별 / 가족별) */}
+            {/* 뷰 모드 스위처 (개인별 / 가족별 / 미가입) */}
             <div className="flex bg-slate-900/80 p-0.5 rounded-xl border border-slate-700">
               <button
                 onClick={() => setViewMode('individual')}
@@ -1045,6 +1103,17 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
               >
                 <Users2 size={11} />
                 <span>가족별</span>
+              </button>
+              <button
+                onClick={() => setViewMode('unregistered')}
+                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-2xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'unregistered'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserX size={11} />
+                <span>미가입 ({unregisteredMembers.length})</span>
               </button>
             </div>
           </div>
@@ -1081,10 +1150,11 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
           </div>
         </div>
 
-        {/* 필터 칩 */}
+        {/* 필터 칩 (미가입 탭에는 해당 없음) */}
+        {viewMode !== 'unregistered' && (
         <div className="flex gap-1.5 flex-wrap text-2xs font-semibold">
           {[
-            { key: 'all', label: `전체 (${actualMembers.length})` },
+            { key: 'all', label: `전체 (${actualMembers.length - metrics.pendingAllCount})` },
             { key: 'pwa', label: `📱 PWA 앱 (${metrics.pwaInstalledCount})` },
             { key: 'push', label: `🔔 알림 ON (${metrics.pushEnabledCount})` },
             { key: 'today', label: `⚡ 오늘 접속 (${metrics.activeTodayCount})` },
@@ -1095,7 +1165,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             { key: 'labri1', label: `라브리1` },
             { key: 'labri2', label: `라브리2` },
             { key: 'labri3', label: `라브리3` },
-            { key: 'pending', label: `⏳ 승인 대기 (${metrics.pending})` },
+            { key: 'pending', label: `⏳ 승인 대기 (${metrics.pendingAllCount})` },
           ].map(f => (
             <button
               key={f.key}
@@ -1110,6 +1180,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
             </button>
           ))}
         </div>
+        )}
 
         {/* ─── 5-A. 개인별 성도 목록 테이블 ─── */}
         {viewMode === 'individual' && (
@@ -1125,12 +1196,13 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                   <th className="p-3">주일 출석 (최근 4주)</th>
                   <th className="p-3">활동 참여도</th>
                   <th className="p-3">가입일</th>
+                  <th className="p-3">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-slate-500 text-xs">
+                    <td colSpan={9} className="text-center py-8 text-slate-500 text-xs">
                       조건에 해당하는 성도가 없습니다.
                     </td>
                   </tr>
@@ -1166,6 +1238,15 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                                     {member.duty}
                                   </span>
                                 )}
+                                {member.role === 'PENDING' && (
+                                  <span className={`text-3xs px-1 py-0.2 rounded font-bold shrink-0 ${
+                                    member.signupRequestedAt
+                                      ? 'bg-amber-500/20 text-amber-300'
+                                      : 'bg-slate-700 text-slate-400'
+                                  }`}>
+                                    {member.signupRequestedAt ? '신청함' : '미신청(열람만)'}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-3xs text-slate-400 mt-0.5">
                                 {member.labriId || '라브리 미정'}
@@ -1196,7 +1277,11 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
 
                         {/* 실행 방식 */}
                         <td className="p-3 whitespace-nowrap">
-                          {member.isPwa ? (
+                          {member.isUnregistered ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-md text-2xs font-bold">
+                              <UserX size={11} /> 미가입
+                            </span>
+                          ) : member.isPwa ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-md text-2xs font-bold">
                               <Smartphone size={11} /> PWA 앱
                             </span>
@@ -1278,6 +1363,21 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                         {/* 가입일 */}
                         <td className="p-3 whitespace-nowrap text-2xs text-slate-500 tabular-nums">
                           {member.createdAt}
+                        </td>
+
+                        {/* 관리: 승인 대기 계정만 삭제 가능 (analytics 페이지 전용) */}
+                        <td className="p-3 whitespace-nowrap">
+                          {member.role === 'PENDING' ? (
+                            <button
+                              onClick={() => handleDeletePendingMember(member)}
+                              disabled={deletingId === member.id}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-md text-2xs font-bold hover:bg-rose-500/30 transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                              <Trash2 size={11} /> {deletingId === member.id ? '삭제 중...' : '삭제'}
+                            </button>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
                         </td>
                       </tr>
                     )
@@ -1400,6 +1500,73 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                 )
               })
             )}
+          </div>
+        )}
+
+        {/* ─── 5-C. 미가입 성도 명단 ─── */}
+        {viewMode === 'unregistered' && (
+          <div className="overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-900/40">
+            <p className="text-2xs text-slate-400 px-3 pt-3">
+              관리자가 &quot;미가입 성도 추가&quot;로 만든, 앱 계정이 없는 분들입니다. 접속·PWA·푸시 통계에는 포함되지 않습니다.
+              연결·삭제·정보 수정은 <strong className="text-slate-300">성도 관리</strong> 탭에서 해주세요.
+            </p>
+            <table className="w-full text-left text-xs mt-2">
+              <thead className="bg-slate-900/90 text-slate-400 text-2xs font-bold border-b border-slate-700/80">
+                <tr>
+                  <th className="p-3">성도 정보</th>
+                  <th className="p-3">실행 방식</th>
+                  <th className="p-3">라브리</th>
+                  <th className="p-3">가족 그룹</th>
+                  <th className="p-3">등록일</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {filteredUnregisteredMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-slate-500 text-xs">
+                      미가입 성도가 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUnregisteredMembers.map(member => (
+                    <tr key={member.id} className="hover:bg-slate-800/50 transition-colors">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2 min-w-[120px]">
+                          <Avatar allUsers={profiles} authorId={member.id} authorName={member.name} size="w-7 h-7 text-2xs" />
+                          <div className="min-w-0">
+                            <div className="font-bold text-white flex items-center gap-1.5 truncate">
+                              <span>{member.name}</span>
+                              {member.duty && (
+                                <span className="text-3xs bg-slate-700 text-slate-300 px-1 py-0.2 rounded font-normal shrink-0">
+                                  {member.duty}
+                                </span>
+                              )}
+                            </div>
+                            {member.familyRole && (
+                              <div className="text-3xs text-slate-400 mt-0.5">{member.familyRole}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-md text-2xs font-bold">
+                          <UserX size={11} /> 미가입
+                        </span>
+                      </td>
+                      <td className="p-3 whitespace-nowrap text-2xs text-slate-300">
+                        {member.labriId || '라브리 미정'}
+                      </td>
+                      <td className="p-3 whitespace-nowrap text-2xs text-slate-300">
+                        {member.familyGroupId || '—'}
+                      </td>
+                      <td className="p-3 whitespace-nowrap text-2xs text-slate-500 tabular-nums">
+                        {member.createdAt}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
