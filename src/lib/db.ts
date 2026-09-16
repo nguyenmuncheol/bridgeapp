@@ -352,10 +352,20 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
   throwIfFetchFailed(error, '주보')
   if (!data || data.length === 0) return null
 
+  // 제목·본문·설교자·요약·이미지가 전부 빈 "빈 껍데기" 주보는 화면에도 띄우지 않습니다
+  // (notify_bulletin() 이 알림을 안 보내는 것과 같은 기준).
+  const isFilled = (row: BulletinRow) =>
+    (row.image_urls?.length ?? 0) > 0 ||
+    !!row.title?.trim() ||
+    !!row.passage?.trim() ||
+    !!row.preacher?.trim() ||
+    !!row.summary?.trim()
+
   // updated_at 내림차순으로 이미 정렬돼 있으므로, 날짜가 같으면 먼저 나온 행(더 최근 수정)이 이깁니다.
   let best: BulletinRow | null = null
   let bestKey = ''
   for (const row of data as unknown as BulletinRow[]) {
+    if (!isFilled(row)) continue
     const key = bulletinDateToSortable(row.date_str)
     if (!key) continue
     if (key > bestKey) {
@@ -363,7 +373,7 @@ export async function dbFetchLatestBulletin(): Promise<BulletinData | null> {
       best = row
     }
   }
-  if (!best) best = (data as unknown as BulletinRow[])[0]
+  if (!best) return null
 
   return {
     id: best.id,

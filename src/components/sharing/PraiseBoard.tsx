@@ -141,7 +141,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   const handleDeletePraise = async (id: string) => {
     if (!await askConfirm('정말 삭제하시겠습니까?', { confirmLabel: '삭제', tone: 'danger' })) return
-    await dbDeletePost(id)
+    const { error } = await dbDeletePost(id)
+    if (error) {
+      showToast('삭제하지 못했습니다. 다시 시도해 주세요.', true)
+      return
+    }
     setPraises(p => p.filter(x => x.id !== id))
     if (selectedPraise?.id === id) setSelectedPraise(null)
   }

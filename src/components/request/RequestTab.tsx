@@ -214,12 +214,16 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
   }
 
   const handleSaveEventForm = async () => {
-    await dbUpsertEventForm({
+    const { error } = await dbUpsertEventForm({
       title: editTitle.trim(),
       content: editContent.trim(),
       url: editUrl.trim(),
       manager: editManager.trim()
     })
+    if (error) {
+      showToast('⚠️ 저장하지 못했습니다. 다시 시도해 주세요.')
+      return
+    }
     setEventFormOverride({
       title: editTitle.trim(),
       content: editContent.trim(),

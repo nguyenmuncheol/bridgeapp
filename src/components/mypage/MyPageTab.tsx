@@ -259,7 +259,14 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
     const newCompleted = !target.isCompleted
     setPrayerOverrides(prev => ({ ...prev, [prayerId]: newCompleted }))
     if (selectedPrayer) setSelectedPrayer(prev => prev ? { ...prev, isCompleted: newCompleted } : null)
-    await dbUpdatePost(prayerId, { isCompleted: newCompleted })
+    const { error } = await dbUpdatePost(prayerId, { isCompleted: newCompleted })
+    if (error) {
+      // 저장 실패 시 화면을 원래 상태로 되돌립니다 (조용한 실패 방지)
+      const prevCompleted = !!target.isCompleted
+      setPrayerOverrides(prev => ({ ...prev, [prayerId]: prevCompleted }))
+      if (selectedPrayer) setSelectedPrayer(prev => prev ? { ...prev, isCompleted: prevCompleted } : null)
+      showToast('⚠️ 저장하지 못했습니다. 다시 시도해 주세요.')
+    }
   }
 
   const [isSavingProfile, setIsSavingProfile] = useState(false)
