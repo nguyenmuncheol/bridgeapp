@@ -25,6 +25,8 @@ import {
   BulletinContent, BulletinOrderItem, BulletinNewsItem,
   EMPTY_BULLETIN_CONTENT, normalizeBulletinContent,
   parseVersesFromText, buildServingMonths, sampleBulletinContent,
+  makeServingMonth, nextServingDate, ymOf, MEAL_OPTIONS,
+  SERVING_PRAYER_COL as PRAYER_COL, SERVING_MEAL_COL as MEAL_COL,
 } from '../../lib/bulletinContent'
 import {
   dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbUpsertBulletin, BulletinData,
@@ -37,13 +39,6 @@ interface BulletinTabProps {
   allUsers: UserProfile[]
   showToast: (msg: string) => void
 }
-
-/** 섬김표에서 각 칸이 몇 번째 열인지 (주차 / 대표기도 / 식사 섬김) */
-const PRAYER_COL = 1
-const MEAL_COL = 2
-
-/** 식사 섬김은 라브리 세 곳이 돌아가며 맡습니다 */
-const MEAL_OPTIONS = ['1라브리', '2라브리', '3라브리']
 
 export default function BulletinTab({ currentUser, allUsers, showToast }: BulletinTabProps) {
   // 고를 수 있는 주일: 지난 2주 + 이번 주 이후 4주
@@ -324,24 +319,35 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
    */
   const removeServingRow = (mi: number, ri: number) => {
     patch({
+      // 줄 이름이 주일 날짜(9/6)라서 다시 매길 필요가 없습니다.
       servingMonths: content.servingMonths.map((x, j) =>
-        j !== mi ? x : {
-          ...x,
-          rows: x.rows
-            .filter((_, k) => k !== ri)
-            .map((r, k) => [`${k + 1}주`, r[PRAYER_COL] || '', r[MEAL_COL] || '']),
-        }),
+        j !== mi ? x : { ...x, rows: x.rows.filter((_, k) => k !== ri) }),
       prayerAssignments: content.prayerAssignments
         .filter(a => !(a.monthIndex === mi && a.rowIndex === ri))
         .map(a => (a.monthIndex === mi && a.rowIndex > ri ? { ...a, rowIndex: a.rowIndex - 1 } : a)),
     })
   }
 
-  /** 섬김표에 주차 줄 하나를 더합니다 (5주가 있는 달인데 줄이 모자랄 때) */
+  /** 섬김표에 주일 줄 하나를 더합니다 (지웠다가 되돌릴 때 등) */
   const addServingRow = (mi: number) => {
     patch({
       servingMonths: content.servingMonths.map((x, j) =>
-        j !== mi ? x : { ...x, rows: [...x.rows, [`${x.rows.length + 1}주`, '', '']] }),
+        j !== mi ? x : { ...x, rows: [...x.rows, [nextServingDate(x.ym, x.rows.length), '', '']] }),
+    })
+  }
+
+  /**
+   * 표의 달을 바꿉니다. 그 달의 주일 날짜로 줄을 다시 깔되, 이미 적어 둔
+   * 대표기도·식사 섬김은 줄 순서대로 이어받습니다. 새 달의 주일 수가 더 적으면
+   * 넘치는 줄의 대표기도 배정은 버립니다(가리킬 줄이 없어지므로).
+   */
+  const setServingMonthYm = (mi: number, ym: string) => {
+    const next = makeServingMonth(ym, content.servingMonths[mi]?.rows)
+    patch({
+      servingMonths: content.servingMonths.map((x, j) => (j === mi ? next : x)),
+      prayerAssignments: content.prayerAssignments.filter(
+        a => a.monthIndex !== mi || a.rowIndex < next.rows.length
+      ),
     })
   }
 
@@ -564,30 +570,28 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               </button>
             </div>
             <p className="text-3xs text-gray-400 leading-relaxed">
-              줄 수는 그 달의 실제 주일 수에 맞춰 만들어집니다. 모자라거나 남으면
-              줄 끝의 휴지통으로 지우고 <strong>주차 줄 추가</strong>로 더하세요.
+              달을 고르면 그 달의 주일 날짜로 줄이 깔립니다. 모자라거나 남으면
+              줄 끝의 휴지통으로 지우고 <strong>주일 줄 추가</strong>로 더하세요.
             </p>
 
             {content.servingMonths.map((m, mi) => (
               <div key={mi} className="p-2.5 bg-gray-50 rounded-xl space-y-1.5">
+                {/* 연도·월을 받아야 그 달의 주일 날짜(9/6 …)를 뽑을 수 있습니다 */}
                 <input
-                  className={inputCls + ' bg-white font-bold w-20 shrink-0'}
-                  value={m.head[0] || ''}
-                  placeholder="9월"
-                  onChange={e => patch({
-                    servingMonths: content.servingMonths.map((x, j) =>
-                      j === mi ? { ...x, head: [e.target.value, x.head[1] || '대표기도', x.head[2] || '식사 섬김'] } : x),
-                  })}
+                  type="month"
+                  className={inputCls + ' bg-white font-bold w-36 shrink-0 cursor-pointer'}
+                  value={m.ym || ymOf(dateStr, mi)}
+                  onChange={e => setServingMonthYm(mi, e.target.value)}
                 />
                 <div className="flex items-center gap-1.5 px-0.5">
-                  <span className="w-9 shrink-0" />
+                  <span className="w-12 shrink-0 text-3xs font-bold text-gray-400">주일</span>
                   <span className="flex-1 text-3xs font-bold text-gray-400">대표기도 (성도 선택)</span>
                   <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-400">식사</span>
                   <span className="w-[26px] shrink-0" />
                 </div>
                 {m.rows.map((r, ri) => (
                   <div key={ri} className="flex items-center gap-1.5">
-                    <span className="w-9 text-2xs font-bold text-gray-500 shrink-0">{r[0]}</span>
+                    <span className="w-12 text-2xs font-bold text-gray-500 shrink-0 tabular-nums">{r[0]}</span>
                     <select
                       className={inputCls + ' bg-white flex-1 basis-0 cursor-pointer'}
                       value={prayerUserIdAt(mi, ri)}
@@ -612,14 +616,14 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                       className={miniBtn + ' shrink-0'}
                       onClick={() => removeServingRow(mi, ri)}
                       aria-label={`${r[0]} 줄 삭제`}
-                      title="이 주차 줄 삭제"
+                      title="이 주일 줄 삭제"
                     >
                       <Trash2 size={13} />
                     </button>
                   </div>
                 ))}
                 <button className={addBtn} onClick={() => addServingRow(mi)}>
-                  <Plus size={12} /> 주차 줄 추가
+                  <Plus size={12} /> 주일 줄 추가
                 </button>
               </div>
             ))}

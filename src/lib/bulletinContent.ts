@@ -29,10 +29,30 @@ export interface BulletinVerse {
 }
 
 export interface BulletinServingMonth {
+  /**
+   * 이 표가 어느 달인지. 'YYYY-MM' 형식입니다.
+   * 주일 날짜(8/30, 9/6 …)를 뽑아내는 근거라서, 달 이름만 글자로 두면 안 됩니다.
+   */
+  ym: string
   /** 머리행 (예: ['9월', '대표기도', '식사 섬김']) */
   head: string[]
-  /** 각 줄 (예: ['1주', '홍길동 집사', '1구역']) */
+  /** 각 줄 (예: ['9/6', '홍길동 집사', '라브리1']) */
   rows: string[][]
+}
+
+/** 섬김표 각 칸의 열 번호 */
+export const SERVING_DATE_COL = 0
+export const SERVING_PRAYER_COL = 1
+export const SERVING_MEAL_COL = 2
+
+/** 식사 섬김은 라브리 세 곳이 돌아가며 맡습니다 */
+export const MEAL_OPTIONS = ['라브리1', '라브리2', '라브리3']
+
+/** 예전 표기('1라브리')를 지금 표기('라브리1')로 옮깁니다 */
+const MEAL_LEGACY: Record<string, string> = {
+  '1라브리': '라브리1',
+  '2라브리': '라브리2',
+  '3라브리': '라브리3',
 }
 
 /**
@@ -118,9 +138,15 @@ export const MEMO_LABEL = '설교 메모'
  * QR 이미지는 따로 받아 offeringQr 에 넣습니다.
  */
 export const OFFERING_ACCOUNT_LINES = [
-  '우리은행 100-100-299503',
-  '예금주 : 임혜영 / LimHyeYoung',
+  '우리은행 100-100-299053',
+  '예금주: LIMHYEYOUNG(임혜영)',
 ]
+
+/**
+ * 헌금 계좌 QR (우리은행 WON) — public/ 에 둔 파일을 가리킵니다.
+ * 파일이 없으면 주보에는 'QR' 글자만 나오고 깨진 그림은 보이지 않습니다.
+ */
+export const OFFERING_QR_SRC = '/offering-qr.png'
 
 /** 새 주보를 만들 때의 기본값. 매주 바뀌지 않는 항목은 미리 채워 둡니다. */
 export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
@@ -165,7 +191,7 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   // 메인 화면(HomeTab "온라인 헌금 안내")과 같은 계좌입니다. 둘 중 하나만 바뀌면
   // 성도가 서로 다른 계좌를 보게 되므로, 계좌가 바뀌면 두 곳을 함께 고쳐야 합니다.
   offeringLines: OFFERING_ACCOUNT_LINES,
-  offeringQr: '',
+  offeringQr: OFFERING_QR_SRC,
 }
 
 // ── 아래는 jsonb → 타입 변환용 도우미들 ─────────────────────────────────
@@ -208,8 +234,13 @@ const asServingMonths = (v: unknown): BulletinServingMonth[] =>
   asArr(v).map(raw => {
     const o = asObj(raw)
     return {
+      ym: asStr(o.ym),
       head: asArr(o.head).map(h => asStr(h)),
-      rows: asArr(o.rows).map(r => asArr(r).map(c => asStr(c))),
+      // 식사 섬김 칸은 옛 표기('1라브리')를 지금 표기('라브리1')로 바꿔 줍니다.
+      rows: asArr(o.rows).map(r => asArr(r).map((c, i) => {
+        const cell = asStr(c)
+        return i === SERVING_MEAL_COL ? (MEAL_LEGACY[cell] || cell) : cell
+      })),
     }
   })
 
@@ -354,39 +385,78 @@ export function parseVersesFromText(raw: string): BulletinVerse[] {
     .map((t, i) => ({ n: i + 1, t }))
 }
 
-/** 그 달에 주일이 몇 번 있는지 (네 번인 달도, 다섯 번인 달도 있습니다) */
-function countSundays(year: number, month0: number): number {
-  const lastDay = new Date(year, month0 + 1, 0).getDate()
-  let n = 0
-  for (let d = 1; d <= lastDay; d++) {
-    if (new Date(year, month0, d).getDay() === 0) n++
-  }
-  return n
+/** 'YYYY-MM' 을 연·월로 풉니다. 형식이 아니면 null */
+function parseYm(ym: string): { year: number; month0: number } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(ym || '')
+  if (!m) return null
+  const month = Number(m[2])
+  if (month < 1 || month > 12) return null
+  return { year: Number(m[1]), month0: month - 1 }
 }
 
-/**
- * 'YYYY-MM-DD' 주일을 기준으로 섬김표 두 달치(이번 달 + 다음 달) 틀을 만듭니다.
- * 이름은 비워 두고 주차 줄만 깔아 둡니다.
- *
- * 줄 수는 **그 달의 실제 주일 수**에 맞춥니다. 예전에는 무조건 다섯 줄을 깔아서
- * 주일이 네 번인 달에는 빈 '5주' 줄이 남았고, 그것을 지울 방법도 없었습니다.
- */
-export function buildServingMonths(dateStr: string): BulletinServingMonth[] {
+/** 그 달의 주일 날짜들 (네 번인 달도, 다섯 번인 달도 있습니다) */
+export function sundaysOfMonth(ym: string): Date[] {
+  const p = parseYm(ym)
+  if (!p) return []
+  const out: Date[] = []
+  const lastDay = new Date(p.year, p.month0 + 1, 0).getDate()
+  for (let d = 1; d <= lastDay; d++) {
+    const dt = new Date(p.year, p.month0, d)
+    if (dt.getDay() === 0) out.push(dt)
+  }
+  return out
+}
+
+/** 섬김표에 찍히는 날짜 표기 — 8/30, 9/6 */
+export function formatServingDate(d: Date): string {
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+/** 'YYYY-MM-DD' 주일 기준 offset 달 뒤의 'YYYY-MM' (12월 다음은 이듬해 1월) */
+export function ymOf(dateStr: string, offset = 0): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '')
   const now = new Date()
   const baseYear = m ? Number(m[1]) : now.getFullYear()
   const baseMonth = m ? Number(m[2]) : now.getMonth() + 1   // 1~12
+  const t = baseMonth - 1 + offset
+  const year = baseYear + Math.floor(t / 12)
+  const month0 = ((t % 12) + 12) % 12
+  return `${year}-${String(month0 + 1).padStart(2, '0')}`
+}
 
-  return [0, 1].map(offset => {
-    // 기준 달 + offset. 12월 다음은 이듬해 1월이 되도록 연도까지 넘깁니다.
-    const t = baseMonth - 1 + offset
-    const year = baseYear + Math.floor(t / 12)
-    const month0 = ((t % 12) + 12) % 12
-    return {
-      head: [`${month0 + 1}월`, '대표기도', '식사 섬김'],
-      rows: Array.from({ length: countSundays(year, month0) }, (_, i) => [`${i + 1}주`, '', '']),
-    }
-  })
+/**
+ * 한 달치 섬김표를 만듭니다. 줄은 그 달의 **실제 주일 날짜**로 깔립니다.
+ *
+ * keep 을 주면 이미 적어 둔 대표기도·식사 섬김을 줄 순서대로 이어받습니다.
+ * 달을 잘못 골랐다가 바로잡을 때 입력한 내용이 통째로 날아가지 않게 하려는 것입니다.
+ */
+export function makeServingMonth(ym: string, keep?: string[][]): BulletinServingMonth {
+  const p = parseYm(ym)
+  return {
+    ym,
+    head: [p ? `${p.month0 + 1}월` : '', '대표기도', '식사 섬김'],
+    rows: sundaysOfMonth(ym).map((d, i) => [
+      formatServingDate(d),
+      keep?.[i]?.[SERVING_PRAYER_COL] || '',
+      keep?.[i]?.[SERVING_MEAL_COL] || '',
+    ]),
+  }
+}
+
+/** 표에 줄을 하나 더할 때 쓸 다음 주일 날짜 */
+export function nextServingDate(ym: string, rowCount: number): string {
+  const sundays = sundaysOfMonth(ym)
+  if (rowCount < sundays.length) return formatServingDate(sundays[rowCount])
+  if (sundays.length === 0) return ''
+  // 그 달의 주일을 다 쓴 뒤에는 다음 주(7일 뒤)로 이어 갑니다
+  const d = new Date(sundays[sundays.length - 1])
+  d.setDate(d.getDate() + 7 * (rowCount - sundays.length + 1))
+  return formatServingDate(d)
+}
+
+/** 'YYYY-MM-DD' 주일을 기준으로 섬김표 두 달치(이번 달 + 다음 달)를 만듭니다. */
+export function buildServingMonths(dateStr: string): BulletinServingMonth[] {
+  return [0, 1].map(offset => makeServingMonth(ymOf(dateStr, offset)))
 }
 
 /**

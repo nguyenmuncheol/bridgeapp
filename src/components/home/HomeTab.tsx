@@ -10,7 +10,7 @@ import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
 import ImageSlider from '../ImageSlider'
 import BulletinView from '../bulletin/BulletinView'
-import { normalizeBulletinContent, BulletinContent } from '../../lib/bulletinContent'
+import { normalizeBulletinContent, BulletinContent, OFFERING_ACCOUNT_LINES } from '../../lib/bulletinContent'
 import ImageViewerModal from '../ImageViewerModal'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
@@ -238,7 +238,12 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   // 🐛 과거 버그: navigator.clipboard는 카카오톡/네이버 인앱 브라우저처럼 보안 조건이
   // 다른 환경에서는 아예 없거나 실패합니다. 그런데 실패를 대비하지 않아서, 오류가 나면
   // 그 아래 줄(성공 표시/토스트)이 실행되지 않아 **버튼을 눌러도 아무 반응이 없었습니다.**
-  const ACCOUNT_DIGITS = '100100299503'
+  // 🐛 과거 버그: 계좌번호가 화면 글자·복사 버튼·주보 기본값 **세 곳에 따로** 적혀
+  //    있었습니다. 그래서 한 곳만 고치면 나머지가 옛 번호로 남았고, 실제로 화면에는
+  //    ...299503, 주보에는 ...299053 이 동시에 떠 있었습니다(복사 버튼도 옛 번호).
+  // → 이제 OFFERING_ACCOUNT_LINES 한 곳에서 가져옵니다. 계좌가 바뀌면 그 파일만
+  //   고치면 화면·복사·주보가 함께 바뀝니다.
+  const ACCOUNT_DIGITS = OFFERING_ACCOUNT_LINES[0].replace(/\D/g, '')
   const handleCopyAccount = async () => {
     try {
       if (!navigator.clipboard) throw new Error('clipboard unavailable')
@@ -445,8 +450,8 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
           </div>
           <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl gap-2">
             <span className="tabular-nums text-xs font-bold text-gray-800 leading-relaxed">
-              우리은행 100-100-299503<br />
-              <span className="text-2xs font-sans font-semibold text-gray-500">(예금주 : 임혜영 / LimHyeYoung)</span>
+              {OFFERING_ACCOUNT_LINES[0]}<br />
+              <span className="text-2xs font-sans font-semibold text-gray-500">{OFFERING_ACCOUNT_LINES[1]}</span>
             </span>
             <button onClick={handleCopyAccount}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${copied ? 'bg-emerald-600 text-white' : 'bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20'}`}>

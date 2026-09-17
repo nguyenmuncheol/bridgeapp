@@ -158,11 +158,18 @@ export default function BulletinView({
                   ))}
                 </div>
               </div>
+              {/* QR 그림이 얹히면 뒤의 'QR' 글자를 덮습니다. 파일이 없어 못 불러오면
+                  그림만 숨겨져 다시 'QR' 글자가 보입니다 (깨진 그림 아이콘 방지). */}
               <div className="qr">
-                {c.offeringQr
+                <span className="ph">QR</span>
+                {c.offeringQr && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={c.offeringQr} alt="헌금 계좌 QR" />
-                  : 'QR'}
+                  <img
+                    src={c.offeringQr}
+                    alt="헌금 계좌 QR"
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                )}
               </div>
             </div>
 
@@ -459,10 +466,12 @@ const CSS = `
 .bl-root .offering .lab{font-size:10pt;font-weight:800;color:var(--navy)}
 .bl-root .offering .ln{margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
   font-variant-numeric:tabular-nums}
-.bl-root .offering .qr{width:19mm;height:19mm;flex:0 0 auto;border:.3mm solid var(--mid);
-  background:#fff;display:flex;align-items:center;justify-content:center;
-  font-size:7pt;letter-spacing:.2em;color:var(--muted);overflow:hidden}
-.bl-root .offering .qr img{width:100%;height:100%;object-fit:contain}
+.bl-root .offering .qr{position:relative;width:19mm;height:19mm;flex:0 0 auto;
+  border:.3mm solid var(--mid);background:#fff;display:flex;align-items:center;
+  justify-content:center;overflow:hidden}
+.bl-root .offering .qr .ph{font-size:7pt;letter-spacing:.2em;color:var(--muted)}
+.bl-root .offering .qr img{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;background:#fff}
 `
 
 /* 인쇄 전용 — mode="print" 일 때만 문서에 들어갑니다 */

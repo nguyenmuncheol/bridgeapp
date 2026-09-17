@@ -127,7 +127,7 @@ export default function RedesignDemoV2Page() {
   const handleCopyAccount = async () => {
     try {
       if (!navigator.clipboard) throw new Error('unavailable')
-      await navigator.clipboard.writeText('100100299503')
+      await navigator.clipboard.writeText('100100299053')
       setCopied(true)
       showToast('계좌번호가 복사되었습니다')
       setTimeout(() => setCopied(false), 1500)
@@ -375,9 +375,9 @@ export default function RedesignDemoV2Page() {
                   </div>
                   <div className="flex items-center justify-between bg-gradient-to-br from-emerald-50 to-emerald-50/40 border border-emerald-100 p-4 rounded-2xl gap-2">
                     <span className="font-mono text-xs font-bold text-slate-800 leading-relaxed">
-                      우리은행 100-100-299503
+                      우리은행 100-100-299053
                       <br />
-                      <span className="text-2xs font-sans font-semibold text-slate-500">(예금주 : 임혜영 / LimHyeYoung)</span>
+                      <span className="text-2xs font-sans font-semibold text-slate-500">예금주: LIMHYEYOUNG(임혜영)</span>
                     </span>
                     <button
                       onClick={handleCopyAccount}
