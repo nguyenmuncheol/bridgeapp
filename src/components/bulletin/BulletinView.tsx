@@ -468,7 +468,7 @@ const CSS = `
 .bl-root .offering .lab{font-size:10pt;font-weight:800;color:var(--navy)}
 .bl-root .offering .ln{margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
   font-variant-numeric:tabular-nums}
-.bl-root .offering .qr{position:relative;width:19mm;height:19mm;flex:0 0 auto;
+.bl-root .offering .qr{position:relative;width:22mm;height:22mm;flex:0 0 auto;
   border:.3mm solid var(--mid);background:#fff;display:flex;align-items:center;
   justify-content:center;overflow:hidden}
 .bl-root .offering .qr .ph{font-size:7pt;letter-spacing:.2em;color:var(--muted)}
