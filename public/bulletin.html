@@ -110,17 +110,17 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
 /* 꼬릿말 : 네 쪽 모두 페이지 아래에서 똑같은 높이에 고정 ─────────────── */
 .page > .foot{
   position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
-  height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
+  height:var(--footh);display:flex;align-items:flex-end;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }
-/* 점은 글자의 대문자 높이와 **같은 지름**으로, 같은 자리에 둡니다.
-   지름 2.6mm 는 대문자 높이(1.85mm)의 1.40배라 위아래로 삐져나와 줄이 안 맞아
-   보였습니다. 위치를 맞춰도 크기가 다르면 어긋나 보입니다. */
-.foot .dot{width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
-  flex:0 0 auto;transform:translateY(-.58mm)}
-/* 점 크기를 맞춘 뒤에도 글자가 점보다 0.19mm 만큼 위에 있었습니다. 점은 이미
-   자리가 맞으므로 **글자 쪽을** 그만큼 내려 점 한가운데에 맞춥니다. */
-.foot > span:not(.dot){transform:translateY(.19mm)}
+/* 점을 mm 로 밀어 맞추지 마세요 — 점이 글자와 **다른 줄**에 있으면 두 줄의
+   아래끝만 맞을 뿐, 글자가 자기 줄 안에서 어디 앉는지는 알 수 없습니다.
+   점을 글자와 같은 줄 안에 inline-block 으로 넣으면 기본 baseline 정렬로
+   점의 아래끝이 글자 기준선에 앉고, 지름 1.9mm 가 7.5pt 의 대문자 높이와 같아
+   위끝도 만납니다. 보정값이 필요 없습니다. */
+.foot .name::before{content:"";display:inline-block;
+  width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
+  margin-right:1.9mm}
 .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 
@@ -237,20 +237,27 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
   padding-left:3.4mm;position:relative}
 .notice li::before{content:"·";position:absolute;left:.6mm;color:#8a7f6a;font-weight:700}
 
-.offering{margin-top:auto;padding-top:5mm;display:flex;align-items:flex-end;
-  justify-content:flex-end;gap:4mm}
-.offering .txt{text-align:right}
-.offering .lab{font-size:10pt;font-weight:800;color:var(--navy)}
-.offering .ln{margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
+/* 칸 넷: [홈페이지 QR][교회홈페이지][남는 폭 · 헌금 계좌][헌금 QR]
+   줄 둘: 1줄 = 이름표, 2줄 = 계좌 번호. 두 이름표가 같은 줄에 놓입니다.
+   1fr 을 윗줄에 줘서 남는 높이를 위로 밀어내면 이름표가 계좌 바로 위에 붙고
+   QR 아래끝과 글 아래끝이 한 줄로 맞습니다. */
+.offering{margin-top:auto;padding-top:5mm;display:grid;
+  grid-template-columns:auto auto 1fr auto;grid-template-rows:1fr auto;
+  align-items:end;column-gap:2mm}
+.offering .site-qr{grid-column:1;grid-row:1 / span 2}
+.offering .cap{grid-column:2;grid-row:1}
+.offering .lab{grid-column:3;grid-row:1;text-align:right}
+.offering .ln{grid-column:3;grid-row:2;text-align:right;
+  margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
   font-variant-numeric:tabular-nums}
-.offering .qr{width:22mm;height:22mm;flex:0 0 auto;border:.3mm solid var(--mid);
+.offering .off-qr{grid-column:4;grid-row:1 / span 2;margin-left:2mm}
+/* 두 이름표는 같은 글씨(10pt·굵게·남색)로 */
+.offering .lab,
+.offering .cap{font-size:10pt;font-weight:800;color:var(--navy);white-space:nowrap}
+.offering .qr{width:22mm;height:22mm;border:.3mm solid var(--mid);
   background:#fff;display:flex;align-items:center;justify-content:center;
   font-size:7pt;letter-spacing:.2em;color:var(--muted);overflow:hidden}
 .offering .qr img{width:100%;height:100%;object-fit:contain}
-/* 교회 홈페이지 QR — 쪽 왼쪽 끝에 붙이고, 헌금 계좌는 오른쪽에 그대로 둡니다 */
-.offering .site{margin-right:auto;display:flex;align-items:flex-end;gap:2mm}
-.offering .site .cap{font-size:8pt;font-weight:700;color:var(--navy);
-  letter-spacing:.02em;white-space:nowrap;padding-bottom:.6mm}
 
 /* ── 화면: 좁은 화면에서 축소 ───────────────────────────────────────── */
 @media screen and (max-width:640px){ .doc{zoom:.62} }
@@ -531,7 +538,7 @@ const 주보 = {
 
   /* 꼬릿말 : 교회 이름 + 쪽번호 (네 쪽 모두 같은 높이에 고정) */
   document.querySelectorAll('.foot').forEach(f => {
-    f.innerHTML = `<span class="dot"></span><span>${esc(d.churchName)}</span>` +
+    f.innerHTML = `<span class="name">${esc(d.churchName)}</span>` +
                   `<span class="pg">${esc(f.dataset.page)}</span>`;
   });
 
@@ -615,15 +622,11 @@ const 주보 = {
   }
 
   set('offering', `
-    ${d.homepageQr ? `<div class="site">
-      <div class="qr"><img src="${esc(d.homepageQr)}" alt="교회 홈페이지 QR"></div>
-      <div class="cap">${esc(d.homepageLabel || '')}</div>
-    </div>` : ''}
-    <div class="txt">
-      <div class="lab">${esc(d.offeringLabel)}</div>
-      <div class="ln">${(d.offeringLines || []).map(esc).join('<br>')}</div>
-    </div>
-    <div class="qr">${d.offeringQr
+    ${d.homepageQr ? `<div class="qr site-qr"><img src="${esc(d.homepageQr)}" alt="교회 홈페이지 QR"></div>
+    <div class="cap">${esc(d.homepageLabel || '')}</div>` : ''}
+    <div class="lab">${esc(d.offeringLabel)}</div>
+    <div class="ln">${(d.offeringLines || []).map(esc).join('<br>')}</div>
+    <div class="qr off-qr">${d.offeringQr
       ? `<img src="${esc(d.offeringQr)}" alt="QR">` : 'QR'}</div>`);
 
   document.title = `주보 ${d.date} · The Bridge Church Hanoi`;

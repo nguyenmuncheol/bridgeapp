@@ -103,8 +103,7 @@ function BulletinView({
 
   const foot = (page: number) => (
     <div className="foot">
-      <span className="dot" />
-      <span>{c.churchName}</span>
+      <span className="name">{c.churchName}</span>
       <span className="pg">{page}</span>
     </div>
   )
@@ -162,11 +161,14 @@ function BulletinView({
               </div>
             )}
 
+            {/* 격자로 짭니다. 두 이름표(교회홈페이지·헌금 계좌)가 **같은 줄**에
+                놓이게 하려고, 이름표 줄과 계좌 줄을 격자의 서로 다른 행에 두고
+                QR 두 개가 그 두 행을 함께 덮게 했습니다. */}
             <div className="offering">
-              {/* 교회 홈페이지 QR — 헌금 계좌 왼쪽. 주소를 비우면 칸째로 빠집니다. */}
+              {/* 교회 홈페이지 QR — 주소를 비우면 이 칸이 통째로 빠집니다. */}
               {c.homepageQr && (
-                <div className="site">
-                  <div className="qr">
+                <>
+                  <div className="qr site-qr">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={c.homepageQr}
@@ -175,19 +177,17 @@ function BulletinView({
                     />
                   </div>
                   <div className="cap">{c.homepageLabel}</div>
-                </div>
+                </>
               )}
-              <div className="txt">
-                <div className="lab">{c.offeringLabel}</div>
-                <div className="ln">
-                  {c.offeringLines.map((l, i, arr) => (
-                    <span key={i}>{l}{i < arr.length - 1 && <br />}</span>
-                  ))}
-                </div>
+              <div className="lab">{c.offeringLabel}</div>
+              <div className="ln">
+                {c.offeringLines.map((l, i, arr) => (
+                  <span key={i}>{l}{i < arr.length - 1 && <br />}</span>
+                ))}
               </div>
               {/* QR 그림이 얹히면 뒤의 'QR' 글자를 덮습니다. 파일이 없어 못 불러오면
                   그림만 숨겨져 다시 'QR' 글자가 보입니다 (깨진 그림 아이콘 방지). */}
-              <div className="qr">
+              <div className="qr off-qr">
                 <span className="ph">QR</span>
                 {c.offeringQr && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -379,20 +379,21 @@ const CSS = `
 
 .bl-root .page > .foot{
   position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
-  height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
+  height:var(--footh);display:flex;align-items:flex-end;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }
-/* 점은 글자의 대문자 높이와 **같은 지름**으로, 같은 자리에 둡니다.
-   지름 2.6mm 는 대문자 높이(1.85mm)의 1.40배라 위아래로 삐져나와 줄이 안 맞아
-   보였습니다. 위치를 아무리 맞춰도 크기가 다르면 어긋나 보입니다.
-   올리는 양 0.58mm 는 flex-end 로 내려온 점의 중심을 대문자 한가운데로 올리는
-   값으로, 6배 확대해 픽셀로 잰 것입니다. 글자 크기를 바꾸면 이 값도 다시 재세요. */
-.bl-root .foot .dot{width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
-  flex:0 0 auto;transform:translateY(-.58mm)}
-/* 점 크기를 맞춘 뒤에도 글자가 점보다 0.19mm 만큼 위에 있었습니다. 점은 이미
-   자리가 맞으므로 **글자 쪽을** 그만큼 내려 점 한가운데에 맞춥니다.
-   (점을 더 올리면 꼬릿말 띠 위로 떠오릅니다) */
-.bl-root .foot > span:not(.dot){transform:translateY(.19mm)}
+/* 점을 mm 로 밀어 맞추지 마세요 — 두 번 실패했습니다.
+   점은 flex 칸(=별도의 줄)에 있었고 글자는 자기 줄 안에 있어서, 두 줄의 아래끝만
+   맞을 뿐 글자가 줄 안에서 어디에 앉는지(내림폭·줄간격)는 알 수 없었습니다.
+   그래서 밀어 맞춘 값이 글꼴이 바뀌면 다시 어긋납니다.
+
+   이제 점을 **글자와 같은 줄 안**에 inline-block 으로 넣습니다. 기본
+   vertical-align:baseline 이면 점의 아래끝이 글자의 기준선에 딱 앉고, 지름
+   1.9mm 가 7.5pt 의 대문자 높이와 같으므로 점의 위끝이 대문자 위끝과 만납니다.
+   → 보정값이 필요 없고 글자 크기를 바꿔도 따라옵니다. */
+.bl-root .foot .name::before{content:"";display:inline-block;
+  width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
+  margin-right:1.9mm}
 .bl-root .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 
@@ -507,23 +508,30 @@ const CSS = `
   padding-left:3.4mm;position:relative}
 .bl-root .notice li::before{content:"·";position:absolute;left:.6mm;color:#8a7f6a;font-weight:700}
 
-.bl-root .offering{margin-top:auto;padding-top:5mm;display:flex;align-items:flex-end;
-  justify-content:flex-end;gap:4mm}
-.bl-root .offering .txt{text-align:right}
-.bl-root .offering .lab{font-size:10pt;font-weight:800;color:var(--navy)}
-.bl-root .offering .ln{margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
+/* 칸 넷: [홈페이지 QR][교회홈페이지][남는 폭 · 헌금 계좌][헌금 QR]
+   줄 둘: 1줄 = 이름표, 2줄 = 계좌 번호.
+   1fr 을 **윗줄**에 줘서 남는 높이를 위로 밀어냅니다. 그래야 이름표가 계좌
+   바로 위에 붙고, QR 아래끝·글 아래끝이 한 줄로 맞습니다. */
+.bl-root .offering{margin-top:auto;padding-top:5mm;display:grid;
+  grid-template-columns:auto auto 1fr auto;grid-template-rows:1fr auto;
+  align-items:end;column-gap:2mm}
+.bl-root .offering .site-qr{grid-column:1;grid-row:1 / span 2}
+.bl-root .offering .cap{grid-column:2;grid-row:1}
+.bl-root .offering .lab{grid-column:3;grid-row:1;text-align:right}
+.bl-root .offering .ln{grid-column:3;grid-row:2;text-align:right;
+  margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
   font-variant-numeric:tabular-nums}
-.bl-root .offering .qr{position:relative;width:22mm;height:22mm;flex:0 0 auto;
+.bl-root .offering .off-qr{grid-column:4;grid-row:1 / span 2;margin-left:2mm}
+/* 두 이름표는 같은 글씨(10pt·굵게·남색)로, 같은 줄에 놓입니다 */
+.bl-root .offering .lab,
+.bl-root .offering .cap{font-size:10pt;font-weight:800;color:var(--navy);
+  white-space:nowrap}
+.bl-root .offering .qr{position:relative;width:22mm;height:22mm;
   border:.3mm solid var(--mid);background:#fff;display:flex;align-items:center;
   justify-content:center;overflow:hidden}
 .bl-root .offering .qr .ph{font-size:7pt;letter-spacing:.2em;color:var(--muted)}
 .bl-root .offering .qr img{position:absolute;inset:0;width:100%;height:100%;
   object-fit:contain;background:#fff}
-/* 교회 홈페이지 QR — 쪽 왼쪽 끝에 붙이고(margin-right:auto), 헌금 계좌는 오른쪽에
-   그대로 둡니다. 두 QR 은 같은 크기(22mm)로 둡니다. */
-.bl-root .offering .site{margin-right:auto;display:flex;align-items:flex-end;gap:2mm}
-.bl-root .offering .site .cap{font-size:8pt;font-weight:700;color:var(--navy);
-  letter-spacing:.02em;white-space:nowrap;padding-bottom:.6mm}
 `
 
 /* 인쇄 전용 — mode="print" 일 때만 문서에 들어갑니다 */
