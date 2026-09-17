@@ -216,21 +216,39 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   const miniBtn = 'p-1.5 rounded-lg text-gray-400 hover:text-slate-900 hover:bg-gray-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
   const addBtn = 'w-full py-2 border border-dashed border-gray-300 rounded-lg text-2xs font-semibold text-gray-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer flex items-center justify-center gap-1'
 
-  /** 예배 순서 목록 편집기 (설교 앞/뒤 공용) */
+  /**
+   * 예배 순서 목록 편집기 (설교 앞/뒤 공용)
+   *
+   * 칸 배치를 주보에 찍히는 모양 그대로 뒀습니다 — 왼쪽 이름 / 가운데 강조 / 오른쪽 담당.
+   * 가운데 칸은 비워 두면 보통 줄로 나가고, 채우면 설교 제목처럼 크게 나갑니다
+   * (성경봉독의 '요한복음 3:1-12' 같은 것).
+   */
   const orderEditor = (list: BulletinOrderItem[], onChange: (next: BulletinOrderItem[]) => void) => (
     <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 px-0.5">
+        <span className="w-16 shrink-0 text-3xs font-bold text-gray-400">순서 이름</span>
+        <span className="flex-1 basis-0 text-3xs font-bold text-gray-400">가운데 강조 (선택)</span>
+        <span className="w-20 shrink-0 text-3xs font-bold text-gray-400">담당</span>
+        <span className="w-[78px] shrink-0" />
+      </div>
       {list.map((o, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <input
-            className={inputCls + ' flex-1 basis-0'}
+            className={inputCls + ' w-16 shrink-0'}
             value={o.item}
-            placeholder="순서 이름"
+            placeholder="묵도"
             onChange={e => onChange(list.map((x, j) => j === i ? { ...x, item: e.target.value } : x))}
           />
           <input
             className={inputCls + ' flex-1 basis-0'}
+            value={o.center || ''}
+            placeholder="비워도 됩니다"
+            onChange={e => onChange(list.map((x, j) => j === i ? { ...x, center: e.target.value } : x))}
+          />
+          <input
+            className={inputCls + ' w-20 shrink-0'}
             value={o.by}
-            placeholder="담당"
+            placeholder="다같이"
             onChange={e => onChange(list.map((x, j) => j === i ? { ...x, by: e.target.value } : x))}
           />
           <button className={miniBtn} disabled={i === 0} onClick={() => onChange(moveItem(list, i, -1))} aria-label="위로"><ChevronUp size={13} /></button>
@@ -238,9 +256,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           <button className={miniBtn} onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label="삭제"><Trash2 size={13} /></button>
         </div>
       ))}
-      <button className={addBtn} onClick={() => onChange([...list, { item: '', by: '' }])}>
+      <button className={addBtn} onClick={() => onChange([...list, { item: '', center: '', by: '' }])}>
         <Plus size={12} /> 순서 추가
       </button>
+      <p className="text-3xs text-gray-400 leading-relaxed">
+        두세 글자 이름(묵도·찬송)은 주보에서 네 글자 폭에 맞춰 저절로 벌어집니다.
+        공백을 직접 넣지 마세요.
+      </p>
     </div>
   )
 
@@ -671,7 +693,14 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
           {/* 공지 */}
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">공지 사항</label>
+            <label className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
+            <input
+              className={inputCls + ' w-full font-bold'}
+              value={content.noticeTitle}
+              placeholder="공지 사항"
+              onChange={e => patch({ noticeTitle: e.target.value })}
+            />
+            <label className="block text-2xs font-bold text-gray-500 mt-2 mb-1">공지 내용</label>
             <div className="space-y-1.5">
               {content.notices.map((n, i) => (
                 <div key={i} className="flex items-center gap-1.5">
@@ -686,6 +715,10 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 <Plus size={12} /> 공지 추가
               </button>
             </div>
+            <p className="text-3xs text-gray-400 leading-relaxed mt-1.5">
+              내용을 하나도 적지 않으면 주보에서 공지 칸이 통째로 빠집니다
+              (빈 상자만 남지 않도록).
+            </p>
           </div>
 
           {/* 헌금 */}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { BulletinContent, MEMO_LABEL } from '../../lib/bulletinContent'
+import { BulletinContent, BulletinOrderItem, MEMO_LABEL } from '../../lib/bulletinContent'
 
 /**
  * 주보 렌더러 — 웹 보기와 인쇄본을 **같은 코드**로 그립니다.
@@ -72,14 +72,40 @@ export default function BulletinView({
     return () => ro.disconnect()
   }, [])
 
-  // 설교 행은 다른 예배 순서와 같은 한 줄이되, 가운데에 설교 제목이 들어갑니다.
-  const orderRow = (o: { item: string; by: string }, key: string) => (
-    <li key={key}>
-      <span className="bul" />
-      <span className="it">{o.item}</span>
-      <span className="by">{o.by}</span>
-    </li>
-  )
+  /**
+   * 순서 이름을 그립니다.
+   *
+   * '묵도'(2글자)와 '신앙고백'(4글자)이 섞이면 담당자 칸의 시작선이 들쭉날쭉합니다.
+   * 예전에는 '묵    도' 처럼 공백을 손으로 넣어 맞췄습니다.
+   * → 2~3글자는 글자를 하나씩 떼어 네 글자 폭에 고르게 벌립니다. 네 글자 이상은
+   *   그대로 둡니다.
+   *
+   * CSS 의 text-align-last:justify 로는 안 됩니다. Chrome 이 한글처럼 띄어쓰기가
+   * 없는 글의 **글자 사이**는 벌려 주지 않아서, 상자만 넓어지고 글자는 왼쪽에
+   * 붙어 있습니다(실측 확인).
+   */
+  const orderName = (name: string) => {
+    const chars = [...(name || '').trim()]
+    if (chars.length < 2 || chars.length > 3) return <span className="it">{name}</span>
+    return (
+      <span className="it spread">
+        {chars.map((ch, i) => <span key={i}>{ch}</span>)}
+      </span>
+    )
+  }
+
+  /** 예배 순서 한 줄. center 가 있으면 설교처럼 가운데를 크게 씁니다. */
+  const orderRow = (o: BulletinOrderItem, key: string) => {
+    const center = (o.center || '').trim()
+    return (
+      <li key={key} className={center ? 'has-center' : undefined}>
+        <span className="bul" />
+        {orderName(o.item)}
+        {center && <span className="ctr">{multiline(center)}</span>}
+        <span className="by">{o.by}</span>
+      </li>
+    )
+  }
 
   /** \n 을 <br> 로. dangerouslySetInnerHTML 을 쓰지 않으려고 조각으로 나눕니다. */
   const multiline = (s: string) =>
@@ -144,10 +170,15 @@ export default function BulletinView({
               </div>
             </div>
 
-            <div className="notice">
-              <h4>{c.noticeTitle}</h4>
-              <ul>{c.notices.map((n, i) => <li key={i}>{multiline(n)}</li>)}</ul>
-            </div>
+            {/* 적을 공지가 없으면 빈 상자만 남으므로 칸 자체를 뺍니다 */}
+            {c.notices.some(n => n.trim()) && (
+              <div className="notice">
+                {c.noticeTitle.trim() && <h4>{c.noticeTitle}</h4>}
+                <ul>
+                  {c.notices.filter(n => n.trim()).map((n, i) => <li key={i}>{multiline(n)}</li>)}
+                </ul>
+              </div>
+            )}
 
             <div className="offering">
               <div className="txt">
@@ -195,12 +226,12 @@ export default function BulletinView({
               {c.orderPre.map((o, i) => orderRow(o, `pre-${i}`))}
 
               {/* 설교 : 설교 | 설교 제목(가운데, 한 단계 굵고 크게) | 설교자 */}
-              <li className="is-sermon">
+              <li className="has-center">
                 <span className="bul" />
-                <span className="it">{c.sermon.label}</span>
-                <span className="stitle">
+                {orderName(c.sermon.label)}
+                <span className="ctr">
                   {multiline(c.sermon.title)}
-                  {c.sermon.sub && <span className="ssub">{c.sermon.sub}</span>}
+                  {c.sermon.sub && <span className="ctr-sub">{c.sermon.sub}</span>}
                 </span>
                 <span className="by">{c.sermon.by}</span>
               </li>
@@ -377,16 +408,21 @@ const CSS = `
   padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:10pt}
 .bl-root .order li:last-child{border-bottom:0}
 .bl-root .order .bul{width:2.4mm;height:2.4mm;border-radius:50%;background:var(--mid);flex:0 0 auto}
-.bl-root .order .it{font-weight:700;color:var(--navy);white-space:pre}
+/* 순서 이름은 네 글자 폭을 기본으로 잡아 담당자 칸의 시작선을 맞춥니다.
+   2~3글자는 .spread 로 글자를 떼어 그 폭에 고르게 벌립니다. */
+.bl-root .order .it{font-weight:700;color:var(--navy);white-space:nowrap;
+  flex:0 0 auto;min-width:4em}
+.bl-root .order .it.spread{display:flex;justify-content:space-between}
 .bl-root .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
 
 /* 설교 행 : 설교 | 제목(가운데) | 설교자 — 별도 박스 없이 목록 안에 들어갑니다 */
-/* 설교 행도 다른 순서와 같은 색입니다 — 눈에 띄는 것은 가운데 제목 하나면 충분합니다 */
-.bl-root .order li.is-sermon{padding:3mm 0}
-.bl-root .order li.is-sermon .by{margin-left:0}
-.bl-root .order .stitle{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
+/* 가운데를 크게 쓰는 줄 : 이름 | 강조할 글(가운데) | 담당
+   설교 제목과 성경봉독 본문이 이 모양을 함께 씁니다. 별도 박스는 두지 않습니다. */
+.bl-root .order li.has-center{padding:3mm 0}
+.bl-root .order li.has-center .by{margin-left:0}
+.bl-root .order .ctr{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
   font-size:11.5pt;font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
-.bl-root .order .ssub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
+.bl-root .order .ctr-sub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
   color:var(--mid);letter-spacing:.02em}
 
 /* 2쪽 · 소식 */

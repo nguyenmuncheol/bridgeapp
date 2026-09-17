@@ -136,19 +136,25 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
   padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:10pt}
 .order li:last-child{border-bottom:0}
 .order .bul{width:2.4mm;height:2.4mm;border-radius:50%;background:var(--mid);flex:0 0 auto}
-.order .it{font-weight:700;color:var(--navy)}
+/* 순서 이름은 네 글자 폭을 기본으로 잡아 담당자 칸의 시작선을 맞춥니다.
+   2~3글자는 .spread 로 글자를 떼어 그 폭에 고르게 벌립니다.
+   (CSS 의 text-align-last:justify 로는 안 됩니다 — Chrome 이 한글처럼 띄어쓰기가
+    없는 글의 글자 사이는 벌려 주지 않습니다.) */
+.order .it{font-weight:700;color:var(--navy);white-space:nowrap;flex:0 0 auto;min-width:4em}
+.order .it.spread{display:flex;justify-content:space-between}
 .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
 
 /* 설교 행 : 설교 | 제목(가운데, 한 단계 굵고 크게) | 설교자
    별도 박스 없이 예배 순서 목록 안의 한 줄로 들어갑니다 ───────────── */
-/* 설교 행도 다른 순서와 같은 색입니다 — 눈에 띄는 것은 가운데 제목 하나면 충분합니다 */
-.order li.is-sermon{padding:3mm 0}
-.order li.is-sermon .by{margin-left:0}
-.order .stitle{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
+/* 가운데를 크게 쓰는 줄 : 이름 | 강조할 글(가운데) | 담당
+   설교 제목과 성경봉독 본문이 이 모양을 함께 씁니다. 점 색은 다른 순서와 같습니다. */
+.order li.has-center{padding:3mm 0}
+.order li.has-center .by{margin-left:0}
+.order .ctr{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
   font-size:11.5pt;font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
-.order .ssub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
+.order .ctr-sub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
   color:var(--mid);letter-spacing:.02em}
-.order .ssub:empty{display:none}
+.order .ctr-sub:empty{display:none}
 
 /* ═══ 2쪽 · 소식 ══════════════════════════════════════════════════════ */
 .block{margin-top:5.2mm}
@@ -374,20 +380,22 @@ const 주보 = {
   dateSub: '주일예배 · 오전 11:00',
 
   /* 설교 앞 순서 */
+  /* 이름은 공백 없이 적으세요 — 두세 글자는 화면이 네 글자 폭에 맞춰 벌려 줍니다.
+     center 를 채우면 설교 제목처럼 가운데에 크게 들어갑니다(비우면 보통 줄). */
   orderPre: [
-    { item: '묵    도', by: '다같이' },
-    { item: '찬    송', by: '1장' },
+    { item: '묵도', by: '다같이' },
+    { item: '찬송', by: '1장' },
     { item: '신앙고백', by: '다같이' },
-    { item: '기    도', by: '홍길동 집사' },
-    { item: '성경봉독', by: '요한복음 3:1-12' },
-    { item: '찬    양', by: '찬양팀' },
+    { item: '기도', by: '홍길동 집사' },
+    { item: '성경봉독', center: '요한복음 3:1-12', by: '홍길동 집사' },
+    { item: '찬양', by: '찬양팀' },
   ],
 
   /* 설교 — label / by 는 다른 예배 순서와 똑같은 한 줄로 목록에 들어가고,
      title 만 그 아래 파란 박스에 가운데로 들어갑니다.
      sub 는 제목 아래 작은 줄입니다. 비워두면 ('') 나오지 않습니다. */
   sermon: {
-    label: '설    교',
+    label: '설교',
     by:    '김목사',
     title: '거듭남에 대하여',
     sub:   '',
@@ -397,8 +405,8 @@ const 주보 = {
   orderPost: [
     { item: '봉헌찬송', by: '다같이' },
     { item: '봉헌기도', by: '김목사' },
-    { item: '광    고', by: '인도자' },
-    { item: '축    도', by: '김목사' },
+    { item: '광고', by: '인도자' },
+    { item: '축도', by: '김목사' },
   ],
 
   /* ── 2쪽 · 소식 ──────────────────────────────────────────────────── */
@@ -518,18 +526,31 @@ const 주보 = {
   txt('cover-date', d.date);
   txt('cover-sub',  d.dateSub);
 
-  const row = (o, cls) => `
-    <li class="${cls || ''}"><span class="bul"></span>
-        <span class="it">${esc(o.item)}</span>
+  /* 두세 글자 이름은 글자를 하나씩 떼어 네 글자 폭에 고르게 벌립니다 */
+  const name = (s) => {
+    const chars = [...String(s || '').replace(/ {2,}/g, '').trim()];
+    return (chars.length >= 2 && chars.length <= 3)
+      ? `<span class="it spread">${chars.map(c => `<span>${esc(c)}</span>`).join('')}</span>`
+      : `<span class="it">${esc(s)}</span>`;
+  };
+
+  /* 예배 순서 한 줄. center 가 있으면 설교처럼 가운데를 크게 씁니다. */
+  const row = (o) => {
+    const center = String(o.center || '').trim();
+    return `
+    <li class="${center ? 'has-center' : ''}"><span class="bul"></span>
+        ${name(o.item)}
+        ${center ? `<span class="ctr">${nl(center)}</span>` : ''}
         <span class="by">${esc(o.by)}</span></li>`;
+  };
 
   const s = d.sermon || {};
   /* 설교는 목록 안의 한 줄이되, 가운데에 설교 제목이 들어갑니다 */
   set('order', [
     (d.orderPre || []).map(o => row(o)).join(''),
-    `<li class="is-sermon"><span class="bul"></span>
-        <span class="it">${esc(s.label)}</span>
-        <span class="stitle">${nl(s.title)}<span class="ssub">${esc(s.sub || '')}</span></span>
+    `<li class="has-center"><span class="bul"></span>
+        ${name(s.label)}
+        <span class="ctr">${nl(s.title)}<span class="ctr-sub">${esc(s.sub || '')}</span></span>
         <span class="by">${esc(s.by)}</span></li>`,
     (d.orderPost || []).map(o => row(o)).join(''),
   ].join(''));
@@ -578,8 +599,15 @@ const 주보 = {
         `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
     </table>`).join(''));
 
-  set('notice', `<h4>${esc(d.noticeTitle)}</h4>
-    <ul>${(d.notices || []).map(n => `<li>${nl(n)}</li>`).join('')}</ul>`);
+  /* 적을 공지가 없으면 빈 상자만 남으므로 칸 자체를 뺍니다 */
+  const notices = (d.notices || []).filter(n => String(n || '').trim());
+  const noticeEl = document.getElementById('notice');
+  if (notices.length === 0) {
+    if (noticeEl) noticeEl.remove();
+  } else {
+    set('notice', `${String(d.noticeTitle || '').trim() ? `<h4>${esc(d.noticeTitle)}</h4>` : ''}
+      <ul>${notices.map(n => `<li>${nl(n)}</li>`).join('')}</ul>`);
+  }
 
   set('offering', `
     <div class="txt">
