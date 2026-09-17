@@ -459,6 +459,48 @@ export function buildServingMonths(dateStr: string): BulletinServingMonth[] {
   return [0, 1].map(offset => makeServingMonth(ymOf(dateStr, offset)))
 }
 
+/** 섬김표가 이 주보의 달(이번 달 + 다음 달)을 이미 담고 있는지 */
+export function servingMonthsMatchDate(months: BulletinServingMonth[], dateStr: string): boolean {
+  return [0, 1].every((offset, i) => months[i]?.ym === ymOf(dateStr, offset))
+}
+
+/**
+ * 섬김표를 주보 날짜에 맞춰 **앞으로 굴립니다.**
+ *
+ * 9월에 [9월, 10월] 로 만들어 둔 표로 10월 주보를 만들면 [10월, 11월] 이 되어야
+ * 합니다. 이때 뒤칸에 있던 10월 표가 앞칸으로 옮겨 오고, 거기 적어 둔 대표기도·
+ * 식사 섬김이 그대로 따라옵니다. 새로 생긴 11월만 빈 표로 깔립니다.
+ * (그냥 새로 만들면 이미 정해 둔 10월 섬김이 통째로 날아갑니다.)
+ *
+ * 표가 자리를 옮기면 대표기도 배정이 가리키던 monthIndex 도 함께 옮겨 줘야 합니다.
+ * 이걸 빼먹으면 10월 배정이 11월 표를 가리키게 됩니다.
+ */
+export function rollServingForDate(
+  months: BulletinServingMonth[],
+  assignments: BulletinPrayerAssignment[],
+  dateStr: string
+): { servingMonths: BulletinServingMonth[]; prayerAssignments: BulletinPrayerAssignment[] } {
+  const want = [ymOf(dateStr, 0), ymOf(dateStr, 1)]
+
+  const servingMonths = want.map(ym => months.find(m => m.ym === ym) ?? makeServingMonth(ym))
+
+  // 옛 자리 → 새 자리
+  const moved = new Map<number, number>()
+  want.forEach((ym, newIdx) => {
+    const oldIdx = months.findIndex(m => m.ym === ym)
+    if (oldIdx >= 0) moved.set(oldIdx, newIdx)
+  })
+
+  const prayerAssignments = assignments.flatMap(a => {
+    const newIdx = moved.get(a.monthIndex)
+    if (newIdx === undefined) return []                                   // 빠진 달의 배정은 버립니다
+    if (a.rowIndex >= servingMonths[newIdx].rows.length) return []        // 가리킬 줄이 없어진 배정도
+    return [{ ...a, monthIndex: newIdx }]
+  })
+
+  return { servingMonths, prayerAssignments }
+}
+
 /**
  * 화면을 처음 보는 분이 "이렇게 채우면 되는구나" 를 바로 알 수 있게 하는 예시입니다.
  * 주보 탭의 [샘플 내용 채우기] 버튼이 씁니다 — 편집 중인 화면에만 들어가고,

@@ -119,7 +119,8 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
   font-variant-numeric:tabular-nums}
 
 /* ═══ 1쪽 · 표지 ══════════════════════════════════════════════════════ */
-.cover .top{display:flex;justify-content:center;padding-top:3mm}
+/* 로고는 쪽 위쪽에 바짝 붙입니다 (3mm → 0.5mm, 반 줄 정도 위로) */
+.cover .top{display:flex;justify-content:center;padding-top:.5mm}
 .cover .logo{width:64mm;height:auto;display:block;background:none}
 
 .datebar{margin-top:6mm;background:var(--navy);color:#fff;padding:3.4mm 5.4mm;
@@ -153,8 +154,9 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
 .block{margin-top:5.2mm}
 .block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
 .block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
-/* 두 소식의 글이 같은 선에서 시작하도록, 교우소식 상자의 안쪽 여백(5.4mm)과
-   같은 값을 교회소식 쪽에도 줍니다(.news-in). 라벨·제목·본문 모두 같은 선입니다. */
+/* 제목 박스(교회소식·교우소식 라벨)는 쪽 여백에 딱 붙여 두고, 그 아래 **글만**
+   5.4mm 들여씁니다. 교우소식은 상자 안쪽 여백이 그 역할을 하므로, 교회소식 쪽에만
+   같은 값을 따로 줍니다(.news-in). 두 소식의 글이 같은 선에서 시작합니다. */
 .newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm}
 .news-in{padding-left:5.4mm}
 .newsbox .block:first-child{margin-top:0}
@@ -320,12 +322,12 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
            top:-22mm;left:-16mm;opacity:.55"></div>
       <div class="blob seam-b-l"></div>
 
-      <div class="news-in"><span class="pill" id="church-news-label"></span></div>
+      <div><span class="pill" id="church-news-label"></span></div>
       <div class="news-in" id="church-news"></div>
 
       <!-- 교우소식은 남는 공간의 가운데에 — 내용 길이에 따라 자동으로 자리잡습니다 -->
       <div class="membernews">
-        <div class="news-in"><span class="pill soft" id="member-news-label"></span></div>
+        <div><span class="pill soft" id="member-news-label"></span></div>
         <div class="newsbox" id="member-news"></div>
       </div>
 

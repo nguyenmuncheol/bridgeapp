@@ -26,6 +26,7 @@ import {
   EMPTY_BULLETIN_CONTENT, normalizeBulletinContent,
   parseVersesFromText, buildServingMonths, sampleBulletinContent,
   makeServingMonth, nextServingDate, ymOf, MEAL_OPTIONS,
+  rollServingForDate, servingMonthsMatchDate,
   SERVING_PRAYER_COL as PRAYER_COL, SERVING_MEAL_COL as MEAL_COL,
 } from '../../lib/bulletinContent'
 import {
@@ -110,6 +111,9 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       return
     }
     const prev = normalizeBulletinContent(source.content)
+    // 섬김표는 이 주보의 달로 굴려 옵니다. 9월 주보에서 [9월,10월] 을 가져오면
+    // 10월 주보에서는 [10월,11월] 이 되고, 이미 적어 둔 10월 섬김이 앞칸으로 따라옵니다.
+    const rolled = rollServingForDate(prev.servingMonths, prev.prayerAssignments, dateStr)
     setContent({
       ...prev,
       // 그 주에만 해당하는 것은 비웁니다 — 지난주 설교·소식이 그대로 실리면 사고입니다.
@@ -121,8 +125,9 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       messageBody: '',
       churchNews: [],
       memberNews: [],
-      // 대표기도 배정은 달마다 정해지므로 그대로 가져옵니다.
-      prayerAssignments: prev.prayerAssignments.map(a => ({ ...a, notifiedAt: undefined })),
+      servingMonths: rolled.servingMonths,
+      // 대표기도 배정은 달마다 정해지므로 그대로 가져옵니다(자리만 옮겨서).
+      prayerAssignments: rolled.prayerAssignments.map(a => ({ ...a, notifiedAt: undefined })),
     })
     setStatus('draft')
     showToast(`📋 ${formatBulletinDisplay(source.date)} 주보를 불러왔습니다`)
@@ -560,18 +565,36 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
           {/* 섬김표 — 대표기도는 성도 선택 */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <label className="text-2xs font-bold text-gray-500">기도 및 식사 섬김 (월별 두 달치)</label>
               <button
-                className="text-2xs font-bold text-blue-600 hover:underline cursor-pointer"
+                className="text-2xs font-bold text-gray-400 hover:text-rose-600 hover:underline cursor-pointer shrink-0"
                 onClick={() => patch({ servingMonths: buildServingMonths(dateStr), prayerAssignments: [] })}
               >
-                표 다시 만들기
+                비우고 새로
               </button>
             </div>
+
+            {/* 달이 넘어가면 뒤칸의 표를 앞칸으로 옮겨 옵니다 (적어 둔 섬김은 그대로) */}
+            {!servingMonthsMatchDate(content.servingMonths, dateStr) && (
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
+                <p className="text-2xs text-amber-800 leading-relaxed flex-1">
+                  이 주보는 <strong>{ymOf(dateStr, 0).replace('-', '년 ')}월</strong>인데
+                  표는 {content.servingMonths.map(m => m.head[0] || '?').join('·') || '비어 있음'}입니다.
+                </p>
+                <button
+                  className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-2xs font-bold cursor-pointer"
+                  onClick={() => patch(rollServingForDate(content.servingMonths, content.prayerAssignments, dateStr))}
+                >
+                  달 맞추기
+                </button>
+              </div>
+            )}
             <p className="text-3xs text-gray-400 leading-relaxed">
               달을 고르면 그 달의 주일 날짜로 줄이 깔립니다. 모자라거나 남으면
               줄 끝의 휴지통으로 지우고 <strong>주일 줄 추가</strong>로 더하세요.
+              달이 넘어가면 <strong>달 맞추기</strong>로 뒤칸 표를 앞으로 옮겨 옵니다
+              (적어 둔 섬김은 따라옵니다). <strong>비우고 새로</strong>는 전부 지우고 다시 만듭니다.
             </p>
 
             {content.servingMonths.map((m, mi) => (

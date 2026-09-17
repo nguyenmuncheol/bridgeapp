@@ -219,7 +219,7 @@ export default function BulletinView({
             <div className="blob" style={{ width: '56mm', height: '56mm', background: 'var(--light)', top: '-22mm', left: '-16mm', opacity: 0.55 }} />
             <div className="blob seam-b-l" />
 
-            <div className="news-in"><span className="pill">{c.churchNewsLabel}</span></div>
+            <div><span className="pill">{c.churchNewsLabel}</span></div>
             <div className="news-in">
               {c.churchNews.map((n, i) => (
                 <div className="block" key={i}>
@@ -231,7 +231,7 @@ export default function BulletinView({
 
             {/* 교우소식은 남는 공간의 가운데에 — 내용 길이에 따라 자동으로 자리잡습니다 */}
             <div className="membernews">
-              <div className="news-in"><span className="pill soft">{c.memberNewsLabel}</span></div>
+              <div><span className="pill soft">{c.memberNewsLabel}</span></div>
               <div className="newsbox">
                 {c.memberNews.map((n, i) => (
                   <div className="block" key={i}>
@@ -361,7 +361,8 @@ const CSS = `
   font-variant-numeric:tabular-nums}
 
 /* 1쪽 · 표지 */
-.bl-root .cover .top{display:flex;justify-content:center;padding-top:3mm}
+/* 로고는 쪽 위쪽에 바짝 붙입니다 (3mm → 0.5mm, 반 줄 정도 위로) */
+.bl-root .cover .top{display:flex;justify-content:center;padding-top:.5mm}
 .bl-root .cover .logo{width:64mm;height:auto;display:block;background:none}
 
 .bl-root .datebar{margin-top:6mm;background:var(--navy);color:#fff;padding:3.4mm 5.4mm;
@@ -392,8 +393,9 @@ const CSS = `
 .bl-root .block{margin-top:5.2mm}
 .bl-root .block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
 .bl-root .block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
-/* 두 소식의 글이 같은 선에서 시작하도록, 교우소식 상자의 안쪽 여백(5.4mm)과
-   같은 값을 교회소식 쪽에도 줍니다(.news-in). 라벨·제목·본문 모두 같은 선입니다. */
+/* 제목 박스(교회소식·교우소식 라벨)는 쪽 여백에 딱 붙여 두고, 그 아래 **글만**
+   5.4mm 들여씁니다. 교우소식은 상자 안쪽 여백이 그 역할을 하므로, 교회소식 쪽에만
+   같은 값을 따로 줍니다(.news-in). 두 소식의 글이 같은 선에서 시작합니다. */
 .bl-root .newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm}
 .bl-root .news-in{padding-left:5.4mm}
 .bl-root .newsbox .block:first-child{margin-top:0}
