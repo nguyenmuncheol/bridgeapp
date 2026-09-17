@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Save, Eye, EyeOff, Printer,
-  RefreshCw, Copy, Sparkles, ChevronRight, Undo2,
+  RefreshCw, Copy, Sparkles, ChevronRight, Undo2, AlignCenter,
 } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import {
@@ -219,52 +219,75 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   /**
    * 예배 순서 목록 편집기 (설교 앞/뒤 공용)
    *
-   * 칸 배치를 주보에 찍히는 모양 그대로 뒀습니다 — 왼쪽 이름 / 가운데 강조 / 오른쪽 담당.
-   * 가운데 칸은 비워 두면 보통 줄로 나가고, 채우면 설교 제목처럼 크게 나갑니다
-   * (성경봉독의 '요한복음 3:1-12' 같은 것).
+   * 보통 줄은 [이름][담당] 두 칸입니다. 가운데 강조 칸은 **쓰는 줄에만** 아랫줄로
+   * 펼칩니다 — 모든 줄에 늘 띄워 두면 칸이 좁아 이름도 담당도 읽기 어려웠습니다.
+   * 줄 오른쪽의 가운데정렬 아이콘으로 켜고 끕니다.
    */
-  const orderEditor = (list: BulletinOrderItem[], onChange: (next: BulletinOrderItem[]) => void) => (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5 px-0.5">
-        <span className="w-16 shrink-0 text-3xs font-bold text-gray-400">순서 이름</span>
-        <span className="flex-1 basis-0 text-3xs font-bold text-gray-400">가운데 강조 (선택)</span>
-        <span className="w-20 shrink-0 text-3xs font-bold text-gray-400">담당</span>
-        <span className="w-[78px] shrink-0" />
-      </div>
-      {list.map((o, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <input
-            className={inputCls + ' w-16 shrink-0'}
-            value={o.item}
-            placeholder="묵도"
-            onChange={e => onChange(list.map((x, j) => j === i ? { ...x, item: e.target.value } : x))}
-          />
-          <input
-            className={inputCls + ' flex-1 basis-0'}
-            value={o.center || ''}
-            placeholder="비워도 됩니다"
-            onChange={e => onChange(list.map((x, j) => j === i ? { ...x, center: e.target.value } : x))}
-          />
-          <input
-            className={inputCls + ' w-20 shrink-0'}
-            value={o.by}
-            placeholder="다같이"
-            onChange={e => onChange(list.map((x, j) => j === i ? { ...x, by: e.target.value } : x))}
-          />
-          <button className={miniBtn} disabled={i === 0} onClick={() => onChange(moveItem(list, i, -1))} aria-label="위로"><ChevronUp size={13} /></button>
-          <button className={miniBtn} disabled={i === list.length - 1} onClick={() => onChange(moveItem(list, i, 1))} aria-label="아래로"><ChevronDown size={13} /></button>
-          <button className={miniBtn} onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label="삭제"><Trash2 size={13} /></button>
+  const orderEditor = (list: BulletinOrderItem[], onChange: (next: BulletinOrderItem[]) => void) => {
+    /** 그 줄의 '가운데 강조' 칸을 켜고 끕니다 (끄면 적어 둔 글도 지워집니다) */
+    const toggleCenter = (i: number) => onChange(list.map((x, j) => {
+      if (j !== i) return x
+      if (typeof x.center === 'string') {
+        const { center, ...rest } = x
+        void center
+        return rest
+      }
+      return { ...x, center: '' }
+    }))
+
+    return (
+      <div className="space-y-1.5">
+        {list.map((o, i) => (
+          <div key={i} className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <input
+                className={inputCls + ' w-20 shrink-0'}
+                value={o.item}
+                placeholder="묵    도"
+                onChange={e => onChange(list.map((x, j) => j === i ? { ...x, item: e.target.value } : x))}
+              />
+              <input
+                className={inputCls + ' flex-1 basis-0'}
+                value={o.by}
+                placeholder="담당"
+                onChange={e => onChange(list.map((x, j) => j === i ? { ...x, by: e.target.value } : x))}
+              />
+              <button
+                className={miniBtn + (typeof o.center === 'string' ? ' text-blue-600 bg-blue-50' : '')}
+                onClick={() => toggleCenter(i)}
+                aria-label="가운데 강조 켜기/끄기"
+                title="가운데 강조 켜기/끄기"
+              >
+                <AlignCenter size={13} />
+              </button>
+              <button className={miniBtn} disabled={i === 0} onClick={() => onChange(moveItem(list, i, -1))} aria-label="위로"><ChevronUp size={13} /></button>
+              <button className={miniBtn} disabled={i === list.length - 1} onClick={() => onChange(moveItem(list, i, 1))} aria-label="아래로"><ChevronDown size={13} /></button>
+              <button className={miniBtn} onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label="삭제"><Trash2 size={13} /></button>
+            </div>
+            {typeof o.center === 'string' && (
+              <div className="flex items-center gap-1.5 pl-4">
+                <span className="text-gray-300 text-2xs shrink-0">↳</span>
+                <input
+                  className={inputCls + ' flex-1 basis-0 bg-blue-50/60 font-semibold'}
+                  value={o.center}
+                  placeholder="가운데에 크게 넣을 글 (예: 요한복음 3:1-12)"
+                  onChange={e => onChange(list.map((x, j) => j === i ? { ...x, center: e.target.value } : x))}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+        <div className="grid grid-cols-2 gap-1.5">
+          <button className={addBtn} onClick={() => onChange([...list, { item: '', by: '' }])}>
+            <Plus size={12} /> 순서 추가
+          </button>
+          <button className={addBtn} onClick={() => onChange([...list, { item: '', center: '', by: '' }])}>
+            <AlignCenter size={12} /> 강조 순서 추가
+          </button>
         </div>
-      ))}
-      <button className={addBtn} onClick={() => onChange([...list, { item: '', center: '', by: '' }])}>
-        <Plus size={12} /> 순서 추가
-      </button>
-      <p className="text-3xs text-gray-400 leading-relaxed">
-        두세 글자 이름(묵도·찬송)은 주보에서 네 글자 폭에 맞춰 저절로 벌어집니다.
-        공백을 직접 넣지 마세요.
-      </p>
-    </div>
-  )
+      </div>
+    )
+  }
 
   /** 소식 목록 편집기 (교회소식 / 교우소식 공용) */
   const newsEditor = (list: BulletinNewsItem[], onChange: (next: BulletinNewsItem[]) => void) => (

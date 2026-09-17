@@ -10,11 +10,14 @@
  */
 
 export interface BulletinOrderItem {
-  /** 순서 이름 (예: '묵도') — 2~3글자는 네 글자 폭에 맞춰 화면에서 벌려 줍니다 */
+  /** 순서 이름 (예: '묵    도') — 글자 사이 공백으로 폭을 맞춥니다 */
   item: string
   /**
    * 가운데에 크게 넣을 글. 설교 제목처럼 강조할 것이 있을 때만 씁니다.
-   * 예) 성경봉독의 '요한복음 3:1-12'. 비우면 보통 줄로 나옵니다.
+   * 예) 성경봉독의 '요한복음 3:1-12'.
+   *
+   * undefined 면 보통 줄, 문자열(빈 문자열 포함)이면 강조 줄입니다.
+   * 관리자 화면에서 [강조 순서 추가] 로 만든 줄만 이 칸을 갖습니다.
    */
   center?: string
   /** 담당 (예: '다같이', '홍길동 집사') */
@@ -160,19 +163,19 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   date: '',
   dateSub: '주일예배 · 오전 11:00',
   orderPre: [
-    { item: '묵도', by: '다같이' },
-    { item: '찬송', by: '' },
+    { item: '묵    도', by: '다같이' },
+    { item: '찬    송', by: '' },
     { item: '신앙고백', by: '다같이' },
-    { item: '기도', by: '' },
+    { item: '기    도', by: '' },
     { item: '성경봉독', center: '', by: '' },
-    { item: '찬양', by: '찬양팀' },
+    { item: '찬    양', by: '찬양팀' },
   ],
-  sermon: { label: '설교', by: '', title: '', sub: '' },
+  sermon: { label: '설    교', by: '', title: '', sub: '' },
   orderPost: [
     { item: '봉헌찬송', by: '다같이' },
     { item: '봉헌기도', by: '' },
-    { item: '광고', by: '인도자' },
-    { item: '축도', by: '' },
+    { item: '광    고', by: '인도자' },
+    { item: '축    도', by: '' },
   ],
 
   churchNewsLabel: '교회소식',
@@ -212,20 +215,14 @@ const asOrderList = (v: unknown, fallback: BulletinOrderItem[]): BulletinOrderIt
   if (arr.length === 0) return fallback
   return arr.map(raw => {
     const o = asObj(raw)
-    return { item: normalizeOrderName(asStr(o.item)), center: asStr(o.center), by: asStr(o.by) }
+    // center 는 '있고 없고' 를 구분해야 합니다. 없으면 보통 줄, 빈 문자열이면
+    // 강조 줄이되 아직 안 채운 상태입니다. 그래서 asStr 로 뭉개지 않습니다.
+    return {
+      item: asStr(o.item),
+      ...(typeof o.center === 'string' ? { center: o.center } : {}),
+      by: asStr(o.by),
+    }
   })
-}
-
-/**
- * 순서 이름에서 **손으로 넣은 벌림용 공백**을 걷어냅니다.
- *
- * 예전에는 '묵    도' 처럼 공백을 직접 넣어 네 글자 폭을 맞췄습니다. 이제는 화면이
- * 알아서 벌려 주므로 그 공백이 남아 있으면 오히려 두 번 벌어집니다.
- * 공백이 두 칸 이상 이어진 것만 지웁니다 — '주기도문 합송' 처럼 진짜 띄어쓰기는
- * 한 칸이라 그대로 둡니다.
- */
-function normalizeOrderName(s: string): string {
-  return s.replace(/ {2,}/g, '').trim()
 }
 
 const asNewsList = (v: unknown): BulletinNewsItem[] =>
@@ -529,19 +526,19 @@ export function sampleBulletinContent(dateStr: string, displayDate: string): Bul
     date: displayDate,
     dateSub: '주일예배 · 오전 11:00',
     orderPre: [
-      { item: '묵도', by: '다같이' },
-      { item: '찬송', by: '1장' },
+      { item: '묵    도', by: '다같이' },
+      { item: '찬    송', by: '1장' },
       { item: '신앙고백', by: '다같이' },
-      { item: '기도', by: '홍길동 집사' },
+      { item: '기    도', by: '홍길동 집사' },
       { item: '성경봉독', center: '요한복음 3:1-12', by: '홍길동 집사' },
-      { item: '찬양', by: '찬양팀' },
+      { item: '찬    양', by: '찬양팀' },
     ],
-    sermon: { label: '설교', by: '김목사', title: '거듭남에 대하여', sub: '' },
+    sermon: { label: '설    교', by: '김목사', title: '거듭남에 대하여', sub: '' },
     orderPost: [
       { item: '봉헌찬송', by: '다같이' },
       { item: '봉헌기도', by: '김목사' },
-      { item: '광고', by: '인도자' },
-      { item: '축도', by: '김목사' },
+      { item: '광    고', by: '인도자' },
+      { item: '축    도', by: '김목사' },
     ],
     churchNews: [
       {

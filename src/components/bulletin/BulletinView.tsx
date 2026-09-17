@@ -72,35 +72,13 @@ export default function BulletinView({
     return () => ro.disconnect()
   }, [])
 
-  /**
-   * 순서 이름을 그립니다.
-   *
-   * '묵도'(2글자)와 '신앙고백'(4글자)이 섞이면 담당자 칸의 시작선이 들쭉날쭉합니다.
-   * 예전에는 '묵    도' 처럼 공백을 손으로 넣어 맞췄습니다.
-   * → 2~3글자는 글자를 하나씩 떼어 네 글자 폭에 고르게 벌립니다. 네 글자 이상은
-   *   그대로 둡니다.
-   *
-   * CSS 의 text-align-last:justify 로는 안 됩니다. Chrome 이 한글처럼 띄어쓰기가
-   * 없는 글의 **글자 사이**는 벌려 주지 않아서, 상자만 넓어지고 글자는 왼쪽에
-   * 붙어 있습니다(실측 확인).
-   */
-  const orderName = (name: string) => {
-    const chars = [...(name || '').trim()]
-    if (chars.length < 2 || chars.length > 3) return <span className="it">{name}</span>
-    return (
-      <span className="it spread">
-        {chars.map((ch, i) => <span key={i}>{ch}</span>)}
-      </span>
-    )
-  }
-
   /** 예배 순서 한 줄. center 가 있으면 설교처럼 가운데를 크게 씁니다. */
   const orderRow = (o: BulletinOrderItem, key: string) => {
     const center = (o.center || '').trim()
     return (
       <li key={key} className={center ? 'has-center' : undefined}>
         <span className="bul" />
-        {orderName(o.item)}
+        <span className="it">{o.item}</span>
         {center && <span className="ctr">{multiline(center)}</span>}
         <span className="by">{o.by}</span>
       </li>
@@ -228,7 +206,7 @@ export default function BulletinView({
               {/* 설교 : 설교 | 설교 제목(가운데, 한 단계 굵고 크게) | 설교자 */}
               <li className="has-center">
                 <span className="bul" />
-                {orderName(c.sermon.label)}
+                <span className="it">{c.sermon.label}</span>
                 <span className="ctr">
                   {multiline(c.sermon.title)}
                   {c.sermon.sub && <span className="ctr-sub">{c.sermon.sub}</span>}
@@ -408,18 +386,22 @@ const CSS = `
   padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:10pt}
 .bl-root .order li:last-child{border-bottom:0}
 .bl-root .order .bul{width:2.4mm;height:2.4mm;border-radius:50%;background:var(--mid);flex:0 0 auto}
-/* 순서 이름은 네 글자 폭을 기본으로 잡아 담당자 칸의 시작선을 맞춥니다.
-   2~3글자는 .spread 로 글자를 떼어 그 폭에 고르게 벌립니다. */
-.bl-root .order .it{font-weight:700;color:var(--navy);white-space:nowrap;
-  flex:0 0 auto;min-width:4em}
-.bl-root .order .it.spread{display:flex;justify-content:space-between}
+.bl-root .order .it{font-weight:700;color:var(--navy);white-space:pre}
 .bl-root .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
 
 /* 설교 행 : 설교 | 제목(가운데) | 설교자 — 별도 박스 없이 목록 안에 들어갑니다 */
 /* 가운데를 크게 쓰는 줄 : 이름 | 강조할 글(가운데) | 담당
-   설교 제목과 성경봉독 본문이 이 모양을 함께 씁니다. 별도 박스는 두지 않습니다. */
+   설교 제목과 성경봉독 본문이 이 모양을 함께 씁니다. 별도 박스는 두지 않습니다.
+
+   🐛 예전에는 좌우 칸이 내용만큼만 넓어서, 이름과 담당자 글자 수에 따라 가운데
+      글이 줄마다 다른 자리에 놓였습니다(설교와 성경봉독이 서로 어긋나 보임).
+   → 좌우를 같은 고정폭(24mm)으로 잡습니다. 남는 가운데 칸이 줄마다 똑같아지므로
+      강조 글이 늘 같은 자리, 그리고 지면의 한가운데에 옵니다. */
 .bl-root .order li.has-center{padding:3mm 0}
-.bl-root .order li.has-center .by{margin-left:0}
+.bl-root .order li.has-center .it{flex:0 0 20mm}
+/* 오른쪽은 왼쪽보다 5.6mm 넓습니다 — 왼쪽에만 있는 점(2.4mm)과 그 뒤 간격(3.2mm)
+   만큼을 더해 줘야 가운데 글이 지면의 진짜 한가운데에 옵니다. */
+.bl-root .order li.has-center .by{flex:0 0 calc(20mm + 2.4mm + 3.2mm);margin-left:0}
 .bl-root .order .ctr{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
   font-size:11.5pt;font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
 .bl-root .order .ctr-sub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
