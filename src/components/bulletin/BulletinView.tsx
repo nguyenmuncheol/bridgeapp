@@ -520,9 +520,8 @@ const CSS = `
 .bl-root .offering .qr img{position:absolute;inset:0;width:100%;height:100%;
   object-fit:contain;background:#fff}
 /* 교회 홈페이지 QR — 쪽 왼쪽 끝에 붙이고(margin-right:auto), 헌금 계좌는 오른쪽에
-   그대로 둡니다. 헌금 QR(22mm)보다 한 단계 작게 두어 헌금 쪽이 주가 되게 합니다. */
+   그대로 둡니다. 두 QR 은 같은 크기(22mm)로 둡니다. */
 .bl-root .offering .site{margin-right:auto;display:flex;align-items:flex-end;gap:2mm}
-.bl-root .offering .site .qr{width:17mm;height:17mm}
 .bl-root .offering .site .cap{font-size:8pt;font-weight:700;color:var(--navy);
   letter-spacing:.02em;white-space:nowrap;padding-bottom:.6mm}
 `
