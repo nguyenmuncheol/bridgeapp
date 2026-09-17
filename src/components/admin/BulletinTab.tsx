@@ -27,6 +27,7 @@ import {
   parseVersesFromText, buildServingMonths, sampleBulletinContent,
   makeServingMonth, nextServingDate, ymOf, MEAL_OPTIONS,
   rollServingForDate, servingMonthsMatchDate,
+  prayerLeaderForDate, applyPrayerLeaderToOrder,
   SERVING_PRAYER_COL as PRAYER_COL, SERVING_MEAL_COL as MEAL_COL,
 } from '../../lib/bulletinContent'
 import {
@@ -102,6 +103,23 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
   const patch = (next: Partial<BulletinContent>) => setContent(prev => ({ ...prev, ...next }))
 
+  /**
+   * 섬김표에 배정된 이 주일의 대표기도자를 예배 순서 '기도' 줄 담당자로 옮겨 적습니다.
+   * 두 곳에 따로 적게 두면 한쪽만 고치고 지나가기 쉬워서, 섬김표를 기준으로 맞춥니다.
+   */
+  const withPrayerLeader = (c: BulletinContent): BulletinContent => {
+    const name = prayerLeaderForDate(c.servingMonths, dateStr)
+    if (!name) return c
+    const pre = applyPrayerLeaderToOrder(c.orderPre, name)
+    if (pre) return { ...c, orderPre: pre }
+    const post = applyPrayerLeaderToOrder(c.orderPost, name)
+    return post ? { ...c, orderPost: post } : c
+  }
+
+  /** patch 와 같지만, 바꾼 뒤 대표기도자를 예배 순서에 반영합니다 */
+  const patchAndSync = (next: Partial<BulletinContent>) =>
+    setContent(prev => withPrayerLeader({ ...prev, ...next }))
+
   // ── 지난 주보 불러오기 ────────────────────────────────────────────────
   const handleCopyPrevious = async () => {
     const rows = await dbFetchBulletinsWithContent(10).catch(() => [] as BulletinData[])
@@ -129,6 +147,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       // 대표기도 배정은 달마다 정해지므로 그대로 가져옵니다(자리만 옮겨서).
       prayerAssignments: rolled.prayerAssignments.map(a => ({ ...a, notifiedAt: undefined })),
     })
+    // 가져온 섬김표에 이 주일 대표기도자가 있으면 예배 순서에도 채워 둡니다
+    setContent(c => withPrayerLeader(c))
     setStatus('draft')
     showToast(`📋 ${formatBulletinDisplay(source.date)} 주보를 불러왔습니다`)
   }
@@ -224,17 +244,6 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
    * 줄 오른쪽의 가운데정렬 아이콘으로 켜고 끕니다.
    */
   const orderEditor = (list: BulletinOrderItem[], onChange: (next: BulletinOrderItem[]) => void) => {
-    /** 그 줄의 '가운데 강조' 칸을 켜고 끕니다 (끄면 적어 둔 글도 지워집니다) */
-    const toggleCenter = (i: number) => onChange(list.map((x, j) => {
-      if (j !== i) return x
-      if (typeof x.center === 'string') {
-        const { center, ...rest } = x
-        void center
-        return rest
-      }
-      return { ...x, center: '' }
-    }))
-
     return (
       <div className="space-y-1.5">
         {list.map((o, i) => (
@@ -252,14 +261,6 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 placeholder="담당"
                 onChange={e => onChange(list.map((x, j) => j === i ? { ...x, by: e.target.value } : x))}
               />
-              <button
-                className={miniBtn + (typeof o.center === 'string' ? ' text-blue-600 bg-blue-50' : '')}
-                onClick={() => toggleCenter(i)}
-                aria-label="가운데 강조 켜기/끄기"
-                title="가운데 강조 켜기/끄기"
-              >
-                <AlignCenter size={13} />
-              </button>
               <button className={miniBtn} disabled={i === 0} onClick={() => onChange(moveItem(list, i, -1))} aria-label="위로"><ChevronUp size={13} /></button>
               <button className={miniBtn} disabled={i === list.length - 1} onClick={() => onChange(moveItem(list, i, 1))} aria-label="아래로"><ChevronDown size={13} /></button>
               <button className={miniBtn} onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label="삭제"><Trash2 size={13} /></button>
@@ -338,7 +339,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     )
 
     const others = content.prayerAssignments.filter(a => !(a.monthIndex === mi && a.rowIndex === ri))
-    patch({
+    // 이 주보의 주일에 배정한 것이면 예배 순서 '기도' 줄에도 바로 반영됩니다
+    patchAndSync({
       servingMonths: months,
       prayerAssignments: userId ? [...others, { monthIndex: mi, rowIndex: ri, userId, name }] : others,
     })
@@ -629,13 +631,15 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 </p>
                 <button
                   className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-2xs font-bold cursor-pointer"
-                  onClick={() => patch(rollServingForDate(content.servingMonths, content.prayerAssignments, dateStr))}
+                  onClick={() => patchAndSync(rollServingForDate(content.servingMonths, content.prayerAssignments, dateStr))}
                 >
                   달 맞추기
                 </button>
               </div>
             )}
             <p className="text-3xs text-gray-400 leading-relaxed">
+              대표기도에 성도를 고르면 그 주일 주보의 예배 순서 <strong>기도</strong> 줄
+              담당자로 자동으로 들어갑니다.
               달을 고르면 그 달의 주일 날짜로 줄이 깔립니다. 모자라거나 남으면
               줄 끝의 휴지통으로 지우고 <strong>주일 줄 추가</strong>로 더하세요.
               달이 넘어가면 <strong>달 맞추기</strong>로 뒤칸 표를 앞으로 옮겨 옵니다
@@ -696,22 +700,6 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               </div>
             ))}
 
-            {/* 고른 성도는 계정과 연결되어 저장됩니다. 알림 발송 조건은 추후 별도로 정합니다. */}
-            {content.prayerAssignments.length > 0 && (
-              <div className="p-2.5 bg-blue-50 rounded-xl space-y-1.5">
-                <p className="text-2xs font-bold text-blue-800">
-                  대표기도 배정 {content.prayerAssignments.length}명 (계정 연결됨)
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {content.prayerAssignments.map(a => (
-                    <span key={`${a.monthIndex}-${a.rowIndex}`}
-                      className="px-2 py-0.5 rounded-full text-3xs font-bold bg-white text-blue-700 border border-blue-200">
-                      {a.name || '이름 없음'}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* 공지 */}

@@ -473,6 +473,44 @@ export function buildServingMonths(dateStr: string): BulletinServingMonth[] {
   return [0, 1].map(offset => makeServingMonth(ymOf(dateStr, offset)))
 }
 
+/**
+ * 섬김표에서 이 주일에 배정된 대표기도자 이름. 배정이 없으면 빈 문자열.
+ *
+ * 'YYYY-MM-DD' 를 표의 ym('YYYY-MM')과 줄 이름('9/20')으로 바꿔 찾습니다.
+ */
+export function prayerLeaderForDate(months: BulletinServingMonth[], dateStr: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '')
+  if (!m) return ''
+  const month = months.find(x => x.ym === `${m[1]}-${m[2]}`)
+  if (!month) return ''
+  const label = `${Number(m[2])}/${Number(m[3])}`
+  const row = month.rows.find(r => (r[SERVING_DATE_COL] || '').trim() === label)
+  return (row?.[SERVING_PRAYER_COL] || '').trim()
+}
+
+/**
+ * 예배 순서의 '기도' 줄 담당자를 대표기도자 이름으로 채웁니다.
+ *
+ * 섬김표에 누구를 배정했으면 예배 순서에도 같은 이름이 들어가야 합니다. 두 곳에
+ * 따로 적게 두면 한쪽만 고치고 지나가기 쉽습니다 — 실제로 헌금 계좌에서 그렇게
+ * 어긋났던 적이 있습니다.
+ *
+ * '기도'/'대표기도' 와 정확히 같은 이름의 줄만 찾습니다('봉헌기도' 는 걸리지
+ * 않습니다). 바꿀 것이 없으면 null 을 돌려줍니다.
+ */
+export function applyPrayerLeaderToOrder(
+  order: BulletinOrderItem[],
+  name: string
+): BulletinOrderItem[] | null {
+  if (!name) return null
+  const i = order.findIndex(o => {
+    const key = o.item.replace(/\s+/g, '')
+    return key === '기도' || key === '대표기도'
+  })
+  if (i < 0 || order[i].by === name) return null
+  return order.map((o, j) => (j === i ? { ...o, by: name } : o))
+}
+
 /** 섬김표가 이 주보의 달(이번 달 + 다음 달)을 이미 담고 있는지 */
 export function servingMonthsMatchDate(months: BulletinServingMonth[], dateStr: string): boolean {
   return [0, 1].every((offset, i) => months[i]?.ym === ymOf(dateStr, offset))
