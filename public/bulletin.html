@@ -47,6 +47,7 @@
 
   --pad:11mm;          /* 페이지 안쪽 여백 */
   --footh:9mm;         /* 꼬릿말이 차지하는 높이 (네 쪽 모두 같은 자리) */
+  --footdrop:3.2mm;    /* 꼬릿말을 쪽 아래로 더 내리는 양 (한 줄 ≈ 7.5pt × 1.2) */
 
   /* 접힘선에서 이어지는 원 — 지름을 바꾸면 양쪽이 같이 움직입니다 */
   --seam-top:58mm;     /* 앞면(4·1쪽) 위쪽 베이지 원 지름 */
@@ -109,7 +110,8 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
 
 /* 꼬릿말 : 네 쪽 모두 페이지 아래에서 똑같은 높이에 고정 ─────────────── */
 .page > .foot{
-  position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
+  position:absolute;left:var(--pad);right:var(--pad);
+  bottom:calc(var(--pad) - var(--footdrop));
   height:var(--footh);display:flex;align-items:flex-end;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }

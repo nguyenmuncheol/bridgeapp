@@ -324,6 +324,7 @@ const CSS = `
   --sans:"Pretendard Variable",Pretendard,"맑은 고딕","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   --pad:11mm;
   --footh:9mm;
+  --footdrop:3.2mm;    /* 꼬릿말을 쪽 아래로 더 내리는 양 (한 줄 ≈ 7.5pt × 1.2) */
   --seam-top:58mm;
   --seam-bot:46mm;
   /* 담는 칸 너비를 그대로 따라가게 합니다.
@@ -378,7 +379,8 @@ const CSS = `
 .bl-root .membernews{margin-top:auto;margin-bottom:auto;padding:6mm 0}
 
 .bl-root .page > .foot{
-  position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);
+  position:absolute;left:var(--pad);right:var(--pad);
+  bottom:calc(var(--pad) - var(--footdrop));
   height:var(--footh);display:flex;align-items:flex-end;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }
