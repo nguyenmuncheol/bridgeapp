@@ -118,6 +118,9 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
    보였습니다. 위치를 맞춰도 크기가 다르면 어긋나 보입니다. */
 .foot .dot{width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
   flex:0 0 auto;transform:translateY(-.58mm)}
+/* 점 크기를 맞춘 뒤에도 글자가 점보다 0.19mm 만큼 위에 있었습니다. 점은 이미
+   자리가 맞으므로 **글자 쪽을** 그만큼 내려 점 한가운데에 맞춥니다. */
+.foot > span:not(.dot){transform:translateY(.19mm)}
 .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 
@@ -244,6 +247,11 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
   background:#fff;display:flex;align-items:center;justify-content:center;
   font-size:7pt;letter-spacing:.2em;color:var(--muted);overflow:hidden}
 .offering .qr img{width:100%;height:100%;object-fit:contain}
+/* 교회 홈페이지 QR — 쪽 왼쪽 끝에 붙이고, 헌금 계좌는 오른쪽에 그대로 둡니다 */
+.offering .site{margin-right:auto;display:flex;align-items:flex-end;gap:2mm}
+.offering .site .qr{width:17mm;height:17mm}
+.offering .site .cap{font-size:8pt;font-weight:700;color:var(--navy);
+  letter-spacing:.02em;white-space:nowrap;padding-bottom:.6mm}
 
 /* ── 화면: 좁은 화면에서 축소 ───────────────────────────────────────── */
 @media screen and (max-width:640px){ .doc{zoom:.62} }
@@ -506,6 +514,8 @@ const 주보 = {
     '예금주: LIMHYEYOUNG(임혜영)',
   ],
   offeringQr: '',        /* QR 이미지 주소를 넣으면 QR 칸에 표시됩니다. 예: 'qr.png' */
+  homepageQr: 'homepage.png',   /* 교회 홈페이지 QR. 비우면 그 칸이 통째로 빠집니다 */
+  homepageLabel: '교회홈페이지',
 };
 
 /* ╔══════════════════════════════════════════════════════════════════════╗
@@ -606,6 +616,10 @@ const 주보 = {
   }
 
   set('offering', `
+    ${d.homepageQr ? `<div class="site">
+      <div class="qr"><img src="${esc(d.homepageQr)}" alt="교회 홈페이지 QR"></div>
+      <div class="cap">${esc(d.homepageLabel || '')}</div>
+    </div>` : ''}
     <div class="txt">
       <div class="lab">${esc(d.offeringLabel)}</div>
       <div class="ln">${(d.offeringLines || []).map(esc).join('<br>')}</div>

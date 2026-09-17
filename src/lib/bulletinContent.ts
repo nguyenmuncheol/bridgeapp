@@ -127,6 +127,10 @@ export interface BulletinContent {
   offeringLabel: string
   offeringLines: string[]
   offeringQr: string
+  /** 교회 홈페이지 QR (헌금 계좌 왼쪽에 놓입니다). 비우면 그 칸이 통째로 빠집니다. */
+  homepageQr: string
+  /** 홈페이지 QR 옆에 적는 글자 */
+  homepageLabel: string
 }
 
 /**
@@ -155,6 +159,13 @@ export const OFFERING_ACCOUNT_LINES = [
  * 파일이 없으면 주보에는 'QR' 글자만 나오고 깨진 그림은 보이지 않습니다.
  */
 export const OFFERING_QR_SRC = '/offering-qr.png'
+
+/**
+ * 교회 홈페이지 주소 QR — public/homepage.png.
+ * 헌금 계좌 왼쪽에 'QR + 교회홈페이지' 로 놓입니다.
+ */
+export const HOMEPAGE_QR_SRC = '/homepage.png'
+export const HOMEPAGE_QR_LABEL = '교회홈페이지'
 
 /** 새 주보를 만들 때의 기본값. 매주 바뀌지 않는 항목은 미리 채워 둡니다. */
 export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
@@ -200,6 +211,8 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   // 성도가 서로 다른 계좌를 보게 되므로, 계좌가 바뀌면 두 곳을 함께 고쳐야 합니다.
   offeringLines: OFFERING_ACCOUNT_LINES,
   offeringQr: OFFERING_QR_SRC,
+  homepageQr: HOMEPAGE_QR_SRC,
+  homepageLabel: HOMEPAGE_QR_LABEL,
 }
 
 // ── 아래는 jsonb → 타입 변환용 도우미들 ─────────────────────────────────
@@ -322,6 +335,10 @@ export function normalizeBulletinContent(raw: unknown): BulletinContent {
     offeringLabel: asStr(c.offeringLabel, d.offeringLabel),
     offeringLines: asStrList(c.offeringLines),
     offeringQr:    asStr(c.offeringQr),
+    // 옛 주보에는 이 두 값이 없습니다. 기본값으로 채워 주면 지난 주보를 다시
+    // 저장하지 않아도 홈페이지 QR 이 같이 나옵니다.
+    homepageQr:    asStr(c.homepageQr, d.homepageQr),
+    homepageLabel: asStr(c.homepageLabel, d.homepageLabel),
   }
 }
 

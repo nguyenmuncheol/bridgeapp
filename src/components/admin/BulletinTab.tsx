@@ -15,7 +15,7 @@
  * 계정과 연결되어(prayerAssignments) 나중에 그 사람에게만 알림을 보낼 수 있습니다.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Save, Eye, EyeOff, Printer,
   RefreshCw, Copy, Sparkles, ChevronRight, Undo2, AlignCenter,
@@ -101,7 +101,30 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
   const isLoading = loadedFor !== dateStr
 
+  /**
+   * 미리보기에 넘길 내용.
+   *
+   * 🐛 미리보기를 켜 두면 글자 하나 칠 때마다 A5 네 쪽을 통째로 다시 그렸습니다.
+   *    폰에서는 이 계산이 한글 조합(마지막 글자를 만드는 중)보다 오래 걸려서,
+   *    조합 중이던 마지막 글자가 통째로 날아가곤 했습니다.
+   *    useDeferredValue 로 미리보기만 한 박자 늦게 그리게 하면, 타이핑은 먼저
+   *    처리되고 미리보기는 손을 멈춘 뒤 따라옵니다.
+   */
+  const previewContent = useDeferredValue(content)
+
   const patch = (next: Partial<BulletinContent>) => setContent(prev => ({ ...prev, ...next }))
+
+  /**
+   * patch 와 같지만 바꿀 값을 **지금 상태에서** 계산합니다.
+   *
+   * 🐛 목록 칸(공지·헌금·절)은 `patch({ notices: content.notices.map(...) })` 처럼
+   *    화면을 그릴 때의 content 를 보고 새 배열을 만들었습니다. 글자를 빨리 치면
+   *    두 번의 입력이 같은 content 를 보고 계산돼, 나중 것이 앞 것을 덮어씁니다
+   *    (= 방금 친 글자가 안 들어간 것처럼 보입니다). prev 로 계산하면 사라지지
+   *    않습니다.
+   */
+  const patchFrom = (make: (prev: BulletinContent) => Partial<BulletinContent>) =>
+    setContent(prev => ({ ...prev, ...make(prev) }))
 
   /**
    * 섬김표에 배정된 이 주일의 대표기도자를 예배 순서 '기도' 줄 담당자로 옮겨 적습니다.
@@ -576,20 +599,20 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                   className={inputCls + ' w-11 shrink-0 text-center'}
                   value={v.n}
                   inputMode="numeric"
-                  onChange={e => patch({ verses: content.verses.map((x, j) => j === i ? { ...x, n: Number(e.target.value) || x.n } : x) })}
+                  onChange={e => patchFrom(c => ({ verses: c.verses.map((x, j) => j === i ? { ...x, n: Number(e.target.value) || x.n } : x) }))}
                 />
                 <textarea
                   className={inputCls + ' flex-1 basis-0 leading-relaxed'}
                   rows={2}
                   value={v.t}
-                  onChange={e => patch({ verses: content.verses.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })}
+                  onChange={e => patchFrom(c => ({ verses: c.verses.map((x, j) => j === i ? { ...x, t: e.target.value } : x) }))}
                 />
-                <button className={miniBtn} onClick={() => patch({ verses: content.verses.filter((_, j) => j !== i) })} aria-label="삭제">
+                <button className={miniBtn} onClick={() => patchFrom(c => ({ verses: c.verses.filter((_, j) => j !== i) }))} aria-label="삭제">
                   <Trash2 size={13} />
                 </button>
               </div>
             ))}
-            <button className={addBtn} onClick={() => patch({ verses: [...content.verses, { n: content.verses.length + 1, t: '' }] })}>
+            <button className={addBtn} onClick={() => patchFrom(c => ({ verses: [...c.verses, { n: c.verses.length + 1, t: '' }] }))}>
               <Plus size={12} /> 절 추가
             </button>
           </div>
@@ -716,13 +739,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               {content.notices.map((n, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <input className={inputCls + ' flex-1 basis-0'} value={n}
-                    onChange={e => patch({ notices: content.notices.map((x, j) => j === i ? e.target.value : x) })} />
-                  <button className={miniBtn} onClick={() => patch({ notices: content.notices.filter((_, j) => j !== i) })} aria-label="삭제">
+                    onChange={e => patchFrom(c => ({ notices: c.notices.map((x, j) => j === i ? e.target.value : x) }))} />
+                  <button className={miniBtn} onClick={() => patchFrom(c => ({ notices: c.notices.filter((_, j) => j !== i) }))} aria-label="삭제">
                     <Trash2 size={13} />
                   </button>
                 </div>
               ))}
-              <button className={addBtn} onClick={() => patch({ notices: [...content.notices, ''] })}>
+              <button className={addBtn} onClick={() => patchFrom(c => ({ notices: [...c.notices, ''] }))}>
                 <Plus size={12} /> 공지 추가
               </button>
             </div>
@@ -739,19 +762,31 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               {content.offeringLines.map((l, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <input className={inputCls + ' flex-1 basis-0'} value={l}
-                    onChange={e => patch({ offeringLines: content.offeringLines.map((x, j) => j === i ? e.target.value : x) })} />
-                  <button className={miniBtn} onClick={() => patch({ offeringLines: content.offeringLines.filter((_, j) => j !== i) })} aria-label="삭제">
+                    onChange={e => patchFrom(c => ({ offeringLines: c.offeringLines.map((x, j) => j === i ? e.target.value : x) }))} />
+                  <button className={miniBtn} onClick={() => patchFrom(c => ({ offeringLines: c.offeringLines.filter((_, j) => j !== i) }))} aria-label="삭제">
                     <Trash2 size={13} />
                   </button>
                 </div>
               ))}
-              <button className={addBtn} onClick={() => patch({ offeringLines: [...content.offeringLines, ''] })}>
+              <button className={addBtn} onClick={() => patchFrom(c => ({ offeringLines: [...c.offeringLines, ''] }))}>
                 <Plus size={12} /> 줄 추가
               </button>
             </div>
             <input className={inputCls + ' w-full mt-1.5'} value={content.offeringQr}
               placeholder="QR 이미지 주소 (비우면 QR 자리만 표시)"
               onChange={e => patch({ offeringQr: e.target.value })} />
+
+            <label className="block text-2xs font-bold text-gray-500 mt-3 mb-1">
+              교회 홈페이지 QR (헌금 계좌 왼쪽)
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input className={inputCls + ' flex-1 basis-0'} value={content.homepageQr}
+                placeholder="QR 이미지 주소 (비우면 이 칸이 빠집니다)"
+                onChange={e => patch({ homepageQr: e.target.value })} />
+              <input className={inputCls + ' w-28'} value={content.homepageLabel}
+                placeholder="교회홈페이지"
+                onChange={e => patch({ homepageLabel: e.target.value })} />
+            </div>
           </div>
         </>
       ))}
@@ -764,7 +799,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           </p>
           {/* flex 로 감싸면 BulletinView 가 내용 너비(561px)로 부풀어 축소가 걸리지
               않습니다. 가운데 정렬은 BulletinView 안쪽(.doc)이 이미 합니다. */}
-          <BulletinView content={content} mode="web" />
+          <BulletinView content={previewContent} mode="web" />
         </div>
       )}
 

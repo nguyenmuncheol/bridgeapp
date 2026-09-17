@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { BulletinContent, BulletinOrderItem, MEMO_LABEL } from '../../lib/bulletinContent'
 
 /**
@@ -40,7 +40,11 @@ interface BulletinViewProps {
 /** A5 한 쪽의 너비(148.5mm)를 화면 픽셀로. 96dpi 기준 148.5 / 25.4 * 96 */
 const PAGE_WIDTH_PX = 561
 
-export default function BulletinView({
+/**
+ * memo 로 감싼 이유: 관리자 주보 탭이 글자 하나마다 새로 그리면 타이핑이 밀립니다.
+ * content 가 그대로면 다시 그리지 않습니다(같은 객체일 때만 건너뜁니다).
+ */
+function BulletinView({
   content,
   mode = 'web',
   logoSrc = '/logo-wide@2x.png',
@@ -159,6 +163,20 @@ export default function BulletinView({
             )}
 
             <div className="offering">
+              {/* 교회 홈페이지 QR — 헌금 계좌 왼쪽. 주소를 비우면 칸째로 빠집니다. */}
+              {c.homepageQr && (
+                <div className="site">
+                  <div className="qr">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={c.homepageQr}
+                      alt="교회 홈페이지 QR"
+                      onError={e => { e.currentTarget.style.display = 'none' }}
+                    />
+                  </div>
+                  <div className="cap">{c.homepageLabel}</div>
+                </div>
+              )}
               <div className="txt">
                 <div className="lab">{c.offeringLabel}</div>
                 <div className="ln">
@@ -371,6 +389,10 @@ const CSS = `
    값으로, 6배 확대해 픽셀로 잰 것입니다. 글자 크기를 바꾸면 이 값도 다시 재세요. */
 .bl-root .foot .dot{width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
   flex:0 0 auto;transform:translateY(-.58mm)}
+/* 점 크기를 맞춘 뒤에도 글자가 점보다 0.19mm 만큼 위에 있었습니다. 점은 이미
+   자리가 맞으므로 **글자 쪽을** 그만큼 내려 점 한가운데에 맞춥니다.
+   (점을 더 올리면 꼬릿말 띠 위로 떠오릅니다) */
+.bl-root .foot > span:not(.dot){transform:translateY(.19mm)}
 .bl-root .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 
@@ -497,6 +519,12 @@ const CSS = `
 .bl-root .offering .qr .ph{font-size:7pt;letter-spacing:.2em;color:var(--muted)}
 .bl-root .offering .qr img{position:absolute;inset:0;width:100%;height:100%;
   object-fit:contain;background:#fff}
+/* 교회 홈페이지 QR — 쪽 왼쪽 끝에 붙이고(margin-right:auto), 헌금 계좌는 오른쪽에
+   그대로 둡니다. 헌금 QR(22mm)보다 한 단계 작게 두어 헌금 쪽이 주가 되게 합니다. */
+.bl-root .offering .site{margin-right:auto;display:flex;align-items:flex-end;gap:2mm}
+.bl-root .offering .site .qr{width:17mm;height:17mm}
+.bl-root .offering .site .cap{font-size:8pt;font-weight:700;color:var(--navy);
+  letter-spacing:.02em;white-space:nowrap;padding-bottom:.6mm}
 `
 
 /* 인쇄 전용 — mode="print" 일 때만 문서에 들어갑니다 */
@@ -511,3 +539,5 @@ const PRINT_CSS = `
   .bl-root .page{order:0;box-shadow:none;width:148.5mm}
 }
 `
+
+export default memo(BulletinView)
