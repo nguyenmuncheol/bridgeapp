@@ -364,8 +364,11 @@ const CSS = `
   height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }
+/* 점은 글자의 대문자 높이 한가운데에 맞춥니다. flex-end 로 내려온 뒤 올리는
+   양(0.3mm)은 눈대중이 아니라 실제로 찍어서 잰 값입니다 — 0.6mm 는 0.29mm 만큼
+   과하게 올라가 글자보다 떠 보였습니다. */
 .bl-root .foot .dot{width:2.6mm;height:2.6mm;border-radius:50%;background:var(--navy);
-  flex:0 0 auto;transform:translateY(-.6mm)}
+  flex:0 0 auto;transform:translateY(-.3mm)}
 .bl-root .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 
