@@ -153,9 +153,10 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
 .block{margin-top:5.2mm}
 .block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
 .block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
-/* 좌우 여백을 0 으로 둡니다. 안쪽 여백이 있으면 교우소식 글이 교회소식보다
-   그만큼 안으로 밀려 들어가 두 소식의 시작 위치가 어긋나 보입니다. */
-.newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm 0}
+/* 두 소식의 글이 같은 선에서 시작하도록, 교우소식 상자의 안쪽 여백(5.4mm)과
+   같은 값을 교회소식 쪽에도 줍니다(.news-in). 라벨·제목·본문 모두 같은 선입니다. */
+.newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm}
+.news-in{padding-left:5.4mm}
 .newsbox .block:first-child{margin-top:0}
 
 /* ═══ 3쪽 · 성경말씀 ══════════════════════════════════════════════════ */
@@ -319,12 +320,12 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
            top:-22mm;left:-16mm;opacity:.55"></div>
       <div class="blob seam-b-l"></div>
 
-      <div><span class="pill" id="church-news-label"></span></div>
-      <div id="church-news"></div>
+      <div class="news-in"><span class="pill" id="church-news-label"></span></div>
+      <div class="news-in" id="church-news"></div>
 
       <!-- 교우소식은 남는 공간의 가운데에 — 내용 길이에 따라 자동으로 자리잡습니다 -->
       <div class="membernews">
-        <div><span class="pill soft" id="member-news-label"></span></div>
+        <div class="news-in"><span class="pill soft" id="member-news-label"></span></div>
         <div class="newsbox" id="member-news"></div>
       </div>
 

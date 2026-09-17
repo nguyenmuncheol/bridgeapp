@@ -315,6 +315,36 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     })
   }
 
+  /**
+   * 섬김표에서 주차 줄 하나를 지웁니다.
+   *
+   * 지운 줄에 배정돼 있던 대표기도자는 함께 지우고, 그 아래 줄들의 번호(rowIndex)는
+   * 한 칸씩 당겨 줍니다. 이걸 빼먹으면 지운 뒤 엉뚱한 줄의 이름이 바뀝니다.
+   * 남은 줄의 '1주/2주…' 이름도 다시 매깁니다.
+   */
+  const removeServingRow = (mi: number, ri: number) => {
+    patch({
+      servingMonths: content.servingMonths.map((x, j) =>
+        j !== mi ? x : {
+          ...x,
+          rows: x.rows
+            .filter((_, k) => k !== ri)
+            .map((r, k) => [`${k + 1}주`, r[PRAYER_COL] || '', r[MEAL_COL] || '']),
+        }),
+      prayerAssignments: content.prayerAssignments
+        .filter(a => !(a.monthIndex === mi && a.rowIndex === ri))
+        .map(a => (a.monthIndex === mi && a.rowIndex > ri ? { ...a, rowIndex: a.rowIndex - 1 } : a)),
+    })
+  }
+
+  /** 섬김표에 주차 줄 하나를 더합니다 (5주가 있는 달인데 줄이 모자랄 때) */
+  const addServingRow = (mi: number) => {
+    patch({
+      servingMonths: content.servingMonths.map((x, j) =>
+        j !== mi ? x : { ...x, rows: [...x.rows, [`${x.rows.length + 1}주`, '', '']] }),
+    })
+  }
+
   const prayerUserIdAt = (mi: number, ri: number) =>
     content.prayerAssignments.find(a => a.monthIndex === mi && a.rowIndex === ri)?.userId || ''
 
@@ -533,6 +563,10 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 표 다시 만들기
               </button>
             </div>
+            <p className="text-3xs text-gray-400 leading-relaxed">
+              줄 수는 그 달의 실제 주일 수에 맞춰 만들어집니다. 모자라거나 남으면
+              줄 끝의 휴지통으로 지우고 <strong>주차 줄 추가</strong>로 더하세요.
+            </p>
 
             {content.servingMonths.map((m, mi) => (
               <div key={mi} className="p-2.5 bg-gray-50 rounded-xl space-y-1.5">
@@ -549,6 +583,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                   <span className="w-9 shrink-0" />
                   <span className="flex-1 text-3xs font-bold text-gray-400">대표기도 (성도 선택)</span>
                   <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-400">식사</span>
+                  <span className="w-[26px] shrink-0" />
                 </div>
                 {m.rows.map((r, ri) => (
                   <div key={ri} className="flex items-center gap-1.5">
@@ -572,8 +607,20 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                       <option value="">—</option>
                       {MEAL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
+                    {/* 주일이 네 번인 달은 남는 줄을 여기서 지웁니다 */}
+                    <button
+                      className={miniBtn + ' shrink-0'}
+                      onClick={() => removeServingRow(mi, ri)}
+                      aria-label={`${r[0]} 줄 삭제`}
+                      title="이 주차 줄 삭제"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 ))}
+                <button className={addBtn} onClick={() => addServingRow(mi)}>
+                  <Plus size={12} /> 주차 줄 추가
+                </button>
               </div>
             ))}
 

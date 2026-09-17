@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { BulletinContent } from '../../lib/bulletinContent'
+import { BulletinContent, MEMO_LABEL } from '../../lib/bulletinContent'
 
 /**
  * 주보 렌더러 — 웹 보기와 인쇄본을 **같은 코드**로 그립니다.
@@ -212,8 +212,8 @@ export default function BulletinView({
             <div className="blob" style={{ width: '56mm', height: '56mm', background: 'var(--light)', top: '-22mm', left: '-16mm', opacity: 0.55 }} />
             <div className="blob seam-b-l" />
 
-            <div><span className="pill">{c.churchNewsLabel}</span></div>
-            <div>
+            <div className="news-in"><span className="pill">{c.churchNewsLabel}</span></div>
+            <div className="news-in">
               {c.churchNews.map((n, i) => (
                 <div className="block" key={i}>
                   <h3>{n.title}</h3>
@@ -224,7 +224,7 @@ export default function BulletinView({
 
             {/* 교우소식은 남는 공간의 가운데에 — 내용 길이에 따라 자동으로 자리잡습니다 */}
             <div className="membernews">
-              <div><span className="pill soft">{c.memberNewsLabel}</span></div>
+              <div className="news-in"><span className="pill soft">{c.memberNewsLabel}</span></div>
               <div className="newsbox">
                 {c.memberNews.map((n, i) => (
                   <div className="block" key={i}>
@@ -258,7 +258,7 @@ export default function BulletinView({
 
             {/* 성경 본문 길이에 따라 남는 공간을 아래 끝까지 자동으로 채웁니다 */}
             <div className="memo">
-              <div className="lab">{c.memoLabel}</div>
+              <div className="lab">{MEMO_LABEL}</div>
               <div className="lines" />
             </div>
 
@@ -385,9 +385,10 @@ const CSS = `
 .bl-root .block{margin-top:5.2mm}
 .bl-root .block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
 .bl-root .block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
-/* 좌우 여백을 0 으로 둡니다. 안쪽 여백이 있으면 교우소식 글이 교회소식보다
-   그만큼 안으로 밀려 들어가 두 소식의 시작 위치가 어긋나 보입니다. */
-.bl-root .newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm 0}
+/* 두 소식의 글이 같은 선에서 시작하도록, 교우소식 상자의 안쪽 여백(5.4mm)과
+   같은 값을 교회소식 쪽에도 줍니다(.news-in). 라벨·제목·본문 모두 같은 선입니다. */
+.bl-root .newsbox{margin-top:4mm;background:var(--pale);padding:5.4mm}
+.bl-root .news-in{padding-left:5.4mm}
 .bl-root .newsbox .block:first-child{margin-top:0}
 
 /* 3쪽 · 성경말씀 */

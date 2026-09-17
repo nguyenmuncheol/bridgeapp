@@ -85,7 +85,6 @@ export interface BulletinContent {
   scriptureLabel: string
   scriptureRef: string
   verses: BulletinVerse[]
-  memoLabel: string
 
   // 4쪽 · 목회칼럼 · 섬김 · 공지 · 헌금
   messageLabel: string
@@ -101,6 +100,18 @@ export interface BulletinContent {
   offeringLines: string[]
   offeringQr: string
 }
+
+/**
+ * 성경 본문 아래 메모 칸의 제목.
+ *
+ * 🐛 예전에는 이 값을 주보마다 content 에 넣어 저장했습니다. 그런데 이것을 고칠
+ *    입력칸이 관리자 화면에 없습니다. 그래서 '묵상 메모' 시절에 저장된 주보는
+ *    이름을 '설교 메모' 로 바꾼 뒤에도 영영 옛 이름을 달고 나왔습니다
+ *    (화면에서도, 인쇄본에서도).
+ * → 주보마다 다를 이유가 없는 값이므로 고정값으로 옮깁니다. 저장된 옛 값은
+ *   무시되므로 지난 주보를 하나하나 다시 저장할 필요가 없습니다.
+ */
+export const MEMO_LABEL = '설교 메모'
 
 /**
  * 헌금 계좌 — 메인 화면 "온라인 헌금 안내"(HomeTab)에 적힌 것과 같은 계좌입니다.
@@ -141,7 +152,6 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   scriptureLabel: '성경말씀',
   scriptureRef: '',
   verses: [],
-  memoLabel: '설교 메모',
 
   messageLabel: 'MESSAGE',
   messageTitle: '',
@@ -255,7 +265,6 @@ export function normalizeBulletinContent(raw: unknown): BulletinContent {
     scriptureLabel: asStr(c.scriptureLabel, d.scriptureLabel),
     scriptureRef:   asStr(c.scriptureRef),
     verses:         asVerses(c.verses),
-    memoLabel:      asStr(c.memoLabel, d.memoLabel),
 
     messageLabel:  asStr(c.messageLabel, d.messageLabel),
     messageTitle:  asStr(c.messageTitle),
@@ -301,6 +310,23 @@ export function isBulletinContentFilled(c: BulletinContent | null | undefined): 
  *   2) 번호가 없는 경우          한 줄에 한 절
  *      → 줄 단위로 자르고 1부터 번호를 매깁니다.
  */
+/**
+ * 성경 사이트에서 복사해 오면 본문에 주석 기호가 딸려옵니다.
+ *
+ *   "…주가 쓰시겠다 하라 1)그리하면 즉시…"   ← 난외주 번호
+ *   "ㄱ)시온 딸에게 이르기를…"                 ← 관주(다른 구절 참조)
+ *
+ * 주보에 실을 본문에는 필요 없으므로 떼어 냅니다. 숫자나 한글 자음(ㄱ~ㅎ)에
+ * 닫는 괄호가 붙은 것만 지웁니다. "(요한복음)" 처럼 한글 음절로 끝나는 괄호는
+ * 건드리지 않습니다 — 본문 안의 정상적인 괄호까지 지워 버리면 안 되니까요.
+ */
+function stripVerseAnnotations(t: string): string {
+  return t
+    .replace(/\(?(?:\d{1,3}|[ㄱ-ㅎ])\)/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 export function parseVersesFromText(raw: string): BulletinVerse[] {
   const text = (raw || '').trim()
   if (!text) return []
@@ -314,7 +340,7 @@ export function parseVersesFromText(raw: string): BulletinVerse[] {
     numbered.forEach((m, i) => {
       const start = (m.index ?? 0) + m[0].length
       const end = i + 1 < numbered.length ? (numbered[i + 1].index ?? text.length) : text.length
-      const t = text.slice(start, end).replace(/\s+/g, ' ').trim()
+      const t = stripVerseAnnotations(text.slice(start, end).replace(/\s+/g, ' '))
       if (t) out.push({ n: Number(m[1]), t })
     })
     if (out.length > 0) return out
@@ -323,31 +349,44 @@ export function parseVersesFromText(raw: string): BulletinVerse[] {
   // 2) 줄 단위
   return text
     .split('\n')
-    .map(l => l.replace(/\s+/g, ' ').trim())
+    .map(l => stripVerseAnnotations(l.replace(/\s+/g, ' ')))
     .filter(Boolean)
     .map((t, i) => ({ n: i + 1, t }))
+}
+
+/** 그 달에 주일이 몇 번 있는지 (네 번인 달도, 다섯 번인 달도 있습니다) */
+function countSundays(year: number, month0: number): number {
+  const lastDay = new Date(year, month0 + 1, 0).getDate()
+  let n = 0
+  for (let d = 1; d <= lastDay; d++) {
+    if (new Date(year, month0, d).getDay() === 0) n++
+  }
+  return n
 }
 
 /**
  * 'YYYY-MM-DD' 주일을 기준으로 섬김표 두 달치(이번 달 + 다음 달) 틀을 만듭니다.
  * 이름은 비워 두고 주차 줄만 깔아 둡니다.
+ *
+ * 줄 수는 **그 달의 실제 주일 수**에 맞춥니다. 예전에는 무조건 다섯 줄을 깔아서
+ * 주일이 네 번인 달에는 빈 '5주' 줄이 남았고, 그것을 지울 방법도 없었습니다.
  */
-export function buildServingMonths(dateStr: string, weeks = 5): BulletinServingMonth[] {
+export function buildServingMonths(dateStr: string): BulletinServingMonth[] {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '')
   const now = new Date()
-  const year = m ? Number(m[1]) : now.getFullYear()
-  const month = m ? Number(m[2]) : now.getMonth() + 1
+  const baseYear = m ? Number(m[1]) : now.getFullYear()
+  const baseMonth = m ? Number(m[2]) : now.getMonth() + 1   // 1~12
 
-  const monthLabel = (offset: number) => {
-    const total = month - 1 + offset
-    return `${((total % 12) + 12) % 12 + 1}월`
-  }
-  void year
-
-  return [0, 1].map(offset => ({
-    head: [monthLabel(offset), '대표기도', '식사 섬김'],
-    rows: Array.from({ length: weeks }, (_, i) => [`${i + 1}주`, '', '']),
-  }))
+  return [0, 1].map(offset => {
+    // 기준 달 + offset. 12월 다음은 이듬해 1월이 되도록 연도까지 넘깁니다.
+    const t = baseMonth - 1 + offset
+    const year = baseYear + Math.floor(t / 12)
+    const month0 = ((t % 12) + 12) % 12
+    return {
+      head: [`${month0 + 1}월`, '대표기도', '식사 섬김'],
+      rows: Array.from({ length: countSundays(year, month0) }, (_, i) => [`${i + 1}주`, '', '']),
+    }
+  })
 }
 
 /**
