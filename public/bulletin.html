@@ -113,10 +113,11 @@ body{font-family:var(--sans);background:#c9ccd1;color:var(--ink);
   height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }
-/* 점은 글자의 대문자 높이 한가운데에 맞춥니다. flex-end 로 내려온 뒤 올리는
-   양(0.3mm)은 실제로 찍어서 잰 값입니다 — 0.6mm 는 0.29mm 만큼 과했습니다. */
-.foot .dot{width:2.6mm;height:2.6mm;border-radius:50%;background:var(--navy);
-  flex:0 0 auto;transform:translateY(-.3mm)}
+/* 점은 글자의 대문자 높이와 **같은 지름**으로, 같은 자리에 둡니다.
+   지름 2.6mm 는 대문자 높이(1.85mm)의 1.40배라 위아래로 삐져나와 줄이 안 맞아
+   보였습니다. 위치를 맞춰도 크기가 다르면 어긋나 보입니다. */
+.foot .dot{width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
+  flex:0 0 auto;transform:translateY(-.58mm)}
 .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 

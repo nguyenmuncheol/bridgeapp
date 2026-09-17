@@ -364,11 +364,13 @@ const CSS = `
   height:var(--footh);display:flex;align-items:flex-end;gap:2.6mm;
   font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
 }
-/* 점은 글자의 대문자 높이 한가운데에 맞춥니다. flex-end 로 내려온 뒤 올리는
-   양(0.3mm)은 눈대중이 아니라 실제로 찍어서 잰 값입니다 — 0.6mm 는 0.29mm 만큼
-   과하게 올라가 글자보다 떠 보였습니다. */
-.bl-root .foot .dot{width:2.6mm;height:2.6mm;border-radius:50%;background:var(--navy);
-  flex:0 0 auto;transform:translateY(-.3mm)}
+/* 점은 글자의 대문자 높이와 **같은 지름**으로, 같은 자리에 둡니다.
+   지름 2.6mm 는 대문자 높이(1.85mm)의 1.40배라 위아래로 삐져나와 줄이 안 맞아
+   보였습니다. 위치를 아무리 맞춰도 크기가 다르면 어긋나 보입니다.
+   올리는 양 0.58mm 는 flex-end 로 내려온 점의 중심을 대문자 한가운데로 올리는
+   값으로, 6배 확대해 픽셀로 잰 것입니다. 글자 크기를 바꾸면 이 값도 다시 재세요. */
+.bl-root .foot .dot{width:1.9mm;height:1.9mm;border-radius:50%;background:var(--navy);
+  flex:0 0 auto;transform:translateY(-.58mm)}
 .bl-root .foot .pg{margin-left:auto;letter-spacing:.06em;font-weight:700;color:var(--navy);
   font-variant-numeric:tabular-nums}
 
