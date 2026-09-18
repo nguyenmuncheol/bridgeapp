@@ -492,6 +492,44 @@ export default function Home() {
     }
   }, [isGuest, isPending, isRejected, currentUserId, currentUser.role])
 
+  // 🐛 과거 버그: 관리자 화면의 성도 전체 명단(users)은 최초 로그인 시 딱 한 번만
+  // 불러오고, 그 뒤로는 새로고침(페이지 재로드)을 하기 전까지 다시 불러오지 않았습니다.
+  // 그래서 새 가입 신청 알림이 와도 승인 탭은 그 알림이 오기 전 상태 그대로였고,
+  // 관리자가 "새로고침했다"고 생각한 조작(당겨서 새로고침 등)이 실제로는 새 네트워크
+  // 요청으로 이어지지 않아 계속 비어 보였습니다 — 실제로는 명단을 다시 부르는 순간엔
+  // 항상 정상이었습니다.
+  // → 관리자에게만, 폴링 대신 Realtime 구독으로 profiles 변경을 받아 명단을 다시
+  //   불러옵니다. 폴링과 달리 실제 변경이 있을 때만 이벤트가 오므로 서버 부담이
+  //   거의 없습니다(WebSocket 연결 하나 유지 비용뿐).
+  useEffect(() => {
+    if (isGuest || currentUser.role !== 'ADMIN') return
+    let stopped = false
+
+    const refreshRoster = () => {
+      dbFetchProfiles().then(dbUsers => {
+        if (stopped || !dbUsers || dbUsers.length === 0) return
+        setUsers(prev => {
+          const byId = new Map(dbUsers.map(u => [u.id, u]))
+          prev.forEach(u => { if (!byId.has(u.id)) byId.set(u.id, u) })
+          return Array.from(byId.values())
+        })
+      }).catch(() => { /* 실시간 갱신 실패는 다음 변경 이벤트나 수동 새로고침으로 복구됩니다 */ })
+    }
+
+    const channel = supabase
+      .channel('admin-profiles-roster')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        refreshRoster
+      )
+      .subscribe()
+
+    return () => {
+      stopped = true
+      supabase.removeChannel(channel)
+    }
+  }, [isGuest, currentUser.role])
 
   // 관리자 - 가입 승인 처리
   const handleApproveUser = async (
