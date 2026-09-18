@@ -24,18 +24,21 @@ end;
 $$;
 
 -- INSERT와 UPDATE는 WHEN 절에서 OLD를 함께 참조할 수 없어(Postgres 42P17) 트리거를 나눕니다.
+-- 🐛 과거 버그: INSERT 트리거가 로그인만 한 사용자(signup_requested_at=NULL)도 포함했습니다.
+--   로그인 후 "가입 완료 및 승인 신청" 버튼을 누를 때만 신청하는 것이므로,
+--   이제는 signup_requested_at이 실제로 설정될 때만 알림을 보냅니다.
 drop trigger if exists trg_profiles_notify_signup_request_insert on public.profiles;
 create trigger trg_profiles_notify_signup_request_insert
   after insert on public.profiles
   for each row
-  when (new.role = 'PENDING')
+  when (new.role = 'PENDING' and new.signup_requested_at is not null)
   execute function public.notify_admins_of_signup_request();
 
 drop trigger if exists trg_profiles_notify_signup_request_update on public.profiles;
 create trigger trg_profiles_notify_signup_request_update
   after update on public.profiles
   for each row
-  when (new.role = 'PENDING' and old.role is distinct from 'PENDING')
+  when (new.role = 'PENDING' and new.signup_requested_at is not null and (old.signup_requested_at is null or old.role is distinct from 'PENDING'))
   execute function public.notify_admins_of_signup_request();
 
 -- 새 알림 타입도 푸시 발송 대상에 포함
