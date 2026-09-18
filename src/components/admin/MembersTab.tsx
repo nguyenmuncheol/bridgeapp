@@ -148,7 +148,8 @@ export default function MembersTab({
     }
     if (!await askConfirm(
       `명단의 "${claimTarget.name}" 을(를) 가입 계정 "${account.name}"(${account.email || '이메일 없음'}) 에 연결합니다.\n\n` +
-      `${claimTarget.name}님의 출석·식수 기록이 그 계정으로 넘어가고, 방금 가입하며 만들어진 빈 프로필은 지워집니다.\n` +
+      `${claimTarget.name}님의 출석·식수 기록이 그 계정으로 넘어가고, 두 프로필이 하나로 합쳐집니다.\n` +
+      `이름·연락처·주소·생년월일은 본인이 가입하며 입력한 값이 남고, 그쪽이 비어 있는 항목만 명단 값이 유지됩니다.\n` +
       `되돌리기 어려우니 같은 분이 맞는지 확인해 주세요.\n\n계속할까요?`
     )) return
 
@@ -160,10 +161,40 @@ export default function MembersTab({
       return
     }
     // 명단 행이 가입 계정 번호로 바뀌었고 빈 행은 사라졌습니다. 화면도 같은 모양으로 맞춥니다.
+    //
+    // ⚠️ 아래 규칙은 서버 함수(claim_unregistered_member)와 **글자 그대로 같아야** 합니다.
+    // 한쪽만 고치면 새로고침하기 전까지 화면이 실제 저장된 값과 다른 것을 보여 줍니다.
+    // 규칙: 본인이 입력한 값이 우선, 그쪽이 비어 있을 때만 명단 값을 씁니다.
+    const submitted = !!account.signupRequestedAt   // 가입 신청 폼을 실제로 제출했는지
+    const approved = account.role !== 'PENDING'     // 승인 화면을 거쳤는지
+    const pick = (fromAccount?: string, fromList?: string) => fromAccount?.trim() || fromList
     onUpdateUsers?.(prev => prev
       .filter(u => u.id !== account.id)
       .map(u => u.id === claimTarget.id
-        ? { ...u, id: account.id, email: u.email || account.email, avatarUrl: u.avatarUrl || account.avatarUrl, isUnregistered: false }
+        ? {
+            ...u,
+            id: account.id,
+            // 제출 전이면 계정 이름은 카카오/구글 표기라 명단 이름을 덮지 않습니다.
+            name: (submitted && pick(account.name, u.name)) || u.name,
+            email: pick(account.email, u.email) || '',
+            phone: pick(account.phone, u.phone) || '',
+            address: pick(account.address, u.address),
+            birthday: pick(account.birthday, u.birthday),
+            avatarUrl: pick(account.avatarUrl, u.avatarUrl),
+            role: account.role || u.role,
+            // 승인 전이면 계정 직분은 기본값 '성도'라 명단 직분을 지킵니다.
+            duty: (approved && pick(account.duty, u.duty)) || u.duty,
+            labriId: pick(account.labriId, u.labriId),
+            familyGroupId: pick(account.familyGroupId, u.familyGroupId),
+            familyRole: pick(account.familyRole, u.familyRole),
+            teachGroup: pick(account.teachGroup, u.teachGroup),
+            // 자녀는 한 번 잃으면 복구할 수 없어서, 자녀가 더 많은 쪽을 남깁니다.
+            familyInfo: parseFamilyInfo(account.familyInfo).children.length >= parseFamilyInfo(u.familyInfo).children.length
+              ? pick(account.familyInfo, u.familyInfo)
+              : u.familyInfo,
+            signupRequestedAt: account.signupRequestedAt || u.signupRequestedAt,
+            isUnregistered: false,
+          }
         : u))
     setClaimTarget(null)
     showToast(`✅ ${claimTarget.name}님을 가입 계정과 연결했습니다.`)
