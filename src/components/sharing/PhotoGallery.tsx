@@ -609,7 +609,7 @@ function PhotoDetailModal({
     <div
       className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 transition-all ${
         isEditing ? 'pointer-events-none opacity-40' : ''
-      } ${showEnlargedViewer ? 'pointer-events-none' : ''}`}
+      }`}
       aria-hidden={isEditing}
       onClick={!showEnlargedViewer ? backdropClose(onClose) : undefined}
     >
