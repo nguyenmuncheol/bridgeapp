@@ -15,7 +15,7 @@
 // → 아래 함수로 어떤 형태의 옛날 키든 "지금 이 사람의 가정 키"로 되돌려서,
 //   화면 표시와 주방 집계 양쪽 모두 가정당 한 건만 세도록 합니다.
 
-import { UserProfile, isChurchMember } from './mockData'
+import { UserProfile, isChurchMember, isAttendanceExempt } from './mockData'
 
 /** 이 사람이 지금 사용해야 하는 가정 키 */
 export function familyKeyOf(user: Pick<UserProfile, 'id' | 'familyGroupId'>): string {
@@ -75,12 +75,24 @@ export interface FamilyUnit {
   label: string
   /** 이 가정에 속한 성도들 */
   members: UserProfile[]
+  /**
+   * 가정 **전원**이 '출석 미적용'(가끔 출석·장기 휴식·배우자 표기)인지.
+   *
+   * true면 식수 "미응답 가정" 목록과 응답률 분모에서 빼야 합니다. 부부 중 한 분만
+   * 쉬시는 경우에는 남아 계신 배우자가 식사 신청을 해야 하므로 false입니다.
+   * 목록 자체에서 지우지 않는 이유: 이분들도 오시는 주에는 직접 신청할 수 있고,
+   * 그 신청 건의 가정 이름·인원은 집계에 그대로 나와야 하기 때문입니다.
+   */
+  attendanceExempt: boolean
 }
 
 /**
  * 승인된 성도들을 가정 단위로 묶습니다.
  * 관리자 화면에서 "아직 응답 안 한 가정"을 계산할 때 씁니다.
  * (실제 계정이 없는 자녀 등 가상 항목은 제외합니다)
+ *
+ * 가정 전원이 '출석 미적용'이면 attendanceExempt=true 로 표시만 해 둡니다
+ * (미응답 집계에서 뺄지는 쓰는 쪽에서 판단합니다 — 위 FamilyUnit 주석 참고).
  */
 export function buildFamilyUnits(allUsers: UserProfile[]): FamilyUnit[] {
   const groups = new Map<string, UserProfile[]>()
@@ -104,7 +116,7 @@ export function buildFamilyUnits(allUsers: UserProfile[]): FamilyUnit[] {
     })
     const names = sorted.map(m => m.name).filter(Boolean)
     const label = names.length > 1 ? `${names.join(' · ')} 가정` : (names[0] || '이름 없음')
-    units.push({ key, label, members: sorted })
+    units.push({ key, label, members: sorted, attendanceExempt: sorted.every(isAttendanceExempt) })
   })
 
   return units.sort((a, b) => a.label.localeCompare(b.label))

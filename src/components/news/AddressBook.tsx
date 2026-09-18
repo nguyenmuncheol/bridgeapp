@@ -2,7 +2,7 @@
 
 import { useState, useMemo, Fragment } from 'react'
 import { ChevronRight, Users, Search, Triangle, UserCheck } from 'lucide-react'
-import { UserProfile, getInitials } from '../../lib/mockData'
+import { UserProfile, getInitials, isAttendanceExempt } from '../../lib/mockData'
 import {
   buildFamilyStatusText, getChildGroupLabel, getSharedChildren, CHILD_LABRI_NO_ATTENDANCE,
   isChildLike, sortChildrenByDepartment, getDepartmentRank, sortAdultsForGroupDisplay, groupCouplesInScope, sortUnitsByAge,
@@ -21,7 +21,9 @@ const ADDRESS_FILTERS: { key: string; label: string; match: (m: UserProfile) => 
   { key: '라브리3', label: '라브리3', match: m => m.labriId === '라브리3' },
   // 교회학교: 부서가 지정되어 있고 출석미적용이 아닌 자녀만 매칭
   { key: '교회학교', label: '교회학교', match: m => (!!m.isDependent || m.familyRole === '자녀') && !!m.childLabriId && m.childLabriId !== CHILD_LABRI_NO_ATTENDANCE },
-  { key: '미정', label: '❤️', match: m => !m.isDependent && m.familyRole !== '자녀' && (!m.labriId || m.labriId === '미정') },
+  // ❤️(미정): 아직 라브리 편성이 안 된 분들. '출석 미적용'(가끔 출석·장기 휴식·배우자 표기)
+  // 성도도 라브리1~3 어디에도 안 잡히므로 여기 함께 모아 두어야 명단에서 누락되지 않습니다.
+  { key: '미정', label: '❤️', match: m => !m.isDependent && m.familyRole !== '자녀' && (!m.labriId || m.labriId === '미정' || isAttendanceExempt(m)) },
 ]
 
 // 라브리/미정 필터에서 "관리자 or 라브리리더 부부 최상단 고정" 규칙이 적용되는 필터 키 목록
@@ -349,7 +351,9 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                           <span className="text-2xs text-brand font-medium">{getChildGroupLabel(member.childLabriId)}</span>
                         )
                       ) : (
-                        member.labriId && member.labriId !== '미정' && (
+                        // '출석 미적용'은 관리자가 고르는 설정값이지 소속 이름이 아닙니다.
+                        // 자녀(getChildGroupLabel)와 똑같이 화면에는 아무것도 띄우지 않습니다.
+                        member.labriId && member.labriId !== '미정' && !isAttendanceExempt(member) && (
                           <span className="text-2xs text-brand font-medium">{member.labriId}</span>
                         )
                       )}

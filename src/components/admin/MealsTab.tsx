@@ -44,6 +44,11 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
   // 교회 전체 가정 목록 (승인된 성도 기준)
   const familyUnits = useMemo(() => buildFamilyUnits(allUsers), [allUsers])
 
+  // 식수 응답을 기다릴 가정 — 전원이 '출석 미적용'인 가정(가끔 출석·장기 휴식)은 뺍니다.
+  // 부부 중 한 분만 쉬시는 가정은 남아 계신 배우자가 신청해야 하므로 그대로 남습니다.
+  // 신청을 하신 경우의 인원 집계는 신청 줄(byFamily) 기준이라 이 목록과 무관하게 잡힙니다.
+  const countedUnits = useMemo(() => familyUnits.filter(u => !u.attendanceExempt), [familyUnits])
+
   // 주차별 식수 계산
   const weekMealStats = useMemo(() => {
     return upcomingSundays.map(sun => {
@@ -77,10 +82,10 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
       const child = attendingRows.reduce((sum, r) => sum + r.child, 0)
 
       // "식사 안 함"으로 응답한 가정 — 응답은 했으므로 미응답과 반드시 구분합니다.
-      const absentUnits = familyUnits.filter(u => byFamily.get(u.key)?.attending === false)
+      const absentUnits = countedUnits.filter(u => byFamily.get(u.key)?.attending === false)
 
       // 아직 아무 응답도 없는 가정
-      const pendingUnits = familyUnits.filter(u => !byFamily.has(u.key))
+      const pendingUnits = countedUnits.filter(u => !byFamily.has(u.key))
 
       return {
         total: adult + child,
@@ -89,10 +94,10 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
         rows: attendingRows,
         absentUnits,
         pendingUnits,
-        respondedCount: familyUnits.length - pendingUnits.length,
+        respondedCount: countedUnits.length - pendingUnits.length,
       }
     })
-  }, [upcomingSundays, dbMealRegistrations, allUsers, familyUnits])
+  }, [upcomingSundays, dbMealRegistrations, allUsers, familyUnits, countedUnits])
 
   const currentWeekStat = weekMealStats[forecastWeek] || {
     total: 0, adult: 0, child: 0, rows: [], absentUnits: [], pendingUnits: [], respondedCount: 0,
@@ -117,7 +122,7 @@ export default function MealsTab({ showToast, allUsers }: MealsTabProps) {
     showToast('📋 미응답 가정 안내문이 복사되었습니다!')
   }
 
-  const totalFamilies = familyUnits.length
+  const totalFamilies = countedUnits.length
   const pendingCount = currentWeekStat.pendingUnits.length
   const responseRate = totalFamilies > 0
     ? Math.round((currentWeekStat.respondedCount / totalFamilies) * 100)

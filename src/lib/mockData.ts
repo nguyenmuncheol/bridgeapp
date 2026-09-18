@@ -23,6 +23,21 @@ export function isChurchMember(role: Role | undefined | null): boolean {
   return isApprovedMember(role) && role !== 'COUPON'
 }
 
+/**
+ * 라브리 칸에 넣는 특수 값 — "출석체크 명단에서 빼 주세요"라는 표시입니다.
+ *
+ * 성도 자격 자체는 그대로입니다. 주소록·생일 달력·식권(쿠폰)·공지/나눔 알림은 전부 유지되고,
+ * **출석체크 명단과 식수 집계(미응답 가정·식수 신청 알림)에서만** 빠집니다.
+ * 쓰는 경우: 배우자로만 이름을 올리는 분, 일 때문에 장기간 쉬시는 분, 가끔만 나오시는 분.
+ * (자녀는 교회학교 부서 칸에 같은 값을 씁니다 — familyInfo.ts의 CHILD_LABRI_NO_ATTENDANCE)
+ */
+export const LABRI_NO_ATTENDANCE = '출석 미적용'
+
+/** 출석체크·식수 집계에서 빼기로 한 성도인지 (라브리 = '출석 미적용') */
+export function isAttendanceExempt(user?: { labriId?: string } | null): boolean {
+  return (user?.labriId || '').trim() === LABRI_NO_ATTENDANCE
+}
+
 /** 아직 앱을 정상적으로 쓸 수 없는 상태인지 (대기 중이거나 거절됨) */
 export function isBlockedRole(role: Role | undefined | null): boolean {
   return role === 'PENDING' || role === 'REJECTED'

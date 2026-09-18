@@ -287,7 +287,10 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       }
     })
 
-    const pendingFamilyCount = Math.max(0, familyUnits.length - (attendingFamilyCount + absentFamilyCount))
+    // 미응답은 "응답을 기다리는 가정"만 셉니다 — 전원이 '출석 미적용'인 가정(가끔 출석·장기
+    // 휴식)은 제외합니다. 반대로 그런 가정이 실제로 신청을 하면 위 인원 집계에는 그대로 잡힙니다.
+    const countedUnits = familyUnits.filter(u => !u.attendanceExempt)
+    const pendingFamilyCount = countedUnits.filter(u => !byFamily.has(u.key)).length
 
     return {
       targetSunday,
@@ -297,7 +300,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
       attendingFamilyCount,
       absentFamilyCount,
       pendingFamilyCount,
-      totalFamilies: familyUnits.length,
+      totalFamilies: countedUnits.length,
       byFamilyMap: byFamily
     }
   }, [upcomingSundays, mealRegistrations, profiles, familyUnits])

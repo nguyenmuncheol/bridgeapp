@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
-import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayDisplay } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
@@ -413,7 +413,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               <span className="text-sm mt-0.5">⛪</span>
               <div>
                 <span className="text-gray-400 text-2xs">소속 라브리</span>
-                <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.labriId || '미정 (모든 기능 이용 가능)'}</p>
+                {/* '출석 미적용'은 관리자용 설정값이라 본인에게는 보여 주지 않습니다 — 편성 전과 같게 표시합니다. */}
+                <p className="font-bold text-gray-800 text-2xs mt-0.5">{(isAttendanceExempt(currentUser) ? '' : currentUser.labriId) || '미정 (모든 기능 이용 가능)'}</p>
               </div>
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">

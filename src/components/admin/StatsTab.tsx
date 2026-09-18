@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Edit2, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { UserProfile, getUserDisplayName, isApprovedMember, formatAbsenceStreak } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName, isApprovedMember, isAttendanceExempt, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, dbFetchAllVisitorRecords, ChildAttendanceRow, VisitorRecordRow } from '../../lib/db'
 import { supabase } from '../../lib/supabase'
@@ -186,9 +186,11 @@ export default function StatsTab({
 
   const attendanceRows = useMemo(() => {
     // 선택한 주일은 기간과 무관하므로 원본에서 직접 가져옵니다.
+    // '출석 미적용' 성도는 애초에 출석체크 명단에 안 뜨므로, 여기 남겨 두면 매주
+    // '미표시'로 쌓여 결석자처럼 보입니다. 명단·통계 양쪽에서 함께 뺍니다.
     const data = dbAttendanceData[selectedStatsDate] || []
     return allUsers
-      .filter(u => isApprovedMember(u.role) && u.role !== 'COUPON')
+      .filter(u => isApprovedMember(u.role) && u.role !== 'COUPON' && !isAttendanceExempt(u))
       .map(u => {
         const rec = data.find(r => r.userId === u.id)
         return { user: u, status: rec?.status || null, note: rec?.note || '' }
@@ -253,7 +255,7 @@ export default function StatsTab({
   // 하루짜리 기간이면 위 labriStats 와 같은 값이 나오고,
   // 여러 주일을 고르면 그 기간 전체를 합산합니다. (분기·반기·연간 통계용)
   const rangeLabriStats = useMemo(() => {
-    const members = allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON')
+    const members = allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON' && !isAttendanceExempt(u))
     const labriOf = new Map(members.map(u => [u.id, normalizeLabriLabel(u.labriId)]))
     const groups = ['라브리1', '라브리2', '라브리3', '라브리 미정']
 

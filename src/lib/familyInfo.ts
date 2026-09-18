@@ -19,6 +19,7 @@
  * 데이터가 사라지지 않고 그대로 보존됩니다.
  */
 import type { UserProfile } from './mockData'
+import { LABRI_NO_ATTENDANCE } from './mockData'
 import { calculateAge } from './dateUtils'
 
 export const FAMILY_ROLE_ORDER: Record<string, number> = {
@@ -193,8 +194,10 @@ export function sortChildrenByDepartment(children: UserProfile[]): UserProfile[]
  * - 영아부~중고등부: 주소록 교회학교 탭 · 생일 · 출석체크 · 교회학교 인원수 모두 포함.
  *
  * 주소록은 교회학교 출석 관리용 명단이라, 교회학교에 다니지 않는 자녀는 넣지 않습니다.
+ *
+ * 값 자체는 어른의 라브리 칸에 쓰는 '출석 미적용'과 같습니다 — 뜻도 같습니다.
  */
-export const CHILD_LABRI_NO_ATTENDANCE = '출석 미적용'
+export const CHILD_LABRI_NO_ATTENDANCE = LABRI_NO_ATTENDANCE
 
 export const CHILD_LABRI_OPTIONS = ['영아부', '유아·유치부', '초등부', '중고등부', CHILD_LABRI_NO_ATTENDANCE] as const
 

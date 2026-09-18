@@ -993,10 +993,16 @@ export default function MembersTab({
                   <option value="라브리1">라브리1</option>
                   <option value="라브리2">라브리2</option>
                   <option value="라브리3">라브리3</option>
-                  {/* 출석을 따로 챙기지 않는 분(주로 미가입 배우자)을 출석체크 명단에서 뺍니다.
+                  {/* 출석을 따로 챙기지 않는 분을 출석체크·식수 명단에서 뺍니다 — 미가입 배우자,
+                      일 때문에 장기간 쉬시는 분, 가끔만 나오시는 분.
                       출석 그룹은 라브리1~3·미정뿐이라 이 값이면 어느 명단에도 뜨지 않습니다. */}
-                  <option value={NO_ATTENDANCE}>출석 미적용 (출석체크 명단에서 제외)</option>
+                  <option value={NO_ATTENDANCE}>출석 미적용 (출석체크·식수 명단에서 제외)</option>
                 </select>
+                <p className="text-2xs text-gray-400 mt-1">
+                  &apos;출석 미적용&apos;은 출석체크 명단과 식수 신청 알림에서만 빠집니다.
+                  주소록·생일·식권과 공지·나눔 알림은 그대로이고, 오시는 주에는 본인이 식사 신청을 할 수 있습니다.
+                  다시 나오시면 라브리를 골라 주시면 원래대로 돌아옵니다.
+                </p>
               </div>
 
               {/*
@@ -1315,10 +1321,11 @@ export default function MembersTab({
                   <option value="라브리1">라브리1</option>
                   <option value="라브리2">라브리2</option>
                   <option value="라브리3">라브리3</option>
-                  <option value={NO_ATTENDANCE}>출석 미적용 (출석체크 명단에서 제외)</option>
+                  <option value={NO_ATTENDANCE}>출석 미적용 (출석체크·식수 명단에서 제외)</option>
                 </select>
                 <p className="text-2xs text-gray-400 mt-1">
-                  실제로 예배에 나오시는 분은 라브리를, 배우자로만 표기하면 되는 분은 &apos;출석 미적용&apos;을 고르세요.
+                  매주 나오시는 분은 라브리를 고르세요. 배우자로만 표기하면 되는 분, 일 때문에 장기간 쉬시는 분,
+                  가끔만 나오시는 분은 &apos;출석 미적용&apos;을 고르시면 출석체크 명단과 식수 신청 알림에서만 빠집니다.
                 </p>
               </div>
 
