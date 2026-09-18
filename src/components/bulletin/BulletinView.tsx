@@ -153,7 +153,9 @@ function BulletinView({
 
             {/* 적을 공지가 없으면 빈 상자만 남으므로 칸 자체를 뺍니다 */}
             {c.notices.some(n => n.trim()) && (
-              <div className="notice">
+              // 메시지가 없으면 섬김표 아래가 허전해 보이므로, 섬김표-공지 간격을
+              // 넓혀 페이지 전체가 고르게 채워지도록 합니다.
+              <div className="notice" style={hasMessage ? undefined : { marginTop: '13mm' }}>
                 {c.noticeTitle.trim() && <h4>{c.noticeTitle}</h4>}
                 <ul>
                   {c.notices.filter(n => n.trim()).map((n, i) => <li key={i}>{multiline(n)}</li>)}

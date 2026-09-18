@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { UserProfile, Role, getUserDisplayName } from '../../lib/mockData'
+import { UserProfile, Role, getUserDisplayName, DUTY_OPTIONS } from '../../lib/mockData'
 import { dbUpdateProfile, dbReapplyUser } from '../../lib/db'
 import { FamilyChildInfo, parseFamilyInfo, serializeFamilyInfo, mergeChildrenLists } from '../../lib/familyInfo'
 import { getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
@@ -195,7 +195,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
               <div>
                 <label className="text-2xs text-gray-400 font-semibold">직분</label>
                 <select value={dutyInputs[pending.id] || '성도'} onChange={(e) => setDutyInputs({ ...dutyInputs, [pending.id]: e.target.value })} className="w-full mt-1 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                  {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
+                  {DUTY_OPTIONS.map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>

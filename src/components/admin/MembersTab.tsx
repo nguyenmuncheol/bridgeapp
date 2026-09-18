@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react'
 import { Search, Edit2, Save, X, Camera, UserPlus, UserMinus, Trash2 } from 'lucide-react'
-import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials } from '../../lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials, DUTY_OPTIONS } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile, dbCreateUnregisteredMember, dbClaimUnregisteredMember, dbMarkMemberLeft, dbRestoreMember, dbHasAttendanceHistory, dbDeleteMemberPermanently } from '../../lib/db'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, CHILD_ATTENDANCE_GROUPS, parseTeachGroups, serializeTeachGroups, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
@@ -947,7 +947,7 @@ export default function MembersTab({
                 <div>
                   <label className="text-2xs text-gray-400 font-semibold">직분</label>
                   <select value={editMemberData.duty} onChange={e => setEditMemberData(p => ({ ...p, duty: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
-                    {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
+                    {DUTY_OPTIONS.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
@@ -1256,7 +1256,7 @@ export default function MembersTab({
                     onChange={e => setNewMember(p => ({ ...p, duty: e.target.value }))}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
                   >
-                    {['성도', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모'].map(d => (
+                    {DUTY_OPTIONS.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>

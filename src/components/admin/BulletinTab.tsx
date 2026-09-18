@@ -369,6 +369,33 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     })
   }
 
+  /**
+   * 섬김표에 찍히는 표기명(예: "홍길동 성도")을 직접 고쳐 씁니다.
+   * "성도"를 "형제/자매"로 바꾸거나 "목사"를 "목사님"으로 높이는 등, 실제 직분과
+   * 주보 표기가 다른 경우를 위한 것입니다. 알림 대상(userId)은 그대로 두고
+   * 표시 문구만 바꾸므로, 알림은 원래 선택한 사람에게 계속 갑니다.
+   */
+  const setPrayerName = (mi: number, ri: number, name: string) => {
+    const months = content.servingMonths.map((m, j) =>
+      j !== mi ? m : {
+        ...m,
+        rows: m.rows.map((r, k) => {
+          if (k !== ri) return r
+          const next = [...r]
+          next[PRAYER_COL] = name
+          return next
+        }),
+      }
+    )
+
+    const existing = content.prayerAssignments.find(a => a.monthIndex === mi && a.rowIndex === ri)
+    const others = content.prayerAssignments.filter(a => !(a.monthIndex === mi && a.rowIndex === ri))
+    patchAndSync({
+      servingMonths: months,
+      prayerAssignments: existing ? [...others, { ...existing, name }] : others,
+    })
+  }
+
   /** 섬김표의 식사 섬김 칸을 바꿉니다 */
   const setMealCell = (mi: number, ri: number, value: string) => {
     patch({
@@ -680,7 +707,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 />
                 <div className="flex items-center gap-1.5 px-0.5">
                   <span className="w-12 shrink-0 text-3xs font-bold text-gray-400">주일</span>
-                  <span className="flex-1 text-3xs font-bold text-gray-400">대표기도 (성도 선택)</span>
+                  <span className="w-24 shrink-0 text-3xs font-bold text-gray-400">성도 선택</span>
+                  <span className="flex-1 text-3xs font-bold text-gray-400">주보 표기명</span>
                   <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-400">식사</span>
                   <span className="w-[26px] shrink-0" />
                 </div>
@@ -688,7 +716,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                   <div key={ri} className="flex items-center gap-1.5">
                     <span className="w-12 text-2xs font-bold text-gray-500 shrink-0 tabular-nums">{r[0]}</span>
                     <select
-                      className={inputCls + ' bg-white flex-1 basis-0 cursor-pointer'}
+                      className={inputCls + ' bg-white w-24 shrink-0 cursor-pointer'}
                       value={prayerUserIdAt(mi, ri)}
                       onChange={e => assignPrayer(mi, ri, e.target.value)}
                     >
@@ -697,6 +725,15 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                         <option key={u.id} value={u.id}>{u.name}{u.duty ? ` ${u.duty}` : ''}</option>
                       ))}
                     </select>
+                    {/* 성도를 고르면 "이름 직분"이 자동으로 채워지지만, 주보에 실제로
+                        찍히는 문구는 여기서 자유롭게 고칠 수 있습니다 (성도→형제/자매,
+                        목사→목사님 등). 알림은 위에서 고른 성도에게 그대로 갑니다. */}
+                    <input
+                      className={inputCls + ' bg-white flex-1 basis-0'}
+                      placeholder="예: 홍길동 형제"
+                      value={r[PRAYER_COL] || ''}
+                      onChange={e => setPrayerName(mi, ri, e.target.value)}
+                    />
                     {/* 식사 섬김은 라브리 1·2·3 이 돌아가므로 드롭다운으로 좁게 둡니다 */}
                     <select
                       className={inputCls + ' bg-white w-[4.5rem] shrink-0 cursor-pointer'}
