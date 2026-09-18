@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react'
-import { useModalDismiss } from '../lib/useModalDismiss'
 import { saveImage } from '../lib/download'
 
 interface ImageViewerModalProps {
@@ -10,6 +9,8 @@ interface ImageViewerModalProps {
   images: string[]
   initialIndex?: number
   onClose: () => void
+  /** 넘길 때마다 지금 몇 번째 사진을 보고 있는지 부모에 알려줍니다 (닫았을 때 그 사진이 보이는 상태로 돌아가도록). */
+  onIndexChange?: (index: number) => void
   alt?: string
 }
 
@@ -28,6 +29,7 @@ export default function ImageViewerModal({
   images,
   initialIndex = 0,
   onClose,
+  onIndexChange,
   alt = '사진 크게 보기'
 }: ImageViewerModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
@@ -35,6 +37,12 @@ export default function ImageViewerModal({
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const isSwipingRef = useRef(false)
+
+  // 넘길 때마다 부모에게 알려줍니다 — 닫혔을 때 상세 모달이 마지막으로 본 사진을 그대로 보여주도록.
+  useEffect(() => {
+    if (isOpen) onIndexChange?.(currentIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, isOpen])
 
   // 열릴 때 인덱스 동기화.
   // 🐛 예전엔 effect 안에서 setCurrentIndex 를 불렀습니다. 그러면 "열림 → 0번으로 한 번 그림
@@ -48,10 +56,15 @@ export default function ImageViewerModal({
     }
   }
 
-  // 배경 스크롤/풀-투-리프레시 잠금은 useModalDismiss(아래)가 처리합니다.
-  // 🐛 예전엔 여기서도 따로 잠갔습니다. 같은 document.body 속성을 두 효과가 각자
-  // save/restore하면서 경쟁해, 닫은 뒤 메인 페이지 스크롤이 풀리지 않고 멈춘 것처럼
-  // 보이는 사고가 있었습니다 — 잠금은 훅 하나에만 두는 게 맞습니다.
+  // 배경 스크롤 잠금은 따로 하지 않습니다 — 이 뷰어는 항상 상세 모달(PhotoDetailModal) 위에
+  // 겹쳐서 뜨고, 그 모달이 열려있는 동안 이미 useModalDismiss로 잠겨 있으므로 여기서 또 잠글
+  // 필요가 없습니다.
+  //
+  // 🐛 과거 버그: 이 뷰어도 useModalDismiss(브라우저 히스토리 push/pop)를 따로 호출했습니다.
+  // 확대 사진을 닫을 때(뷰어 언마운트) 뷰어가 자기 히스토리 항목을 지우려고 history.back()을
+  // 부르면, 그 결과로 발생하는 진짜 popstate 이벤트를 부모 모달의 리스너가 "사용자가 뒤로가기를
+  // 눌렀다"고 오인해서 부모 모달까지 같이 닫혀버렸습니다(뷰어를 닫았는데 목록으로 튕겨나감).
+  // → 이 뷰어는 히스토리를 전혀 건드리지 않도록 하여 원천적으로 막습니다.
 
   // 키보드 조작 (ESC 닫기, 방향키 이동)
   useEffect(() => {
@@ -68,8 +81,6 @@ export default function ImageViewerModal({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, images.length, onClose])
-
-  useModalDismiss(isOpen, onClose)
 
   if (!isOpen || images.length === 0) return null
 

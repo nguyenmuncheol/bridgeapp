@@ -732,6 +732,7 @@ function PhotoDetailModal({
           images={images}
           initialIndex={imgIdx}
           onClose={() => setShowEnlargedViewer(false)}
+          onIndexChange={setImgIdx}
           alt={photo.title}
         />
       )}
