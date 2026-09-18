@@ -117,6 +117,8 @@ export default function ImageViewerModal({
   const handleContainerClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
+    // 부모 모달로 클릭이 전파되지 않도록, 이 모달 자신이 이벤트를 완전히 처리합니다.
+    // 이미지를 클릭했을 때만 닫기, 화면의 다른 부분을 클릭했을 때도 닫기.
     if (!isSwipingRef.current) {
       onClose()
     }
@@ -126,6 +128,8 @@ export default function ImageViewerModal({
     <div
       className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center select-none overscroll-contain touch-none animate-fade-in"
       onClick={handleContainerClick}
+      onMouseDown={e => e.stopPropagation()}
+      onTouchStart={e => e.stopPropagation()}
     >
       {/* 상단 컨트롤 바 */}
       <div

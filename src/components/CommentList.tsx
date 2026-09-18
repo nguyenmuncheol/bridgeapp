@@ -148,16 +148,16 @@ export default function CommentList({
         </div>
       )}
 
-      <div className="flex gap-1.5 pt-1">
+      <div className="flex gap-1.5 pt-1 min-w-0">
         <input
           type="text"
           placeholder={placeholder || '댓글을 남겨보세요...'}
           value={commentText}
           onChange={e => setCommentText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && submitComment()}
-          className="flex-1 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
+          className="flex-1 min-w-0 text-xs p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
         />
-        <button onClick={submitComment} className="px-3 py-1 bg-brand text-white text-xs font-bold rounded-lg">등록</button>
+        <button onClick={submitComment} className="px-3 py-1 bg-brand text-white text-xs font-bold rounded-lg shrink-0">등록</button>
       </div>
     </>
   )

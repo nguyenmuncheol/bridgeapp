@@ -609,9 +609,9 @@ function PhotoDetailModal({
     <div
       className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 transition-all ${
         isEditing ? 'pointer-events-none opacity-40' : ''
-      }`}
+      } ${showEnlargedViewer ? 'pointer-events-none' : ''}`}
       aria-hidden={isEditing}
-      onClick={backdropClose(onClose)}
+      onClick={!showEnlargedViewer ? backdropClose(onClose) : undefined}
     >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold whitespace-nowrap">{toastMsg}</div>}
