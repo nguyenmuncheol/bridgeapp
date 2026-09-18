@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# 본보기 파일은 올립니다 (값은 비어 있습니다)
+!.env.example
