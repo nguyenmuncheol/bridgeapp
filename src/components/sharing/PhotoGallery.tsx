@@ -611,7 +611,10 @@ function PhotoDetailModal({
         isEditing ? 'pointer-events-none opacity-40' : ''
       }`}
       aria-hidden={isEditing}
-      onClick={!showEnlargedViewer ? backdropClose(onClose) : undefined}
+      onClick={showEnlargedViewer ? (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+      } : backdropClose(onClose)}
     >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold whitespace-nowrap">{toastMsg}</div>}
