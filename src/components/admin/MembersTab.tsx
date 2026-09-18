@@ -5,7 +5,7 @@ import { Search, Edit2, Save, X, Camera, UserPlus, UserMinus, Trash2 } from 'luc
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials, DUTY_OPTIONS } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile, dbCreateUnregisteredMember, dbClaimUnregisteredMember, dbMarkMemberLeft, dbRestoreMember, dbHasAttendanceHistory, dbDeleteMemberPermanently } from '../../lib/db'
-import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, CHILD_ATTENDANCE_GROUPS, parseTeachGroups, serializeTeachGroups, parseFamilyInfo, serializeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
+import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, CHILD_ATTENDANCE_GROUPS, parseTeachGroups, serializeTeachGroups, parseFamilyInfo, serializeFamilyInfo, mergeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -149,7 +149,9 @@ export default function MembersTab({
     if (!await askConfirm(
       `명단의 "${claimTarget.name}" 을(를) 가입 계정 "${account.name}"(${account.email || '이메일 없음'}) 에 연결합니다.\n\n` +
       `${claimTarget.name}님의 출석·식수 기록이 그 계정으로 넘어가고, 두 프로필이 하나로 합쳐집니다.\n` +
-      `이름·연락처·주소·생년월일은 본인이 가입하며 입력한 값이 남고, 그쪽이 비어 있는 항목만 명단 값이 유지됩니다.\n` +
+      `• 연락처·주소·생년월일·사진 — 본인이 입력한 값\n` +
+      `• 직분·라브리·가족 — 명단에 적어 둔 값\n` +
+      `• 등급 — 승인하며 고른 값 · 자녀 — 양쪽을 모두 합침\n` +
       `되돌리기 어려우니 같은 분이 맞는지 확인해 주세요.\n\n계속할까요?`
     )) return
 
@@ -164,34 +166,32 @@ export default function MembersTab({
     //
     // ⚠️ 아래 규칙은 서버 함수(claim_unregistered_member)와 **글자 그대로 같아야** 합니다.
     // 한쪽만 고치면 새로고침하기 전까지 화면이 실제 저장된 값과 다른 것을 보여 줍니다.
-    // 규칙: 본인이 입력한 값이 우선, 그쪽이 비어 있을 때만 명단 값을 씁니다.
-    const submitted = !!account.signupRequestedAt   // 가입 신청 폼을 실제로 제출했는지
-    const approved = account.role !== 'PENDING'     // 승인 화면을 거쳤는지
-    const pick = (fromAccount?: string, fromList?: string) => fromAccount?.trim() || fromList
+    //   · 본인이 입력하는 값(이름·연락처·주소·생일·사진·이메일) → 가입 계정 우선
+    //   · 관리자가 정하는 소속(직분·라브리·가족)              → 명단 우선
+    //   · 등급                                                → 승인하며 고른 값
+    //   · 자녀                                                → 양쪽 합치기
+    const fromAccount = (a?: string, list?: string) => a?.trim() || list   // 가입 계정 우선
+    const fromList = (list?: string, a?: string) => list?.trim() || a      // 명단 우선
     onUpdateUsers?.(prev => prev
       .filter(u => u.id !== account.id)
       .map(u => u.id === claimTarget.id
         ? {
             ...u,
             id: account.id,
-            // 제출 전이면 계정 이름은 카카오/구글 표기라 명단 이름을 덮지 않습니다.
-            name: (submitted && pick(account.name, u.name)) || u.name,
-            email: pick(account.email, u.email) || '',
-            phone: pick(account.phone, u.phone) || '',
-            address: pick(account.address, u.address),
-            birthday: pick(account.birthday, u.birthday),
-            avatarUrl: pick(account.avatarUrl, u.avatarUrl),
+            // 가입 신청 폼 제출 전이면 계정 이름은 카카오/구글 표기라 명단 이름을 덮지 않습니다.
+            name: (!!account.signupRequestedAt && fromAccount(account.name, u.name)) || u.name,
+            email: fromAccount(account.email, u.email) || '',
+            phone: fromAccount(account.phone, u.phone) || '',
+            address: fromAccount(account.address, u.address),
+            birthday: fromAccount(account.birthday, u.birthday),
+            avatarUrl: fromAccount(account.avatarUrl, u.avatarUrl),
             role: account.role || u.role,
-            // 승인 전이면 계정 직분은 기본값 '성도'라 명단 직분을 지킵니다.
-            duty: (approved && pick(account.duty, u.duty)) || u.duty,
-            labriId: pick(account.labriId, u.labriId),
-            familyGroupId: pick(account.familyGroupId, u.familyGroupId),
-            familyRole: pick(account.familyRole, u.familyRole),
-            teachGroup: pick(account.teachGroup, u.teachGroup),
-            // 자녀는 한 번 잃으면 복구할 수 없어서, 자녀가 더 많은 쪽을 남깁니다.
-            familyInfo: parseFamilyInfo(account.familyInfo).children.length >= parseFamilyInfo(u.familyInfo).children.length
-              ? pick(account.familyInfo, u.familyInfo)
-              : u.familyInfo,
+            duty: fromList(u.duty, account.duty) || u.duty,
+            labriId: fromList(u.labriId, account.labriId),
+            familyGroupId: fromList(u.familyGroupId, account.familyGroupId),
+            familyRole: fromList(u.familyRole, account.familyRole),
+            teachGroup: fromList(u.teachGroup, account.teachGroup),
+            familyInfo: mergeFamilyInfo(u.familyInfo, account.familyInfo),
             signupRequestedAt: account.signupRequestedAt || u.signupRequestedAt,
             isUnregistered: false,
           }
@@ -1394,7 +1394,8 @@ export default function MembersTab({
                 이 분이 앱에 가입하셨다면, 그 계정을 골라 주세요. 명단에 쌓인 출석·식수 기록이
                 <strong className="text-gray-700"> 그 계정으로 그대로 넘어갑니다.</strong>
                 <br />
-                가입하며 만들어진 빈 프로필은 지워지고, 명단에 있던 라브리·가족 정보가 유지됩니다.
+                두 프로필이 하나로 합쳐집니다. 명단의 직분·라브리·가족은 그대로 유지되고,
+                연락처·주소·생년월일은 본인이 입력한 값이 채워집니다.
               </p>
 
               <div>
@@ -1406,7 +1407,10 @@ export default function MembersTab({
                 >
                   <option value="">계정을 고르세요</option>
                   {allUsers
-                    .filter(u => !u.isUnregistered && u.id !== claimTarget.id && u.role !== 'REJECTED')
+                    // 승인 대기 계정은 고를 수 없습니다. 승인 전에 연결하면 등급·직분이
+                    // 기본값인 채로 섞여서, 어느 값이 관리자의 뜻인지 알 수 없게 됩니다.
+                    // (서버 함수도 같은 이유로 PENDING 계정을 거부합니다)
+                    .filter(u => !u.isUnregistered && u.id !== claimTarget.id && isApprovedMember(u.role))
                     // 이름이 같은 분을 맨 위로 올려 주되, 고르는 것은 관리자 판단입니다.
                     .sort((a, b) => {
                       const aMatch = a.name.trim() === claimTarget.name.trim() ? 0 : 1
@@ -1415,13 +1419,19 @@ export default function MembersTab({
                     })
                     .map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.name}{u.email ? ` · ${u.email}` : ''}{u.role === 'PENDING' ? ' (승인 대기)' : ''}
+                        {u.name}{u.email ? ` · ${u.email}` : ''}
                       </option>
                     ))}
                 </select>
                 <p className="text-2xs text-rose-500 mt-1 leading-snug">
                   이름이 같아도 다른 분일 수 있습니다. 반드시 이메일까지 확인하고 고르세요.
                 </p>
+                {/* 목록에 없어서 관리자가 헤매지 않도록, 승인만 안 된 경우를 짚어 줍니다. */}
+                {allUsers.some(u => !u.isUnregistered && u.role === 'PENDING' && u.name.trim() === claimTarget.name.trim()) && (
+                  <p className="text-2xs text-amber-600 mt-1 leading-snug font-semibold">
+                    같은 이름으로 승인 대기 중인 계정이 있습니다. [가입 승인]에서 먼저 승인하면 여기에 나타납니다.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2">

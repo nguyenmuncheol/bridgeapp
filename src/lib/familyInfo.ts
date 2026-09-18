@@ -287,6 +287,35 @@ export function serializeFamilyInfo(data: FamilyInfoData): string {
   return JSON.stringify({ note, spouseName, children, addressRequestedAt })
 }
 
+/**
+ * 계정통합(미가입 성도 ↔ 가입 계정)에서 두 family_info 를 합칩니다.
+ * primary(명단 쪽)의 메모·배우자이름을 우선하고, 자녀는 어느 쪽도 버리지 않습니다.
+ *
+ * ⚠️ DB 함수 public.merge_family_info 와 **같은 규칙이어야 합니다**
+ *    (supabase/migrations/20260918140000_claim_list_owns_assignment.sql).
+ *    한쪽만 고치면 새로고침하기 전까지 화면이 실제 저장된 값과 다른 것을 보여 줍니다.
+ *
+ * 자녀는 id "또는" 이름이 겹치면 더하지 않습니다. 부부 자녀 동기화를 거쳤으면
+ * 양쪽 id가 같지만, 명단과 마이페이지에서 따로 입력했으면 id가 달라서
+ * id만 보면 같은 아이가 두 명으로 늘어나 출석 명단에 두 번 뜹니다.
+ */
+export function mergeFamilyInfo(primaryRaw?: string | null, secondaryRaw?: string | null): string {
+  const p = parseFamilyInfo(primaryRaw)
+  const s = parseFamilyInfo(secondaryRaw)
+  const pNote = (p.note || '').trim()
+  const sNote = (s.note || '').trim()
+  return serializeFamilyInfo({
+    // 메모가 양쪽에 다 있으면 어느 쪽도 버리지 않고 이어 붙입니다.
+    note: !pNote ? sNote : (!sNote || sNote === pNote) ? pNote : `${pNote}\n${sNote}`,
+    spouseName: (p.spouseName || '').trim() || (s.spouseName || '').trim(),
+    children: [
+      ...p.children,
+      ...s.children.filter(c => !p.children.some(pc => pc.id === c.id || pc.name.trim() === c.name.trim())),
+    ],
+    addressRequestedAt: p.addressRequestedAt || s.addressRequestedAt || '',
+  })
+}
+
 // familyGroupId로 연동된 다른 실제 계정(배우자 등)을 찾습니다.
 export function findLinkedFamilyMembers(user: UserProfile, allUsers: UserProfile[]): UserProfile[] {
   if (!user.familyGroupId) return []
