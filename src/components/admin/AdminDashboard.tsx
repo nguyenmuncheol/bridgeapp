@@ -150,7 +150,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       })()}
 
       {/* ── 식사 집계 탭 ── */}
-      {adminTab === 'meals' && <MealsTab showToast={showToast} allUsers={allUsers} />}
+      {adminTab === 'meals' && <MealsTab showToast={showToast} allUsers={allUsers} currentUser={currentUser} />}
 
       {/* ── 가입 승인 탭 ── */}
       {adminTab === 'approval' && (
