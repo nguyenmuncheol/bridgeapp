@@ -346,7 +346,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                         key={u.key}
                         type="button"
                         onClick={() => openProxy(u.key, u.label)}
-                        className="text-2xs bg-rose-50 text-rose-700 border border-rose-100 px-2 py-1 rounded-lg font-medium hover:bg-rose-100 active:scale-95 transition-all"
+                        className="text-2xs bg-rose-50 text-rose-700 border border-rose-100 px-2 py-1 rounded-lg font-medium hover:bg-rose-100 active:scale-95 transition-all whitespace-nowrap"
                       >
                         {u.label} <span className="text-rose-400">✍️</span>
                       </button>
@@ -382,7 +382,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                         key={u.key}
                         type="button"
                         onClick={() => openProxy(u.key, u.label)}
-                        className="text-2xs bg-gray-50 text-gray-500 border border-gray-100 px-2 py-1 rounded-lg hover:bg-gray-100 active:scale-95 transition-all"
+                        className="text-2xs bg-gray-50 text-gray-500 border border-gray-100 px-2 py-1 rounded-lg hover:bg-gray-100 active:scale-95 transition-all whitespace-nowrap"
                       >
                         {u.label} <span className="text-gray-400">✍️</span>
                       </button>

@@ -71,7 +71,13 @@ export function staleFamilyKeys(currentUser: UserProfile, allUsers: UserProfile[
 export interface FamilyUnit {
   /** 가정 키 (familyKeyOf 와 동일 기준) */
   key: string
-  /** '임진재 · 장호정 가정' 또는 혼자면 '홍길동' */
+  /**
+   * '임진재 · 장호정' 또는 혼자면 '홍길동'.
+   *
+   * 뒤에 '가정'을 붙이지 않습니다 — 관리자 식사 탭에서 이름 옆에 수정(✍️) 표시가
+   * 함께 들어가면서 칸을 넘겨 두 줄로 접히는 일이 잦았습니다. 어차피 가정 목록
+   * 안에서만 쓰이는 이름이라 '가정'은 없어도 뜻이 통합니다.
+   */
   label: string
   /** 이 가정에 속한 성도들 */
   members: UserProfile[]
@@ -115,7 +121,7 @@ export function buildFamilyUnits(allUsers: UserProfile[]): FamilyUnit[] {
       return d !== 0 ? d : (a.name || '').localeCompare(b.name || '')
     })
     const names = sorted.map(m => m.name).filter(Boolean)
-    const label = names.length > 1 ? `${names.join(' · ')} 가정` : (names[0] || '이름 없음')
+    const label = names.length > 1 ? names.join(' · ') : (names[0] || '이름 없음')
     units.push({ key, label, members: sorted, attendanceExempt: sorted.every(isAttendanceExempt) })
   })
 
