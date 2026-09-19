@@ -30,6 +30,61 @@ export function todayLocalDateStr(): string {
 }
 
 // ────────────────────────────────────────────────────────────────
+// 교회 시간대(하노이, UTC+7)
+//
+// 🐛 과거 버그: 식사 신청 마감(토 14시)을 `setHours(14,0,0,0)` 으로 계산해서
+// **보는 사람 휴대폰의 시간대** 기준이 되어 버렸습니다. 휴대폰 시계가 한국(UTC+9)으로
+// 맞춰져 있으면 하노이 시각으로 낮 12시에 이미 "신청 마감"이 떠서, 아직 두 시간이
+// 남았는데도 신청·수정을 못 하는 일이 생겼습니다(한국에 나가 계시거나 휴대폰 시간대를
+// 한국으로 쓰시는 성도님들).
+// → 마감/주일 계산은 보는 사람이 어디에 있든 항상 하노이 시각을 기준으로 합니다.
+//   서버(알림 발송)도 같은 기준입니다. 베트남은 서머타임이 없어 1년 내내 UTC+7 입니다.
+// ────────────────────────────────────────────────────────────────
+
+export const CHURCH_TIME_ZONE = 'Asia/Ho_Chi_Minh'
+const CHURCH_UTC_OFFSET_MIN = 7 * 60
+
+export interface ChurchDateParts {
+  year: number
+  month: number   // 1~12
+  day: number
+  weekday: number // 0=일 ... 6=토
+  hour: number
+  minute: number
+}
+
+/** 지금 이 순간을 하노이 달력(연/월/일/요일/시/분)으로 */
+export function getChurchNowParts(now: Date = new Date()): ChurchDateParts {
+  const shifted = new Date(now.getTime() + CHURCH_UTC_OFFSET_MIN * 60_000)
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+    weekday: shifted.getUTCDay(),
+    hour: shifted.getUTCHours(),
+    minute: shifted.getUTCMinutes()
+  }
+}
+
+/** 하노이 현지 시각(연/월/일 시:분)이 실제로 몇 시인지(=전 세계 공통의 그 순간) */
+export function churchTimeToInstant(
+  year: number,
+  month: number, // 1~12
+  day: number,
+  hour = 0,
+  minute = 0
+): Date {
+  // Date.UTC 는 day=0, month=12 같은 값도 알아서 넘겨 주므로 월말/연말 경계가 안전합니다.
+  return new Date(Date.UTC(year, month - 1, day, hour, minute) - CHURCH_UTC_OFFSET_MIN * 60_000)
+}
+
+/** 하노이 기준 '오늘' 을 계산용 Date(로컬 자정)로. 화면 표시/정렬용 문자열은 여기서 파생됩니다. */
+function churchTodayAsLocalDate(): Date {
+  const { year, month, day } = getChurchNowParts()
+  return new Date(year, month - 1, day)
+}
+
+// ────────────────────────────────────────────────────────────────
 // 주보 날짜
 //
 // 🐛 과거 버그: 주보 날짜를 "8/17(일)" 같은 표시용 문자열로 저장하고 그걸
@@ -99,8 +154,8 @@ function buildSundayEntry(d: Date): SundayEntry {
 
 // 매주 월요일을 기준으로 해당 주~향후 주의 일요일 날짜 리스트 생성
 export function getUpcomingSundays(count = 4): SundayEntry[] {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // 휴대폰 시계가 한국(UTC+9)으로 맞춰져 있어도 교회(하노이)와 같은 주일을 보여줍니다.
+  const today = churchTodayAsLocalDate()
 
   const day = today.getDay()
   const daysSinceMonday = day === 0 ? 6 : day - 1
@@ -124,8 +179,7 @@ export function getUpcomingSundays(count = 4): SundayEntry[] {
 
 // 오늘 기준 가장 최근(오늘 포함 과거) 일요일 구하기 (offsetWeeks: 0=최근, -1=1주 전, -2=2주 전...)
 export function getMostRecentSunday(offsetWeeks = 0): SundayEntry {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = churchTodayAsLocalDate()
   const day = today.getDay() // 0: Sun, 1: Mon, ...
 
   // 오늘이 일요일이면 오늘, 아니면 직전 일요일
@@ -140,32 +194,46 @@ export function getMostRecentSunday(offsetWeeks = 0): SundayEntry {
   return buildSundayEntry(recentSunday)
 }
 
-// 특정 주일(일요일)의 식사 신청 마감 여부 체크 (해당 일요일 직전 토요일 14:00 마감)
-export function isMealRegistrationLocked(sundayDateObj: Date): { isLocked: boolean; remainingText: string } {
-  const now = new Date()
-  
-  // 토요일 14:00 마감 타임스탬프 계산 (일요일 - 1일 14시)
-  const deadline = new Date(sundayDateObj)
-  deadline.setDate(sundayDateObj.getDate() - 1)
-  deadline.setHours(14, 0, 0, 0)
-  
-  if (now >= deadline) {
+/**
+ * 특정 주일(일요일)의 식사 신청 마감 여부 (해당 일요일 직전 토요일 **하노이 시각** 14:00 마감)
+ *
+ * 마감 시각은 보는 사람의 휴대폰 시간대와 상관없이 항상 같은 순간입니다.
+ * (한국 시간대 휴대폰에서 두 시간 일찍 마감되던 문제 → 위 '교회 시간대' 주석 참고)
+ */
+export function isMealRegistrationLocked(
+  sundayDateObj: Date,
+  now: Date = new Date()
+): { isLocked: boolean; remainingText: string } {
+  // 일요일 - 1일 = 토요일 (Date.UTC 가 월초/연초 경계를 알아서 처리합니다)
+  const deadline = churchTimeToInstant(
+    sundayDateObj.getFullYear(),
+    sundayDateObj.getMonth() + 1,
+    sundayDateObj.getDate() - 1,
+    14,
+    0
+  )
+
+  const diffMs = deadline.getTime() - now.getTime()
+  if (diffMs <= 0) {
     return { isLocked: true, remainingText: '신청 마감' }
   }
-  
+
   // 남아있는 시간 계산
-  const diffMs = deadline.getTime() - now.getTime()
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMinutes / 60)
   const diffDays = Math.floor(diffHours / 24)
   const remHours = diffHours % 24
-  
+
   let remainingText = ''
   if (diffDays > 0) {
     remainingText = `토 14시 마감 (D-${diffDays})`
-  } else {
+  } else if (diffHours > 0) {
     remainingText = `마감까지 ${remHours}시간 남음`
+  } else {
+    // 마지막 한 시간은 "0시간 남음" 대신 분으로 보여 줍니다.
+    remainingText = `마감까지 ${diffMinutes}분 남음`
   }
-  
+
   return { isLocked: false, remainingText }
 }
 
