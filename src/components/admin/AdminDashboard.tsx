@@ -27,7 +27,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ currentUser, allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack }: AdminDashboardProps) {
   const isLeader = currentUser?.role === 'LEADER'
   const isCouponManager = currentUser?.role === 'COUPON'
-  // 선생님은 출석 탭만 볼 수 있습니다 (성도 정보·식권·식사 집계는 안 보입니다)
+  // 선생님은 출석·식사 탭만 볼 수 있습니다 (성도 정보·식권은 안 보입니다)
   const isTeacher = currentUser?.role === 'TEACHER'
   const defaultTab = isCouponManager ? 'coupons' : isTeacher ? 'stats' : 'meals'
   const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts' | 'bulletin'>(defaultTab)
@@ -118,7 +118,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           접어 두 줄로 보여 줍니다. 탭이 4개 이하인 권한에서는 예전처럼 한 줄입니다. */}
       {(() => {
         const tabs = [
-          { id: 'meals', label: '🍱 식사', show: !isCouponManager && !isTeacher },
+          { id: 'meals', label: '🍱 식사', show: !isCouponManager },
           { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, show: !isLeader && !isCouponManager && !isTeacher },
           { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}`, show: !isCouponManager && !isTeacher },
           { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader && !isTeacher },
