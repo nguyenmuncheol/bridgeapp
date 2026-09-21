@@ -648,7 +648,7 @@ export const RECENT_POST_CATEGORIES: PostItem['category'][] = ['MEMBER_NEWS', 'P
  *    작성자가 "나눔 탭 안에서만" 보이길 기대하고 쓴 글이 노출되면 안 됩니다.
  *    (is_secret 컬럼이 비어 있는 옛 글도 있어서 null 도 함께 통과시킵니다.)
  */
-export async function dbFetchRecentPosts(limit = 6): Promise<RecentPostItem[]> {
+export async function dbFetchRecentPosts(limit = 5): Promise<RecentPostItem[]> {
   const { data, error } = await supabase
     .from('posts')
     .select('id, title, author_name, category, created_at')
