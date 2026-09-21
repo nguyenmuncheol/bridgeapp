@@ -166,6 +166,13 @@ export function todayChurchDateStr(): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
+/** 'YYYY-MM-DD' → '26/09/20(주일)'. 주보 탭 주일 선택 목록처럼 짧게 보여줄 때 씁니다. */
+export function formatSundayCompact(dateStr: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '')
+  if (!m) return dateStr || ''
+  return `${m[1].slice(2)}/${m[2]}/${m[3]}(주일)`
+}
+
 // 매주 월요일을 기준으로 해당 주~향후 주의 일요일 날짜 리스트 생성
 export function getUpcomingSundays(count = 4): SundayEntry[] {
   // 휴대폰 시계가 한국(UTC+9)으로 맞춰져 있어도 교회(하노이)와 같은 주일을 보여줍니다.

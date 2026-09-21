@@ -31,12 +31,12 @@ import {
   SERVING_PRAYER_COL as PRAYER_COL, SERVING_MEAL_COL as MEAL_COL,
 } from '../../lib/bulletinContent'
 import {
-  dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbFetchPublishedBulletinDates,
-  dbUpsertBulletin, BulletinData,
+  dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbFetchBulletinDateStatuses,
+  dbUpsertBulletin, BulletinData, BulletinDateStatus,
 } from '../../lib/db'
 import {
-  getUpcomingSundays, getMostRecentSunday, formatBulletinDisplay,
-  sundayEntryFromDateStr, todayChurchDateStr,
+  getUpcomingSundays, formatBulletinDisplay,
+  sundayEntryFromDateStr, todayChurchDateStr, formatSundayCompact,
 } from '../../lib/dateUtils'
 import BulletinView from '../bulletin/BulletinView'
 
@@ -47,29 +47,31 @@ interface BulletinTabProps {
 }
 
 export default function BulletinTab({ currentUser, allUsers, showToast }: BulletinTabProps) {
-  // 편집 가능한 기본 주일: 지난 2주 + 이번 주 이후 4주. 이보다 더 지난, 발행 완료된
-  // 주보는 아래에서 따로 불러와 목록 맨 앞에 끼워 넣습니다(고르면 보기 전용).
-  const editableSundays = useMemo(() => {
-    const past = [getMostRecentSunday(-2), getMostRecentSunday(-1)]
-    return [...past, ...getUpcomingSundays(4)]
-  }, [])
+  // 새로 만들 수 있는 미래 주일: 이번 주 포함 2주치만. 내용은 보통 해당 주일
+  // 2~3일 전에 확정되므로 그보다 멀리 미리 만들어 둘 일이 없습니다.
+  const upcomingSundays = useMemo(() => getUpcomingSundays(2), [])
 
-  const [pastPublishedDates, setPastPublishedDates] = useState<string[]>([])
+  // DB에 실제로 있는 주보 날짜(상태 포함) — 과거분은 전부 이 목록에서만 가져옵니다.
+  // 없는 과거 주일을 후보로 미리 만들어 두지 않으므로(어차피 다시 쓸 일 없음),
+  // 목록이 실제 있었던 주보 + 앞으로 2주치 후보로만 채워집니다.
+  const [dateStatuses, setDateStatuses] = useState<BulletinDateStatus[]>([])
   useEffect(() => {
-    dbFetchPublishedBulletinDates(52).then(setPastPublishedDates).catch(() => {})
+    dbFetchBulletinDateStatuses(104).then(setDateStatuses).catch(() => {})
   }, [])
 
-  /** 주일 선택 목록: 발행된 지난 주보(오래된 순) + 편집 가능한 기본 주일들 */
-  const sundays = useMemo(() => {
-    const editableDates = new Set(editableSundays.map(s => s.dateStr))
-    const extraPast = pastPublishedDates
-      .filter(d => !editableDates.has(d))
-      .sort()
-      .map(sundayEntryFromDateStr)
-    return [...extraPast, ...editableSundays]
-  }, [editableSundays, pastPublishedDates])
+  /** 날짜 → 발행 상태. 목록 라벨에 "- 발행완료" 를 붙이는 데 씁니다. */
+  const statusByDate = useMemo(
+    () => new Map(dateStatuses.map(d => [d.date, d.status])),
+    [dateStatuses]
+  )
 
-  const [dateStr, setDateStr] = useState(editableSundays[2]?.dateStr || '')
+  /** 주일 선택 목록: DB에 있는 모든 주보 날짜 + 새로 만들 수 있는 앞으로 2주. 최신순(내림차순). */
+  const sundays = useMemo(() => {
+    const dates = new Set([...dateStatuses.map(d => d.date), ...upcomingSundays.map(s => s.dateStr)])
+    return Array.from(dates).sort().reverse().map(sundayEntryFromDateStr)
+  }, [dateStatuses, upcomingSundays])
+
+  const [dateStr, setDateStr] = useState(upcomingSundays[0]?.dateStr || '')
   const [content, setContent] = useState<BulletinContent>(EMPTY_BULLETIN_CONTENT)
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
   // 어느 주일까지 불러왔는지. 고른 날짜와 다르면 '불러오는 중' 입니다.
@@ -501,7 +503,10 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             className={inputCls + ' flex-1 basis-0 font-bold cursor-pointer'}
           >
             {sundays.map(s => (
-              <option key={s.dateStr} value={s.dateStr}>{s.labelStr}</option>
+              <option key={s.dateStr} value={s.dateStr}>
+                {formatSundayCompact(s.dateStr)}
+                {statusByDate.get(s.dateStr) === 'published' ? ' - 발행완료' : ''}
+              </option>
             ))}
           </select>
           <span className={`px-2.5 py-1.5 rounded-lg text-2xs font-bold shrink-0 ${

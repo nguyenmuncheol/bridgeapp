@@ -438,13 +438,17 @@ export async function dbFetchBulletinsWithContent(limit = 10): Promise<BulletinD
   return (data as unknown as BulletinRow[]).map(bulletinRowToData)
 }
 
+export interface BulletinDateStatus {
+  date: string
+  status: 'draft' | 'published'
+}
+
 /**
- * 발행 완료된 주보의 날짜만 최신순으로 최대 limit 개.
- * 관리자 주보 탭의 주일 선택 목록에 지난 주보(수정 불가, 보기 전용)를 끼워
- * 넣기 위한 것입니다 — 목록에서 하나를 고르면 그 날짜로 dbFetchBulletinByDate 를
- * 다시 불러 실제 내용을 봅니다.
+ * DB에 실제로 있는 주보 날짜와 상태를 최대 limit 개(최신순으로 가져와 날짜별로 합침).
+ * 관리자 주보 탭의 주일 선택 목록을 채우는 데 씁니다 — 앞으로 만들 후보 주일(다음
+ * 2주)과 합쳐서 목록을 만들고, 발행 완료 + 지난 날짜인 항목은 읽기 전용으로 잠급니다.
  */
-export async function dbFetchPublishedBulletinDates(limit = 52): Promise<string[]> {
+export async function dbFetchBulletinDateStatuses(limit = 104): Promise<BulletinDateStatus[]> {
   const { data, error } = await supabase
     .from('bulletins')
     .select('date_str, status')
@@ -452,11 +456,16 @@ export async function dbFetchPublishedBulletinDates(limit = 52): Promise<string[
     .limit(limit)
   throwIfFetchFailed(error, '주보')
   if (!data) return []
-  const dates = (data as unknown as { date_str: string; status?: string | null }[])
-    .filter(r => (r.status ?? 'published') === 'published')
-    .map(r => bulletinDateToSortable(r.date_str))
-    .filter(Boolean)
-  return Array.from(new Set(dates))
+  const byDate = new Map<string, 'draft' | 'published'>()
+  for (const row of data as unknown as { date_str: string; status?: string | null }[]) {
+    const date = bulletinDateToSortable(row.date_str)
+    if (!date) continue
+    const status: 'draft' | 'published' = row.status === 'draft' ? 'draft' : 'published'
+    // 같은 날짜에 여러 행이 있으면(구형/신형 표기가 섞인 경우 등) 발행됨을 우선합니다.
+    const existing = byDate.get(date)
+    if (!existing || (existing === 'draft' && status === 'published')) byDate.set(date, status)
+  }
+  return Array.from(byDate, ([date, status]) => ({ date, status }))
 }
 
 /**
