@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
+import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayShort } from '../../lib/dateUtils'
@@ -412,7 +412,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 text-xs">
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-2xs">소속 라브리</span>
+              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+                <span className="shrink-0">⛪</span>소속 라브리
+              </span>
               {/* '출석 미적용'은 관리자용 설정값이라 본인에게는 보여 주지 않습니다 — 편성 전과 같게 표시합니다. */}
               <SlidingText
                 className="font-bold text-gray-800 text-2xs"
@@ -420,14 +422,18 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               />
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-2xs">연락처</span>
+              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+                <Smartphone size={11} className="text-brand shrink-0" />연락처
+              </span>
               <SlidingText
                 className="font-bold text-gray-800 text-2xs"
                 text={currentUser.phone || '미입력'}
               />
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-2xs">생년월일</span>
+              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+                <span className="shrink-0">🎂</span>생년월일
+              </span>
               <SlidingText
                 className="font-bold text-gray-800 text-2xs"
                 text={formatBirthdayShort(currentUser.birthday) || '미입력'}
@@ -436,14 +442,18 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-2xs">거주지 주소</span>
+              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+                <MapPin size={11} className="text-brand shrink-0" />거주지 주소
+              </span>
               <SlidingText
                 className="font-bold text-gray-800 text-2xs"
                 text={currentUser.address || '주소 미입력'}
               />
             </div>
             <div className={`p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0 ${familyStatusText ? 'bg-amber-50/60 text-amber-900' : 'bg-gray-50'}`}>
-              <span className={`text-2xs ${familyStatusText ? 'text-amber-700 font-bold' : 'text-gray-400'}`}>가족</span>
+              <span className={`text-3xs flex items-center gap-1 truncate ${familyStatusText ? 'text-amber-700 font-bold' : 'text-gray-400'}`}>
+                <span className="shrink-0">👨‍👩‍👧‍👦</span>가족
+              </span>
               <SlidingText
                 className="font-bold text-2xs"
                 text={familyStatusText || '미등록'}
