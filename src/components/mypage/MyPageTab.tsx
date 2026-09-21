@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
+import { Shield, Smartphone, ChevronDown, ChevronUp, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
-import { parseBirthdayFlexible, daysInMonth, formatBirthdayDisplay } from '../../lib/dateUtils'
+import { parseBirthdayFlexible, daysInMonth, formatBirthdayShort } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
@@ -91,6 +91,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   // 생일 미입력 자녀가 있으면 마이페이지 상단에 입력 알림 표시
   const missingBirthdayChildren = getMissingBirthdayChildren(currentUser, allUsers)
   const addressRequested = !!parseFamilyInfo(currentUser.familyInfo).addressRequestedAt
+  const familyStatusText = buildFamilyStatusText(currentUser, allUsers)
 
   // 생일 파싱 (YYYY-MM-DD 또는 MM-DD)
   const currentYear = new Date().getFullYear()
@@ -409,54 +410,46 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         </button>
 
         <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 text-xs">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
-              <span className="text-sm mt-0.5">⛪</span>
-              <div>
-                <span className="text-gray-400 text-2xs">소속 라브리</span>
-                {/* '출석 미적용'은 관리자용 설정값이라 본인에게는 보여 주지 않습니다 — 편성 전과 같게 표시합니다. */}
-                <p className="font-bold text-gray-800 text-2xs mt-0.5">{(isAttendanceExempt(currentUser) ? '' : currentUser.labriId) || '미정 (모든 기능 이용 가능)'}</p>
-              </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
+              <span className="text-gray-400 text-2xs">소속 라브리</span>
+              {/* '출석 미적용'은 관리자용 설정값이라 본인에게는 보여 주지 않습니다 — 편성 전과 같게 표시합니다. */}
+              <SlidingText
+                className="font-bold text-gray-800 text-2xs"
+                text={(isAttendanceExempt(currentUser) ? '' : currentUser.labriId) || '미정'}
+              />
             </div>
-            <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
-              <Smartphone size={14} className="text-brand shrink-0 mt-1" />
-              <div>
-                <span className="text-gray-400 text-2xs">연락처</span>
-                <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.phone || '연락처 미입력'}</p>
-              </div>
+            <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
+              <span className="text-gray-400 text-2xs">연락처</span>
+              <SlidingText
+                className="font-bold text-gray-800 text-2xs"
+                text={currentUser.phone || '미입력'}
+              />
             </div>
-          </div>
-          <div className="bg-gray-50 p-2.5 rounded-xl flex items-center gap-2 min-w-0">
-            <span className="text-sm shrink-0">🎂</span>
-            <div className="min-w-0 flex-1">
+            <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
               <span className="text-gray-400 text-2xs">생년월일</span>
               <SlidingText
-                className="font-bold text-gray-800 text-2xs mt-0.5"
-                text={formatBirthdayDisplay(currentUser.birthday) || '생일 미입력'}
+                className="font-bold text-gray-800 text-2xs"
+                text={formatBirthdayShort(currentUser.birthday) || '미입력'}
               />
             </div>
           </div>
-          <div className="bg-gray-50 p-2.5 rounded-xl flex items-center gap-2 min-w-0">
-            <MapPin size={14} className="text-brand shrink-0" />
-            <div className="min-w-0 flex-1">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
               <span className="text-gray-400 text-2xs">거주지 주소</span>
               <SlidingText
-                className="font-bold text-gray-800 text-2xs mt-0.5"
+                className="font-bold text-gray-800 text-2xs"
                 text={currentUser.address || '주소 미입력'}
               />
             </div>
-          </div>
-          {buildFamilyStatusText(currentUser, allUsers) && (
-            <div className="bg-amber-50/60 p-2.5 rounded-xl flex items-start gap-2 text-amber-900">
-              <span className="text-sm mt-0.5">👨‍👩‍👧‍👦</span>
-              <div>
-                <span className="text-amber-700 text-2xs font-bold">가족</span>
-                <p className="font-bold text-2xs mt-0.5">
-                  {buildFamilyStatusText(currentUser, allUsers)}
-                </p>
-              </div>
+            <div className={`p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0 ${familyStatusText ? 'bg-amber-50/60 text-amber-900' : 'bg-gray-50'}`}>
+              <span className={`text-2xs ${familyStatusText ? 'text-amber-700 font-bold' : 'text-gray-400'}`}>가족</span>
+              <SlidingText
+                className="font-bold text-2xs"
+                text={familyStatusText || '미등록'}
+              />
             </div>
-          )}
+          </div>
           {missingBirthdayChildren.length > 0 && (
             <button
               type="button"

@@ -342,6 +342,18 @@ export function formatBirthdayDisplay(raw?: string | null): string {
     : `${parsed.month}월 ${parsed.day}일`
 }
 
+/** 화면 표시용: 좁은 칸에 넣기 위한 "88/07/15" 형태 (연도 2자리로 축약) */
+export function formatBirthdayShort(raw?: string | null): string {
+  if (!raw) return ''
+  const parsed = parseBirthdayFlexible(raw)
+  if (!parsed) return raw
+  const mm = String(parsed.month).padStart(2, '0')
+  const dd = String(parsed.day).padStart(2, '0')
+  if (!parsed.year) return `${mm}/${dd}`
+  const yy = String(parsed.year).slice(-2)
+  return `${yy}/${mm}/${dd}`
+}
+
 /** 화면 표시용: 생년(연도)을 제외한 "9월 9일" 형태 (주소록 생년 비공개용) */
 export function formatBirthdayMonthDayOnly(raw?: string | null): string {
   if (!raw) return ''
