@@ -4,10 +4,11 @@ import { useState, useMemo, useRef } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
-import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
+import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbFetchRecentPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import ChurchGuideModal from './ChurchGuideModal'
+import RecentPostsCarousel from './RecentPostsCarousel'
 import ImageSlider from '../ImageSlider'
 import BulletinView from '../bulletin/BulletinView'
 import { normalizeBulletinContent, BulletinContent, OFFERING_ACCOUNT_LINES } from '../../lib/bulletinContent'
@@ -20,6 +21,8 @@ interface HomeTabProps {
   currentUser: UserProfile
   allUsers?: UserProfile[]
   isGuest: boolean
+  /** 최신 글 카드를 눌렀을 때 그 글이 있는 탭(+서브탭)으로 이동시킵니다. */
+  onNavigate?: (tab: string, subTab?: string) => void
 }
 
 const CHURCH_INFO = {
@@ -28,7 +31,7 @@ const CHURCH_INFO = {
   address: '골든펠리스 지하1층 달팽이카페(K-Mart 안쪽)',
 }
 
-export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
+export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabProps) {
   const [showChurchGuideModal, setShowChurchGuideModal] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [copied, setCopied] = useState(false)
@@ -39,6 +42,9 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
   // Supabase DB 주보 및 공지사항 로드 (다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용)
   const { data: latestBulletin } = useCachedQuery('bulletin:latest', () => dbFetchLatestBulletin())
   const { data: noticePosts } = useCachedQuery('posts:NOTICE', () => dbFetchPosts('NOTICE'))
+  // 최신 글 띠는 로그인한 성도에게만 보여줍니다(나눔·소식은 공동체 내부 글이라
+  // 비로그인 방문자에게 노출하지 않습니다). 게스트일 때는 조회 자체를 하지 않습니다.
+  const { data: recentPosts } = useCachedQuery('posts:recent', () => dbFetchRecentPosts(5), { enabled: !isGuest })
 
   // 주보 상태 (imageUrls 배열 기반)
   const [bulletinOverride, setBulletinOverride] = useState<{
@@ -357,7 +363,17 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
         )}
       </section>
 
-      {/* ─── 2. 공지사항 (세로 스크롤 + 자동 스크롤) ─── */}
+      {/* ─── 2. 최신 글 (자동 슬라이드, 로그인 성도 전용) ─── */}
+      {!isGuest && (
+        <RecentPostsCarousel posts={recentPosts || []} onNavigate={onNavigate} />
+      )}
+
+      {/* ─── 3. 공지사항 ───
+          공지가 하나도 없으면 제목만 있는 빈 카드가 남아 홈이 어수선해 보였습니다.
+          그래서 일반 성도에게는 섹션을 통째로 숨깁니다. 관리자에게는 "+ 공지 작성"
+          버튼이 필요하므로 비어 있어도 계속 보여 줍니다.
+          (아직 불러오는 중일 때도 숨겨 둡니다. 빈 카드가 떴다가 사라지면 깜빡여 보입니다.) */}
+      {(notices.length > 0 || currentUser.role === 'ADMIN') && (
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -383,10 +399,17 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
               <p className="text-2xs text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
             </div>
           ))}
+          {notices.length === 0 && (
+            <p className="py-6 text-center text-xs text-gray-400">
+              등록된 공지사항이 없습니다.<br />
+              <span className="text-2xs">공지가 없는 동안에는 성도님 화면에 이 칸이 보이지 않습니다.</span>
+            </p>
+          )}
         </div>
       </section>
+      )}
 
-      {/* ─── 3. 이번 주 주보 ─── */}
+      {/* ─── 4. 이번 주 주보 ─── */}
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -441,7 +464,7 @@ export default function HomeTab({ currentUser, isGuest }: HomeTabProps) {
         )}
       </section>
 
-      {/* ─── 4. 온라인 헌금 계좌 (로그인 성도 전용) ─── */}
+      {/* ─── 5. 온라인 헌금 계좌 (로그인 성도 전용) ─── */}
       {!isGuest && (
         <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
           <div className="flex items-center gap-2">

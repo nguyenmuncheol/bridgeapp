@@ -561,6 +561,21 @@ export async function dbUpsertBulletin(bulletin: BulletinData) {
 // ==========================================
 // posts 테이블 한 행을 화면용 PostItem으로 변환하는 공용 매핑 함수.
 // dbFetchPosts(전체 조회)와 dbFetchPostsPage(페이지 단위 조회)가 함께 재사용합니다.
+/** 홈 "최신 글" 띠에 쓰는 가벼운 글 정보. 목록 카드가 탭 이름·제목·날짜만 보여줍니다. */
+export interface RecentPostItem {
+  id: string
+  title: string
+  category: PostItem['category']
+  createdAt: string
+}
+
+interface RecentPostRow {
+  id: string
+  title: string
+  category: PostItem['category']
+  created_at: string
+}
+
 function mapPostRow(d: PostRow): PostItem {
   const pinnedTag = (d.tags || []).find((t: string) => typeof t === 'string' && t.startsWith('__pinnedAt:'))
   const pinnedAt = pinnedTag ? pinnedTag.replace('__pinnedAt:', '') : undefined
@@ -615,6 +630,41 @@ export async function dbFetchPosts(category?: string): Promise<PostItem[]> {
   if (!data) return []
 
   return (data as unknown as PostRow[]).map(mapPostRow)
+}
+
+/** 홈 화면 "최신 글" 띠에 띄우는 카테고리들. 공지(NOTICE)는 홈에 별도 섹션이 있어 뺍니다. */
+export const RECENT_POST_CATEGORIES: PostItem['category'][] = ['MEMBER_NEWS', 'PRAYER', 'PRAISE', 'PHOTO']
+
+/**
+ * 홈 화면 "최신 글" 자동 슬라이드용 조회.
+ *
+ * 홈은 앱을 켜면 무조건 거치는 화면이라 가볍게 유지해야 합니다. 그래서
+ * dbFetchPosts처럼 post_comments를 조인하거나 전체를 훑지 않고,
+ * 화면에 실제로 쓰는 컬럼(탭 구분 · 제목 · 날짜)만 최신 순으로 limit개만 가져옵니다.
+ *
+ * 🔒 비밀 기도제목(is_secret)은 제외합니다. 홈 첫 화면은 누구나 보는 자리라
+ *    작성자가 "나눔 탭 안에서만" 보이길 기대하고 쓴 글이 노출되면 안 됩니다.
+ *    (is_secret 컬럼이 비어 있는 옛 글도 있어서 null 도 함께 통과시킵니다.)
+ */
+export async function dbFetchRecentPosts(limit = 5): Promise<RecentPostItem[]> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, title, category, created_at')
+    .in('category', RECENT_POST_CATEGORIES)
+    .or('is_secret.is.null,is_secret.eq.false')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  throwIfFetchFailed(error, '최신 글')
+  if (!data) return []
+
+  return (data as RecentPostRow[]).map(d => ({
+    id: d.id,
+    title: d.title,
+    category: d.category,
+    // created_at은 세계표준시라 그냥 자르면 새벽에 쓴 글이 "어제"로 보입니다.
+    createdAt: toLocalDateStr(d.created_at),
+  }))
 }
 
 export interface PostsPageResult {

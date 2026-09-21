@@ -707,7 +707,12 @@ export default function Home() {
           <>
             {/* 1. 홈 탭 (누구나 열람 가능) */}
             {currentTab === 'home' && (
-              <HomeTab currentUser={currentUser} allUsers={users} isGuest={isGuest || isPending || isUnrequestedPending || isRejected || isLeftBlocked} />
+              <HomeTab
+                currentUser={currentUser}
+                allUsers={users}
+                isGuest={isGuest || isPending || isUnrequestedPending || isRejected || isLeftBlocked}
+                onNavigate={handleSetCurrentTab}
+              />
             )}
 
             {/* 2. 비회원(isGuest) 접근 차단 카드 */}
