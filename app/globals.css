@@ -42,6 +42,17 @@
  * 나중에 다크모드를 제대로 지원할 때 다시 살리면 됩니다.
  */
 
+/*
+ * 내정보 카드의 생년월일/주소처럼 한 줄로만 보여줘야 하는 값이 칸보다 길 때
+ * 자동으로 좌우로 슬라이딩해 뒷부분까지 보이게 합니다. (SlidingText 컴포넌트가 사용)
+ * 시작/끝에서 잠깐 멈췄다가 다시 움직이도록 구간을 나눠 뒀습니다.
+ */
+@keyframes sliding-text-scroll {
+  0%, 15% { transform: translateX(0); }
+  50%, 65% { transform: translateX(var(--sliding-text-overflow)); }
+  100% { transform: translateX(0); }
+}
+
 @layer base {
   body {
     background: var(--background);

@@ -16,6 +16,7 @@ import ProfileImageLightbox from '../ProfileImageLightbox'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
+import SlidingText from '../ui/SlidingText'
 
 interface MyPageTabProps {
   currentUser: UserProfile
@@ -425,18 +426,24 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
-            <span className="text-sm mt-0.5">🎂</span>
-            <div>
+          <div className="bg-gray-50 p-2.5 rounded-xl flex items-center gap-2 min-w-0">
+            <span className="text-sm shrink-0">🎂</span>
+            <div className="min-w-0 flex-1">
               <span className="text-gray-400 text-2xs">생년월일</span>
-              <p className="font-bold text-gray-800 text-2xs mt-0.5">{formatBirthdayDisplay(currentUser.birthday) || '생일 미입력'}</p>
+              <SlidingText
+                className="font-bold text-gray-800 text-2xs mt-0.5"
+                text={formatBirthdayDisplay(currentUser.birthday) || '생일 미입력'}
+              />
             </div>
           </div>
-          <div className="bg-gray-50 p-2.5 rounded-xl flex items-start gap-2">
-            <MapPin size={14} className="text-brand shrink-0 mt-1" />
-            <div>
+          <div className="bg-gray-50 p-2.5 rounded-xl flex items-center gap-2 min-w-0">
+            <MapPin size={14} className="text-brand shrink-0" />
+            <div className="min-w-0 flex-1">
               <span className="text-gray-400 text-2xs">거주지 주소</span>
-              <p className="font-bold text-gray-800 text-2xs mt-0.5">{currentUser.address || '주소 미입력'}</p>
+              <SlidingText
+                className="font-bold text-gray-800 text-2xs mt-0.5"
+                text={currentUser.address || '주소 미입력'}
+              />
             </div>
           </div>
           {buildFamilyStatusText(currentUser, allUsers) && (
