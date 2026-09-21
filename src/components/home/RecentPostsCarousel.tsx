@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight, Sparkles } from 'lucide-react'
 import { RecentPostItem } from '../../lib/db'
 
@@ -25,6 +25,8 @@ function formatShortDate(dateStr: string): string {
   return `${Number(m[2])}월 ${Number(m[3])}일`
 }
 
+/** 한 화면에 보여줄 글 수. */
+const PAGE_SIZE = 2
 const AUTO_SLIDE_MS = 4000
 /** 직접 넘긴 직후에는 자동 전환을 잠시 멈춥니다(읽는 중에 화면이 바뀌면 불편합니다). */
 const PAUSE_AFTER_MANUAL_MS = 10000
@@ -33,7 +35,7 @@ const PAUSE_AFTER_MANUAL_MS = 10000
  * 홈 화면 "최신 글" 띠.
  *
  * 공지사항이 한동안 없으면 홈이 주보 하나만 덩그러니 남습니다. 그래서 나눔·소식 탭에
- * 새 글이 올라온 걸 홈에서도 알 수 있도록, 최신 글 몇 개를 한 장씩 자동으로 넘겨 보여줍니다.
+ * 새 글이 올라온 걸 홈에서도 알 수 있도록, 최신 글을 두 개씩 묶어 자동으로 넘겨 보여줍니다.
  *
  * 어르신 성도가 많은 앱이라 다음을 지킵니다.
  *  - 자동 전환은 4초. 손가락을 올리고 있거나(읽는 중) 직접 넘긴 직후에는 멈춥니다.
@@ -42,12 +44,19 @@ const PAUSE_AFTER_MANUAL_MS = 10000
  *  - 점(dot)은 눈으로 보기엔 작아도 누르는 영역은 44px을 확보합니다.
  */
 export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCarouselProps) {
-  const total = posts.length
+  // 글을 두 개씩 끊어 '한 장'으로 만듭니다. 마지막 장은 한 개만 있을 수 있습니다.
+  const pages = useMemo(() => {
+    const result: RecentPostItem[][] = []
+    for (let i = 0; i < posts.length; i += PAGE_SIZE) result.push(posts.slice(i, i + PAGE_SIZE))
+    return result
+  }, [posts])
+  const total = pages.length
+
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 글이 지워지는 등으로 장 수가 줄면 범위를 벗어날 수 있어 보정합니다.
+  // 글이 지워지는 등으로 장 수가 줄면 범위를 벗어날 수 있어 항상 보정합니다.
   const safeIndex = total === 0 ? 0 : Math.min(index, total - 1)
 
   // 직접 넘긴 뒤 일정 시간 자동 전환을 멈춥니다.
@@ -106,8 +115,7 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
 
   if (total === 0) return null
 
-  const current = posts[safeIndex]
-  const info = CATEGORY_INFO[current.category]
+  const currentPage = pages[safeIndex]
 
   return (
     <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
@@ -120,37 +128,52 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
       </div>
 
       <div
+        className="space-y-2"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
-        <button
-          type="button"
-          onClick={() => { if (!movedRef.current && info) onNavigate?.(info.tab, info.subTab) }}
-          className="w-full text-left bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 hover:border-blue-200 transition-all flex items-center gap-2"
-        >
-          <div className="min-w-0 grow space-y-1">
-            <div className="flex items-center gap-2">
-              <span className={`text-2xs font-bold px-2 py-0.5 rounded-md ${info?.chipClass || 'bg-gray-100 text-gray-600'}`}>
-                {info?.label || '글'}
-              </span>
-              <span className="text-2xs text-gray-400 shrink-0">{formatShortDate(current.createdAt)}</span>
-            </div>
-            <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{current.title}</h3>
-          </div>
-          <ChevronRight size={16} className="text-gray-300 shrink-0" />
-        </button>
+        {currentPage.map(post => {
+          const info = CATEGORY_INFO[post.category]
+          return (
+            <button
+              key={post.id}
+              type="button"
+              onClick={() => { if (!movedRef.current && info) onNavigate?.(info.tab, info.subTab) }}
+              // 제목이 한 줄인 카드와 두 줄인 카드가 섞여도 장을 넘길 때 높이가 덜 출렁이도록
+              // 최소 높이를 잡아 둡니다.
+              className="w-full min-h-[84px] text-left bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 hover:border-blue-200 transition-all flex items-center gap-2"
+            >
+              <div className="min-w-0 grow space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-2xs font-bold px-2 py-0.5 rounded-md ${info?.chipClass || 'bg-gray-100 text-gray-600'}`}>
+                    {info?.label || '글'}
+                  </span>
+                  <span className="text-2xs text-gray-400 shrink-0">{formatShortDate(post.createdAt)}</span>
+                </div>
+                <h3 className="font-bold text-xs text-gray-800 line-clamp-2 leading-relaxed">{post.title}</h3>
+                <p className="text-2xs text-gray-400 line-clamp-1">{post.authorName}</p>
+              </div>
+              <ChevronRight size={16} className="text-gray-300 shrink-0" />
+            </button>
+          )
+        })}
+
+        {/* 마지막 장에 글이 하나뿐일 때, 장을 넘겨도 카드 자리가 위아래로 흔들리지 않게 빈 자리를 둡니다. */}
+        {currentPage.length < PAGE_SIZE && total > 1 && (
+          <div className="min-h-[84px]" aria-hidden="true" />
+        )}
       </div>
 
       {total > 1 && (
         <div className="flex items-center justify-center">
-          {posts.map((p, i) => (
+          {pages.map((page, i) => (
             <button
-              key={p.id}
+              key={page[0].id}
               type="button"
               onClick={() => goManual(i)}
-              aria-label={`${i + 1}번째 글 보기`}
+              aria-label={`${i + 1}번째 장 보기`}
               aria-current={i === safeIndex}
               className="w-11 h-11 flex items-center justify-center"
             >

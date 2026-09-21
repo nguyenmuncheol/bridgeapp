@@ -44,7 +44,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
   const { data: noticePosts } = useCachedQuery('posts:NOTICE', () => dbFetchPosts('NOTICE'))
   // 최신 글 띠는 로그인한 성도에게만 보여줍니다(나눔·소식은 공동체 내부 글이라
   // 비로그인 방문자에게 노출하지 않습니다). 게스트일 때는 조회 자체를 하지 않습니다.
-  const { data: recentPosts } = useCachedQuery('posts:recent', () => dbFetchRecentPosts(5), { enabled: !isGuest })
+  const { data: recentPosts } = useCachedQuery('posts:recent', () => dbFetchRecentPosts(6), { enabled: !isGuest })
 
   // 주보 상태 (imageUrls 배열 기반)
   const [bulletinOverride, setBulletinOverride] = useState<{

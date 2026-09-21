@@ -561,10 +561,11 @@ export async function dbUpsertBulletin(bulletin: BulletinData) {
 // ==========================================
 // posts 테이블 한 행을 화면용 PostItem으로 변환하는 공용 매핑 함수.
 // dbFetchPosts(전체 조회)와 dbFetchPostsPage(페이지 단위 조회)가 함께 재사용합니다.
-/** 홈 "최신 글" 띠에 쓰는 가벼운 글 정보. 목록 카드가 탭 이름·제목·날짜만 보여줍니다. */
+/** 홈 "최신 글" 띠에 쓰는 가벼운 글 정보. 카드가 탭 이름·제목·작성자·날짜만 보여줍니다. */
 export interface RecentPostItem {
   id: string
   title: string
+  authorName: string
   category: PostItem['category']
   createdAt: string
 }
@@ -572,6 +573,7 @@ export interface RecentPostItem {
 interface RecentPostRow {
   id: string
   title: string
+  author_name: string | null
   category: PostItem['category']
   created_at: string
 }
@@ -646,12 +648,16 @@ export const RECENT_POST_CATEGORIES: PostItem['category'][] = ['MEMBER_NEWS', 'P
  *    작성자가 "나눔 탭 안에서만" 보이길 기대하고 쓴 글이 노출되면 안 됩니다.
  *    (is_secret 컬럼이 비어 있는 옛 글도 있어서 null 도 함께 통과시킵니다.)
  */
-export async function dbFetchRecentPosts(limit = 5): Promise<RecentPostItem[]> {
+export async function dbFetchRecentPosts(limit = 6): Promise<RecentPostItem[]> {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, title, category, created_at')
+    .select('id, title, author_name, category, created_at')
     .in('category', RECENT_POST_CATEGORIES)
     .or('is_secret.is.null,is_secret.eq.false')
+    // 서버가 매일 아침 자동으로 올리는 생일 축하글(notify_birthday)은 홈 띠에서 뺍니다.
+    // 성도가 직접 쓴 글만 보여주려는 것이고, 생일은 우리소식 탭과 생일 달력에 이미 있습니다.
+    // 자동글은 사람이 쓴 게 아니라서 author_id가 비어 있는 것으로 구분합니다.
+    .not('author_id', 'is', null)
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -661,6 +667,7 @@ export async function dbFetchRecentPosts(limit = 5): Promise<RecentPostItem[]> {
   return (data as RecentPostRow[]).map(d => ({
     id: d.id,
     title: d.title,
+    authorName: d.author_name || '익명',
     category: d.category,
     // created_at은 세계표준시라 그냥 자르면 새벽에 쓴 글이 "어제"로 보입니다.
     createdAt: toLocalDateStr(d.created_at),
