@@ -439,6 +439,27 @@ export async function dbFetchBulletinsWithContent(limit = 10): Promise<BulletinD
 }
 
 /**
+ * 발행 완료된 주보의 날짜만 최신순으로 최대 limit 개.
+ * 관리자 주보 탭의 주일 선택 목록에 지난 주보(수정 불가, 보기 전용)를 끼워
+ * 넣기 위한 것입니다 — 목록에서 하나를 고르면 그 날짜로 dbFetchBulletinByDate 를
+ * 다시 불러 실제 내용을 봅니다.
+ */
+export async function dbFetchPublishedBulletinDates(limit = 52): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('bulletins')
+    .select('date_str, status')
+    .order('date_str', { ascending: false })
+    .limit(limit)
+  throwIfFetchFailed(error, '주보')
+  if (!data) return []
+  const dates = (data as unknown as { date_str: string; status?: string | null }[])
+    .filter(r => (r.status ?? 'published') === 'published')
+    .map(r => bulletinDateToSortable(r.date_str))
+    .filter(Boolean)
+  return Array.from(new Set(dates))
+}
+
+/**
  * 특정 주일 주보 1건. 인쇄 화면(/bulletin/print?date=YYYY-MM-DD)이 씁니다.
  * 같은 날짜 행이 여러 개면 가장 최근에 수정된 것을 돌려줍니다.
  */

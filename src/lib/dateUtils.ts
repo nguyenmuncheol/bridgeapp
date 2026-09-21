@@ -152,6 +152,20 @@ function buildSundayEntry(d: Date): SundayEntry {
   return { dateStr, displayStr, labelStr, shortLabelStr, dateObj: d }
 }
 
+/** 'YYYY-MM-DD' 문자열로부터 SundayEntry 를 만듭니다. 발행된 지난 주보 날짜를
+ *  주일 선택 목록에 끼워 넣을 때 씁니다(그 날짜가 실제 일요일이 아니어도 그대로 씁니다). */
+export function sundayEntryFromDateStr(dateStr: string): SundayEntry {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '')
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(dateStr)
+  return buildSundayEntry(d)
+}
+
+/** 오늘(하노이 기준) 'YYYY-MM-DD'. 지난 주보(수정 불가) 여부를 가릴 때 씁니다. */
+export function todayChurchDateStr(): string {
+  const { year, month, day } = getChurchNowParts()
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
 // 매주 월요일을 기준으로 해당 주~향후 주의 일요일 날짜 리스트 생성
 export function getUpcomingSundays(count = 4): SundayEntry[] {
   // 휴대폰 시계가 한국(UTC+9)으로 맞춰져 있어도 교회(하노이)와 같은 주일을 보여줍니다.

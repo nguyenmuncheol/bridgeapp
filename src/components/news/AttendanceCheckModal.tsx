@@ -443,7 +443,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
               <button onClick={() => setShowAttendanceModal(false)} className="p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
             </div>
 
-            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+            <div className="overflow-y-auto overflow-x-hidden flex-1 p-4 space-y-3">
               {/* 그룹 선택 탭 (어른 라브리 + 자녀 그룹 + 방문자) */}
               {showGroupTabs && (
                 <div className="bg-slate-100 p-1.5 rounded-xl space-y-1">
@@ -504,7 +504,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                           value={newVisitorName}
                           onChange={e => setNewVisitorName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleAddNamedVisitor() }}
-                          className="flex-1 px-3 py-2 bg-white rounded-xl border border-brand/30 text-xs text-gray-900 font-bold focus:outline-none focus:border-brand"
+                          className="flex-1 min-w-0 px-3 py-2 bg-white rounded-xl border border-brand/30 text-xs text-gray-900 font-bold focus:outline-none focus:border-brand"
                         />
                         <button
                           type="button"

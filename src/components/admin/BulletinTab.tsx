@@ -31,9 +31,13 @@ import {
   SERVING_PRAYER_COL as PRAYER_COL, SERVING_MEAL_COL as MEAL_COL,
 } from '../../lib/bulletinContent'
 import {
-  dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbUpsertBulletin, BulletinData,
+  dbFetchBulletinByDate, dbFetchBulletinsWithContent, dbFetchPublishedBulletinDates,
+  dbUpsertBulletin, BulletinData,
 } from '../../lib/db'
-import { getUpcomingSundays, getMostRecentSunday, formatBulletinDisplay } from '../../lib/dateUtils'
+import {
+  getUpcomingSundays, getMostRecentSunday, formatBulletinDisplay,
+  sundayEntryFromDateStr, todayChurchDateStr,
+} from '../../lib/dateUtils'
 import BulletinView from '../bulletin/BulletinView'
 
 interface BulletinTabProps {
@@ -43,13 +47,29 @@ interface BulletinTabProps {
 }
 
 export default function BulletinTab({ currentUser, allUsers, showToast }: BulletinTabProps) {
-  // 고를 수 있는 주일: 지난 2주 + 이번 주 이후 4주
-  const sundays = useMemo(() => {
+  // 편집 가능한 기본 주일: 지난 2주 + 이번 주 이후 4주. 이보다 더 지난, 발행 완료된
+  // 주보는 아래에서 따로 불러와 목록 맨 앞에 끼워 넣습니다(고르면 보기 전용).
+  const editableSundays = useMemo(() => {
     const past = [getMostRecentSunday(-2), getMostRecentSunday(-1)]
     return [...past, ...getUpcomingSundays(4)]
   }, [])
 
-  const [dateStr, setDateStr] = useState(sundays[2]?.dateStr || '')
+  const [pastPublishedDates, setPastPublishedDates] = useState<string[]>([])
+  useEffect(() => {
+    dbFetchPublishedBulletinDates(52).then(setPastPublishedDates).catch(() => {})
+  }, [])
+
+  /** 주일 선택 목록: 발행된 지난 주보(오래된 순) + 편집 가능한 기본 주일들 */
+  const sundays = useMemo(() => {
+    const editableDates = new Set(editableSundays.map(s => s.dateStr))
+    const extraPast = pastPublishedDates
+      .filter(d => !editableDates.has(d))
+      .sort()
+      .map(sundayEntryFromDateStr)
+    return [...extraPast, ...editableSundays]
+  }, [editableSundays, pastPublishedDates])
+
+  const [dateStr, setDateStr] = useState(editableSundays[2]?.dateStr || '')
   const [content, setContent] = useState<BulletinContent>(EMPTY_BULLETIN_CONTENT)
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
   // 어느 주일까지 불러왔는지. 고른 날짜와 다르면 '불러오는 중' 입니다.
@@ -102,6 +122,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   const isLoading = loadedFor !== dateStr
 
   /**
+   * 이미 지난 주일이고 발행까지 끝난 주보는 고쳐 쓸 수 없습니다 — 지난 주보
+   * 불러오기용 참고 자료로 열람만 합니다. 날짜가 바뀌면(또는 아직 로딩 중이면)
+   * 다음 폴백 값이 잠깐 비치지 않도록 loadedFor 로 맞춰 둡니다.
+   */
+  const isReadOnly = !isLoading && status === 'published' && dateStr < todayChurchDateStr()
+
+  /**
    * 미리보기에 넘길 내용.
    *
    * 🐛 미리보기를 켜 두면 글자 하나 칠 때마다 A5 네 쪽을 통째로 다시 그렸습니다.
@@ -145,6 +172,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
   // ── 지난 주보 불러오기 ────────────────────────────────────────────────
   const handleCopyPrevious = async () => {
+    if (isReadOnly) return
     const rows = await dbFetchBulletinsWithContent(10).catch(() => [] as BulletinData[])
     const source = rows.find(r => r.date !== dateStr && r.content)
     if (!source?.content) {
@@ -157,15 +185,14 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     const rolled = rollServingForDate(prev.servingMonths, prev.prayerAssignments, dateStr)
     setContent({
       ...prev,
-      // 그 주에만 해당하는 것은 비웁니다 — 지난주 설교·소식이 그대로 실리면 사고입니다.
+      // 설교·본문은 주마다 반드시 바뀌므로 비웁니다 — 지난주 설교가 그대로
+      // 실리면 사고입니다. 교회소식·교우소식·메시지·공지는 매주 다시 쓰더라도
+      // 지난주 내용을 보면서 복사/참고할 수 있게 그대로 가져와 둡니다
+      // (그대로 실으면 안 되는 것은 admin이 직접 지우고 새로 씁니다).
       date: formatBulletinDisplay(dateStr),
       sermon: { ...prev.sermon, title: '', sub: '' },
       scriptureRef: '',
       verses: [],
-      messageTitle: '',
-      messageBody: '',
-      churchNews: [],
-      memberNews: [],
       servingMonths: rolled.servingMonths,
       // 대표기도 배정은 달마다 정해지므로 그대로 가져옵니다(자리만 옮겨서).
       prayerAssignments: rolled.prayerAssignments.map(a => ({ ...a, notifiedAt: undefined })),
@@ -184,7 +211,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
   // ── 저장 ──────────────────────────────────────────────────────────────
   const handleSave = async (nextStatus: 'draft' | 'published') => {
-    if (isSaving) return
+    if (isSaving || isReadOnly) return
     if (!dateStr) {
       showToast('⚠️ 주일 날짜를 먼저 골라 주세요')
       return
@@ -248,7 +275,14 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           <p className="text-2xs text-gray-400 truncate">{subtitle}</p>
         </div>
       </button>
-      {open[key] && <div className="px-3.5 pb-4 space-y-3">{body}</div>}
+      {/* 지난 발행 주보는 fieldset 으로 통째로 잠급니다 — 안의 input/select/
+          textarea/button 이 모두 disabled 가 되어 값만 보이고 고칠 수 없습니다.
+          (섹션을 열고 닫는 위 버튼은 fieldset 밖이라 그대로 눌립니다.) */}
+      {open[key] && (
+        <fieldset disabled={isReadOnly} className="px-3.5 pb-4 space-y-3 border-0 m-0 min-w-0">
+          {body}
+        </fieldset>
+      )}
     </div>
   )
 
@@ -471,46 +505,54 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             ))}
           </select>
           <span className={`px-2.5 py-1.5 rounded-lg text-2xs font-bold shrink-0 ${
-            status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+            isReadOnly
+              ? 'bg-slate-200 text-slate-600'
+              : status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
           }`}>
-            {status === 'published' ? '발행됨' : '임시저장'}
+            {isReadOnly ? '지난 주보 · 읽기전용' : status === 'published' ? '발행됨' : '임시저장'}
           </span>
           {isLoading && <RefreshCw size={14} className="animate-spin text-blue-500 shrink-0" />}
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5">
-          <button onClick={handleCopyPrevious} className="py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-2xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1">
-            <Copy size={12} /> 지난 주보 불러오기
-          </button>
-          <button onClick={handleFillSample} className="py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-2xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1">
-            <Sparkles size={12} /> 샘플 내용 채우기
-          </button>
-        </div>
+        {/* 이미 지난 주일의 발행 완료 주보는 새로 쓰는 화면이 아니라 참고용 열람이므로,
+            불러오기·샘플·저장·발행 버튼을 아예 숨깁니다(뒤 섹션은 fieldset 으로 잠깁니다). */}
+        {!isReadOnly && (
+          <>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button onClick={handleCopyPrevious} className="py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-2xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1">
+                <Copy size={12} /> 지난 주보 불러오기
+              </button>
+              <button onClick={handleFillSample} className="py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-2xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1">
+                <Sparkles size={12} /> 샘플 내용 채우기
+              </button>
+            </div>
 
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            onClick={() => handleSave('draft')}
-            disabled={isSaving}
-            className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-          >
-            <Save size={13} /> 임시저장
-          </button>
-          {/* 누를 때마다 발행 ↔ 발행 전이 뒤집힙니다 */}
-          <button
-            onClick={handleTogglePublish}
-            disabled={isSaving}
-            className={`py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 ${
-              status === 'published'
-                ? 'bg-emerald-600 hover:bg-emerald-500'
-                : 'bg-slate-900 hover:bg-slate-800'
-            }`}
-          >
-            {isSaving
-              ? <RefreshCw size={13} className="animate-spin" />
-              : status === 'published' ? <Undo2 size={13} /> : <Save size={13} />}
-            {status === 'published' ? '발행 취소' : '발행하기'}
-          </button>
-        </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => handleSave('draft')}
+                disabled={isSaving}
+                className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <Save size={13} /> 임시저장
+              </button>
+              {/* 누를 때마다 발행 ↔ 발행 전이 뒤집힙니다 */}
+              <button
+                onClick={handleTogglePublish}
+                disabled={isSaving}
+                className={`py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                  status === 'published'
+                    ? 'bg-emerald-600 hover:bg-emerald-500'
+                    : 'bg-slate-900 hover:bg-slate-800'
+                }`}
+              >
+                {isSaving
+                  ? <RefreshCw size={13} className="animate-spin" />
+                  : status === 'published' ? <Undo2 size={13} /> : <Save size={13} />}
+                {status === 'published' ? '발행 취소' : '발행하기'}
+              </button>
+            </div>
+          </>
+        )}
 
         <div className="grid grid-cols-2 gap-1.5">
           <button
@@ -529,11 +571,18 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           </a>
         </div>
 
-        <p className="text-3xs text-gray-400 leading-relaxed">
-          임시저장한 주보는 성도 화면에 나오지 않고 알림도 가지 않습니다.
-          내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면 &ldquo;이번 주 주보&rdquo;에
-          올라갑니다. 한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
-        </p>
+        {isReadOnly ? (
+          <p className="text-3xs text-gray-400 leading-relaxed">
+            이미 지난 주일에 발행된 주보라 고쳐 쓸 수 없습니다. 내용을 보면서
+            필요한 부분만 <strong>지난 주보 불러오기</strong>로 앞으로 만들 주보에 복사해 쓰세요.
+          </p>
+        ) : (
+          <p className="text-3xs text-gray-400 leading-relaxed">
+            임시저장한 주보는 성도 화면에 나오지 않고 알림도 가지 않습니다.
+            내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면 &ldquo;이번 주 주보&rdquo;에
+            올라갑니다. 한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
+          </p>
+        )}
       </div>
 
       {/* ── ① 표지 ── */}
