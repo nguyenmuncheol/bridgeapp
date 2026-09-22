@@ -1103,6 +1103,41 @@ export async function dbCleanupStaleMealRegistrations(staleKeys: string[], dateS
   return { error: null, removed }
 }
 
+// ==========================================
+// 6-1. 주일 식사 메뉴 안내 (meal_menus)
+// ==========================================
+export interface MealMenuData {
+  dateStr: string
+  menu: string
+  updatedBy: string
+  updatedAt: string
+}
+
+export async function dbFetchMealMenus(dateStrs?: string[]): Promise<MealMenuData[]> {
+  let query = supabase.from('meal_menus').select('*')
+  if (dateStrs && dateStrs.length > 0) query = query.in('date_str', dateStrs)
+  const { data, error } = await query
+  throwIfFetchFailed(error, '이번 주 메뉴')
+  if (!data) return []
+  return data.map(r => ({
+    dateStr: r.date_str,
+    menu: r.menu || '',
+    updatedBy: r.updated_by || '',
+    updatedAt: String(r.updated_at || '')
+  }))
+}
+
+export async function dbUpsertMealMenu(payload: { dateStr: string; menu: string; updatedByUserName: string }) {
+  const res = await supabase.from('meal_menus').upsert({
+    date_str: payload.dateStr,
+    menu: payload.menu.trim(),
+    updated_by: payload.updatedByUserName,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'date_str' })
+  if (!res.error) invalidateCache('mealMenus')
+  return res
+}
+
 /**
  * 댓글 수정 — 작성자 본인만 가능합니다(서버 정책 comments_update_policy).
  * 남이 시도하면 0줄이 바뀌므로, 바뀐 줄이 없으면 실패로 처리합니다.

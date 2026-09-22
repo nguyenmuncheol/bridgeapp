@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
 import { UserProfile, getSimpleUserName, simplifyStoredName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } from '../../lib/dateUtils'
-import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm } from '../../lib/db'
+import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm, dbFetchMealMenus, dbUpsertMealMenu } from '../../lib/db'
 import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/familyKey'
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
@@ -30,6 +30,7 @@ interface MealSlotData {
 
 export default function RequestTab({ currentUser, allUsers, openSubTab = '', openToken = 0 }: RequestTabProps) {
   const isAdmin = currentUser.role === 'ADMIN'
+  const isLeaderOrAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'LEADER'
 
   // ── 서브탭: 주일식사 | 교회행사 (다른 메뉴와 같은 모양) ──
   const [subTab, setSubTab] = useState<'meal' | 'event'>(() => {
@@ -110,6 +111,24 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
     })
     return newStore
   }, [mealRegistrations, upcomingSundays, allUsers])
+
+  // ── 이번 주 메뉴 안내 ──
+  const { data: mealMenus } = useCachedQuery(
+    `mealMenus:${mealDateStrs[0] || ''}`,
+    () => dbFetchMealMenus(mealDateStrs)
+  )
+  const menuByDate = useMemo(() => {
+    const m: Record<string, string> = {}
+    ;(mealMenus || []).forEach(r => { m[r.dateStr] = r.menu })
+    return m
+  }, [mealMenus])
+  const [menuOverride, setMenuOverride] = useState<Record<string, string>>({})
+  const selectedDateStr = upcomingSundays[selectedWeek]?.dateStr || ''
+  const currentMenu = menuOverride[selectedDateStr] ?? menuByDate[selectedDateStr] ?? ''
+
+  const [showMenuEditModal, setShowMenuEditModal] = useState(false)
+  useModalDismiss(showMenuEditModal, () => setShowMenuEditModal(false))
+  const [editMenuText, setEditMenuText] = useState('')
 
   const [familyMealStoreOverride, setFamilyMealStoreOverride] = useState<Record<string, Record<number, MealSlotData>>>({})
 
@@ -232,6 +251,22 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
     })
     setShowEventEditModal(false)
     showToast(editUrl.trim() ? '✅ 행사 신청 링크가 등록되었습니다!' : '행사 신청 링크가 삭제되었습니다.')
+  }
+
+  const handleSaveMenu = async () => {
+    const text = editMenuText.trim()
+    const { error } = await dbUpsertMealMenu({
+      dateStr: selectedDateStr,
+      menu: text,
+      updatedByUserName: getSimpleUserName(currentUser)
+    })
+    if (error) {
+      showToast('⚠️ 메뉴를 저장하지 못했습니다. 다시 시도해 주세요.')
+      return
+    }
+    setMenuOverride(prev => ({ ...prev, [selectedDateStr]: text }))
+    setShowMenuEditModal(false)
+    showToast(text ? '✅ 메뉴가 등록되었습니다!' : '메뉴가 삭제되었습니다.')
   }
 
   return (
@@ -375,6 +410,26 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
               ))}
             </div>
           )}
+
+          {/* 이번 주 메뉴 안내 */}
+          <div className="flex items-center justify-between gap-2 p-2.5 bg-white rounded-lg border border-gray-100">
+            <p className="text-2xs text-gray-600 flex items-start gap-1.5 leading-relaxed">
+              <span className="shrink-0">🍚</span>
+              {currentMenu ? (
+                <span><strong className="text-gray-800">이번주 메뉴</strong> · {currentMenu}</span>
+              ) : (
+                <span className="text-gray-400">아직 메뉴가 등록되지 않았습니다</span>
+              )}
+            </p>
+            {isLeaderOrAdmin && (
+              <button
+                onClick={() => { setEditMenuText(currentMenu); setShowMenuEditModal(true) }}
+                className="shrink-0 px-2 py-1 bg-gray-100 text-gray-600 text-2xs font-bold rounded-lg hover:bg-gray-200 flex items-center gap-1"
+              >
+                <Pencil size={10} /> 메뉴 입력
+              </button>
+            )}
+          </div>
 
           {!isLocked ? (
             <button
@@ -545,6 +600,38 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowEventEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
               <button onClick={handleSaveEventForm} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 관리자/리더: 이번 주 메뉴 입력 모달 */}
+      {showMenuEditModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={backdropClose(() => setShowMenuEditModal(false))}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <SectionTitle>🍚 이번 주 메뉴 입력 ({sundayDates[selectedWeek]})</SectionTitle>
+              <button onClick={() => setShowMenuEditModal(false)} className="text-gray-400"><X size={16} /></button>
+            </div>
+            <div className="space-y-2.5 text-xs">
+              <div>
+                <label className="text-2xs text-gray-400 font-bold">메뉴</label>
+                <input
+                  type="text"
+                  placeholder="예: 김치찌개, 계란찜, 잡곡밥"
+                  value={editMenuText}
+                  onChange={e => setEditMenuText(e.target.value)}
+                  className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
+                />
+                <p className="text-2xs text-gray-400 mt-1">신청자들이 신청 화면에서 볼 수 있습니다. 비워두면 안내가 사라집니다.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowMenuEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+              <button onClick={handleSaveMenu} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
             </div>
           </div>
         </div>
