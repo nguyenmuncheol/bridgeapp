@@ -228,7 +228,8 @@ export default function NotificationPanel({
                 ) : (
                   <>
                     <span className="block text-xs text-gray-800 leading-snug">
-                      <strong className="font-bold">{n.actorName}</strong>
+                      {/* 뒤에 '님이'를 붙이므로, 이름 끝에 '님'이 이미 있으면 떼어 '님님'을 막습니다 */}
+                      <strong className="font-bold">{n.actorName.replace(/\s*님$/, '')}</strong>
                       {n.type === 'COMMENT' && '님이 댓글을 남겼습니다'}
                       {n.type === 'LIKE' && `님이 ${n.body}`}
                       {n.type === 'NOTICE' && '님이 새 공지를 올렸습니다'}
