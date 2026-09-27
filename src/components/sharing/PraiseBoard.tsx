@@ -2,7 +2,7 @@
 
 import { useState, Dispatch, SetStateAction } from 'react'
 import { Play, Trash2, X, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
-import { PostItem, UserProfile, getSimpleUserName } from '../../lib/mockData'
+import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getYouTubeVideoId } from './youtube'
 import CommentList from '../CommentList'
@@ -74,13 +74,13 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
       comments: [...(p.comments || []), {
         id: tempId,
         authorId: currentUser.id,
-        authorName: getSimpleUserName(currentUser),
+        authorName: getUserDisplayName(currentUser),
         content: text,
         createdAt: todayLocalDateStr(),
       }],
     } : p))
 
-    const { error: addError, id: realId, createdAt: realAt } = await dbAddComment(postId, currentUser.id, getSimpleUserName(currentUser), text)
+    const { error: addError, id: realId, createdAt: realAt } = await dbAddComment(postId, currentUser.id, getUserDisplayName(currentUser), text)
     if (!addError && realId) {
       // 🐛 저장에 성공하면 **임시 번호를 진짜 번호로 갈아끼웁니다.**
       // 이걸 안 하면 방금 쓴 댓글을 바로 수정·삭제할 때 서버가 그 댓글을 못 찾습니다.
