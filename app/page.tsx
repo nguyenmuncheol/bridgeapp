@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import dynamic from 'next/dynamic'
 import BottomNav from '../src/components/BottomNav'
@@ -16,6 +16,7 @@ import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
 import { isRunningStandalone } from '../src/lib/pwaInstall'
+import { markLoginStarted, clearLoginStarted, loginStartedRecently, explainAuthError } from '../src/lib/loginReturn'
 import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw, Bell } from 'lucide-react'
@@ -61,6 +62,28 @@ function setManualScrollRestoration() {
     window.history.scrollRestoration = 'manual'
   }
 }
+
+// 로그인 실패 사유(?auth_error=)를 주소에서 한 번만 꺼냅니다.
+// 🐛 useState 초기값 함수는 React 가 화면을 다시 그리면 또 불릴 수 있는데, 첫 번째 호출에서 주소의
+//    값을 지워 버려 두 번째엔 빈 값이 되어 안내가 사라졌습니다. → 처음 꺼낸 값을 기억해 둡니다.
+let authErrorFromUrl: string | null = null
+function takeAuthErrorFromUrl(): string {
+  if (typeof window === 'undefined') return ''
+  if (authErrorFromUrl !== null) return authErrorFromUrl
+  authErrorFromUrl = ''
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const err = params.get('auth_error')
+    if (err) {
+      params.delete('auth_error')
+      const rest = params.toString()
+      window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''))
+      authErrorFromUrl = explainAuthError(err)
+    }
+  } catch { /* 주소 파싱 실패는 무시 */ }
+  return authErrorFromUrl
+}
+const noopSubscribe = () => () => {}
 
 export default function Home() {
   // 🐛 과거 불편: 어느 탭에 있는지가 화면 기억에만 있고 주소창에는 없어서,
@@ -115,20 +138,7 @@ export default function Home() {
   // 성도 명단 조회 실패 메시지. "명단이 비어 있음"과 반드시 구분해서 보여줍니다.
   const [rosterError, setRosterError] = useState<string | null>(null)
   // OAuth 콜백에서 로그인 교환이 실패했을 때 표시할 안내
-  const [authError, setAuthError] = useState<string>(() => {
-    if (typeof window === 'undefined') return ''
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const err = params.get('auth_error')
-      if (err) {
-        params.delete('auth_error')
-        const rest = params.toString()
-        window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''))
-        return err
-      }
-    } catch { /* 주소 파싱 실패는 무시 */ }
-    return ''
-  })
+  const [authError, setAuthError] = useState<string>(takeAuthErrorFromUrl)
   // 대기 중에 관리자가 승인하면 화면이 저절로 바뀌는데, 왜 바뀌었는지 알 수 있도록 띄우는 축하 안내
   const [justApproved, setJustApproved] = useState(false)
   // ── 앱 안 알림함 ── (헤더의 내 이름 버튼에서 열립니다)
@@ -367,6 +377,7 @@ export default function Home() {
 
   // 구글 로그인 실행
   const handleGoogleLogin = async () => {
+    markLoginStarted()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -378,6 +389,7 @@ export default function Home() {
 
   // 카카오 로그인 실행 (이메일 권한 요구 없이 닉네임/프로필만 요청)
   const handleKakaoLogin = async () => {
+    markLoginStarted()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'kakao',
       options: {
@@ -484,6 +496,10 @@ export default function Home() {
   }
 
   const isGuest = currentUserId === 'guest'
+  // 홈 화면 앱으로 켰는지. 🐛 그리는 도중에 바로 물으면 서버가 미리 만든 화면(항상 "아님")과 달라
+  //    React 가 화면을 통째로 다시 그렸고(오류 #418), 그 바람에 로그인 실패 안내까지 사라졌습니다.
+  //    → 서버 값(아님)으로 먼저 맞춘 뒤 곧바로 실제 값으로 바꿉니다.
+  const isStandalone = useSyncExternalStore(noopSubscribe, isRunningStandalone, () => false)
 
   const currentUser: UserProfile = useMemo(() => {
     return users.find(u => u.id === currentUserId) || {
@@ -541,6 +557,33 @@ export default function Home() {
   }, [isGuest, isPending, isUnrequestedPending, isRejected, isLeftBlocked, currentUserId])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
+
+  // ── 아이폰 홈 화면 앱: 로그인하고 돌아왔는데 로그아웃 상태로 보일 때 (src/lib/loginReturn.ts) ──
+  const [showLoginReturnHelp, setShowLoginReturnHelp] = useState(false)
+  useEffect(() => {
+    // 첫 로그인 확인이 끝나기 전에는 기다립니다(그 사이엔 로그인된 분도 잠깐 '비로그인'으로 보입니다).
+    if (isLoading) return
+    if (!isGuest) { clearLoginStarted(); return }
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || !loginStartedRecently()) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        // 로그인 창에서 이미 로그인이 끝나 저장공간에 들어와 있음 → 앱을 새로 읽어 바로 반영
+        clearLoginStarted()
+        window.location.reload()
+        return
+      }
+      // 사파리·카카오톡 쪽에서 로그인이 끝나 이 앱까지 오지 못한 경우 → 여기서 다시 로그인하도록 안내
+      if (isRunningStandalone()) setShowLoginReturnHelp(true)
+    }
+    const onPageShow = () => { check() }
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('pageshow', onPageShow)
+    return () => {
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('pageshow', onPageShow)
+    }
+  }, [isGuest, isLoading])
 
   // ── 가입 환영 팝업 ──
   // 승인이 끝난 성도인데 아직 환영 인사를 못 받았으면 딱 한 번 띄웁니다.
@@ -905,7 +948,7 @@ export default function Home() {
   // isLoading을 기다리지 않고 즉시 랜딩을 보여줍니다 — 검색엔진/AI 크롤러가
   // 자바스크립트 실행 없이 받는 최초 HTML에도 실제 소개 문구가 담기도록 하기 위함입니다.
   // (이미 로그인된 재방문 회원은 세션 확인이 끝나는 순간 바로 앱 화면으로 전환됩니다)
-  const showLanding = isGuest && !landingDismissed && !isRunningStandalone()
+  const showLanding = isGuest && !landingDismissed && !isStandalone
   if (showLanding) {
     return <LandingPage onEnter={() => setLandingDismissed(true)} />
   }
@@ -991,6 +1034,27 @@ export default function Home() {
             </p>
           </div>
           <button aria-label="닫기" onClick={() => setAuthError('')} className="tap-area relative p-2 -m-1 text-rose-400 hover:text-rose-600 shrink-0" title="닫기">✕</button>
+        </div>
+      )}
+
+      {/* 아이폰 홈 화면 앱: 로그인이 다른 곳(사파리·카카오톡)에서 끝나 앱으로 오지 못했을 때 */}
+      {showLoginReturnHelp && isGuest && (
+        <div className="mx-4 mt-3 bg-brand-50 border border-brand-100 rounded-2xl p-3 space-y-2 animate-fade-in" role="status">
+          <div className="flex items-start gap-2">
+            <span className="text-base leading-none mt-0.5">🔑</span>
+            <div className="flex-1 space-y-1">
+              <p className="text-xs font-bold text-brand-deep">로그인이 이 앱에 반영되지 않았나요?</p>
+              <p className="text-2xs text-gray-600 leading-relaxed">
+                아이폰에서는 카카오톡이나 사파리에서 끝난 로그인이 홈 화면 앱으로 넘어오지 않을 수 있습니다.
+                아래 버튼으로 이 앱에서 한 번 더 로그인해 주세요.
+              </p>
+            </div>
+            <button aria-label="닫기" title="닫기" onClick={() => { clearLoginStarted(); setShowLoginReturnHelp(false) }} className="tap-area relative p-2 -m-1 text-gray-500 shrink-0">✕</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => { setShowLoginReturnHelp(false); handleKakaoLogin() }} className="py-2.5 bg-[#FEE500] text-[#3C1E1E] text-xs font-bold rounded-xl">카카오로 다시 로그인</button>
+            <button onClick={() => { setShowLoginReturnHelp(false); handleGoogleLogin() }} className="py-2.5 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-xl">구글로 다시 로그인</button>
+          </div>
         </div>
       )}
 

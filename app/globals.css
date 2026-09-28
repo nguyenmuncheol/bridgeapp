@@ -217,7 +217,7 @@
  *   max-h-[90vh] → max-h-vp-90      h-[90vh] → h-vp-90
  */
 @utility max-h-vp-* {
-  max-height: calc(--value(integer) * 1dvh);
+  max-height: calc(--value(integer) * var(--vv-unit, 1dvh));
 }
 /*
  * ── 작은 아이콘 버튼의 "누르는 영역"만 넓히기 (보이는 크기·배치는 그대로) ──
@@ -245,5 +245,22 @@
   }
 }
 @utility h-vp-* {
-  height: calc(--value(integer) * 1dvh);
+  height: calc(--value(integer) * var(--vv-unit, 1dvh));
+}
+/*
+ * ── 아이폰: 키보드가 올라와도 팝업이 "보이는 곳" 안에 들어오게 ──
+ *
+ * 🐛 아이폰은 키보드가 올라와도 dvh(화면 높이)가 줄지 않습니다(안드로이드와 다름).
+ *    그래서 팝업 아래쪽 [저장]·[닫기]가 키보드 뒤에 숨었습니다.
+ * → 아이폰에서만 "지금 보이는 영역"의 높이·위치를 CSS 변수로 넘겨 줍니다(src/lib/iosViewport.ts).
+ *    --vv-unit : 보이는 높이의 1%   (위 max-h-vp-*, h-vp-* 가 씁니다)
+ *    --vv-top / --vv-height : 보이는 영역의 위치·높이 (팝업 바탕이 씁니다)
+ *   변수가 없는 안드로이드·PC 에서는 예전 그대로(inset-0 · dvh)입니다.
+ */
+@utility inset-vv {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vv-height, 100%);
 }

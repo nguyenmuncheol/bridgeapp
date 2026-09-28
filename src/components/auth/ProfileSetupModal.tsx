@@ -52,7 +52,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
   useBackgroundScrollLock()
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
+    <div className="inset-vv bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
       <div role="dialog" aria-modal="true" aria-label="가입 추가 정보 입력" className="bg-white rounded-3xl max-w-sm w-full max-h-vp-90 flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기 버튼 (맨 아래 "취소 (나중에 신청)"과 같은 동작) */}
         <ModalCloseButton onClick={onCancel} tone="dark" className="absolute! top-3 right-3 z-10" />

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { startListeningForInstallPrompt } from '../lib/pwaInstall'
-import { preventIosInputAutoZoom } from '../lib/iosViewport'
+import { preventIosInputAutoZoom, trackIosVisualViewport } from '../lib/iosViewport'
 
 // 앱 최상위(app/layout.tsx)에 항상 붙어 있는 컴포넌트입니다.
 // 세 가지 일을 합니다.
@@ -15,6 +15,8 @@ export default function PwaRegister() {
   useEffect(() => {
     // 3) 아이폰에서 입력칸을 누를 때 화면이 저절로 확대되지 않게 (src/lib/iosViewport.ts)
     preventIosInputAutoZoom()
+    // 4) 아이폰에서 키보드가 올라와도 팝업이 보이는 곳 안에 들어오게 (같은 파일)
+    const stopTrackingViewport = trackIosVisualViewport()
 
     // 설치 신호 수신은 개발/배포 모드와 무관하게 항상 켜 둡니다.
     const stopListening = startListeningForInstallPrompt()
@@ -25,7 +27,10 @@ export default function PwaRegister() {
       })
     }
 
-    return stopListening
+    return () => {
+      stopListening()
+      stopTrackingViewport()
+    }
   }, [])
 
   return null

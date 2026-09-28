@@ -67,7 +67,7 @@ export default function Modal({
 
   return (
     <div
-      className={`fixed inset-0 bg-black/60 backdrop-blur-sm ${zIndex} flex items-center justify-center p-4 overscroll-contain`}
+      className={`inset-vv bg-black/60 backdrop-blur-sm ${zIndex} flex items-center justify-center p-4 overscroll-contain`}
       onClick={closeOnBackdrop ? backdropClose(onClose) : e => e.stopPropagation()}
     >
       <div
