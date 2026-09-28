@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useId } from 'react'
-import { Plus } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem } from '../../lib/mockData'
 import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
 import { dbCreatePost, dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
@@ -11,8 +10,9 @@ import { SkeletonList } from '../SkeletonCard'
 import MemberNewsCard from './MemberNewsCard'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
-import SectionTitle from '../ui/SectionTitle'
 import Toast from '../ui/Toast'
+import Modal from '../ui/Modal'
+import WriteFab from '../ui/WriteFab'
 
 interface MemberNewsBoardProps {
   currentUser: UserProfile
@@ -238,16 +238,12 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
   }, [])
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pb-24">
       <Toast message={toastMsg} />
 
-      <div className="flex justify-between items-center">
-        <span className="text-xs text-gray-500 font-semibold">더브릿지 가족 News</span>
-        <button
-          onClick={() => setShowAddNewsModal(true)}
-          className="px-2.5 py-1 bg-brand text-white text-2xs font-bold rounded-lg hover:bg-brand-hover flex items-center gap-1"
-        ><Plus size={12} /> 소식 나누기</button>
-      </div>
+      <span className="block text-xs text-gray-500 font-semibold">더브릿지 가족 News</span>
+      {/* 글쓰기 버튼 — 나눔 탭과 같은 자리·모양 (ui/WriteFab) */}
+      <WriteFab label="가족소식 쓰기" onClick={() => setShowAddNewsModal(true)} />
 
       {newsError && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
@@ -293,34 +289,23 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
 
       {/* ── 교우소식 작성 모달 ── */}
       {showAddNewsModal && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            {/* 상단 고정 헤더 */}
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">📣 교우소식 작성</SectionTitle>
-              <button
-                type="button"
-                onClick={async () => {
+        <Modal
+          onClose={async () => {
                   if (hasUnsavedAdd) {
                     if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
                   }
                   setShowAddNewsModal(false)
                 }}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
-              >
-                ✕
-              </button>
-            </div>
-
+          title="📣 교우소식 작성"
+          size="md"
+          closeOnBackdrop={false}
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          subheader={<>
             {/* ── 관리자 전용: 교회 이름으로 올리기 토글 ── */}
             {isAdmin && (
               <div
                 className={`px-5 py-2.5 flex items-center gap-3 cursor-pointer select-none border-b transition-colors ${
-                  postAsChurch ? 'bg-blue-50 border-blue-100' : 'bg-gray-50/60 border-gray-100'
+                  postAsChurch ? 'bg-brand-50 border-brand-100' : 'bg-gray-50/60 border-gray-100'
                 }`}
                 onClick={() => setPostAsChurch(v => !v)}
               >
@@ -339,9 +324,31 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                 </div>
               </div>
             )}
+        </>}
+          footer={<>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (hasUnsavedAdd) {
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
+                  }
+                  setShowAddNewsModal(false)
+                }}
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateNews}
+                disabled={isCreatingNews}
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-60 shadow-md transition-all cursor-pointer"
+              >
+                {isCreatingNews ? '등록 중...' : '등록하기'}
+              </button>
+        </>}
+        >
 
-            {/* 본문 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
                 <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">소식 제목</label>
                 <input id={`${formId}-1`}
@@ -363,45 +370,23 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
-            </div>
-
-            {/* 하단 고정 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (hasUnsavedAdd) {
-                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
-                  }
-                  setShowAddNewsModal(false)
-                }}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateNews}
-                disabled={isCreatingNews}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-60 shadow-md transition-all cursor-pointer"
-              >
-                {isCreatingNews ? '등록 중...' : '등록하기'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 교우소식 수정 모달 ── */}
       {editingNews && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            {/* 상단 고정 헤더 */}
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">✏️ 교우소식 수정</SectionTitle>
+        <Modal
+          onClose={async () => {
+                  if (hasUnsavedEdit) {
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
+                  }
+                  setEditingNews(null)
+                }}
+          title="✏️ 교우소식 수정"
+          size="md"
+          closeOnBackdrop={false}
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          footer={<>
               <button
                 type="button"
                 onClick={async () => {
@@ -410,15 +395,20 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   }
                   setEditingNews(null)
                 }}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
               >
-                ✕
+                취소
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={handleSaveNewsEdit}
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                저장하기
+              </button>
+        </>}
+        >
 
-            {/* 본문 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
                 <label htmlFor={`${formId}-3`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
                 <input id={`${formId}-3`}
@@ -440,32 +430,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   placeholder="내용"
                 />
               </div>
-            </div>
-
-            {/* 하단 고정 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (hasUnsavedEdit) {
-                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
-                  }
-                  setEditingNews(null)
-                }}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveNewsEdit}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                저장하기
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

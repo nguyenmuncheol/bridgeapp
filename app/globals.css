@@ -162,6 +162,16 @@
   --color-brand-light: #3f76a3;   /* 그라데이션 시작점 */
   --color-brand-mid: #2c5378;     /* 그라데이션 중간 */
   --color-brand-deep: #1d3a54;    /* 그라데이션 어두운 쪽 끝 */
+  /* 연한 남색 — 구역 아이콘 바탕, 선택된 칸의 옅은 배경, 안내 상자 (예전 파랑·하늘·보라·인디고 계열을 모음) */
+  --color-brand-50: #eef3f8;
+  --color-brand-100: #dbe5ef;
+  --color-brand-200: #b9cde0;
+
+  /* 따뜻한 주황 — 글쓰기·쿠폰처럼 "해 보세요" 하고 눈에 띄워야 하는 곳에만 아껴 씁니다 (DESIGN.md secondary) */
+  --color-accent: #914c24;
+  --color-accent-hover: #763710;
+  --color-accent-50: #fdf1ea;
+  --color-accent-100: #fbdcc9;
 
   --text-3xs: 0.625rem;             /* 10px — 매우 작은 보조 라벨 */
   --text-3xs--line-height: 0.875rem;

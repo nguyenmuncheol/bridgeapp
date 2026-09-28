@@ -163,7 +163,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                   <button
                     type="button"
                     onClick={() => handleRequestAddress(pending)}
-                    className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(pending.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-brand'}`}
+                    className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(pending.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-brand-50 text-brand'}`}
                   >
                     {parseFamilyInfo(pending.familyInfo).addressRequestedAt ? '🏠 보완요청됨' : '🏠 주소 보완요청'}
                   </button>
@@ -234,7 +234,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-2xs text-gray-500 font-semibold">자녀 등 미가입 가족 (이름)</label>
-                  <button type="button" onClick={() => addPendingChild(pending.id)} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <button type="button" onClick={() => addPendingChild(pending.id)} className="text-2xs font-bold text-brand px-2 py-0.5 bg-brand-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {(pendingChildren[pending.id] || []).map(child => (
@@ -246,7 +246,7 @@ export default function ApprovalTab({ allUsers, onApproveUser, onRejectUser, onU
                         placeholder="이름"
                         className="flex-1 p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                       />
-                      <button type="button" onClick={() => removePendingChild(pending.id, child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500">
+                      <button aria-label="이 자녀 지우기" type="button" onClick={() => removePendingChild(pending.id, child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500">
                         <X size={13} />
                       </button>
                     </div>

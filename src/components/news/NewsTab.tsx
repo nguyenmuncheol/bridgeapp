@@ -7,6 +7,7 @@ import MemberNewsBoard from './MemberNewsBoard'
 import ScheduleCalendar from './ScheduleCalendar'
 import AddressBook from './AddressBook'
 import AttendanceCheckModal from './AttendanceCheckModal'
+import SegmentedTabs from '../ui/SegmentedTabs'
 
 interface NewsTabProps {
   currentUser: UserProfile
@@ -72,20 +73,15 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
       </div>
 
       {/* 서브탭 3종: 교회일정 | 가족소식 | 주소록 */}
-      <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-bold text-center">
-        <button
-          onClick={() => goSubTab('schedule')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'schedule' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
-        >📅 교회일정</button>
-        <button
-          onClick={() => goSubTab('memberNews')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'memberNews' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
-        >📣 가족소식</button>
-        <button
-          onClick={() => goSubTab('members')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'members' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
-        >📖 주소록</button>
-      </div>
+      <SegmentedTabs
+        value={subTab}
+        onChange={goSubTab}
+        items={[
+          { id: 'schedule', label: '📅 교회일정' },
+          { id: 'memberNews', label: '📣 가족소식' },
+          { id: 'members', label: '📖 주소록' },
+        ]}
+      />
 
       <div className={subTab === 'memberNews' ? '' : 'hidden'}>
         <MemberNewsBoard currentUser={currentUser} allUsers={allUsers} isAdmin={currentUser.role === 'ADMIN'} />

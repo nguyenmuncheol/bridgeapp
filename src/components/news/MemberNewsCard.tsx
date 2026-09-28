@@ -24,7 +24,7 @@ interface MemberNewsCardProps {
 // 댓글 입력 중 다른 카드들까지 함께 리렌더링되는 걸 막습니다(PrayerCard와 동일한 패턴).
 function MemberNewsCardImpl({ item, currentUser, allUsers, isAdmin, onLike, onEdit, onDelete, onAddComment, onCommentChanged, onError }: MemberNewsCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-blue-50 p-4 shadow-2xs space-y-3">
+    <div className="bg-white rounded-2xl border border-brand-100 p-4 shadow-2xs space-y-3">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2">
           <Avatar allUsers={allUsers} authorId={item.authorId} authorName={item.authorName} size="w-6 h-6 text-2xs" />
@@ -34,10 +34,10 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isAdmin, onLike, onEd
           <span className="text-2xs text-gray-500">{item.createdAt}</span>
           {(item.authorId === currentUser.id || isAdmin) && (
             <>
-              <button onClick={() => onEdit(item)} className="tap-area-y relative p-1 text-gray-500 hover:text-blue-600 rounded" title="수정">
+              <button aria-label="수정" onClick={() => onEdit(item)} className="tap-area-y relative p-1 text-gray-500 hover:text-brand rounded" title="수정">
                 <Edit2 size={12} />
               </button>
-              <button onClick={() => onDelete(item.id)} className="tap-area-y relative p-1 text-gray-500 hover:text-rose-500 rounded" title="삭제">
+              <button aria-label="삭제" onClick={() => onDelete(item.id)} className="tap-area-y relative p-1 text-gray-500 hover:text-rose-500 rounded" title="삭제">
                 <Trash2 size={12} />
               </button>
             </>

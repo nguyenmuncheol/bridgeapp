@@ -80,7 +80,7 @@ function BulletinPrintScreen() {
   if (gate === 'checking' || isLoading) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-3 text-slate-600">
-        <RefreshCw size={26} className="animate-spin text-blue-500" />
+        <RefreshCw size={26} className="animate-spin text-brand-light" />
         <p className="text-xs font-semibold">주보를 불러오는 중...</p>
       </div>
     )
@@ -101,7 +101,7 @@ function BulletinPrintScreen() {
           </div>
           <button
             onClick={() => router.push('/')}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl cursor-pointer"
+            className="w-full py-2.5 bg-brand hover:bg-brand-light text-white text-xs font-bold rounded-xl cursor-pointer"
           >
             홈으로 이동
           </button>

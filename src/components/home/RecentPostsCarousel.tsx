@@ -13,8 +13,8 @@ interface RecentPostsCarouselProps {
 
 /** 글 카테고리 → 홈에서 보여줄 탭 이름과 이동할 위치. */
 const CATEGORY_INFO: Record<string, { label: string; tab: string; subTab: string; chipClass: string }> = {
-  MEMBER_NEWS: { label: '성도소식', tab: 'news', subTab: 'memberNews', chipClass: 'bg-blue-50 text-brand' },
-  PRAYER: { label: '기도제목', tab: 'sharing', subTab: 'prayer', chipClass: 'bg-violet-50 text-violet-700' },
+  MEMBER_NEWS: { label: '성도소식', tab: 'news', subTab: 'memberNews', chipClass: 'bg-gray-100 text-gray-700' },
+  PRAYER: { label: '기도제목', tab: 'sharing', subTab: 'prayer', chipClass: 'bg-brand-50 text-brand' },
   PRAISE: { label: '찬양/묵상', tab: 'sharing', subTab: 'praise', chipClass: 'bg-emerald-50 text-emerald-700' },
   PHOTO: { label: '행사사진', tab: 'sharing', subTab: 'photo', chipClass: 'bg-amber-50 text-amber-700' },
 }
@@ -151,7 +151,7 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
   return (
     <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
       <div className="flex items-center gap-2">
-        <span className="p-2 bg-violet-50 text-violet-600 rounded-xl"><Sparkles size={18} /></span>
+        <span className="p-2 bg-brand-50 text-brand rounded-xl"><Sparkles size={18} /></span>
         <h2 className="font-bold text-gray-900 text-sm">최신 글</h2>
         {canSlide && (
           <span className="ml-auto text-2xs text-gray-500 tabular-nums">{activeDot + 1} / {total}</span>
@@ -181,7 +181,7 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
                 <button
                   type="button"
                   onClick={() => { if (!movedRef.current && info) onNavigate?.(info.tab, info.subTab) }}
-                  className="w-full h-full text-left bg-gradient-to-br from-[#f7f9ff] to-white p-3 rounded-xl border border-blue-50 hover:border-blue-200 transition-colors flex flex-col gap-1"
+                  className="w-full h-full text-left bg-gradient-to-br from-brand-50 to-white p-3 rounded-xl border border-brand-100 hover:border-brand-200 transition-colors flex flex-col gap-1"
                 >
                   <span className={`self-start text-2xs font-bold px-2 py-0.5 rounded-md ${info?.chipClass || 'bg-gray-100 text-gray-600'}`}>
                     {info?.label || '글'}

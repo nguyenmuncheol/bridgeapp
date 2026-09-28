@@ -6,12 +6,13 @@ import { UserProfile } from '../../lib/mockData'
 import { birthdayMatchesCalendarDay } from '../../lib/dateUtils'
 import { dbFetchChurchEvents, dbCreateChurchEvent, dbUpdateChurchEvent, dbDeleteChurchEvent } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import BirthdayList from './BirthdayList'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
 import Toast from '../ui/Toast'
+import Modal from '../ui/Modal'
 
 type EventType = 'sunday' | 'special'
 interface ChurchEvent {
@@ -154,17 +155,17 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
       <Card padding="none" className="overflow-hidden">
         <div className="bg-brand text-white px-4 py-3 flex items-center justify-between">
-          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="tap-area relative p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
+          <button aria-label="이전 달" onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="tap-area relative p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
           <div className="text-center">
             <span className="font-black text-sm">{monthLabel}</span>
-            {isLeaderOrAdmin && <p className="text-2xs text-blue-200 mt-0.5">날짜 클릭 시 일정 수정/추가 가능</p>}
+            {isLeaderOrAdmin && <p className="text-2xs text-brand-200 mt-0.5">날짜 클릭 시 일정 수정/추가 가능</p>}
           </div>
-          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) } else setCalMonth(m => m + 1) }} className="tap-area relative p-1 hover:bg-white/20 rounded-lg"><ChevronRight size={18} /></button>
+          <button aria-label="다음 달" onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) } else setCalMonth(m => m + 1) }} className="tap-area relative p-1 hover:bg-white/20 rounded-lg"><ChevronRight size={18} /></button>
         </div>
 
         <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
           {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-            <div key={d} className={`text-center text-2xs font-bold py-1.5 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>{d}</div>
+            <div key={d} className={`text-center text-2xs font-bold py-1.5 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-brand-light' : 'text-gray-500'}`}>{d}</div>
           ))}
         </div>
 
@@ -183,14 +184,14 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
                 onClick={() => handleOpenEditModal(day)}
                 className={`aspect-square flex flex-col items-center justify-start pt-0.5 rounded-lg transition-all ${
                   isToday ? 'bg-brand/10 ring-1 ring-brand/30' : ''
-                } ${isLeaderOrAdmin ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
+                } ${isLeaderOrAdmin ? 'cursor-pointer hover:bg-brand-50/50' : ''}`}
               >
                 <span className={`text-2xs font-bold ${
-                  isToday ? 'text-brand' : isSunday ? 'text-rose-500' : isSat ? 'text-blue-500' : 'text-gray-700'
+                  isToday ? 'text-brand' : isSunday ? 'text-rose-500' : isSat ? 'text-brand-light' : 'text-gray-700'
                 }`}>{day}</span>
                 <div className="flex flex-wrap gap-0.5 justify-center mt-0.5">
                   {dayEvents.map((ev, ei) => (
-                    <span key={ei} className={`w-1.5 h-1.5 rounded-full ${ev.type === 'sunday' ? 'bg-blue-400' : 'bg-amber-400'}`} />
+                    <span key={ei} className={`w-1.5 h-1.5 rounded-full ${ev.type === 'sunday' ? 'bg-brand-light' : 'bg-amber-400'}`} />
                   ))}
                   {birthdays.length > 0 && <span className="text-2xs leading-none">🎂</span>}
                 </div>
@@ -206,7 +207,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
         <div className="space-y-1.5">
           {Array.from({ length: daysInMonth }).flatMap((_, i) => getEventsForDate(i + 1)).map((ev, idx) => (
             <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${ev.type === 'sunday' ? 'bg-blue-400' : 'bg-amber-400'}`} />
+              <span className={`w-2 h-2 rounded-full shrink-0 ${ev.type === 'sunday' ? 'bg-brand-light' : 'bg-amber-400'}`} />
               <span className="text-xs text-gray-500 tabular-nums shrink-0">{ev.date.slice(5).replace('-', '/')}</span>
               <span className="text-xs font-bold text-gray-800 flex-1">{ev.title}</span>
               {ev.type === 'special' && <span className="text-2xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full">특별일정</span>}
@@ -215,7 +216,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
         </div>
 
         <div className="flex gap-3 pt-2 text-2xs text-gray-500 border-t border-gray-100">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" />주일예배</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-light" />주일예배</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />특별일정</span>
           <span className="flex items-center gap-1">🎂 생일</span>
         </div>
@@ -225,15 +226,11 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
       {/* ── 일정 텍스트 직접 수정/추가 모달 (관리자/리더) ── */}
       {calEditModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setCalEditModal(null))}
+        <Modal
+          onClose={() => setCalEditModal(null)}
+          title={`📅 ${calEditModal.dateStr} 일정 편집`}
+          bodyClassName="p-5 space-y-4"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-85 overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <SectionTitle>📅 {calEditModal.dateStr} 일정 편집</SectionTitle>
-              <button onClick={() => setCalEditModal(null)} className="tap-area relative text-gray-500 font-bold">✕</button>
-            </div>
 
             {/* 해당 날짜 일정 목록 */}
             <div className="space-y-1.5">
@@ -241,20 +238,20 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
               {getEventsForDate(calEditModal.day).map(ev => (
                 <div key={ev.id} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl text-xs">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${ev.type === 'sunday' ? 'bg-blue-400' : 'bg-amber-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${ev.type === 'sunday' ? 'bg-brand-light' : 'bg-amber-400'}`} />
                     <span className="font-bold text-gray-800">{ev.title}</span>
                   </div>
                   <div className="flex gap-1">
-                    <button
+                    <button aria-label="일정 수정"
                       onClick={() => {
                         setEditingEventId(ev.id)
                         setEditEventTitle(ev.title)
                         setEditEventType(ev.type)
                       }}
-                      className="tap-area-y relative text-blue-600 font-bold text-xs p-1 hover:bg-blue-50 rounded"
+                      className="tap-area-y relative text-brand font-bold text-xs p-1 hover:bg-brand-50 rounded"
                     ><Edit2 size={12} /></button>
                     {ev.type !== 'sunday' && (
-                      <button onClick={() => handleDeleteEvent(ev.id)} className="tap-area-y relative text-rose-500 font-bold text-xs p-1 hover:bg-rose-50 rounded"><Trash2 size={12} /></button>
+                      <button aria-label="일정 삭제" onClick={() => handleDeleteEvent(ev.id)} className="tap-area-y relative text-rose-500 font-bold text-xs p-1 hover:bg-rose-50 rounded"><Trash2 size={12} /></button>
                     )}
                   </div>
                 </div>
@@ -280,10 +277,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
                 </button>
               </div>
             </div>
-
-            <button onClick={() => setCalEditModal(null)} className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl">닫기</button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Church, Clock3, Users, Heart, Mail } from 'lucide-react'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { Church, Clock3, Users, Heart, Mail } from 'lucide-react'
+import { useModalDismiss } from '../../lib/useModalDismiss'
+import SegmentedTabs from '../ui/SegmentedTabs'
+import Modal from '../ui/Modal'
 
 interface ChurchGuideModalProps {
   onClose: () => void
@@ -69,52 +71,25 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
   useModalDismiss(true, onClose)
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-      onClick={backdropClose(onClose)}
+    <Modal
+      onClose={onClose}
+      title="더브릿지 교회 상세 안내"
+      icon={<Church size={18} />}
+      bodyClassName="p-5 text-xs space-y-4"
+      subheader={
+        <div className="px-3 py-2 border-b border-gray-100">
+          <SegmentedTabs
+            value={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { id: 'vision', label: '🌟 비전' },
+              { id: 'pastor', label: '🙋 사역자 소개' },
+              { id: 'guide', label: '🏫 예배/부서' },
+            ]}
+          />
+        </div>
+      }
     >
-      <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-vp-85 flex flex-col shadow-2xl">
-        {/* 헤더 */}
-        <div className="bg-brand text-white p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Church size={18} className="text-blue-200" />
-            <h3 className="font-bold text-sm">더브릿지 교회 상세 안내</h3>
-          </div>
-          <button onClick={onClose} className="tap-area relative p-1 hover:bg-white/10 rounded-lg transition-all">
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* 서브탭 3개: 비전 | 사역자 소개 | 예배/부서 */}
-        <div className="flex bg-gray-100 p-1 border-b border-gray-200 text-xs font-bold">
-          <button
-            onClick={() => setActiveTab('vision')}
-            className={`flex-1 py-2 rounded-lg transition-all ${
-              activeTab === 'vision' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'
-            }`}
-          >
-            🌟 비전
-          </button>
-          <button
-            onClick={() => setActiveTab('pastor')}
-            className={`flex-1 py-2 rounded-lg transition-all ${
-              activeTab === 'pastor' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'
-            }`}
-          >
-            🙋 사역자 소개
-          </button>
-          <button
-            onClick={() => setActiveTab('guide')}
-            className={`flex-1 py-2 rounded-lg transition-all ${
-              activeTab === 'guide' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'
-            }`}
-          >
-            🏫 예배/부서
-          </button>
-        </div>
-
-        {/* 본문 콘텐츠 */}
-        <div className="p-5 overflow-y-auto flex-1 text-xs space-y-4">
           {/* 1. 비전 */}
           {activeTab === 'vision' && (
             <div className="space-y-4">
@@ -129,7 +104,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   <ul className="space-y-1.5 pl-1">
                     {section.items.map((text, ii) => (
                       <li key={ii} className="flex gap-2 items-start">
-                        <span className="mt-[3px] shrink-0 w-[18px] h-[18px] rounded-md bg-blue-50 text-brand text-2xs font-bold flex items-center justify-center">
+                        <span className="mt-[3px] shrink-0 w-[18px] h-[18px] rounded-md bg-brand-50 text-brand text-2xs font-bold flex items-center justify-center">
                           {ii + 1}
                         </span>
                         <p className="text-xs text-gray-700 leading-relaxed flex-1">{text}</p>
@@ -168,7 +143,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
           {activeTab === 'pastor' && (
             <div className="space-y-4">
               {/* Our Pastor */}
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-2">
+              <div className="bg-brand-50 border border-brand-100 p-4 rounded-xl space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Heart size={13} className="text-rose-500 shrink-0" />
                   <span className="text-2xs font-bold text-brand tracking-widest uppercase">Our Pastor</span>
@@ -183,7 +158,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
               <div className="border border-gray-100 rounded-xl overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xs font-bold text-brand bg-white border border-blue-100 px-1.5 py-0.5 rounded">
+                    <span className="text-2xs font-bold text-brand bg-white border border-brand-100 px-1.5 py-0.5 rounded">
                       {PASTOR.role}
                     </span>
                     <span className="font-black text-sm text-gray-900">{PASTOR.name}</span>
@@ -212,7 +187,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   <Clock3 size={14} className="text-brand" /> 주일 및 주중 예배 안내
                 </h5>
                 <div className="space-y-1.5">
-                  <div className="p-2.5 bg-blue-50/60 rounded-xl flex justify-between items-center">
+                  <div className="p-2.5 bg-brand-50/60 rounded-xl flex justify-between items-center">
                     <span className="font-bold text-gray-800">주일 예배</span>
                     <div className="text-right"><p className="font-bold text-brand">일요일 11:00 AM</p><p className="text-2xs text-gray-500">대예배실</p></div>
                   </div>
@@ -235,14 +210,6 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
               </div>
             </div>
           )}
-        </div>
-
-        <div className="p-3 bg-gray-50 border-t border-gray-100">
-          <button onClick={onClose} className="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl text-xs transition-all">
-            닫기
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

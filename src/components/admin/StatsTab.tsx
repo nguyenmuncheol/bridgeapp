@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useId } from 'react'
-import { Edit2, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Edit2, ChevronDown, ChevronUp } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, isAttendanceExempt, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, dbFetchAllVisitorRecords, ChildAttendanceRow, VisitorRecordRow } from '../../lib/db'
@@ -9,9 +9,10 @@ import { supabase } from '../../lib/supabase'
 import { normalizeLabriLabel } from '../../lib/adminHelpers'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
+import Modal from '../ui/Modal'
 
 interface StatsTabProps {
   currentUser?: UserProfile
@@ -573,7 +574,7 @@ export default function StatsTab({
             <div className="pt-2 border-t border-gray-200 space-y-1.5">
               <div className="flex justify-between text-[12px]">
                 <span className="font-black text-gray-900">전체 합계 <span className="font-normal text-[10px] text-gray-500">(기록된 라브리만)</span></span>
-                <span className="font-black text-indigo-600">
+                <span className="font-black text-brand">
                   {labriStats.totalAttend}/{labriStats.totalTotal}명 ({labriStats.totalTotal > 0 ? Math.round((labriStats.totalAttend / labriStats.totalTotal) * 100) : 0}%)
                 </span>
               </div>
@@ -635,7 +636,7 @@ export default function StatsTab({
                       {note || <span className="text-gray-300">-</span>}
                     </td>
                     <td className="p-2 text-right">
-                      <button
+                      <button aria-label="출석 수정"
                         type="button"
                         onClick={() => {
                           setEditingAttendanceUser({
@@ -688,7 +689,7 @@ export default function StatsTab({
               })}
               <div className="pt-2 border-t border-gray-200 flex justify-between text-[12px]">
                 <span className="font-black text-gray-900">교회학교 합계</span>
-                <span className="font-black text-indigo-600">
+                <span className="font-black text-brand">
                   {childStatsSelectedDate.totalAttend}/{childStatsSelectedDate.totalTotal}명 (
                   {childStatsSelectedDate.totalTotal > 0 ? Math.round((childStatsSelectedDate.totalAttend / childStatsSelectedDate.totalTotal) * 100) : 0}%)
                 </span>
@@ -749,7 +750,7 @@ export default function StatsTab({
                         {row.note || <span className="text-gray-300">-</span>}
                       </td>
                       <td className="p-2 text-right">
-                        <button
+                        <button aria-label="출석 수정"
                           type="button"
                           onClick={() => setEditingAttendanceUser({
                             user: row.child,
@@ -907,7 +908,7 @@ export default function StatsTab({
               onClick={handleDownloadCSV}
               title={`CSV 다운로드 (${rangeLabel})`}
               aria-label={`출석 기록 CSV 다운로드 (${rangeLabel})`}
-              className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[16px] flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
+              className="w-9 h-9 bg-brand hover:bg-brand-hover text-white rounded-lg text-[16px] flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
             >
               📥
             </button>
@@ -967,7 +968,7 @@ export default function StatsTab({
                 <div className="pt-2 border-t border-gray-200 space-y-1.5">
                   <div className="flex justify-between text-[12px]">
                     <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-500">(어른 + 교회학교)</span></span>
-                    <span className="font-black text-indigo-600">
+                    <span className="font-black text-brand">
                       {rangeLabriStats.totalAttend + childStats.totalAttend}/{rangeLabriStats.totalTotal + childStats.totalTotal}회 ({(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%)
                     </span>
                   </div>
@@ -1041,7 +1042,7 @@ export default function StatsTab({
                           <td className="p-2 text-[10px] text-gray-500">{pv.recentDate}</td>
                           <td className="p-2 text-center">
                             {pv.notes.length > 0 ? (
-                              <button
+                              <button aria-label={`메모 ${pv.notes.length}개 보기`}
                                 type="button"
                                 onClick={() => setNotePopup({
                                   name: `${pv.name} (${pv.category} 방문자 · ${pv.visitCount}회 방문)`,
@@ -1092,32 +1093,30 @@ export default function StatsTab({
 
       {/* ── 개별 출석 정보 수정 모달 ── */}
       {editingAttendanceUser && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setEditingAttendanceUser(null))}
-        >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-vp-85 overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="font-bold text-[14px] text-gray-900">
-                  ✏️ {editingAttendanceUser.user.isDependent
-                        ? editingAttendanceUser.user.name
-                        : getUserDisplayName(editingAttendanceUser.user)} 출석 수정
-                </h3>
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  주일 날짜: <strong className="text-brand">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
+        <Modal
+          onClose={() => setEditingAttendanceUser(null)}
+          title={`✏️ ${editingAttendanceUser.user.isDependent ? editingAttendanceUser.user.name : getUserDisplayName(editingAttendanceUser.user)} 출석 수정`}
+          subtitle={<>주일 날짜: <strong className="text-brand">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
                     ? (editingAttendanceUser.user.childLabriId || '미지정')
-                    : (editingAttendanceUser.user.labriId || '라브리 미정')})
-                </p>
-              </div>
+                    : (editingAttendanceUser.user.labriId || '라브리 미정')})</>}
+          bodyClassName="p-5 space-y-4"
+          footer={<>
               <button
                 type="button"
                 onClick={() => setEditingAttendanceUser(null)}
-                className="tap-area relative p-1 hover:bg-gray-100 rounded-lg text-gray-500 font-bold"
+                className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[12px] font-bold rounded-xl hover:bg-gray-200"
               >
-                <X size={16} />
+                취소
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={handleSaveIndividualAttendance}
+                className="flex-1 py-2.5 bg-brand text-white text-[12px] font-bold rounded-xl hover:bg-brand-hover shadow-xs"
+              >
+                출석 정보 저장
+              </button>
+          </>}
+        >
 
             {/* 출석 상태 선택 (출석 / 결석 / 미기록) */}
             <div className="space-y-1.5">
@@ -1173,46 +1172,16 @@ export default function StatsTab({
                 />
               </div>
             )}
-
-            <div className="flex gap-2 pt-2 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setEditingAttendanceUser(null)}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[12px] font-bold rounded-xl hover:bg-gray-200"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveIndividualAttendance}
-                className="flex-1 py-2.5 bg-brand text-white text-[12px] font-bold rounded-xl hover:bg-brand-hover shadow-xs"
-              >
-                출석 정보 저장
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 특이사항 / 메모 팝업 모달 ── */}
       {notePopup && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={backdropClose(() => setNotePopup(null))}
+        <Modal
+          onClose={() => setNotePopup(null)}
+          title="📝 특이사항 / 메모"
+          bodyClassName="p-5 space-y-3.5"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3.5 shadow-2xl animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-              <h4 className="font-bold text-[14px] text-gray-900 flex items-center gap-1.5">
-                <span>📝 특이사항 / 메모</span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setNotePopup(null)}
-                className="tap-area relative p-1 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-600 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
             <div className="space-y-1">
               <div className="text-[10px] font-bold text-gray-500">대상</div>
@@ -1226,17 +1195,7 @@ export default function StatsTab({
               </div>
             </div>
 
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setNotePopup(null)}
-                className="w-full py-2.5 bg-brand text-white font-bold text-[12px] rounded-xl shadow-xs hover:bg-brand-hover transition-all"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

@@ -1,16 +1,16 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import { dbFetchDistinctTags } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { usePaginatedPosts } from '../../lib/usePaginatedPosts'
-import { useIsTyping } from '../../lib/useIsTyping'
+import WriteFab from '../ui/WriteFab'
 import PrayerBoard, { sortPrayers } from './PrayerBoard'
 import PraiseBoard from './PraiseBoard'
 import PhotoGallery from './PhotoGallery'
 import AddPostModal from './AddPostModal'
+import SegmentedTabs from '../ui/SegmentedTabs'
 
 interface SharingTabProps {
   currentUser: UserProfile
@@ -102,16 +102,19 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
   const dynamicTags = useMemo(() => ['전체', ...(dynamicTagsData || [])], [dynamicTagsData])
 
   // 댓글·검색창 등에 글자를 입력하는 중인지 — 그동안은 + 버튼을 숨깁니다(아래 버튼 주석 ②).
-  const isTyping = useIsTyping()
 
   return (
     <div className="space-y-4 pb-24 relative">
       {/* 서브탭 */}
-      <div className="flex bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold">
-        <button onClick={() => goSubTab('prayer')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'prayer' ? 'bg-brand text-white font-bold' : 'text-gray-500'}`}>🙏 기도제목</button>
-        <button onClick={() => goSubTab('photo')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'photo' ? 'bg-brand text-white font-bold' : 'text-gray-500'}`}>📸 행사사진</button>
-        <button onClick={() => goSubTab('praise')} className={`flex-1 py-2 rounded-lg transition-all ${subTab === 'praise' ? 'bg-brand text-white font-bold' : 'text-gray-500'}`}>🎵 찬양/묵상나눔</button>
-      </div>
+      <SegmentedTabs
+        value={subTab}
+        onChange={goSubTab}
+        items={[
+          { id: 'prayer', label: '🙏 기도제목' },
+          { id: 'photo', label: '📸 행사사진' },
+          { id: 'praise', label: '🎵 찬양/묵상나눔' },
+        ]}
+      />
 
       <div className={subTab === 'prayer' ? '' : 'hidden'}>
         <PrayerBoard
@@ -162,24 +165,11 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
         />
       </div>
 
-      {/* 플로팅 + 버튼
-          🐛 과거 문제
-          ① bottom-20(80px)에 고정돼 있어, 아이폰 홈 화면 앱처럼 하단 메뉴 아래에 안전영역(약 34px)이
-             붙는 환경에서는 메뉴(약 96px)와 겹쳤습니다. → 안전영역만큼 더 올립니다.
-          ② 오른쪽 아래가 마침 댓글 [등록] 버튼 자리라, 댓글을 쓰는 동안 버튼을 가렸습니다.
-             → 글자를 입력하는 동안(키보드가 올라와 있는 동안)에는 숨깁니다.
-          ③ 목록 맨 끝 카드의 댓글 줄이 이 버튼 밑에서 더 올라오지 않았습니다.
-             → 위 목록에 아래 여백(pb-24)을 둬서 버튼 위로 스크롤해 올릴 수 있게 했습니다. */}
-      <button
+      {/* 글쓰기 버튼 — 무엇을 쓰는지 글자로 보여 줍니다 (ui/WriteFab 주석 참고) */}
+      <WriteFab
+        label={subTab === 'prayer' ? '기도제목 쓰기' : subTab === 'photo' ? '행사사진 올리기' : '찬양·묵상 나누기'}
         onClick={() => setShowAddModal(true)}
-        aria-label={subTab === 'prayer' ? '기도제목 쓰기' : subTab === 'photo' ? '행사사진 올리기' : '찬양/묵상 나누기'}
-        tabIndex={isTyping ? -1 : undefined}
-        className={`fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-5 sm:right-[calc(50%-200px)] bg-[#914c24] text-white p-3.5 rounded-full shadow-lg hover:bg-[#763710] z-40 transition-all duration-200 ${
-          isTyping ? 'opacity-0 translate-y-4 pointer-events-none' : ''
-        }`}
-      >
-        <Plus size={22} />
-      </button>
+      />
 
       {/* ── 작성 모달 (기도제목/찬양·묵상/행사사진 공용) ── */}
       <AddPostModal

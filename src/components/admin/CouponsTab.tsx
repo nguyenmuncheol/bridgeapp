@@ -7,10 +7,11 @@ import { dbFetchMealCoupons, dbUpdateMealCoupon } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { todayLocalDateStr } from '../../lib/dateUtils'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
+import Modal from '../ui/Modal'
 
 interface CouponsTabProps {
   allUsers: UserProfile[]
@@ -160,7 +161,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
             >
               <Undo2 size={12} /> {isUndoing ? '되돌리는 중...' : '되돌리기'}
             </button>
-            <button
+            <button aria-label="닫기"
               onClick={() => setLastAction(null)}
               className="tap-area-y relative p-1.5 -m-0.5 text-slate-400 hover:text-white shrink-0"
               title="닫기"
@@ -247,7 +248,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                     <p className="text-2xs text-gray-500 mt-0.5">잔여 쿠폰: <strong className="text-brand">{acc.balance}장</strong></p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
+                    <button aria-label="1장 차감"
                       onClick={() => handleUpdateCoupon(acc.familyGroupId, acc.familyName, -1)}
                       disabled={pendingFamilyId !== null}
                       className="w-9 h-9 bg-white border border-gray-200 text-gray-600 rounded-lg font-bold flex items-center justify-center hover:bg-gray-100 shadow-2xs active:scale-95 disabled:opacity-40"
@@ -256,7 +257,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                       <Minus size={12} />
                     </button>
                     <span className="font-bold text-brand w-6 text-center text-sm">{acc.balance}</span>
-                    <button
+                    <button aria-label="1장 발급"
                       onClick={() => handleUpdateCoupon(acc.familyGroupId, acc.familyName, 1)}
                       disabled={pendingFamilyId !== null}
                       className="w-9 h-9 bg-white border border-gray-200 text-gray-600 rounded-lg font-bold flex items-center justify-center hover:bg-gray-100 shadow-2xs active:scale-95 disabled:opacity-40"
@@ -282,21 +283,13 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
 
       {/* ── 쿠폰구매 QR 모달 ── */}
       {showQrModal && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowQrModal(false))}
+        <Modal
+          onClose={() => setShowQrModal(false)}
+          title="💳 식사쿠폰 구매 (QR/계좌)"
+          subtitle="QR코드를 스캔하거나 계좌로 입금해 주세요."
+          bodyClassName="p-4 space-y-3"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-vp-85 overflow-y-auto">
-            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm">💳 식사쿠폰 구매 (QR/계좌)</h3>
-                <p className="text-2xs text-slate-400 mt-0.5">QR코드를 스캔하거나 계좌로 입금해 주세요.</p>
-              </div>
-              <button onClick={() => setShowQrModal(false)} className="tap-area relative p-1 hover:bg-white/10 rounded-lg transition-all text-white font-bold">
-                ✕
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
+
               <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden">
                 <img
                   src={MEAL_QR_IMAGE_URL}
@@ -307,15 +300,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
               <p className="text-2xs text-gray-500 text-center leading-relaxed">
                 입금 후 관리자에게 말씀해 주시면 쿠폰이 즉시 발급됩니다.
               </p>
-              <button
-                onClick={() => setShowQrModal(false)}
-                className="w-full py-2.5 bg-brand text-white text-xs font-bold rounded-xl shadow-xs hover:bg-brand-hover transition-all"
-              >
-                확인 / 닫기
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

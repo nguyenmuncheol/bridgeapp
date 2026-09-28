@@ -14,6 +14,7 @@ import StatsTab from './StatsTab'
 import NotificationJobsTab from './NotificationJobsTab'
 import BulletinTab from './BulletinTab'
 import Toast from '../ui/Toast'
+import SegmentedTabs from '../ui/SegmentedTabs'
 
 interface AdminDashboardProps {
   currentUser?: UserProfile
@@ -123,16 +124,16 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       <Toast message={toastMsg} />
 
       {/* 헤더 */}
-      <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between shadow-md">
+      <div className="bg-brand text-white p-4 rounded-2xl flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2">
-          <button onClick={onBack} className="tap-area relative p-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 text-slate-300">
+          <button aria-label="뒤로 가기" onClick={onBack} className="tap-area relative p-1.5 bg-white/15 rounded-lg hover:bg-white/25 text-white">
             <ArrowLeft size={16} />
           </button>
           <div>
             <h1 className="font-bold text-base">
               {isCouponManager ? '🎟️ 쿠폰 관리 대시보드' : isTeacher ? '🧒 교회학교 출석 관리' : isLeader ? '📊 리더 대시보드' : '🛠️ 관리자 대시보드'}
             </h1>
-            <p className="text-2xs text-slate-400">
+            <p className="text-2xs text-brand-100">
               {isCouponManager ? '식사 쿠폰 전용 관리' : isTeacher ? '담당 자녀 그룹 출석 확인' : isLeader ? '식사 집계 및 출석 통계' : '더브릿지교회 운영 관리 모드'}
             </p>
           </div>
@@ -153,25 +154,13 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           { id: 'alerts', label: '🔔 알림' },
         ].filter(t => visibleTabIds.includes(t.id as AdminTabId))
 
-        const cols = Math.min(4, tabs.length)
-
         return (
-          <div
-            className="grid gap-1 bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold"
-            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-          >
-            {tabs.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setAdminTab(id as typeof adminTab)}
-                className={`py-2 px-1.5 rounded-lg transition-all whitespace-nowrap ${
-                  adminTab === id ? 'bg-slate-900 text-white font-bold' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            value={adminTab}
+            onChange={setAdminTab}
+            maxCols={4}
+            items={tabs.map(t => ({ id: t.id as AdminTabId, label: t.label }))}
+          />
         )
       })()}
 

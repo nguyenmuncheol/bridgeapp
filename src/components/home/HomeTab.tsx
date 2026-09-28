@@ -7,16 +7,19 @@ import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, toda
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbFetchRecentPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadMultipleImagesToStorage } from '../../lib/storage'
-import ChurchGuideModal from './ChurchGuideModal'
 import RecentPostsCarousel from './RecentPostsCarousel'
 import ImageSlider from '../ImageSlider'
 import BulletinView from '../bulletin/BulletinView'
 import { normalizeBulletinContent, BulletinContent, OFFERING_ACCOUNT_LINES } from '../../lib/bulletinContent'
 import ImageViewerModal from '../ImageViewerModal'
-import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
+import { useModalDismiss, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
-import SectionTitle from '../ui/SectionTitle'
 import Toast from '../ui/Toast'
+import dynamic from 'next/dynamic'
+import Modal, { ModalBottomCloseButton } from '../ui/Modal'
+
+// 교회 안내 팝업은 누를 때만 받습니다(첫 화면을 가볍게).
+const ChurchGuideModal = dynamic(() => import('./ChurchGuideModal'))
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -110,6 +113,12 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
 
   const hasUnsavedNotice = Boolean(newNoticeTitle.trim() || newNoticeContent.trim())
   useWriteModalGuard(showNoticeCreateModal, hasUnsavedNotice, () => setShowNoticeCreateModal(false))
+  const closeNoticeEditor = async () => {
+    if (hasUnsavedNotice) {
+      if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
+    }
+    setShowNoticeCreateModal(false)
+  }
 
   const showToast = (msg: string, duration = 1000) => {
     setToastMsg(msg)
@@ -276,26 +285,26 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
       <Toast message={toastMsg} />
 
       {/* ─── 1. 교회소개 / 환영 섹션 ─── */}
-      <section className="rounded-2xl overflow-hidden shadow-sm border border-blue-100 bg-white">
+      <section className="rounded-2xl overflow-hidden shadow-sm border border-brand-100 bg-white">
         {isGuest ? (
-          <div className="bg-gradient-to-br from-brand to-[#1e3d5a] text-white p-5 space-y-2">
+          <div className="bg-gradient-to-br from-brand to-brand-deep text-white p-5 space-y-2">
             <div className="flex items-center gap-2">
-              <Church size={20} className="text-blue-200" />
-              <span className="text-xs font-bold text-blue-200 tracking-widest uppercase">더브릿지 교회</span>
+              <Church size={20} className="text-brand-200" />
+              <span className="text-xs font-bold text-brand-200 tracking-widest uppercase">더브릿지 교회</span>
             </div>
             <h1 className="text-lg font-black leading-snug">더브릿지 교회에 오신 것을 환영합니다</h1>
-            <p className="text-xs text-blue-100 leading-relaxed italic whitespace-pre-line">{CHURCH_INFO.vision}</p>
+            <p className="text-xs text-brand-100 leading-relaxed italic whitespace-pre-line">{CHURCH_INFO.vision}</p>
           </div>
         ) : (
           <div className="bg-gradient-to-br from-brand via-brand-mid to-brand-deep text-white p-5 space-y-2">
             <div className="flex items-center gap-2">
-              <Church size={18} className="text-blue-200" />
-              <span className="text-2xs font-bold text-blue-200 tracking-wider">더브릿지 공동체</span>
+              <Church size={18} className="text-brand-200" />
+              <span className="text-2xs font-bold text-brand-200 tracking-wider">더브릿지 공동체</span>
             </div>
             <h1 className="text-base font-black leading-snug">
               {getSimpleUserName(currentUser)} 환영합니다! 🙏
             </h1>
-            <p className="text-xs text-blue-100 leading-relaxed">
+            <p className="text-xs text-brand-100 leading-relaxed">
               오늘도 주님의 평안과 은혜가 가득하시길 기도합니다.
             </p>
           </div>
@@ -307,14 +316,14 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
             <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{CHURCH_INFO.intro}</p>
             
             {/* 3번 요청사항: 주소 텍스트 아래에 지도/카톡 버튼을 별도 가로줄로 분리 배치 */}
-            <div className="bg-[#f7f9ff] p-3.5 rounded-xl border border-blue-50 space-y-2.5">
+            <div className="bg-brand-50 p-3.5 rounded-xl border border-brand-100 space-y-2.5">
               <div className="flex items-start gap-1.5">
                 <span className="text-sm shrink-0">📍</span>
                 <span className="text-xs font-bold text-gray-800 leading-relaxed whitespace-pre-line">
                   {CHURCH_INFO.address}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-blue-100/60">
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-brand-100/60">
                 <a
                   href="https://maps.app.goo.gl/qLC3KyS4MQxhmH6T6"
                   target="_blank"
@@ -381,12 +390,12 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Megaphone size={18} /></span>
+            <span className="p-2 bg-brand-50 text-brand rounded-xl"><Megaphone size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">교회 공지사항</h2>
           </div>
           {currentUser.role === 'ADMIN' && (
             <button onClick={() => { setEditingNoticeId(null); setNewNoticeTitle(''); setNewNoticeContent(''); setShowNoticeCreateModal(true) }}
-              className="text-2xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg hover:bg-indigo-100">
+              className="text-2xs bg-brand-50 text-brand font-bold px-2.5 py-1 rounded-lg hover:bg-brand-100">
               + 공지 작성
             </button>
           )}
@@ -397,9 +406,9 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
         <div className="space-y-2">
           {(showAllNotices ? notices : notices.slice(0, NOTICE_PREVIEW_COUNT)).map((notice) => (
             <div key={notice.id} onClick={() => setSelectedNoticeModal(notice)}
-              className="bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 cursor-pointer hover:border-blue-200 transition-all space-y-0.5">
+              className="bg-gradient-to-br from-brand-50 to-white p-3.5 rounded-xl border border-brand-100 cursor-pointer hover:border-brand-200 transition-all space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="text-2xs font-bold text-brand bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
+                <span className="text-2xs font-bold text-brand bg-brand-50 px-2 py-0.5 rounded-md">공지</span>
                 <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{notice.title}</h3>
               </div>
               <p className="text-2xs text-gray-500 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
@@ -430,7 +439,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-amber-50 text-amber-700 rounded-xl"><FileText size={18} /></span>
+            <span className="p-2 bg-brand-50 text-brand rounded-xl"><FileText size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">이번 주 주보</h2>
           </div>
           <div className="flex items-center gap-2">
@@ -460,7 +469,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
               <div className="flex items-start justify-between">
                 <h3 className="font-bold text-gray-900 text-sm leading-snug">{bulletin.title}</h3>
                 {bulletin.preacher && (
-                  <span className="text-2xs text-brand bg-blue-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
+                  <span className="text-2xs text-brand bg-brand-50 font-semibold px-2.5 py-0.5 rounded-full shrink-0">{bulletin.preacher}</span>
                 )}
               </div>
               {bulletin.passage && <p className="text-xs text-amber-800 font-semibold">{bulletin.passage}</p>}
@@ -485,7 +494,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
       {!isGuest && (
         <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><CreditCard size={18} /></span>
+            <span className="p-2 bg-brand-50 text-brand rounded-xl"><CreditCard size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">온라인 헌금 안내</h2>
           </div>
           <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl gap-2">
@@ -494,7 +503,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
               <span className="text-2xs font-sans font-semibold text-gray-500">{OFFERING_ACCOUNT_LINES[1]}</span>
             </span>
             <button onClick={handleCopyAccount}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${copied ? 'bg-emerald-600 text-white' : 'bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${copied ? 'bg-emerald-600 text-white' : 'bg-brand-50 text-brand hover:bg-brand-100'}`}>
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? '복사됨' : '복사'}
             </button>
@@ -506,18 +515,11 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
 
       {/* ─── 주보 전체보기 모달 (다중 이미지 슬라이드) ─── */}
       {showBulletinModal && bulletin && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowBulletinModal(false))}
+        <Modal
+          onClose={() => setShowBulletinModal(false)}
+          title="이번 주 주보"
+          subtitle={formatBulletinDisplay(bulletin.date)}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-90 overflow-y-auto">
-            <div className="flex justify-between items-start border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="font-bold text-base text-gray-900">이번 주 주보</h3>
-                <p className="text-xs text-gray-500">{formatBulletinDisplay(bulletin.date)}</p>
-              </div>
-              <button onClick={() => setShowBulletinModal(false)} className="tap-area relative text-gray-500 font-bold text-lg px-1">✕</button>
-            </div>
 
             {/* 앱에서 작성한 주보 — 1 → 2 → 3 → 4쪽 순서로 이어서 보여 줍니다.
                 (사진으로 올린 주보는 아래 슬라이드로 계속 보입니다) */}
@@ -564,36 +566,29 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                 )}
               </div>
             )}
-
-
-
-            <button onClick={() => setShowBulletinModal(false)}
-              className="w-full py-2.5 bg-brand text-white text-xs font-bold rounded-xl">닫기</button>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── 관리자 주보 편집 모달 (날짜 픽커 + 파일 업로드 2~4장) ─── */}
       {showBulletinEditModal && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
+        <Modal
+          onClose={() => setShowBulletinEditModal(false)}
+          title="✏️ 주보 수정 (관리자)"
+          size="lg"
+          fullHeight
+          closeOnBackdrop={false}
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          footer={<>
+            <ModalBottomCloseButton label="취소" onClick={() => setShowBulletinEditModal(false)} />
+            <button
+              type="button"
+              onClick={handleSaveBulletin}
+              className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer"
+            >
+              저장하기
+            </button>
+          </>}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full h-vp-90 max-h-vp-90 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            {/* 상단 고정 헤더 */}
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">✏️ 주보 수정 (관리자)</SectionTitle>
-              <button
-                type="button"
-                onClick={() => setShowBulletinEditModal(false)}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               {/* 주보 날짜: 향후 1~2주 일요일 버튼 선택 */}
               <div>
                 <label className="text-2xs text-gray-500 font-bold block mb-1.5">
@@ -684,58 +679,29 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
-            </div>
-
-            {/* 하단 고정 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowBulletinEditModal(false)}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveBulletin}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                저장하기
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── 공지 작성/수정 모달 (공용) ─── */}
       {showNoticeCreateModal && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
+        <Modal
+          onClose={closeNoticeEditor}
+          title={editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}
+          size="md"
+          closeOnBackdrop={false}
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          footer={<>
+            <ModalBottomCloseButton label="취소" onClick={closeNoticeEditor} />
+            <button
+              type="button"
+              onClick={editingNoticeId ? handleUpdateNotice : handleCreateNotice}
+              disabled={isSavingNotice}
+              className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSavingNotice ? '저장 중...' : editingNoticeId ? '수정 저장' : '공지 등록'}
+            </button>
+          </>}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            {/* 상단 고정 헤더 */}
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">
-                {editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}
-              </SectionTitle>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (hasUnsavedNotice) {
-                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
-                  }
-                  setShowNoticeCreateModal(false)
-                }}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 본문 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
                 <label htmlFor={`${formId}-6`} className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
                 <input id={`${formId}-6`}
@@ -757,49 +723,19 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
-            </div>
-
-            {/* 하단 고정 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (hasUnsavedNotice) {
-                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
-                  }
-                  setShowNoticeCreateModal(false)
-                }}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={editingNoticeId ? handleUpdateNotice : handleCreateNotice}
-                disabled={isSavingNotice}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
-              >
-                {isSavingNotice ? '저장 중...' : editingNoticeId ? '수정 저장' : '공지 등록'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── 공지 상세 모달 (관리자: 수정/삭제 버튼 포함) ─── */}
       {selectedNoticeModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setSelectedNoticeModal(null))}
+        <Modal
+          onClose={() => setSelectedNoticeModal(null)}
+          title={selectedNoticeModal.title}
+          subtitle={selectedNoticeModal.createdAt}
+          bodyClassName="p-5 space-y-3"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-vp-85 overflow-y-auto">
-            <div className="flex justify-between items-start">
-              <div>
-                <SectionTitle>{selectedNoticeModal.title}</SectionTitle>
-                <p className="text-2xs text-gray-500">{selectedNoticeModal.createdAt}</p>
-              </div>
               {currentUser.role === 'ADMIN' && (
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center justify-end gap-1.5">
                   <button
                     onClick={() => {
                       setEditingNoticeId(selectedNoticeModal.id)
@@ -808,7 +744,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                       setSelectedNoticeModal(null)
                       setShowNoticeCreateModal(true)
                     }}
-                    className="px-2 py-1 bg-indigo-50 text-indigo-700 text-2xs font-bold rounded-lg hover:bg-indigo-100"
+                    className="px-2 py-1 bg-brand/10 text-brand text-2xs font-bold rounded-lg hover:bg-brand/15"
                   >
                     ✏️ 수정
                   </button>
@@ -818,14 +754,10 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   </button>
                 </div>
               )}
-            </div>
             <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-700 leading-relaxed border border-gray-100 whitespace-pre-wrap">
               {selectedNoticeModal.content}
             </div>
-            <button onClick={() => setSelectedNoticeModal(null)}
-              className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl">닫기</button>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── 주보 전체화면 확대 뷰어 (클릭 투과 및 고스트 클릭 완벽 차단) ─── */}

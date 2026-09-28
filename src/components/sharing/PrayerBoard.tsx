@@ -9,8 +9,8 @@ import { SkeletonList } from '../SkeletonCard'
 import PrayerCard from './PrayerCard'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
-import SectionTitle from '../ui/SectionTitle'
 import Toast from '../ui/Toast'
+import Modal from '../ui/Modal'
 
 // 고정글 우선(최근 고정순), 그 다음 미완료(기도 중)를 완료보다 위로 정렬 (최신 작성순 유지)
 export const sortPrayers = (list: PostItem[]) =>
@@ -292,14 +292,18 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
 
       {/* ── 기도제목 수정 모달 ── */}
       {editingPrayer && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            {/* 상단 고정 헤더 */}
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">✏️ 기도제목 수정</SectionTitle>
+        <Modal
+          onClose={async () => {
+                  if (hasUnsavedEdit) {
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
+                  }
+                  setEditingPrayer(null)
+                }}
+          title="✏️ 기도제목 수정"
+          size="md"
+          closeOnBackdrop={false}
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          footer={<>
               <button
                 type="button"
                 onClick={async () => {
@@ -308,15 +312,21 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   }
                   setEditingPrayer(null)
                 }}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
               >
-                ✕
+                취소
               </button>
-            </div>
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={handleSavePrayerEdit}
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
+              >
+                {isSavingEdit ? '저장 중...' : '저장하기'}
+              </button>
+        </>}
+        >
 
-            {/* 본문 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
                 <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
                 <input id={`${formId}-1`}
@@ -339,12 +349,12 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-purple-50/50 p-2.5 rounded-xl border border-purple-100/50 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-brand-50/50 p-2.5 rounded-xl border border-brand-100/50 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={editPrayerIsSecret}
                   onChange={e => setEditPrayerIsSecret(e.target.checked)}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                  className="w-4 h-4 rounded text-brand focus:ring-brand"
                 />
                 <span>🔒 비밀글로 등록 (목회자/리더만 열람)</span>
               </label>
@@ -371,33 +381,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   </button>
                 </div>
               )}
-            </div>
-
-            {/* 하단 고정 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (hasUnsavedEdit) {
-                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
-                  }
-                  setEditingPrayer(null)
-                }}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                disabled={isSavingEdit}
-                onClick={handleSavePrayerEdit}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-50 transition-all cursor-pointer"
-              >
-                {isSavingEdit ? '저장 중...' : '저장하기'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

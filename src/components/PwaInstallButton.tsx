@@ -50,7 +50,7 @@ export default function PwaInstallButton() {
     <button
       onClick={handleInstallClick}
       disabled={busy}
-      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-xs transition-all"
+      className="w-full py-3 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-xs transition-all"
     >
       {busy ? '설치 창을 여는 중...' : '📲 지금 바로 앱 설치하기'}
     </button>

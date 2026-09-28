@@ -125,7 +125,7 @@ export default function CommentList({
                             onClick={() => startEdit(c)}
                             disabled={busy}
                             aria-label="댓글 수정"
-                            className="px-1.5 py-1 -my-1 text-gray-500 hover:text-blue-600 disabled:opacity-40"
+                            className="px-1.5 py-1 -my-1 text-gray-500 hover:text-brand disabled:opacity-40"
                           >수정</button>
                         )}
                         {canDelete && (

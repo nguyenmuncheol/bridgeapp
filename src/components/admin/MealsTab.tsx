@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { getUpcomingSundays, isMealRegistrationLocked } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { UserProfile, getSimpleUserName } from '../../lib/mockData'
 import { resolveFamilyKey, buildFamilyUnits, staleFamilyKeys } from '../../lib/familyKey'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
+import Modal, { ModalBottomCloseButton } from '../ui/Modal'
 
 interface MealsTabProps {
   showToast: (msg: string) => void
@@ -236,8 +237,8 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
     <div className="space-y-4">
 
       {/* 향후 4주 식수 예상 — 항상 노출 (토글 없음) */}
-      <div className="p-4 bg-amber-500/10 border border-amber-200 rounded-2xl space-y-2 text-xs">
-        <h3 className="font-bold text-amber-900">📅 향후 4주 주일 식수 예상</h3>
+      <div className="p-4 bg-white border border-gray-100 rounded-2xl space-y-2 text-xs">
+        <h3 className="font-bold text-gray-900">📅 향후 4주 주일 식수 예상</h3>
         <div className="grid grid-cols-4 gap-2 text-center">
           {upcomingSundays.map((s, idx) => {
             const stat = weekMealStats[idx] || { total: 0, pendingUnits: [] }
@@ -247,8 +248,8 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                 onClick={() => setForecastWeek(idx)}
                 className={`p-2 rounded-xl border transition-all ${
                   forecastWeek === idx
-                    ? 'bg-amber-600 text-white border-amber-500 shadow-xs'
-                    : 'bg-white border-amber-100 hover:bg-amber-50 text-gray-700'
+                    ? 'bg-brand text-white border-brand shadow-xs'
+                    : 'bg-white border-gray-200 hover:bg-brand-50 text-gray-700'
                 }`}
               >
                 <span className="text-2xs block font-semibold">{s.displayStr}</span>
@@ -257,7 +258,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                 </p>
                 {/* 어느 주에 미응답이 많은지 한눈에 보이도록 표시합니다. */}
                 {stat.pendingUnits.length > 0 && (
-                  <span className={`text-2xs block ${forecastWeek === idx ? 'text-amber-100' : 'text-rose-500'}`}>
+                  <span className={`text-2xs block ${forecastWeek === idx ? 'text-brand-100' : 'text-rose-500'}`}>
                     미응답 {stat.pendingUnits.length}
                   </span>
                 )}
@@ -271,22 +272,22 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
       <div className="bg-brand text-white p-4 rounded-2xl shadow-sm space-y-3">
         <div className="flex justify-between items-start">
           <div>
-            <span className="text-2xs text-blue-200 font-medium">
+            <span className="text-2xs text-brand-200 font-medium">
               {upcomingSundays[forecastWeek]?.shortLabelStr} 주일 식사 신청 총원
             </span>
             <div className="text-3xl font-black mt-0.5">{currentWeekStat.total}명</div>
-            <p className="text-xs text-blue-100 mt-1">성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명</p>
+            <p className="text-xs text-brand-100 mt-1">성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명</p>
           </div>
           <button
             onClick={handleCopyMeal}
-            className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 shrink-0"
+            className="px-3 py-2 bg-white hover:bg-brand-50 text-brand text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 shrink-0"
           >📋 식수내용 복사</button>
         </div>
 
         {/* 응답 현황 막대 — 집계 숫자를 믿어도 되는지 판단하는 근거가 됩니다. */}
         {totalFamilies > 0 && (
           <div className="pt-2 border-t border-white/15 space-y-1.5">
-            <div className="flex justify-between text-2xs text-blue-100">
+            <div className="flex justify-between text-2xs text-brand-100">
               <span>가정 응답 현황</span>
               <span className="font-bold text-white">
                 {currentWeekStat.respondedCount} / {totalFamilies} 가정 ({responseRate}%)
@@ -408,7 +409,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
           <SectionTitle size="sm">
             {upcomingSundays[forecastWeek]?.shortLabelStr} 식사 신청자 목록
           </SectionTitle>
-          <span className="text-2xs bg-blue-50 text-brand font-bold px-2 py-0.5 rounded-full">
+          <span className="text-2xs bg-brand-50 text-brand font-bold px-2 py-0.5 rounded-full">
             성인 {currentWeekStat.adult}명 + 어린이 {currentWeekStat.child}명
           </span>
         </div>
@@ -452,28 +453,27 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
 
       {/* ── 대신 신청 모달 (관리자·리더) ── */}
       {proxyTarget && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setProxyTarget(null))}
+        <Modal
+          onClose={() => setProxyTarget(null)}
+          title={`✍️ ${proxyTarget.label} ${proxyTarget.isEdit ? '신청 수정' : '대신 신청'}`}
+          subtitle={<>주일 날짜: <strong className="text-brand">{upcomingSundays[forecastWeek]?.shortLabelStr}</strong></>}
+          footer={<>
+            <ModalBottomCloseButton label="취소" onClick={() => setProxyTarget(null)} />
+            <button
+              type="button"
+              onClick={handleSaveProxy}
+              disabled={isSavingProxy}
+              className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white transition-all shadow-xs disabled:opacity-60"
+            >
+              {isSavingProxy
+                ? '저장 중...'
+                : !proxyTarget.attending
+                  ? '식사 안 함으로 저장'
+                  : proxyTarget.isEdit ? '수정 내용 저장하기' : '대신 신청하기'}
+            </button>
+          </>}
+          bodyClassName="p-5 space-y-4"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-vp-85 overflow-y-auto">
-            <div className="flex items-start justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="font-bold text-[14px] text-gray-900">
-                  ✍️ {proxyTarget.label} {proxyTarget.isEdit ? '신청 수정' : '대신 신청'}
-                </h3>
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  주일 날짜: <strong className="text-brand">{upcomingSundays[forecastWeek]?.shortLabelStr}</strong>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setProxyTarget(null)}
-                className="tap-area relative p-1 hover:bg-gray-100 rounded-lg text-gray-500 font-bold"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
             {/* 마감 뒤에도 입력할 수 있지만, 주방 집계가 이미 넘어갔을 수 있어 알려 드립니다. */}
             {selectedSundayLocked && (
@@ -544,20 +544,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
               으로 남습니다. 그 가정 화면에도 이 이름이 보입니다.
             </p>
 
-            <button
-              type="button"
-              onClick={handleSaveProxy}
-              disabled={isSavingProxy}
-              className="w-full py-3 rounded-xl text-xs font-bold bg-brand hover:bg-brand-hover text-white transition-all shadow-xs disabled:opacity-60"
-            >
-              {isSavingProxy
-                ? '저장 중...'
-                : !proxyTarget.attending
-                  ? '식사 안 함으로 저장'
-                  : proxyTarget.isEdit ? '수정 내용 저장하기' : '대신 신청하기'}
-            </button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

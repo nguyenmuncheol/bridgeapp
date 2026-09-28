@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Trash2, Bell } from 'lucide-react'
+import { Trash2, Bell } from 'lucide-react'
 import { NotificationItem, UserProfile, getUserDisplayName } from '../lib/mockData'
 import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification, dbDeleteAllNotifications } from '../lib/db'
 import { formatDateTimeShort } from '../lib/dateUtils'
 import { useModalDismiss, runAfterHistoryPop } from '../lib/useModalDismiss'
 import { askConfirm } from './ConfirmDialog'
 import SectionTitle from './ui/SectionTitle'
+import { ModalCloseButton, ModalBottomCloseButton } from './ui/Modal'
 
 /** 교회 명의로 나가는 알림의 보낸 사람 이름 (서버 함수들과 같은 값) */
 const CHURCH_NAME = '더브릿지교회'
@@ -184,6 +185,9 @@ export default function NotificationPanel({
       <div className="relative w-full max-w-lg md:max-w-xl mx-auto h-0">
       <div
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="알림"
         className="absolute top-[60px] right-3 w-[min(92vw,340px)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -201,9 +205,7 @@ export default function NotificationPanel({
                 전체삭제
               </button>
             )}
-            <button onClick={onClose} className="tap-area-y relative p-1.5 -m-1 text-gray-500 hover:text-gray-600" aria-label="닫기">
-              <X size={16} />
-            </button>
+            <ModalCloseButton onClick={onClose} className="-mr-1.5" />
           </div>
         </div>
 
@@ -228,7 +230,7 @@ export default function NotificationPanel({
             <div
               key={n.id}
               className={`flex border-b border-gray-50 last:border-b-0 transition-colors ${
-                n.isRead ? '' : 'bg-blue-50/40'
+                n.isRead ? '' : 'bg-brand-50/40'
               }`}
             >
             <button
@@ -298,6 +300,7 @@ export default function NotificationPanel({
               로그아웃
             </button>
           )}
+          <ModalBottomCloseButton onClick={onClose} className="w-full py-2! text-xs!" />
         </div>
       </div>
       </div>

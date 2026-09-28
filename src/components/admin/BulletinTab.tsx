@@ -293,10 +293,10 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   // ⚠️ 여기에 폭(w-*)을 넣지 마세요. 쓰는 곳에서 w-full / flex-1 / w-20 을 붙이는데,
   //    Tailwind 는 class 문자열 순서가 아니라 CSS 출력 순서로 이기기 때문에
   //    여기 폭이 있으면 그쪽을 눌러 버립니다(절 내용·버튼이 화면 밖으로 밀려남).
-  const inputCls = 'p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs min-w-0 focus:outline-none focus:border-blue-400'
+  const inputCls = 'p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs min-w-0 focus:outline-none focus:border-brand-light'
   // 위/아래/삭제 버튼이 나란히 붙어 있어 누르는 영역은 위아래로만 넓힙니다(globals.css 의 tap-area-y).
   const miniBtn = 'tap-area-y relative p-1.5 rounded-lg text-gray-500 hover:text-slate-900 hover:bg-gray-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
-  const addBtn = 'w-full py-2 border border-dashed border-gray-300 rounded-lg text-2xs font-semibold text-gray-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer flex items-center justify-center gap-1'
+  const addBtn = 'w-full py-2 border border-dashed border-gray-300 rounded-lg text-2xs font-semibold text-gray-500 hover:border-brand-light hover:text-brand cursor-pointer flex items-center justify-center gap-1'
 
   /**
    * 예배 순서 목록 편집기 (설교 앞/뒤 공용)
@@ -331,7 +331,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               <div className="flex items-center gap-1.5 pl-4">
                 <span className="text-gray-300 text-2xs shrink-0">↳</span>
                 <input
-                  className={inputCls + ' flex-1 basis-0 bg-blue-50/60 font-semibold'}
+                  className={inputCls + ' flex-1 basis-0 bg-brand-50/60 font-semibold'}
                   value={o.center}
                   placeholder="가운데에 크게 넣을 글 (예: 요한복음 3:1-12)"
                   onChange={e => onChange(list.map((x, j) => j === i ? { ...x, center: e.target.value } : x))}
@@ -519,7 +519,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           }`}>
             {isReadOnly ? '지난 주보 · 읽기전용' : status === 'published' ? '발행됨' : '임시저장'}
           </span>
-          {isLoading && <RefreshCw size={14} className="animate-spin text-blue-500 shrink-0" />}
+          {isLoading && <RefreshCw size={14} className="animate-spin text-brand-light shrink-0" />}
         </div>
 
         {/* 이미 지난 주일의 발행 완료 주보는 새로 쓰는 화면이 아니라 참고용 열람이므로,
@@ -550,7 +550,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 className={`py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 ${
                   status === 'published'
                     ? 'bg-emerald-600 hover:bg-emerald-500'
-                    : 'bg-slate-900 hover:bg-slate-800'
+                    : 'bg-brand hover:bg-brand-hover'
                 }`}
               >
                 {isSaving
@@ -607,8 +607,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             {orderEditor(content.orderPre, next => patch({ orderPre: next }))}
           </div>
 
-          <div className="p-2.5 bg-blue-50 rounded-xl space-y-1.5">
-            <label className="block text-2xs font-bold text-blue-700">설교</label>
+          <div className="p-2.5 bg-brand-50 rounded-xl space-y-1.5">
+            <label className="block text-2xs font-bold text-brand">설교</label>
             <div className="flex gap-1.5">
               <input className={inputCls + ' bg-white w-24 shrink-0'} value={content.sermon.label} placeholder="설    교"
                 onChange={e => patch({ sermon: { ...content.sermon, label: e.target.value } })} />

@@ -11,9 +11,10 @@ import {
 } from '../../lib/db'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import Toast from '../ui/Toast'
+import Modal, { ModalBottomCloseButton } from '../ui/Modal'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
@@ -401,6 +402,51 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
   const showGroupTabs = availableGroups.length > 1
 
+  // 출석체크 팝업 맨 아래(고정)에 들어갈 저장 버튼 영역
+  const attendanceSubmitArea = (
+    <>
+      {checkSubmitted ? (
+        <div className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-xl text-center">
+          ✅ 출석체크가 명단에 정상 반영되었습니다!
+        </div>
+      ) : isVisitorTab ? (
+        <button
+          onClick={handleSubmitAttendance}
+          disabled={isSubmittingAttendance}
+          className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+        >
+          <CheckSquare size={16} />
+          {isSubmittingAttendance
+            ? '저장 중...'
+            : `✅ 방문자 카운터 저장하기 (총 ${totalVisitorCount}명)`}
+        </button>
+      ) : (
+        <div className="space-y-2">
+          {unsetCount > 0 && checkedMembers.length > 0 && (
+            <p className="text-2xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+              ⚠️ <strong>{unsetCount}명</strong>이 아직 표시되지 않았습니다. 이대로 저장하면 그분들은 <strong>미지정</strong>으로 남고,
+              담당자에게 계속 알림이 갑니다.
+            </p>
+          )}
+          <button
+            onClick={handleSubmitAttendance}
+            disabled={!canSubmit || isSubmittingAttendance}
+            title={!canSubmit ? '한 명 이상 표시한 뒤 저장할 수 있습니다.' : undefined}
+            className="w-full py-3 bg-brand hover:bg-brand-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+          >
+            <CheckSquare size={16} /> {isSubmittingAttendance
+              ? '저장 중...'
+              : !canSubmit
+                ? '한 명 이상 표시해 주세요'
+                : unsetCount > 0
+                  ? `여기까지 저장하기 (${attendedCount}명 출석 · ${unsetCount}명 미지정)`
+                  : `${hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기'} (${attendedCount}명 출석)`}
+          </button>
+        </div>
+      )}
+    </>
+  )
+
   return (
     <>
       <Toast message={toastMsg} />
@@ -423,27 +469,25 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
       {/* ── 출석체크 모달 ── */}
       {showAttendanceModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowAttendanceModal(false))}
-        >
-          <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-vp-85 flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-brand text-white">
-              <div>
-                <h3 className="font-black text-sm">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
-                <p className="text-2xs text-blue-200 mt-0.5">
-                  {isVisitorTab
-                    ? `방문자 출석 · 총 ${totalVisitorCount}명`
-                    : `${selectedGroup} · 출석 ${attendedCount}/${targetMembers.length}명${departmentLinkedVisitors.length > 0 ? ` (방문자 +${departmentLinkedVisitors.length}명)` : ''}`}
-                </p>
-              </div>
-              <button onClick={() => setShowAttendanceModal(false)} className="tap-area relative p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
+        <Modal
+          onClose={() => setShowAttendanceModal(false)}
+          title={`✏️ ${targetSundayShortLabel}(일) 출석체크`}
+          subtitle={isVisitorTab
+            ? `방문자 출석 · 총 ${totalVisitorCount}명`
+            : `${selectedGroup} · 출석 ${attendedCount}/${targetMembers.length}명${departmentLinkedVisitors.length > 0 ? ` (방문자 +${departmentLinkedVisitors.length}명)` : ''}`}
+          size="md"
+          bodyClassName="overflow-x-hidden p-4 space-y-3"
+          bottomClose={false}
+          footer={
+            <div className="flex-1 space-y-2">
+              {attendanceSubmitArea}
+              <ModalBottomCloseButton onClick={() => setShowAttendanceModal(false)} className="w-full" />
             </div>
-
-            <div className="overflow-y-auto overflow-x-hidden flex-1 p-4 space-y-3">
+          }
+        >
               {/* 그룹 선택 탭 (어른 라브리 + 자녀 그룹 + 방문자) */}
               {showGroupTabs && (
-                <div className="bg-slate-100 p-1.5 rounded-xl space-y-1">
+                <div className="bg-white border border-gray-100 p-1.5 rounded-xl space-y-1">
                   <div className="flex justify-between items-center px-1">
                     <span className="text-2xs font-bold text-slate-600">🏛️ 그룹 선택</span>
                     <span className="text-2xs font-bold text-brand bg-white px-1.5 py-0.5 rounded border border-slate-200">
@@ -467,8 +511,8 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                               : isVis
                                 ? 'bg-amber-100 text-amber-900 hover:bg-amber-200'
                                 : isChildGroup(group)
-                                  ? 'bg-white text-emerald-700 hover:bg-emerald-50'
-                                  : 'bg-white text-slate-700 hover:bg-slate-50'
+                                  ? 'bg-gray-50 text-emerald-700 hover:bg-emerald-50'
+                                  : 'bg-gray-50 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
                           {group === '미정' ? '미정/새가족' : group === '방문자' ? '🏷️ 방문자' : group}
@@ -590,7 +634,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                                   {v.category}
                                 </span>
                               </div>
-                              <button
+                              <button aria-label="삭제"
                                 type="button"
                                 onClick={() => handleDeleteVisitor(v.id, v.name)}
                                 className="tap-area relative p-1 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors"
@@ -624,7 +668,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         <div key={cat} className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-gray-200">
                           <span className="text-2xs font-bold text-gray-600">{cat}</span>
                           <div className="flex items-center gap-2">
-                            <button
+                            <button aria-label={`${cat} 한 명 빼기`}
                               type="button"
                               onClick={() => adjustVisitorCounter(cat, -1)}
                               className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold flex items-center justify-center text-xs active:scale-95"
@@ -634,7 +678,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                             <span className="w-5 text-center font-bold text-xs text-gray-800">
                               {visitorCounters[cat] || 0}
                             </span>
-                            <button
+                            <button aria-label={`${cat} 한 명 더하기`}
                               type="button"
                               onClick={() => adjustVisitorCounter(cat, 1)}
                               className="w-6 h-6 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold flex items-center justify-center text-xs active:scale-95"
@@ -771,52 +815,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                   )}
                 </>
               )}
-            </div>
-
-            {/* 출석체크 제출 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              {checkSubmitted ? (
-                <div className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-xl text-center">
-                  ✅ 출석체크가 명단에 정상 반영되었습니다!
-                </div>
-              ) : isVisitorTab ? (
-                <button
-                  onClick={handleSubmitAttendance}
-                  disabled={isSubmittingAttendance}
-                  className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
-                >
-                  <CheckSquare size={16} />
-                  {isSubmittingAttendance
-                    ? '저장 중...'
-                    : `✅ 방문자 카운터 저장하기 (총 ${totalVisitorCount}명)`}
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  {unsetCount > 0 && checkedMembers.length > 0 && (
-                    <p className="text-2xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
-                      ⚠️ <strong>{unsetCount}명</strong>이 아직 표시되지 않았습니다. 이대로 저장하면 그분들은 <strong>미지정</strong>으로 남고,
-                      담당자에게 계속 알림이 갑니다.
-                    </p>
-                  )}
-                  <button
-                    onClick={handleSubmitAttendance}
-                    disabled={!canSubmit || isSubmittingAttendance}
-                    title={!canSubmit ? '한 명 이상 표시한 뒤 저장할 수 있습니다.' : undefined}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <CheckSquare size={16} /> {isSubmittingAttendance
-                      ? '저장 중...'
-                      : !canSubmit
-                        ? '한 명 이상 표시해 주세요'
-                        : unsetCount > 0
-                          ? `여기까지 저장하기 (${attendedCount}명 출석 · ${unsetCount}명 미지정)`
-                          : `${hasSubmittedAttendance ? '✅ 출석체크 수정 완료하기' : '✅ 출석체크 최종 제출하기'} (${attendedCount}명 출석)`}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

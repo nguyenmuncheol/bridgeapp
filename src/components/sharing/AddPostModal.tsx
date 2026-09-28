@@ -8,7 +8,7 @@ import { dbCreatePost } from '../../lib/db'
 import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
-import SectionTitle from '../ui/SectionTitle'
+import Modal from '../ui/Modal'
 
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
@@ -232,35 +232,19 @@ export default function AddPostModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-      onClick={e => e.stopPropagation()}
-    >
-      <div className={`bg-white rounded-3xl w-full flex flex-col shadow-2xl overflow-hidden overscroll-contain max-h-vp-85 ${
-        subTab === 'photo' ? 'max-w-lg' : 'max-w-md'
-      }`}>
-        {/* 상단 고정 헤더 (제목 + 명시적 닫기 버튼) */}
-        <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-          <SectionTitle size="lg">
-            {subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
-          </SectionTitle>
-          <button
-            type="button"
-            onClick={handleCloseRequest}
-            className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-            title="닫기"
-            aria-label="닫기"
-          >
-            ✕
-          </button>
-        </div>
-
+    <Modal
+      onClose={handleCloseRequest}
+      title={subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
+      size={subTab === 'photo' ? 'lg' : 'md'}
+      closeOnBackdrop={false}
+      bodyClassName="p-4 sm:p-5 space-y-4"
+      subheader={<>
         {/* ── 관리자 전용: 교회 이름으로 올리기 토글 ── */}
         {isAdmin && (
           <div
             className={`px-5 py-2.5 flex items-center gap-3 cursor-pointer select-none border-b transition-colors ${
               postAsChurch
-                ? 'bg-blue-50 border-blue-100'
+                ? 'bg-brand-50 border-brand-100'
                 : 'bg-gray-50/60 border-gray-100'
             }`}
             onClick={() => setPostAsChurch(v => !v)}
@@ -280,9 +264,27 @@ export default function AddPostModal({
             </div>
           </div>
         )}
+    </>}
+      footer={<>
+          <button
+            type="button"
+            disabled={isSubmitting || uploadProgress?.isUploading}
+            onClick={handleCloseRequest}
+            className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl disabled:opacity-50 transition-all cursor-pointer"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting || uploadProgress?.isUploading}
+            onClick={handleCreate}
+            className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
+          >
+            {uploadProgress?.isUploading ? '업로드 중...' : isSubmitting ? '등록 중...' : '등록하기'}
+          </button>
+    </>}
+    >
 
-        {/* 본문 스크롤 영역 */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
           <div>
             <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
             <input id={`${formId}-1`}
@@ -310,12 +312,12 @@ export default function AddPostModal({
           </div>
 
           {subTab === 'prayer' && (
-            <label className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-purple-50/50 p-2.5 rounded-xl border border-purple-100/50 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-brand-50/50 p-2.5 rounded-xl border border-brand-100/50 cursor-pointer">
               <input
                 type="checkbox"
                 checked={isSecret}
                 onChange={e => setIsSecret(e.target.checked)}
-                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                className="w-4 h-4 rounded text-brand focus:ring-brand"
               />
               <span>🔒 비밀글로 등록 (목회자/리더만 열람 가능)</span>
             </label>
@@ -433,12 +435,12 @@ export default function AddPostModal({
               </div>
 
               {uploadProgress?.isUploading && (
-                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl space-y-2 mt-2">
+                <div className="bg-brand-50 border border-brand-100 p-3 rounded-xl space-y-2 mt-2">
                   <div className="flex justify-between items-center text-xs font-bold text-brand">
                     <span>🖼️ 사진 압축 및 업로드 중...</span>
                     <span>{uploadProgress.current} / {uploadProgress.total}장</span>
                   </div>
-                  <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-brand-100 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-brand h-full transition-all duration-300 rounded-full"
                       style={{ width: `${uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%` }}
@@ -455,28 +457,6 @@ export default function AddPostModal({
               <p className="text-xs text-rose-700 font-semibold">{errorMsg}</p>
             </div>
           )}
-        </div>
-
-        {/* 하단 고정 액션 버튼 영역 */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-          <button
-            type="button"
-            disabled={isSubmitting || uploadProgress?.isUploading}
-            onClick={handleCloseRequest}
-            className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl disabled:opacity-50 transition-all cursor-pointer"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            disabled={isSubmitting || uploadProgress?.isUploading}
-            onClick={handleCreate}
-            className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
-          >
-            {uploadProgress?.isUploading ? '업로드 중...' : isSubmitting ? '등록 중...' : '등록하기'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

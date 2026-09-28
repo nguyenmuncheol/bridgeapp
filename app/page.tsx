@@ -2,30 +2,58 @@
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
+import dynamic from 'next/dynamic'
 import BottomNav from '../src/components/BottomNav'
 import HomeTab from '../src/components/home/HomeTab'
-import NewsTab from '../src/components/news/NewsTab'
-import SharingTab from '../src/components/sharing/SharingTab'
-import RequestTab from '../src/components/request/RequestTab'
-import MyPageTab from '../src/components/mypage/MyPageTab'
-import AdminDashboard from '../src/components/admin/AdminDashboard'
 import { copyExternalImageToStorage } from '../src/lib/storage'
 import AuthPending from '../src/components/auth/AuthPending'
-import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
-import WelcomeModal from '../src/components/auth/WelcomeModal'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, hasCommunityAccess, canOpenAdmin, NotificationItem, getInitials } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
-import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications, dbMarkWelcomed } from '../src/lib/db'
+import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications, dbMarkWelcomed, dbMarkNotificationRead } from '../src/lib/db'
 import NotificationPanel, { destinationOf } from '../src/components/NotificationPanel'
 import { clearCache, ViewActiveContext } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
-import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
+import { useModalDismiss } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
 import { isRunningStandalone } from '../src/lib/pwaInstall'
 import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw, Bell } from 'lucide-react'
 import { askConfirm, showAlert } from '../src/components/ConfirmDialog'
+import { SkeletonList } from '../src/components/SkeletonCard'
+import Modal from '../src/components/ui/Modal'
+
+// ── 첫 화면(홈)에 필요 없는 화면은 따로 떼어 받습니다 ──
+// 처음 앱을 열 때 받아야 하는 프로그램 양을 줄여 홈이 더 빨리 뜨게 합니다.
+// 대신 앱이 켜지고 한가해지면 미리 받아 두므로(preloadLaterScreens), 탭을 눌렀을 때 기다리지 않습니다.
+const loadNewsTab = () => import('../src/components/news/NewsTab')
+const loadSharingTab = () => import('../src/components/sharing/SharingTab')
+const loadRequestTab = () => import('../src/components/request/RequestTab')
+const loadMyPageTab = () => import('../src/components/mypage/MyPageTab')
+const loadAdminDashboard = () => import('../src/components/admin/AdminDashboard')
+const TabLoading = () => <div className="pt-2"><SkeletonList count={3} /></div>
+const NewsTab = dynamic(loadNewsTab, { loading: TabLoading })
+const SharingTab = dynamic(loadSharingTab, { loading: TabLoading })
+const RequestTab = dynamic(loadRequestTab, { loading: TabLoading })
+const MyPageTab = dynamic(loadMyPageTab, { loading: TabLoading })
+const AdminDashboard = dynamic(loadAdminDashboard, { loading: TabLoading })
+// 가끔 한 번 뜨는 팝업은 필요할 때만 받습니다.
+const ProfileSetupModal = dynamic(() => import('../src/components/auth/ProfileSetupModal'))
+const WelcomeModal = dynamic(() => import('../src/components/auth/WelcomeModal'))
+
+function preloadLaterScreens(includeAdmin: boolean) {
+  const run = () => {
+    const jobs: Promise<unknown>[] = [loadNewsTab(), loadSharingTab(), loadRequestTab(), loadMyPageTab()]
+    if (includeAdmin) jobs.push(loadAdminDashboard())
+    Promise.all(jobs).catch(() => { /* 실패하면 탭을 누를 때 다시 받습니다 */ })
+  }
+  if ('requestIdleCallback' in window) {
+    const id = window.requestIdleCallback(run, { timeout: 3000 })
+    return () => window.cancelIdleCallback(id)
+  }
+  const t = setTimeout(run, 1500)
+  return () => clearTimeout(t)
+}
 
 /** 브라우저의 "기록 칸마다 스크롤 되돌리기"를 끕니다 — 화면별 스크롤은 Home 이 직접 기억합니다. */
 function setManualScrollRestoration() {
@@ -566,6 +594,11 @@ export default function Home() {
         } catch { /* 못 찾으면 아래 주소 기준으로 */ }
       }
       if (found) {
+        // 푸시로 이미 확인한 알림이므로 종 아이콘의 빨간 숫자에서 빼 줍니다.
+        if (!found.isRead) {
+          setNotifications(prev => prev.map(item => (item.id === notificationId ? { ...item, isRead: true } : item)))
+          dbMarkNotificationRead(notificationId).catch(() => { /* 실패해도 알림함을 열면 읽음 처리됩니다 */ })
+        }
         const { tab, sub } = destinationOf(found)
         handleSetCurrentTab(tab, sub || undefined)
         return
@@ -860,6 +893,13 @@ export default function Home() {
   }
   const { pullPx, refreshing, threshold } = usePullToRefresh(handleSoftRefresh)
 
+  // 로그인 확인이 끝나 성도 화면이 보이면, 나머지 탭(과 관리 화면)의 프로그램을 한가할 때 미리 받아 둡니다.
+  const canPreloadAdmin = canOpenAdmin(currentUser.role)
+  useEffect(() => {
+    if (isLoading || !canUseCommunity) return
+    return preloadLaterScreens(canPreloadAdmin)
+  }, [isLoading, canUseCommunity, canPreloadAdmin])
+
   // 비로그인 + 앱 미설치 방문자에게는 랜딩 페이지를 먼저 보여줍니다.
   // currentUserId는 세션 확인 전 기본값이 'guest'이므로(위 useState 초기값 참고),
   // isLoading을 기다리지 않고 즉시 랜딩을 보여줍니다 — 검색엔진/AI 크롤러가
@@ -871,7 +911,7 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-[#f7f9ff] min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
+    <div className="bg-brand-50 min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] w-full max-w-lg md:max-w-xl mx-auto relative border-x border-gray-200/60 shadow-md md:shadow-xl font-sans">
       {/* 당겨서 새로고침 표시 (아이폰 설치 앱은 사파리와 달리 기본 당김-새로고침이 없어서 직접 구현) */}
       <div
         className="fixed left-1/2 top-2 z-50 w-9 h-9 flex items-center justify-center bg-white rounded-full shadow-md pointer-events-none"
@@ -914,7 +954,7 @@ export default function Home() {
                 🐛 예전엔 이름만 있어서 이 버튼이 알림함이라는 걸 알기 어려웠습니다 → 종 아이콘을 붙입니다. */}
             <button
               onClick={() => setShowNotifications(v => !v)}
-              className="relative flex items-center gap-1.5 bg-blue-50 text-brand font-bold pl-1 pr-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer max-w-[60vw]"
+              className="relative flex items-center gap-1.5 bg-brand-50 text-brand font-bold pl-1 pr-2.5 py-1 rounded-full border border-brand-100/60 shadow-2xs hover:bg-brand-100/70 transition-all cursor-pointer max-w-[60vw]"
               title="알림 · 내 정보"
               aria-label={unreadCount > 0 ? `알림 ${unreadCount}건 · 내 정보` : '알림 · 내 정보'}
             >
@@ -950,7 +990,7 @@ export default function Home() {
               다시 시도해도 같은 문제가 계속되면 교회 관리자에게 이 메시지를 알려주세요.
             </p>
           </div>
-          <button onClick={() => setAuthError('')} className="tap-area relative p-2 -m-1 text-rose-400 hover:text-rose-600 shrink-0" title="닫기">✕</button>
+          <button aria-label="닫기" onClick={() => setAuthError('')} className="tap-area relative p-2 -m-1 text-rose-400 hover:text-rose-600 shrink-0" title="닫기">✕</button>
         </div>
       )}
 
@@ -965,7 +1005,7 @@ export default function Home() {
                 이제 소식 · 나눔 · 신청 기능을 모두 이용하실 수 있습니다. 환영합니다!
               </p>
             </div>
-            <button onClick={() => setJustApproved(false)} className="tap-area relative p-2 -m-1 text-emerald-400 hover:text-emerald-600 shrink-0" title="닫기">✕</button>
+            <button aria-label="닫기" onClick={() => setJustApproved(false)} className="tap-area relative p-2 -m-1 text-emerald-400 hover:text-emerald-600 shrink-0" title="닫기">✕</button>
           </div>
         )}
         {rosterError && !isLoading && (
@@ -1023,7 +1063,7 @@ export default function Home() {
 
             {/* 2. 비회원(isGuest) 접근 차단 카드 */}
             {!showAdmin && currentTab !== 'home' && isGuest && (
-              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
+              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-brand-100 shadow-2xs mt-2 animate-fade-in">
                 <div className="text-4xl">🔒</div>
                 <div className="space-y-1.5">
                   <h3 className="font-bold text-sm text-gray-900">로그인이 필요한 서비스입니다</h3>
@@ -1041,7 +1081,7 @@ export default function Home() {
             {/* 2-1. 로그인은 했지만 아직 "가입 완료 및 승인 신청"을 안 누른 사람 —
                 이때는 아직 신청서를 낸 게 아니므로 "승인 대기 중"이 아니라 신청을 이어가라고 안내합니다. */}
             {!showAdmin && currentTab !== 'home' && isUnrequestedPending && (
-              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
+              <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-brand-100 shadow-2xs mt-2 animate-fade-in">
                 <div className="text-4xl">📝</div>
                 <div className="space-y-1.5">
                   <h3 className="font-bold text-sm text-gray-900">가입 신청이 아직 완료되지 않았습니다</h3>
@@ -1236,25 +1276,14 @@ export default function Home() {
 
       {/* 회원가입 / 로그인 모달 */}
       {showAuthModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowAuthModal(false))}
-        >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative max-h-vp-90 overflow-y-auto">
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="tap-area absolute top-4 right-4 text-gray-500 font-bold"
-            >
-              ✕
-            </button>
-            <AuthPending
-              currentRole={isGuest ? 'MEMBER' : currentUser.role}
-              onRefreshStatus={() => setShowAuthModal(false)}
-              onGoogleLogin={handleGoogleLogin}
-              onKakaoLogin={handleKakaoLogin}
-            />
-          </div>
-        </div>
+        <Modal onClose={() => setShowAuthModal(false)} title="로그인 / 가입 신청" bodyClassName="p-4">
+          <AuthPending
+            currentRole={isGuest ? 'MEMBER' : currentUser.role}
+            onRefreshStatus={() => setShowAuthModal(false)}
+            onGoogleLogin={handleGoogleLogin}
+            onKakaoLogin={handleKakaoLogin}
+          />
+        </Modal>
       )}
 
       {/* OAuth 가입 후 추가정보 입력 모달 */}

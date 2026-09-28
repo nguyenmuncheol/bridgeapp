@@ -68,6 +68,9 @@ export default function ProfileImageLightbox({ src, alt, onClose }: ProfileImage
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
       className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 select-none touch-none overscroll-contain"
       onClick={handleBackdropClick}
       onTouchEnd={(e) => {
@@ -102,8 +105,22 @@ export default function ProfileImageLightbox({ src, alt, onClose }: ProfileImage
         />
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-2xs text-white/70 bg-black/60 px-3.5 py-1 rounded-full pointer-events-none whitespace-nowrap">
-        화면을 터치하면 닫힙니다
+      {/* 하단: 안내 문구 + 닫기 버튼 (맨 위 X 와 같은 동작) */}
+      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10">
+        <span className="text-2xs text-white/70 bg-black/60 px-3.5 py-1 rounded-full pointer-events-none whitespace-nowrap">
+          화면을 터치하면 닫힙니다
+        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onClose()
+          }}
+          className="px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-full transition-all active:scale-95"
+        >
+          닫기
+        </button>
       </div>
     </div>,
     document.body

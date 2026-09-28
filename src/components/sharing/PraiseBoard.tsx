@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction, useId } from 'react'
-import { Play, Trash2, X, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
+import { Play, Trash2, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getYouTubeVideoId } from './youtube'
@@ -9,11 +9,12 @@ import CommentList from '../CommentList'
 import Avatar from '../news/Avatar'
 import { SkeletonList } from '../SkeletonCard'
 import { todayLocalDateStr } from '../../lib/dateUtils'
-import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
+import { useModalDismiss, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
 import Toast from '../ui/Toast'
+import Modal from '../ui/Modal'
 
 interface PraiseBoardProps {
   currentUser: UserProfile
@@ -195,7 +196,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
         <Card
           key={praise.id}
           onClick={() => setSelectedPraise(praise)}
-          className="space-y-2 cursor-pointer hover:border-blue-200 transition-all active:scale-[0.99]"
+          className="space-y-2 cursor-pointer hover:border-brand-200 transition-all active:scale-[0.99]"
         >
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
@@ -205,7 +206,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             <div className="flex items-center gap-2">
               <span className="text-2xs text-gray-500">{praise.createdAt}</span>
               {(praise.authorId === currentUser.id || isAdmin) && (
-                <button
+                <button aria-label="삭제"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleDeletePraise(praise.id)
@@ -226,7 +227,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             // 유튜브가 아닌 일반 웹페이지 주소는 검은 상자 대신 "링크" 카드로 보여줍니다.
             if (!videoId) {
               return (
-                <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 flex items-center gap-2">
+                <div className="rounded-xl bg-brand-50 border border-brand-100 p-3 flex items-center gap-2">
                   <span className="w-8 h-8 bg-brand rounded-full flex items-center justify-center shrink-0 text-white">
                     <ExternalLink size={14} />
                   </span>
@@ -260,7 +261,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
           {/* 좋아요 · 댓글 수 */}
           <div className="flex items-center gap-3 pt-1.5 border-t border-gray-50 text-2xs">
-            <button
+            <button aria-label={`좋아요 ${praise.likes}개`}
               onClick={(e) => handleLike(e, praise.id, { likes: praise.likes, likedUserIds: praise.likedUserIds || [] })}
               className={`flex items-center gap-1 font-bold transition-transform active:scale-95 ${
                 (praise.likedUserIds || []).includes(currentUser.id) ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
@@ -289,19 +290,12 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
       {/* ── 찬양/묵상 상세 모달 (수정 & 삭제 버튼 포함) ── */}
       {selectedPraise && !editingPraise && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setSelectedPraise(null))}
-        >
-          <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-vp-85 overflow-y-auto">
-            <div className="p-5 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <SectionTitle>{selectedPraise.title}</SectionTitle>
-                  <p className="text-2xs text-gray-500 mt-0.5">{selectedPraise.authorName} · {selectedPraise.createdAt}</p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {(selectedPraise.authorId === currentUser.id || isAdmin) && (
+        <Modal
+          onClose={() => setSelectedPraise(null)}
+          title={selectedPraise.title}
+          subtitle={`${selectedPraise.authorName} · ${selectedPraise.createdAt}`}
+          bodyClassName="p-5 space-y-3"
+          headerActions={(selectedPraise.authorId === currentUser.id || isAdmin) && (
                     <>
                       <button
                         onClick={() => {
@@ -313,19 +307,19 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                             setEditPraiseContent(target.content)
                           }, 50)
                         }}
-                        className="tap-area-y relative p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                        className="tap-area-y relative p-1.5 bg-brand/10 text-brand rounded-lg hover:bg-brand/15"
                         title="수정"
+                        aria-label="수정"
                       ><Edit2 size={14} /></button>
                       <button
                         onClick={() => handleDeletePraise(selectedPraise.id)}
                         className="tap-area-y relative p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"
                         title="삭제"
+                        aria-label="삭제"
                       ><Trash2 size={14} /></button>
                     </>
-                  )}
-                  <button onClick={() => setSelectedPraise(null)} className="tap-area-y relative text-gray-500 hover:text-gray-600 ml-1"><X size={18} /></button>
-                </div>
-              </div>
+          )}
+        >
               {selectedPraise.youtubeUrl && (() => {
                 const videoId = getYouTubeVideoId(selectedPraise.youtubeUrl)
                 return (
@@ -345,7 +339,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                           href={selectedPraise.youtubeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-2xs text-blue-600 hover:underline flex items-center justify-center gap-1 font-semibold py-0.5"
+                          className="text-2xs text-brand hover:underline flex items-center justify-center gap-1 font-semibold py-0.5"
                         >
                           <ExternalLink size={11} /> 유튜브 앱/웹에서 직접 열기
                         </a>
@@ -384,23 +378,23 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   placeholder="은혜 나눔을 댓글로 남겨보세요..."
                 />
               </div>
-
-              <button onClick={() => setSelectedPraise(null)} className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl">닫기</button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 찬양/묵상 수정 모달 ── */}
       {editingPraise && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            {/* 상단 고정 헤더 */}
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">✏️ 찬양/묵상 수정</SectionTitle>
+        <Modal
+          onClose={async () => {
+                  if (hasUnsavedPraiseEdit) {
+                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
+                  }
+                  setEditingPraise(null)
+                }}
+          title="✏️ 찬양/묵상 수정"
+          size="md"
+          closeOnBackdrop={false}
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          footer={<>
               <button
                 type="button"
                 onClick={async () => {
@@ -409,15 +403,20 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   }
                   setEditingPraise(null)
                 }}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
               >
-                ✕
+                취소
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={handleSavePraiseEdit}
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                저장하기
+              </button>
+        </>}
+        >
 
-            {/* 본문 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
                 <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
                 <input id={`${formId}-1`}
@@ -439,32 +438,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   placeholder="내용"
                 />
               </div>
-            </div>
-
-            {/* 하단 고정 버튼 */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (hasUnsavedPraiseEdit) {
-                    if (!await askConfirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?', { confirmLabel: '닫기', cancelLabel: '계속 작성' })) return
-                  }
-                  setEditingPraise(null)
-                }}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSavePraiseEdit}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                저장하기
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

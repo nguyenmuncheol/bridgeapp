@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#335f87">
+<title>더브릿지교회 · 연결 끊김</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+    background: #f3f4f6; color: #1f2937;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card { width: 100%; max-width: 360px; background: #fff; border: 1px solid #f3f4f6; border-radius: 24px; padding: 32px 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  img { width: 64px; height: 64px; border-radius: 16px; }
+  h1 { font-size: 18px; margin: 16px 0 8px; }
+  p { font-size: 14px; line-height: 1.6; color: #6b7280; margin: 0 0 24px; }
+  button { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: #335f87; color: #fff; font-size: 15px; font-weight: 700; }
+  button:active { transform: scale(.98); opacity: .9; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <img src="/logo-square.png" alt="" width="64" height="64">
+    <h1>인터넷 연결이 끊겼어요</h1>
+    <p>와이파이나 데이터가 켜져 있는지 확인해 주세요.<br>연결되면 자동으로 다시 열립니다.</p>
+    <button type="button" onclick="location.reload()">다시 시도</button>
+  </main>
+  <script>window.addEventListener('online', function () { location.reload() })</script>
+</body>
+</html>

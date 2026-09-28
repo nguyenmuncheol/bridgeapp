@@ -3,6 +3,7 @@
 import { useState, useId } from 'react'
 import { showAlert } from '../ConfirmDialog'
 import { useBackgroundScrollLock } from '../../lib/useModalDismiss'
+import { ModalCloseButton } from '../ui/Modal'
 
 interface ProfileSetupModalProps {
   initialName: string
@@ -52,21 +53,15 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-sm w-full max-h-vp-90 flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
-        {/* 상단 닫기/뒤로가기 X 버튼 */}
-        <button
-          onClick={onCancel}
-          className="tap-area absolute top-3.5 right-4 text-white/80 hover:text-white font-bold p-1.5 rounded-lg hover:bg-white/10 transition-all z-10"
-          title="취소하고 뒤로가기"
-        >
-          ✕
-        </button>
+      <div role="dialog" aria-modal="true" aria-label="가입 추가 정보 입력" className="bg-white rounded-3xl max-w-sm w-full max-h-vp-90 flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
+        {/* 상단 닫기 버튼 (맨 아래 "취소 (나중에 신청)"과 같은 동작) */}
+        <ModalCloseButton onClick={onCancel} tone="dark" className="absolute! top-3 right-3 z-10" />
 
         {/* 헤더 (상단 고정) */}
         <div className="bg-brand text-white px-6 py-4 text-center space-y-1 relative shrink-0">
           <div className="text-2xl">🙌</div>
           <h2 className="font-black text-base">환영합니다!</h2>
-          <p className="text-2xs text-blue-200 leading-relaxed">
+          <p className="text-2xs text-brand-200 leading-relaxed">
             더브릿지교회 앱 가입을 위해<br />추가 정보를 입력해 주세요.
           </p>
         </div>
@@ -145,9 +140,9 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
             <p className="text-2xs text-gray-500 mt-1">💡 현재 거주하시는 아파트+동+호수를 입력해 주세요.</p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 flex items-start gap-1.5">
+          <div className="bg-brand-50 border border-brand-100 rounded-xl p-2.5 flex items-start gap-1.5">
             <span className="text-2xs mt-px">🔒</span>
-            <p className="text-2xs text-blue-800 leading-relaxed">전화번호/주소는 내부 교류 및 관리 목적에만 사용되며<br />교회 외부로 공개되지 않습니다.</p>
+            <p className="text-2xs text-brand-deep leading-relaxed">전화번호/주소는 내부 교류 및 관리 목적에만 사용되며<br />교회 외부로 공개되지 않습니다.</p>
           </div>
 
           {/* 생년월일 (연도 | 월 | 일 드롭다운) */}

@@ -1,7 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────
 // 더브릿지 교회 앱 서비스워커
 //
-// ⚠️ 현재는 "캐시(오프라인 저장) 기능을 일부러 꺼둔" 상태입니다.
+// ⚠️ 화면·프로그램 파일은 **캐시하지 않습니다**(아래 이유). 예외는 딱 하나,
+//    인터넷이 끊겼을 때 보여 줄 안내 화면(/offline.html)뿐입니다.
+//    화면 요청은 언제나 네트워크로 먼저 나가고, **실패했을 때만** 안내 화면을 보여 줍니다.
 //
 // 왜 껐는지:
 //   이전 버전은 저장해둔 화면을 먼저 보여주고 뒤에서 새 버전을 받아오는 방식이었는데,
@@ -32,10 +34,19 @@
 // ─────────────────────────────────────────────────────────────────────
 
 const CACHE_PREFIX = 'bridge-church-shell-'
+// 연결 끊김 안내 화면 전용 저장소. 안내 화면을 고치면 끝 번호를 올려 주세요.
+const OFFLINE_CACHE = 'bridge-offline-v1'
+const OFFLINE_URL = '/offline.html'
+const OFFLINE_ASSETS = [OFFLINE_URL, '/logo-square.png']
 
 // 설치되면 곧바로 활성화 (옛 서비스워커가 계속 남아있지 않도록)
-self.addEventListener('install', () => {
+self.addEventListener('install', (event) => {
   self.skipWaiting()
+  event.waitUntil(
+    caches.open(OFFLINE_CACHE)
+      .then((cache) => cache.addAll(OFFLINE_ASSETS))
+      .catch(() => { /* 저장에 실패해도 설치는 계속합니다(끊겼을 때 브라우저 기본 화면이 나올 뿐) */ })
+  )
 })
 
 self.addEventListener('activate', (event) => {
@@ -45,17 +56,34 @@ self.addEventListener('activate', (event) => {
       // (이미 옛 화면에 갇힌 분들을 풀어주는 역할도 합니다)
       const keys = await caches.keys()
       await Promise.all(
-        keys.filter((k) => k.startsWith(CACHE_PREFIX)).map((k) => caches.delete(k))
+        keys
+          .filter((k) => k.startsWith(CACHE_PREFIX) || (k.startsWith('bridge-offline-') && k !== OFFLINE_CACHE))
+          .map((k) => caches.delete(k))
       )
       await self.clients.claim()
     })()
   )
 })
 
-// 설치 가능 조건을 만족시키기 위한 fetch 처리기.
+// 화면(navigate) 요청만 다룹니다. 언제나 **네트워크 우선**이고, 네트워크가 실패했을 때만
+// 저장해 둔 안내 화면을 보여 줍니다. 그 밖의 요청(프로그램 파일·사진·Supabase)은
 // 일부러 event.respondWith()를 호출하지 않습니다 → 브라우저가 평소대로 처리합니다.
-self.addEventListener('fetch', () => {
-  // 의도적으로 비워둠 (위 주석 참고)
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req).catch(async () => {
+        const cached = await caches.match(OFFLINE_URL)
+        return cached || Response.error()
+      })
+    )
+    return
+  }
+  // 안내 화면에 들어가는 교회 로고 — 이것도 네트워크가 먼저이고, 실패했을 때만 저장본을 씁니다.
+  if (new URL(req.url).pathname === '/logo-square.png') {
+    event.respondWith(fetch(req).catch(async () => (await caches.match('/logo-square.png')) || Response.error()))
+  }
 })
 
 // ─────────────────────────────────────────────────────────────────────

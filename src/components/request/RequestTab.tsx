@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useMemo, useEffect, useId } from 'react'
-import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
+import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2 } from 'lucide-react'
 import { UserProfile, getSimpleUserName, simplifyStoredName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm, dbFetchMealMenus, dbUpsertMealMenu } from '../../lib/db'
 import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/familyKey'
 import { useCachedQuery } from '../../lib/dataCache'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
-import SectionTitle from '../ui/SectionTitle'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import Toast from '../ui/Toast'
+import Modal from '../ui/Modal'
+import SegmentedTabs from '../ui/SegmentedTabs'
 
 interface RequestTabProps {
   currentUser: UserProfile
@@ -278,23 +279,21 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       <Toast message={toastMsg} />
 
       {/* 서브탭 2종: 주일식사 | 교회행사 */}
-      <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-bold text-center">
-        <button
-          onClick={() => goSubTab('meal')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'meal' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
-        >🍚 주일식사</button>
-        <button
-          onClick={() => goSubTab('event')}
-          className={`py-2 rounded-lg transition-all ${subTab === 'event' ? 'bg-white text-brand shadow-xs' : 'text-gray-500'}`}
-        >📋 교회행사</button>
-      </div>
+      <SegmentedTabs
+        value={subTab}
+        onChange={goSubTab}
+        items={[
+          { id: 'meal', label: '🍚 주일식사' },
+          { id: 'event', label: '📋 교회행사' },
+        ]}
+      />
 
       {/* ─── 1. 주일 식사 신청 ─── */}
       <div className={subTab === 'meal' ? '' : 'hidden'}>
-      <section className="bg-white rounded-2xl p-5 border border-blue-50 shadow-2xs space-y-4">
+      <section className="bg-white rounded-2xl p-5 border border-brand-100 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-[#f1f4fa] text-brand rounded-xl"><Utensils size={18} /></span>
+            <span className="p-2 bg-brand-50 text-brand rounded-xl"><Utensils size={18} /></span>
             <h2 className="font-bold text-gray-900 text-sm">주일 식사 신청</h2>
           </div>
           <span className={`text-2xs font-semibold border px-2 py-0.5 rounded-full flex items-center gap-1 ${
@@ -345,19 +344,19 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
           )}
         </div>
 
-        <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-50 rounded-xl text-xs font-medium">
+        <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-gray-100 rounded-xl text-xs font-medium">
           {sundayDates.map((dateStr, idx) => (
             <button key={idx} onClick={() => handleSelectWeek(idx)}
-              className={`py-1.5 rounded-lg transition-all ${selectedWeek === idx ? 'bg-white text-brand font-bold shadow-xs' : 'text-gray-500'}`}
+              className={`py-1.5 rounded-lg transition-all ${selectedWeek === idx ? 'bg-brand text-white font-bold shadow-xs' : 'text-gray-500'}`}
             >{dateStr}</button>
           ))}
         </div>
 
-        <div className="bg-[#f7f9ff] p-3.5 rounded-xl border border-blue-50/50 space-y-3">
+        <div className="bg-brand-50 p-3.5 rounded-xl border border-brand-100/50 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-700">{sundayDates[selectedWeek]} 식사 여부</span>
             {!isLocked ? (
-              <div className="flex bg-[#f1f4fa] p-1 rounded-xl text-xs font-bold">
+              <div className="flex bg-brand-50 p-1 rounded-xl text-xs font-bold">
                 <button
                   onClick={() => setCustomDraft({ attending: true, adult: tempAdult, child: tempChild })}
                   aria-pressed={tempAttending}
@@ -480,7 +479,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-purple-50 text-purple-600 rounded-xl">📋</span>
+            <span className="p-2 bg-brand-50 text-brand rounded-xl">📋</span>
             <h2 className="font-bold text-gray-900 text-sm">교회 행사 신청</h2>
           </div>
           {isAdmin && (
@@ -492,7 +491,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 setEditManager(eventFormManager)
                 setShowEventEditModal(true)
               }}
-              className="px-2.5 py-1 bg-purple-50 text-purple-700 text-2xs font-bold rounded-lg hover:bg-purple-100 flex items-center gap-1"
+              className="px-2.5 py-1 bg-brand-50 text-brand text-2xs font-bold rounded-lg hover:bg-brand-100 flex items-center gap-1"
             >
               <Edit size={11} /> 링크 관리
             </button>
@@ -502,8 +501,8 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
         {eventFormTitle || eventFormContent || eventFormUrl ? (
           <div className="space-y-2.5">
             {eventFormTitle && (
-              <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl text-xs">
-                <p className="font-bold text-purple-800 text-sm">📌 {eventFormTitle}</p>
+              <div className="p-3 bg-brand-50/50 border border-brand-100 rounded-xl text-xs">
+                <p className="font-bold text-brand-deep text-sm">📌 {eventFormTitle}</p>
               </div>
             )}
             {eventFormContent && (
@@ -516,7 +515,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 href={eventFormUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                className="w-full py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
               >
                 <ExternalLink size={14} /> 구글 폼 신청하러 가기
               </a>
@@ -538,15 +537,15 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
 
       {/* 관리자: 행사 등록/수정 모달 */}
       {showEventEditModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowEventEditModal(false))}
+        <Modal
+          onClose={() => setShowEventEditModal(false)}
+          title="📋 행사 신청 관리 (관리자)"
+          bodyClassName="p-5 space-y-3"
+          footer={<>
+              <button onClick={() => setShowEventEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+              <button onClick={handleSaveEventForm} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
+          </>}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-vp-85 overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <SectionTitle>📋 행사 신청 관리 (관리자)</SectionTitle>
-              <button onClick={() => setShowEventEditModal(false)} className="tap-area relative text-gray-500"><X size={16} /></button>
-            </div>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label htmlFor={`${formId}-1`} className="text-2xs text-gray-500 font-bold">행사 이름</label>
@@ -600,25 +599,20 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 </button>
               )}
             </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setShowEventEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSaveEventForm} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
-            </div>
-          </div>
-        </div>
+</Modal>
       )}
 
       {/* 관리자/리더: 이번 주 메뉴 입력 모달 */}
       {showMenuEditModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowMenuEditModal(false))}
+        <Modal
+          onClose={() => setShowMenuEditModal(false)}
+          title={`🍚 이번 주 메뉴 입력 (${sundayDates[selectedWeek]})`}
+          bodyClassName="p-5 space-y-3"
+          footer={<>
+              <button onClick={() => setShowMenuEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+              <button onClick={handleSaveMenu} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
+          </>}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <SectionTitle>🍚 이번 주 메뉴 입력 ({sundayDates[selectedWeek]})</SectionTitle>
-              <button onClick={() => setShowMenuEditModal(false)} className="tap-area relative text-gray-500"><X size={16} /></button>
-            </div>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label htmlFor={`${formId}-5`} className="text-2xs text-gray-500 font-bold">메뉴</label>
@@ -632,12 +626,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 <p className="text-2xs text-gray-500 mt-1">신청자들이 신청 화면에서 볼 수 있습니다. 비워두면 안내가 사라집니다.</p>
               </div>
             </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setShowMenuEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button onClick={handleSaveMenu} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-xl">저장</button>
-            </div>
-          </div>
-        </div>
+</Modal>
       )}
     </div>
   )

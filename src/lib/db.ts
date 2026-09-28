@@ -1256,6 +1256,14 @@ export async function dbMarkAllNotificationsRead(userId: string) {
   return { error }
 }
 
+/** 알림 한 건을 읽음으로 표시 (휴대폰 푸시 알림을 눌러 들어왔을 때) */
+export async function dbMarkNotificationRead(id: string) {
+  if (!id) return { error: null }
+  const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id).eq('is_read', false)
+  if (!error) invalidateCache('notifications')
+  return { error }
+}
+
 export async function dbDeleteNotification(id: string) {
   const { error } = await supabase.from('notifications').delete().eq('id', id)
   if (!error) invalidateCache('notifications')

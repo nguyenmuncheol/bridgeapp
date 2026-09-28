@@ -7,11 +7,12 @@ import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbMergeCouponsIntoFamily, dbUpdateProfile, dbCreateUnregisteredMember, dbClaimUnregisteredMember, dbMarkMemberLeft, dbRestoreMember, dbHasAttendanceHistory, dbDeleteMemberPermanently } from '../../lib/db'
 import { FamilyChildInfo, CHILD_LABRI_OPTIONS, CHILD_LABRI_NO_ATTENDANCE as NO_ATTENDANCE, CHILD_ATTENDANCE_GROUPS, parseTeachGroups, serializeTeachGroups, parseFamilyInfo, serializeFamilyInfo, mergeFamilyInfo, buildFamilyStatusText, getSharedChildren, getUnassignedChildren, mergeChildrenLists } from '../../lib/familyInfo'
 import { FAMILY_ROLE_ORDER, getFamilyGroupOptions, requestAddressUpdate } from '../../lib/adminHelpers'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import { uploadImageToStorage } from '../../lib/storage'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
+import Modal from '../ui/Modal'
 
 interface MembersTabProps {
   currentUser?: UserProfile
@@ -734,7 +735,7 @@ export default function MembersTab({
             onChange={e => setMemberSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand shadow-2xs text-gray-900 font-medium"
           />
-          {memberSearch && <button onClick={() => setMemberSearch('')} className="tap-area absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">✕</button>}
+          {memberSearch && <button aria-label="검색어 지우기" onClick={() => setMemberSearch('')} className="tap-area absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">✕</button>}
         </div>
 
         {/* 부모가 등록했지만 교회학교 그룹이 없는 자녀 — 그룹을 정해 주기 전까지
@@ -767,11 +768,11 @@ export default function MembersTab({
         {/* 같은 이름의 미가입 명단과 가입 계정이 함께 있으면 조용히 알려줍니다.
             연결을 깜빡하면 같은 분이 출석 명단에 두 번 뜹니다. */}
         {claimSuggestions.length > 0 && !isLeader && (
-          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 space-y-1.5">
-            <p className="text-2xs font-bold text-sky-900">
+          <div className="bg-brand-50 border border-brand-200 rounded-xl p-3 space-y-1.5">
+            <p className="text-2xs font-bold text-brand-deep">
               🔗 같은 이름으로 가입한 분이 있습니다 ({claimSuggestions.length}명)
             </p>
-            <p className="text-2xs text-sky-700 leading-snug">
+            <p className="text-2xs text-brand leading-snug">
               명단에 있는 미가입 성도와 이름이 같은 계정이 있습니다. 같은 분이면 연결해 주세요.
               연결하면 출석·식수 기록이 그대로 넘어갑니다. 동명이인이면 그냥 두시면 됩니다.
             </p>
@@ -781,7 +782,7 @@ export default function MembersTab({
                   key={placeholder.id}
                   type="button"
                   onClick={() => openClaimModal(placeholder)}
-                  className="px-2 py-1 bg-white border border-sky-200 rounded-lg text-2xs font-bold text-sky-900 hover:bg-sky-100 transition-colors"
+                  className="px-2 py-1 bg-white border border-brand-200 rounded-lg text-2xs font-bold text-brand-deep hover:bg-brand-100 transition-colors"
                 >
                   {placeholder.name} 연결하기
                 </button>
@@ -808,7 +809,7 @@ export default function MembersTab({
                 onClick={handleDownloadMembersCSV}
                 title="성도 명단 CSV 다운로드"
                 aria-label="성도 명단 CSV 다운로드"
-                className="w-8 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
+                className="w-8 h-8 bg-brand hover:bg-brand-hover text-white rounded-lg text-sm flex items-center justify-center shadow-2xs shrink-0 active:scale-95 transition-all"
               >
                 📥
               </button>
@@ -848,7 +849,7 @@ export default function MembersTab({
                       >
                         복구
                       </button>
-                      <button
+                      <button aria-label="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
                         onClick={() => handleDeletePermanently(member)}
                         disabled={deletingId === member.id}
                         title="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
@@ -880,8 +881,8 @@ export default function MembersTab({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${
-                    member.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
-                    member.role === 'LEADER' ? 'bg-blue-100 text-blue-700' :
+                    member.role === 'ADMIN' ? 'bg-brand-100 text-brand' :
+                    member.role === 'LEADER' ? 'bg-brand-100 text-brand' :
                     member.role === 'TEACHER' ? 'bg-emerald-100 text-emerald-700' :
                     'bg-gray-100 text-gray-600'
                   }`}>{member.role}</span>
@@ -889,7 +890,7 @@ export default function MembersTab({
                     <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">미가입</span>
                   )}
                   {!isLeader && (
-                    <button onClick={() => handleStartEditMember(member)} className="tap-area relative p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
+                    <button aria-label="성도 정보 수정" onClick={() => handleStartEditMember(member)} className="tap-area relative p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
                       <Edit2 size={13} />
                     </button>
                   )}
@@ -916,7 +917,7 @@ export default function MembersTab({
                 <div className="pl-14">
                   <button
                     onClick={() => openClaimModal(member)}
-                    className="text-2xs font-bold text-brand bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                    className="text-2xs font-bold text-brand bg-brand-50 hover:bg-brand-100 px-2 py-1 rounded-lg transition-colors"
                   >
                     가입 계정과 연결하기 ›
                   </button>
@@ -928,7 +929,7 @@ export default function MembersTab({
           if (unit.members.length < 2) return cards[0]
 
           return (
-            <div key={unit.members.map(({ member }) => member.id).join('-')} className="bg-blue-50/40 border border-blue-100 rounded-2xl p-2 space-y-2">
+            <div key={unit.members.map(({ member }) => member.id).join('-')} className="bg-brand-50/40 border border-brand-100 rounded-2xl p-2 space-y-2">
               <p className="text-2xs font-bold text-brand px-1">👫 부부</p>
               {cards}
             </div>
@@ -942,30 +943,26 @@ export default function MembersTab({
 
       {/* ── 성도 편집 모달 ── */}
       {editingMember && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setEditingMember(null))}
+        <Modal
+          onClose={() => setEditingMember(null)}
+          title="성도 정보 수정"
+          subtitle={`${editingMember.name} (${editingMember.email || '이메일 없음'})`}
+          bodyClassName="p-5 space-y-3 text-xs"
+          footer={<>
+                <button onClick={() => setEditingMember(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+                <button onClick={handleSaveMemberEdit} className="flex-1 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1">
+                  <Save size={13} /> 저장
+                </button>
+          </>}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-vp-90 overflow-y-auto">
-            {/* 헤더 */}
-            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm">성도 정보 수정</h3>
-                <p className="text-2xs text-slate-400 mt-0.5">{editingMember.name} ({editingMember.email || '이메일 없음'})</p>
-              </div>
-              <button onClick={() => setEditingMember(null)} className="tap-area relative p-1 hover:bg-white/10 rounded-lg transition-all">
-                <X size={18} />
-              </button>
-            </div>
 
-            <div className="p-5 space-y-3 text-xs">
-              {/* 이름 */}
+              
               <div>
                 <label htmlFor={`${formId}-1`} className="text-2xs text-gray-500 font-semibold">이름</label>
                 <input id={`${formId}-1`} type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" />
               </div>
 
-              {/* 등급 + 직분 */}
+              
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label htmlFor={`${formId}-2`} className="text-2xs text-gray-500 font-semibold">등급 (Role)</label>
@@ -987,7 +984,7 @@ export default function MembersTab({
                 </div>
               </div>
 
-              {/* 소속 라브리 */}
+              
               <div>
                 <label htmlFor={`${formId}-4`} className="text-2xs text-gray-500 font-semibold">소속 라브리</label>
                 <select id={`${formId}-4`} value={editMemberData.labriId} onChange={e => setEditMemberData(p => ({ ...p, labriId: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
@@ -995,9 +992,7 @@ export default function MembersTab({
                   <option value="라브리1">라브리1</option>
                   <option value="라브리2">라브리2</option>
                   <option value="라브리3">라브리3</option>
-                  {/* 출석을 따로 챙기지 않는 분을 출석체크·식수 명단에서 뺍니다 — 미가입 배우자,
-                      일 때문에 장기간 쉬시는 분, 가끔만 나오시는 분.
-                      출석 그룹은 라브리1~3·미정뿐이라 이 값이면 어느 명단에도 뜨지 않습니다. */}
+                  
                   <option value={NO_ATTENDANCE}>출석 미적용 (출석체크·식수 명단에서 제외)</option>
                 </select>
                 <p className="text-2xs text-gray-500 mt-1">
@@ -1007,14 +1002,7 @@ export default function MembersTab({
                 </p>
               </div>
 
-              {/*
-                담당 자녀 그룹 — 교회학교 출석을 만질 수 있는 역할(선생님·리더·관리자) 모두에게 보입니다.
-                🐛 과거 문제: 선생님(TEACHER)에게만 이 칸을 보여줬습니다. 그래서 목사님처럼
-                관리자 등급으로 특정 부서(중고등부 등)를 직접 담당하시는 분은 자신의 부서를
-                지정할 방법이 없었고, "부서 미지정 알림"은 부서 미지정 선생님들에게 뭉뚱그려
-                가서, 정작 담당자는 알림을 못 받고 무관한 선생님이 받는 일이 있었습니다.
-                → 아래에서 선택한 부서만 정확히 그 사람에게 보내도록 서버 함수도 함께 고쳤습니다.
-              */}
+              
               {(editMemberData.role === 'TEACHER' || editMemberData.role === 'ADMIN' || editMemberData.role === 'LEADER') && (
                 <div>
                   <label className="text-2xs text-gray-500 font-semibold">담당 자녀 그룹 (복수 선택 가능)</label>
@@ -1049,13 +1037,13 @@ export default function MembersTab({
                 </div>
               )}
 
-              {/* 연락처 */}
+              
               <div>
                 <label htmlFor={`${formId}-5`} className="text-2xs text-gray-500 font-semibold">연락처</label>
                 <input id={`${formId}-5`} type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="037-123-4567" />
               </div>
 
-              {/* 주소 */}
+              
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-2xs text-gray-500 font-semibold">주소</label>
@@ -1063,7 +1051,7 @@ export default function MembersTab({
                     <button
                       type="button"
                       onClick={() => handleRequestAddress(editingMember)}
-                      className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-brand'}`}
+                      className={`text-2xs font-bold px-1.5 py-0.5 rounded-lg ${parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? 'bg-amber-50 text-amber-600' : 'bg-brand-50 text-brand'}`}
                     >
                       {parseFamilyInfo(editingMember.familyInfo).addressRequestedAt ? '🏠 보완요청됨 (취소)' : '🏠 주소 보완요청'}
                     </button>
@@ -1071,7 +1059,7 @@ export default function MembersTab({
                 </div>
                 <input type="text" value={editMemberData.address} onChange={e => setEditMemberData(p => ({ ...p, address: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="경남 A동 1023호" />
 
-                {/* 부부의 주소가 서로 다를 때만 물어봅니다. 고르지 않으면 양쪽 다 그대로 둡니다. */}
+                
                 {addressConflictSpouse && (
                   <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
                     <p className="text-2xs font-bold text-amber-900">
@@ -1100,13 +1088,13 @@ export default function MembersTab({
                 )}
               </div>
 
-              {/* 생년월일 */}
+              
               <div>
                 <label htmlFor={`${formId}-6`} className="text-2xs text-gray-500 font-semibold">생년월일 (YYYY-MM-DD)</label>
                 <input id={`${formId}-6`} type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="1990-08-15" />
               </div>
 
-              {/* 가족 연결 및 호칭 */}
+              
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label htmlFor={`${formId}-7`} className="text-2xs text-gray-500 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
@@ -1139,7 +1127,7 @@ export default function MembersTab({
               </div>
               <p className="text-2xs text-gray-500">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
 
-              {/* 미가입 배우자 성함 (계정 연동 없이 텍스트로만 저장 시) */}
+              
               {!editLinkedMemberId && (
                 <div>
                   <label htmlFor={`${formId}-9`} className="text-2xs text-gray-500 font-semibold">미가입 배우자 성함 (앱에 미가입 시 직접 입력)</label>
@@ -1153,11 +1141,11 @@ export default function MembersTab({
                 </div>
               )}
 
-              {/* 가족 현황: 미가입 자녀 등 (교회학교 그룹은 직접 지정합니다) */}
+              
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-2xs text-gray-500 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
-                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-brand-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {editChildren.length === 0 && (
@@ -1191,7 +1179,7 @@ export default function MembersTab({
                         placeholder="생일 YYYY-MM-DD"
                         className="w-[36%] p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                       />
-                      {/* 교회학교 그룹. 미지정이면 주소록 목록·생일 달력·출석체크에서 빠집니다. */}
+                      
                       <select
                         value={child.labriId || ''}
                         onChange={e => updateEditChild(child.id, { labriId: e.target.value })}
@@ -1202,23 +1190,23 @@ export default function MembersTab({
                           <option key={g} value={g}>{g}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => removeEditChild(child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500 shrink-0">
+                      <button aria-label="이 자녀 지우기" type="button" onClick={() => removeEditChild(child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500 shrink-0">
                         <X size={13} />
                       </button>
                     </div>
                   ))}
                 </div>
-                {/* 자녀 사진 고르는 창 (화면에는 안 보입니다) */}
+                
                 <input ref={childFileInputRef} type="file" accept="image/*" onChange={handleChildFileChange} className="hidden" />
               </div>
 
-              {/* 기타 메모 — 관리자만 보는 내부 메모(성도에게는 어디에도 노출되지 않음) */}
+              
               <div>
                 <label htmlFor={`${formId}-10`} className="text-2xs text-gray-500 font-semibold">기타 메모</label>
                 <input id={`${formId}-10`} type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
               </div>
 
-              {/* 탈퇴 처리 — 목록에서 바로 안 보이게 여기로만 옮겼습니다(오조작 방지) */}
+              
               {!isLeader && (
                 <div className="pt-2 border-t border-gray-100 space-y-1.5">
                   <label className="flex items-center gap-1.5 text-2xs text-gray-500 px-0.5">
@@ -1243,32 +1231,28 @@ export default function MembersTab({
                   </button>
                 </div>
               )}
-
-              {/* 버튼 */}
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setEditingMember(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-                <button onClick={handleSaveMemberEdit} className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1">
-                  <Save size={13} /> 저장
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 미가입 성도 추가 모달 ── */}
       {showAddUnregistered && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowAddUnregistered(false))}
+        <Modal
+          onClose={() => setShowAddUnregistered(false)}
+          title="미가입 성도 추가"
+          subtitle="앱을 쓰지 않는 분을 명단에만 올립니다"
+          bodyClassName="p-5 space-y-3 text-xs"
+          footer={<>
+                <button onClick={() => setShowAddUnregistered(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+                <button
+                  onClick={handleCreateUnregistered}
+                  disabled={isSavingNewMember}
+                  className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                >
+                  {isSavingNewMember ? '추가 중...' : '명단에 추가'}
+                </button>
+          </>}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-vp-90 overflow-y-auto">
-            <div className="bg-brand text-white px-5 py-4">
-              <h3 className="font-black text-sm">미가입 성도 추가</h3>
-              <p className="text-2xs text-blue-200 mt-0.5">앱을 쓰지 않는 분을 명단에만 올립니다</p>
-            </div>
 
-            <div className="p-5 space-y-3 text-xs">
               <p className="text-2xs text-gray-500 bg-gray-50 rounded-xl p-2.5 leading-relaxed">
                 출석체크 명단과 식수 쿠폰의 가정 이름, 주소록에 이름·소속이 들어갑니다.
                 <strong className="text-gray-700"> 주소록 세부정보는 공란으로 표시되고, 생일 달력에는 나오지 않습니다.</strong>
@@ -1370,35 +1354,28 @@ export default function MembersTab({
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
               </div>
-
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setShowAddUnregistered(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-                <button
-                  onClick={handleCreateUnregistered}
-                  disabled={isSavingNewMember}
-                  className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
-                >
-                  {isSavingNewMember ? '추가 중...' : '명단에 추가'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 미가입 성도 ↔ 가입 계정 연결 모달 ── */}
       {claimTarget && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setClaimTarget(null))}
+        <Modal
+          onClose={() => setClaimTarget(null)}
+          title={`${claimTarget.name}님 — 가입 계정과 연결`}
+          subtitle="출석·식수 기록을 그대로 이어 붙입니다"
+          bodyClassName="p-5 space-y-3 text-xs"
+          footer={<>
+                <button onClick={() => setClaimTarget(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+                <button
+                  onClick={handleClaim}
+                  disabled={isClaiming || !claimAccountId}
+                  className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
+                >
+                  {isClaiming ? '연결 중...' : '연결하기'}
+                </button>
+          </>}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-vp-90 overflow-y-auto">
-            <div className="bg-brand text-white px-5 py-4">
-              <h3 className="font-black text-sm">{claimTarget.name}님 — 가입 계정과 연결</h3>
-              <p className="text-2xs text-blue-200 mt-0.5">출석·식수 기록을 그대로 이어 붙입니다</p>
-            </div>
 
-            <div className="p-5 space-y-3 text-xs">
               <p className="text-2xs text-gray-500 bg-gray-50 rounded-xl p-2.5 leading-relaxed">
                 이 분이 앱에 가입하셨다면, 그 계정을 골라 주세요. 명단에 쌓인 출석·식수 기록이
                 <strong className="text-gray-700"> 그 계정으로 그대로 넘어갑니다.</strong>
@@ -1435,27 +1412,14 @@ export default function MembersTab({
                 <p className="text-2xs text-rose-500 mt-1 leading-snug">
                   이름이 같아도 다른 분일 수 있습니다. 반드시 이메일까지 확인하고 고르세요.
                 </p>
-                {/* 목록에 없어서 관리자가 헤매지 않도록, 승인만 안 된 경우를 짚어 줍니다. */}
+                
                 {allUsers.some(u => !u.isUnregistered && u.role === 'PENDING' && u.name.trim() === claimTarget.name.trim()) && (
                   <p className="text-2xs text-amber-600 mt-1 leading-snug font-semibold">
                     같은 이름으로 승인 대기 중인 계정이 있습니다. [가입 승인]에서 먼저 승인하면 여기에 나타납니다.
                   </p>
                 )}
               </div>
-
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setClaimTarget(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-                <button
-                  onClick={handleClaim}
-                  disabled={isClaiming || !claimAccountId}
-                  className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
-                >
-                  {isClaiming ? '연결 중...' : '연결하기'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

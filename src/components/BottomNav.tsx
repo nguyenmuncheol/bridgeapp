@@ -47,7 +47,7 @@ export default function BottomNav({ currentTab, setCurrentTab, hiddenTabIds }: B
               }`}
             >
               <div className={`relative flex items-center justify-center rounded-xl transition-all ${
-                isActive ? 'bg-blue-50 p-1.5' : 'p-1.5'
+                isActive ? 'bg-brand-50 p-1.5' : 'p-1.5'
               }`}>
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
               </div>

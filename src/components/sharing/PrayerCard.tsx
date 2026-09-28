@@ -35,7 +35,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
         ? 'border-amber-300/80 bg-amber-50/20 shadow-xs'
         : prayer.isCompleted
           ? 'bg-gray-50/70 border-gray-100 opacity-80'
-          : 'border-blue-50'
+          : 'border-brand-100'
     }`}>
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2 flex-wrap">
@@ -47,7 +47,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
             </span>
           )}
           {prayer.isSecret && (
-            <span className="text-2xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5">
+            <span className="text-2xs bg-brand-50 text-brand px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5">
               <Lock size={10} /> 비밀글
             </span>
           )}
@@ -65,10 +65,10 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
           )}
           {(prayer.authorId === currentUser.id || isAdmin) && (
             <>
-              <button onClick={() => onEdit(prayer)} className="tap-area-y relative p-1 text-gray-500 hover:text-blue-600" title="수정">
+              <button aria-label="수정" onClick={() => onEdit(prayer)} className="tap-area-y relative p-1 text-gray-500 hover:text-brand" title="수정">
                 <Edit2 size={13} />
               </button>
-              <button onClick={() => onDelete(prayer.id)} className="tap-area-y relative p-1 text-gray-500 hover:text-rose-500" title="삭제">
+              <button aria-label="삭제" onClick={() => onDelete(prayer.id)} className="tap-area-y relative p-1 text-gray-500 hover:text-rose-500" title="삭제">
                 <Trash2 size={13} />
               </button>
             </>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, Dispatch, SetStateAction, ReactNode, useId } from 'react'
-import { Heart, Filter, Trash2, X, Edit2, MessageCircle, Play } from 'lucide-react'
+import { Heart, Filter, Trash2, Edit2, MessageCircle, Play } from 'lucide-react'
 import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
@@ -18,6 +18,7 @@ import { isChurchAuthor, CHURCH_AUTHOR_NAME } from '../../lib/churchIdentity'
 import { askConfirm } from '../ConfirmDialog'
 import SectionTitle from '../ui/SectionTitle'
 import Toast from '../ui/Toast'
+import Modal, { ModalCloseButton, ModalBottomCloseButton } from '../ui/Modal'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -339,7 +340,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               {photo.tags && photo.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {photo.tags.filter(t => t !== '전체').map(tag => (
-                    <span key={tag} className="text-2xs bg-blue-50 text-brand font-bold px-1.5 py-0.5 rounded-md">
+                    <span key={tag} className="text-2xs bg-brand-50 text-brand font-bold px-1.5 py-0.5 rounded-md">
                       #{tag}
                     </span>
                   ))}
@@ -354,7 +355,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   <span className="flex items-center gap-0.5 text-gray-500 font-bold">
                     <MessageCircle size={11} /> {(photo.comments || []).length}
                   </span>
-                  <button
+                  <button aria-label={`좋아요 ${photo.likes}개`}
                     onClick={(e) => handlePhotoLike(photo.id, e)}
                     className="flex items-center gap-0.5 text-rose-500 font-bold hover:scale-110 transition-transform active:scale-95"
                   >
@@ -381,24 +382,33 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
 
       {/* ── 행사사진 수정 모달 ── */}
       {editingPhoto && (
-        <div
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-3xl max-w-lg w-full h-vp-90 max-h-vp-90 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
-              <SectionTitle size="lg">✏️ 행사사진 정보 수정</SectionTitle>
+        <Modal
+          onClose={() => setEditingPhoto(null)}
+          title="✏️ 행사사진 정보 수정"
+          size="lg"
+          fullHeight
+          closeOnBackdrop={false}
+          zIndex="z-[90]"
+          bodyClassName="p-4 sm:p-5 space-y-4"
+          footer={<>
               <button
                 type="button"
                 onClick={() => setEditingPhoto(null)}
-                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
-                title="닫기"
+                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
               >
-                ✕
+                취소
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={handleSavePhotoEdit}
+                disabled={isSavingPhoto || isUploadingEditPhoto}
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-50 shadow-md transition-all cursor-pointer"
+              >
+                {isSavingPhoto ? '저장 중...' : '저장하기'}
+              </button>
+        </>}
+        >
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               {/* 사진 개별 삭제/추가 */}
               <div className="space-y-1.5 bg-gray-50/70 p-3 rounded-2xl border border-gray-200/60">
                 <label className="text-2xs text-gray-500 font-bold">등록된 사진 ({editPhotoImages.length}장 / 최대 10장)</label>
@@ -467,27 +477,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   placeholder="예: 부활절, 수련회"
                 />
               </div>
-            </div>
-
-            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setEditingPhoto(null)}
-                className="flex-1 py-3 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSavePhotoEdit}
-                disabled={isSavingPhoto || isUploadingEditPhoto}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl disabled:opacity-50 shadow-md transition-all cursor-pointer"
-              >
-                {isSavingPhoto ? '저장 중...' : '저장하기'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 행사사진 상세 모달 (수정/삭제 연동) ── */}
@@ -615,9 +605,10 @@ function PhotoDetailModal({
         e.preventDefault()
       } : backdropClose(onClose)}
     >
-      <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-vp-90 overflow-y-auto">
+      {/* 공통 팝업 틀(ui/Modal)과 같은 모양 — 확대 보기·수정 중 흐리게 처리 때문에 틀을 직접 씁니다 */}
+      <div role="dialog" aria-modal="true" aria-label={photo.title} className="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl relative max-h-vp-90 flex flex-col animate-fade-in">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-2xl z-10 font-semibold w-max max-w-[calc(100%-2rem)] text-center break-keep leading-snug">{toastMsg}</div>}
-        <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+        <div className="flex justify-between items-center gap-2 pl-5 pr-3 py-3 border-b border-gray-100 shrink-0">
           <div className="min-w-0">
             <SectionTitle>{photo.title}</SectionTitle>
             {/* 누가 언제 올렸는지 — 다른 게시판과 동일한 표기 */}
@@ -639,8 +630,9 @@ function PhotoDetailModal({
               <>
                 <button
                   onClick={() => onEdit(photo)}
-                  className="tap-area-y relative p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                  className="tap-area-y relative p-1.5 bg-brand/10 text-brand rounded-lg hover:bg-brand/15"
                   title="수정"
+                  aria-label="수정"
                 >
                   <Edit2 size={13} />
                 </button>
@@ -648,14 +640,16 @@ function PhotoDetailModal({
                   onClick={() => onDelete(photo.id)}
                   className="tap-area-y relative p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"
                   title="삭제"
+                  aria-label="삭제"
                 >
                   <Trash2 size={13} />
                 </button>
               </>
             )}
-            <button onClick={onClose} className="tap-area-y relative text-gray-500 font-bold ml-1"><X size={18} /></button>
+            <ModalCloseButton onClick={onClose} />
           </div>
         </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-3">
         {/* 유튜브 영상 — 있으면 앱 안에서 바로 재생됩니다 */}
         {videoId && (
           <div className="rounded-xl overflow-hidden bg-black aspect-video">
@@ -680,7 +674,7 @@ function PhotoDetailModal({
         {hasImages && images.length > 1 && (
           <div className="flex gap-1 overflow-x-auto pb-1">
             {images.map((img, idx) => (
-              <button key={idx} onClick={() => setImgIdx(idx)} className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 ${imgIdx === idx ? 'border-brand' : 'border-transparent'}`}>
+              <button aria-label={`${idx + 1}번째 사진 보기`} key={idx} onClick={() => setImgIdx(idx)} className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border-2 ${imgIdx === idx ? 'border-brand' : 'border-transparent'}`}>
                 <img src={img} alt="thumb" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
@@ -721,6 +715,10 @@ function PhotoDetailModal({
             onError={onCommentError}
             placeholder="사진에 대한 이야기를 남겨보세요..."
           />
+        </div>
+        </div>
+        <div className="shrink-0 border-t border-gray-100 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex">
+          <ModalBottomCloseButton onClick={onClose} />
         </div>
       </div>
 

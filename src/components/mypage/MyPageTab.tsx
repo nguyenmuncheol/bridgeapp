@@ -10,7 +10,7 @@ import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { getPushUiState, subscribeToPush, unsubscribeFromPush, type PushUiState } from '../../lib/push'
-import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
+import { useModalDismiss } from '../../lib/useModalDismiss'
 import PwaInstallButton from '../PwaInstallButton'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 import { askConfirm } from '../ConfirmDialog'
@@ -18,6 +18,7 @@ import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
 import SlidingText from '../ui/SlidingText'
 import Toast from '../ui/Toast'
+import Modal from '../ui/Modal'
 
 interface MyPageTabProps {
   currentUser: UserProfile
@@ -386,7 +387,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <button
             type="button"
             onClick={() => currentUser.avatarUrl ? setShowAvatarLightbox(true) : openEditModal()}
-            className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center font-bold text-xl border-2 border-blue-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
+            className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center font-bold text-xl border-2 border-brand-100 shadow-xs hover:opacity-85 transition-all cursor-pointer"
             title={currentUser.avatarUrl ? '프로필 사진 크게 보기' : '프로필 사진 등록'}
           >
             {currentUser.avatarUrl
@@ -399,7 +400,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
               {/* 일반 성도는 이름 옆 직분으로 충분해 뱃지를 달지 않고, 맡은 역할이 있을 때만 보여줍니다. */}
               {currentUser.role !== 'MEMBER' && ROLE_LABELS[currentUser.role] && (
-                <span className="text-2xs font-semibold bg-blue-50 text-brand px-2.5 py-0.5 rounded-full shrink-0">{ROLE_LABELS[currentUser.role]}</span>
+                <span className="text-2xs font-semibold bg-brand-50 text-brand px-2.5 py-0.5 rounded-full shrink-0">{ROLE_LABELS[currentUser.role]}</span>
               )}
             </div>
             <p className="text-xs text-gray-500 mt-0.5 truncate">{currentUser.email}</p>
@@ -487,13 +488,13 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
             <button
               type="button"
               onClick={openEditModal}
-              className="w-full bg-sky-50 border border-sky-100 p-2.5 rounded-xl flex items-center gap-2 text-sky-800 text-left hover:bg-sky-100/70 transition-all"
+              className="w-full bg-brand-50 border border-brand-100 p-2.5 rounded-xl flex items-center gap-2 text-brand-deep text-left hover:bg-brand-100/70 transition-all"
             >
               <span className="text-sm">🏠</span>
               <p className="flex-1 font-bold text-2xs leading-snug">
                 상세주소를 입력해주세요
                 <br />
-                <span className="font-normal text-sky-600">주소정보는 교인관리 목적으로만 사용되며 공개되지 않습니다.</span>
+                <span className="font-normal text-brand">주소정보는 교인관리 목적으로만 사용되며 공개되지 않습니다.</span>
               </p>
               <span className="text-2xs font-bold shrink-0">입력하기 ›</span>
             </button>
@@ -519,7 +520,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                     : currentUser.role === 'TEACHER' ? '교회학교 출석 관리'
                     : '쿠폰 관리 대시보드'}
                 </p>
-                <p className="text-2xs text-blue-200 mt-0.5">
+                <p className="text-2xs text-brand-200 mt-0.5">
                   {currentUser.role === 'ADMIN'
                     ? '출석 · 식수 · 가입승인 · 쿠폰 관리'
                     : currentUser.role === 'LEADER'
@@ -530,7 +531,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 </p>
               </div>
             </div>
-            <Shield size={18} className="text-blue-200 group-hover:translate-x-0.5 transition-transform" />
+            <Shield size={18} className="text-brand-200 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </section>
       )}
@@ -620,7 +621,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <div className="p-4 pt-0 space-y-3 text-xs border-t border-gray-50">
             {/* 안드로이드는 버튼 한 번으로 설치 가능하면 여기 자동으로 뜸(지원 안 되면 아무것도 안 뜸) */}
             <PwaInstallButton />
-            <div className="p-3 bg-blue-50/50 rounded-xl space-y-1">
+            <div className="p-3 bg-brand-50/50 rounded-xl space-y-1">
               <span className="font-bold text-brand">아이폰 (Safari)</span>
               <p className="text-gray-600 text-2xs">하단 공유 버튼(공유 아이콘) 클릭 ➔ &apos;홈 화면에 추가&apos; 선택</p>
             </div>
@@ -644,18 +645,25 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
       {/* ── 프로필 수정 모달 ── */}
       {showEditModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setShowEditModal(false))}
+        <Modal
+          onClose={() => setShowEditModal(false)}
+          title="✏️ 내 정보 & 프로필 수정"
+          bodyClassName="p-5 space-y-4"
+          footer={<>
+              <button onClick={() => setShowEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={isSavingProfile || isUploadingAvatar}
+                className="flex-1 py-3 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
+              >
+                {/* 사진 업로드가 끝나기 전에 저장하면 예전 사진이 저장되던 문제 방지 */}
+                {isSavingProfile ? '저장 중...' : isUploadingAvatar ? '사진 업로드 중...' : '저장'}
+              </button>
+          </>}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-90 overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-              <SectionTitle>✏️ 내 정보 & 프로필 수정</SectionTitle>
-              <button onClick={() => setShowEditModal(false)} className="tap-area relative text-gray-500 font-bold">✕</button>
-            </div>
             <div className="space-y-3 text-xs">
               <div className="flex flex-col items-center gap-2">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center font-bold text-2xl border-2 border-blue-100 shadow-md">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center font-bold text-2xl border-2 border-brand-100 shadow-md">
                   {avatarPreview ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : getInitials(currentUser.name)}
                 </div>
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
@@ -752,7 +760,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               <div className="pt-1 border-t border-gray-100">
                 <div className="flex items-center justify-between mt-2">
                   <label className="text-2xs text-gray-500 font-bold">자녀 정보</label>
-                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
+                  <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-brand-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <p className="text-2xs text-gray-500 mt-1">
                   동그라미를 누르면 자녀 사진을 넣거나 바꿀 수 있습니다.
@@ -797,7 +805,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             placeholder="자녀 이름"
                             className="flex-1 min-w-0 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                           />
-                          <button type="button" onClick={() => removeEditChild(child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500 shrink-0" title="이 자녀 지우기">
+                          <button aria-label="이 자녀 지우기" type="button" onClick={() => removeEditChild(child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500 shrink-0" title="이 자녀 지우기">
                             <X size={13} />
                           </button>
                         </div>
@@ -842,19 +850,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 <input ref={childFileInputRef} type="file" accept="image/*" onChange={handleChildFileChange} className="hidden" />
               </div>
             </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
-              <button
-                onClick={handleSaveProfile}
-                disabled={isSavingProfile || isUploadingAvatar}
-                className="flex-1 py-3 bg-brand text-white text-xs font-bold rounded-xl disabled:opacity-60"
-              >
-                {/* 사진 업로드가 끝나기 전에 저장하면 예전 사진이 저장되던 문제 방지 */}
-                {isSavingProfile ? '저장 중...' : isUploadingAvatar ? '사진 업로드 중...' : '저장'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 프로필 사진 라이트박스 ── */}
@@ -868,18 +864,12 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
       {/* ── 내 기도제목 상세 모달 ── */}
       {selectedPrayer && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
-          onClick={backdropClose(() => setSelectedPrayer(null))}
+        <Modal
+          onClose={() => setSelectedPrayer(null)}
+          title={selectedPrayer.title}
+          subtitle={selectedPrayer.createdAt}
+          bodyClassName="p-5 space-y-4"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-85 overflow-y-auto">
-            <div className="flex justify-between items-start border-b border-gray-100 pb-2">
-              <div>
-                <SectionTitle>{selectedPrayer.title}</SectionTitle>
-                <p className="text-2xs text-gray-500">{selectedPrayer.createdAt}</p>
-              </div>
-              <button onClick={() => setSelectedPrayer(null)} className="tap-area relative text-gray-500 font-bold">✕</button>
-            </div>
             <p className="text-xs text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{selectedPrayer.content}</p>
             <div className="flex items-center justify-between bg-amber-50 p-3 rounded-xl text-xs">
               <span className="font-bold text-amber-900">기도 응답 현황</span>
@@ -900,9 +890,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 </div>
               </div>
             )}
-            <button onClick={() => setSelectedPrayer(null)} className="w-full py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl">닫기</button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
