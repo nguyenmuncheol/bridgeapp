@@ -427,7 +427,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowAttendanceModal(false))}
         >
-          <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="bg-white rounded-3xl w-full max-w-[440px] max-h-vp-85 flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-gray-100 bg-brand text-white">
               <div>
                 <h3 className="font-black text-sm">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
@@ -437,7 +437,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                     : `${selectedGroup} · 출석 ${attendedCount}/${targetMembers.length}명${departmentLinkedVisitors.length > 0 ? ` (방문자 +${departmentLinkedVisitors.length}명)` : ''}`}
                 </p>
               </div>
-              <button onClick={() => setShowAttendanceModal(false)} className="p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
+              <button onClick={() => setShowAttendanceModal(false)} className="tap-area relative p-1.5 hover:bg-white/20 rounded-lg text-white font-bold">✕</button>
             </div>
 
             <div className="overflow-y-auto overflow-x-hidden flex-1 p-4 space-y-3">
@@ -556,7 +556,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                                     onClick={() => handleAddNamedVisitor(name, cat)}
                                     className="px-2 py-0.5 bg-white hover:bg-brand/10 border border-brand/25 rounded-md text-3xs text-gray-700 font-medium transition-all"
                                   >
-                                    +{name} <span className="text-gray-400 text-3xs">({cat})</span>
+                                    +{name} <span className="text-gray-500 text-3xs">({cat})</span>
                                   </button>
                                 )
                               })}
@@ -573,7 +573,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                       <span className="text-brand">({currentSundayNamedVisitors.length}명)</span>
                     </span>
                     {currentSundayNamedVisitors.length === 0 ? (
-                      <p className="py-4 text-center text-2xs text-gray-400 bg-gray-50 rounded-xl">
+                      <p className="py-4 text-center text-2xs text-gray-500 bg-gray-50 rounded-xl">
                         등록된 기명 방문자가 없습니다.
                       </p>
                     ) : (
@@ -593,7 +593,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                               <button
                                 type="button"
                                 onClick={() => handleDeleteVisitor(v.id, v.name)}
-                                className="p-1 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors"
+                                className="tap-area relative p-1 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors"
                                 title="삭제"
                               >
                                 <Trash2 size={13} />
@@ -645,7 +645,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                         </div>
                       ))}
                     </div>
-                    <p className="text-3xs text-gray-400 font-medium">
+                    <p className="text-3xs text-gray-500 font-medium">
                       * 이름을 모르는 방문자만 숫자로 세어 주세요. 이름을 알면 위에 등록하는 편이 좋습니다.
                     </p>
                   </div>
@@ -672,7 +672,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                   </div>
 
                   {targetMembers.length === 0 && (
-                    <p className="py-8 text-center text-xs text-gray-400">이 그룹에 해당하는 사람이 없습니다.</p>
+                    <p className="py-8 text-center text-xs text-gray-500">이 그룹에 해당하는 사람이 없습니다.</p>
                   )}
 
                   {/* 정규 교인 명단 */}
@@ -684,7 +684,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                           <div>
                             <span className="font-bold text-gray-900">{member.name}</span>
                             {!childMode && member.duty && (
-                              <span className="text-2xs text-gray-400 ml-1.5">{member.duty}</span>
+                              <span className="text-2xs text-gray-500 ml-1.5">{member.duty}</span>
                             )}
                           </div>
                           <div className="flex gap-1">

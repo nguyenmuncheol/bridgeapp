@@ -132,7 +132,7 @@ export default function ImageSlider({
       </div>
 
       {total > 1 && (
-        <p className="text-2xs text-center text-gray-400">
+        <p className="text-2xs text-center text-gray-500">
           좌우로 밀거나 화살표를 눌러 넘겨 보세요
         </p>
       )}

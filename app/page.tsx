@@ -24,7 +24,7 @@ import { usePullToRefresh } from '../src/lib/usePullToRefresh'
 import { isRunningStandalone } from '../src/lib/pwaInstall'
 import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
-import { LogIn, RefreshCw } from 'lucide-react'
+import { LogIn, RefreshCw, Bell } from 'lucide-react'
 import { askConfirm, showAlert } from '../src/components/ConfirmDialog'
 
 /** 브라우저의 "기록 칸마다 스크롤 되돌리기"를 끕니다 — 화면별 스크롤은 Home 이 직접 기억합니다. */
@@ -909,13 +909,14 @@ export default function Home() {
           </button>
         ) : (
           <div className="flex items-center gap-2">
-            {/* 내 이름 버튼 = 알림함. 안 읽은 알림이 있으면 빨간 숫자가 붙습니다.
-                (내 정보 보기·로그아웃은 알림함 아래쪽으로 옮겼습니다) */}
+            {/* 내 이름 버튼 = 알림함. 안 읽은 알림이 있으면 종 위에 빨간 숫자가 붙습니다.
+                (내 정보 보기·로그아웃은 알림함 아래쪽으로 옮겼습니다)
+                🐛 예전엔 이름만 있어서 이 버튼이 알림함이라는 걸 알기 어려웠습니다 → 종 아이콘을 붙입니다. */}
             <button
               onClick={() => setShowNotifications(v => !v)}
-              className="relative flex items-center gap-1.5 bg-blue-50 text-brand font-bold px-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer"
+              className="relative flex items-center gap-1.5 bg-blue-50 text-brand font-bold pl-1 pr-2.5 py-1 rounded-full border border-blue-100/60 shadow-2xs hover:bg-blue-100/70 transition-all cursor-pointer max-w-[60vw]"
               title="알림 · 내 정보"
-              aria-label={unreadCount > 0 ? `알림 ${unreadCount}건` : '알림'}
+              aria-label={unreadCount > 0 ? `알림 ${unreadCount}건 · 내 정보` : '알림 · 내 정보'}
             >
               <span className="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-2xs font-bold shrink-0 overflow-hidden">
                 {currentUser.avatarUrl
@@ -923,12 +924,15 @@ export default function Home() {
                   : getInitials(currentUser.name)
                 }
               </span>
-              <span className="text-2xs">{getUserDisplayName(currentUser)}</span>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
+              <span className="text-2xs truncate min-w-0">{getUserDisplayName(currentUser)}</span>
+              <span className="relative shrink-0 flex items-center" aria-hidden="true">
+                <Bell size={16} strokeWidth={2.2} className={unreadCount > 0 ? 'text-brand' : 'text-brand/70'} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2.5 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </span>
             </button>
           </div>
         )}
@@ -946,7 +950,7 @@ export default function Home() {
               다시 시도해도 같은 문제가 계속되면 교회 관리자에게 이 메시지를 알려주세요.
             </p>
           </div>
-          <button onClick={() => setAuthError('')} className="p-2 -m-1 text-rose-400 hover:text-rose-600 shrink-0" title="닫기">✕</button>
+          <button onClick={() => setAuthError('')} className="tap-area relative p-2 -m-1 text-rose-400 hover:text-rose-600 shrink-0" title="닫기">✕</button>
         </div>
       )}
 
@@ -961,7 +965,7 @@ export default function Home() {
                 이제 소식 · 나눔 · 신청 기능을 모두 이용하실 수 있습니다. 환영합니다!
               </p>
             </div>
-            <button onClick={() => setJustApproved(false)} className="p-2 -m-1 text-emerald-400 hover:text-emerald-600 shrink-0" title="닫기">✕</button>
+            <button onClick={() => setJustApproved(false)} className="tap-area relative p-2 -m-1 text-emerald-400 hover:text-emerald-600 shrink-0" title="닫기">✕</button>
           </div>
         )}
         {rosterError && !isLoading && (
@@ -988,7 +992,7 @@ export default function Home() {
           // DB 로드 전 로딩 스피너 (더미 데이터 노출 방지)
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
             <div className="w-10 h-10 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
-            <p className="text-xs text-gray-400 font-medium">더브릿지교회 로딩 중...</p>
+            <p className="text-xs text-gray-500 font-medium">더브릿지교회 로딩 중...</p>
           </div>
         ) : (
           // 당겨서 새로고침하면 contentKey 가 바뀌어 아래 화면 부품이 모두 새로 그려집니다(각자 최신 데이터를 다시 받음).
@@ -1130,7 +1134,7 @@ export default function Home() {
                 >
                   다시 가입 신청하기
                 </button>
-                <p className="text-2xs text-gray-400">문의: 교회 사무실</p>
+                <p className="text-2xs text-gray-500">문의: 교회 사무실</p>
               </div>
             )}
 
@@ -1149,7 +1153,7 @@ export default function Home() {
                     관리자가 확인 후 계정을 복구해 드립니다.
                   </p>
                 </div>
-                <p className="text-2xs text-gray-400">문의: 교회 사무실</p>
+                <p className="text-2xs text-gray-500">문의: 교회 사무실</p>
               </div>
             )}
 
@@ -1190,7 +1194,7 @@ export default function Home() {
                 ))}
                 {!showAdmin && currentTab === 'request' && isLeft && (
                   <div className="bg-white rounded-3xl p-8 text-center space-y-2 border border-gray-100 shadow-2xs mt-2 animate-fade-in">
-                    <div className="w-14 h-14 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-2xl mx-auto">🍚</div>
+                    <div className="w-14 h-14 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-2xl mx-auto">🍚</div>
                     <p className="text-xs text-gray-500">식사 신청은 현재 교회 명단에 계신 분들만 이용하실 수 있습니다.</p>
                   </div>
                 )}
@@ -1236,10 +1240,10 @@ export default function Home() {
           className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowAuthModal(false))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-4 relative max-h-vp-90 overflow-y-auto">
             <button
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-gray-400 font-bold"
+              className="tap-area absolute top-4 right-4 text-gray-500 font-bold"
             >
               ✕
             </button>

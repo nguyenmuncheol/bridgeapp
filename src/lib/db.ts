@@ -617,6 +617,29 @@ function mapPostRow(d: PostRow): PostItem {
   }
 }
 
+/**
+ * 내가 쓴 글만 (내정보 > 내 기도제목).
+ *
+ * 🐛 예전엔 내정보를 열 때마다 dbFetchPosts('PRAYER') 로 **교회 전체 기도제목과 댓글**을
+ *    모두 받아 온 뒤 화면에서 내 것만 골랐습니다. 글이 쌓일수록 느려지고 모바일 데이터도 듭니다.
+ * → 서버에서 내 글만 받아 옵니다. 상세 창에서 댓글을 보여 주므로 댓글은 함께 가져옵니다.
+ */
+export async function dbFetchMyPosts(authorId: string, category: string): Promise<PostItem[]> {
+  if (!authorId || authorId === 'guest') return []
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      post_comments (*)
+    `)
+    .eq('category', category)
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+  throwIfFetchFailed(error, '내 글')
+  if (!data) return []
+  return (data as unknown as PostRow[]).map(mapPostRow)
+}
+
 export async function dbFetchPosts(category?: string): Promise<PostItem[]> {
   let query = supabase.from('posts').select(`
     *,

@@ -148,7 +148,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
         </div>
 
         <div className="space-y-1">
-          <label className="text-2xs text-gray-400 font-bold">보낸 사람</label>
+          <label className="text-2xs text-gray-500 font-bold">보낸 사람</label>
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
@@ -165,12 +165,12 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-2xs text-gray-400 font-bold">받는 사람 — 그룹으로 한 번에 고르기</label>
+            <label className="text-2xs text-gray-500 font-bold">받는 사람 — 그룹으로 한 번에 고르기</label>
             {pickedIds.length > 0 && (
               <button
                 type="button"
                 onClick={() => setPickedIds([])}
-                className="text-2xs font-bold text-gray-400 hover:text-rose-500"
+                className="text-2xs font-bold text-gray-500 hover:text-rose-500"
               >모두 해제</button>
             )}
           </div>
@@ -184,7 +184,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
               >{g.label}</button>
             ))}
           </div>
-          <p className="text-2xs text-gray-400 leading-relaxed">
+          <p className="text-2xs text-gray-500 leading-relaxed">
             그룹을 누르면 아래 명단에 자동으로 ☑ 표시됩니다. 여러 그룹을 함께 골라도 되고, 한 사람씩 빼거나 더할 수 있습니다.
           </p>
         </div>
@@ -198,7 +198,7 @@ export default function NotificationJobsTab({ showToast, currentUser, allUsers }
               className={`w-full text-left px-2 py-1.5 rounded-lg text-2xs transition-colors ${pickedIds.includes(m.id) ? 'bg-brand/10 text-brand font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               {pickedIds.includes(m.id) ? '☑' : '☐'} {getUserDisplayName(m)}
-              <span className="text-gray-400 font-normal"> · {m.labriId || '미정'}</span>
+              <span className="text-gray-500 font-normal"> · {m.labriId || '미정'}</span>
             </button>
           ))}
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import { showAlert } from '../ConfirmDialog'
 import { useBackgroundScrollLock } from '../../lib/useModalDismiss'
 
@@ -12,6 +12,8 @@ interface ProfileSetupModalProps {
 }
 
 export default function ProfileSetupModal({ initialName, initialEmail, onSubmit, onCancel }: ProfileSetupModalProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [name, setName] = useState(initialName)
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
@@ -50,11 +52,11 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
+      <div className="bg-white rounded-3xl max-w-sm w-full max-h-vp-90 flex flex-col shadow-2xl overflow-hidden relative my-auto animate-fade-in">
         {/* 상단 닫기/뒤로가기 X 버튼 */}
         <button
           onClick={onCancel}
-          className="absolute top-3.5 right-4 text-white/80 hover:text-white font-bold p-1.5 rounded-lg hover:bg-white/10 transition-all z-10"
+          className="tap-area absolute top-3.5 right-4 text-white/80 hover:text-white font-bold p-1.5 rounded-lg hover:bg-white/10 transition-all z-10"
           title="취소하고 뒤로가기"
         >
           ✕
@@ -86,7 +88,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
               </svg>
             )}
             <div>
-              <span className="text-2xs text-gray-400 font-semibold">
+              <span className="text-2xs text-gray-500 font-semibold">
                 {initialEmail ? '소셜 계정 (Google)' : '소셜 계정 (카카오톡)'}
               </span>
               <p className="font-bold text-gray-700 mt-0.5">
@@ -97,10 +99,10 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
           {/* 이름 */}
           <div>
-            <label className="block text-gray-700 font-bold mb-1">
+            <label htmlFor={`${formId}-1`} className="block text-gray-700 font-bold mb-1">
               이름 <span className="text-rose-500">*</span>
             </label>
-            <input
+            <input id={`${formId}-1`}
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
@@ -113,10 +115,10 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
           {/* 연락처 */}
           <div>
-            <label className="block text-gray-700 font-bold mb-1">
+            <label htmlFor={`${formId}-2`} className="block text-gray-700 font-bold mb-1">
               전화번호 <span className="text-rose-500">*</span>
             </label>
-            <input
+            <input id={`${formId}-2`}
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
@@ -129,10 +131,10 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
 
           {/* 거주지 주소 */}
           <div>
-            <label className="block text-gray-700 font-bold mb-1">
+            <label htmlFor={`${formId}-3`} className="block text-gray-700 font-bold mb-1">
               거주지 주소 <span className="text-rose-500">*</span>
             </label>
-            <input
+            <input id={`${formId}-3`}
               type="text"
               value={address}
               onChange={e => setAddress(e.target.value)}
@@ -198,7 +200,7 @@ export default function ProfileSetupModal({ initialName, initialEmail, onSubmit,
             >
               취소 (나중에 신청)
             </button>
-            <p className="text-2xs text-gray-400 text-center">
+            <p className="text-2xs text-gray-500 text-center">
               가입승인 완료 후 이용하실 수 있습니다.
             </p>
           </div>

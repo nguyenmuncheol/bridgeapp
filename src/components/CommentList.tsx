@@ -118,14 +118,14 @@ export default function CommentList({
                         <span className="font-bold text-gray-800 truncate">{c.authorName}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-2xs text-gray-400">{c.createdAt}</span>
+                        <span className="text-2xs text-gray-500">{c.createdAt}</span>
                         {/* 버튼 사이를 띄우고 탭 영역을 키워, 수정하려다 삭제를 누르는 사고를 줄였습니다 */}
                         {canEdit && (
                           <button
                             onClick={() => startEdit(c)}
                             disabled={busy}
                             aria-label="댓글 수정"
-                            className="px-1.5 py-1 -my-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
+                            className="px-1.5 py-1 -my-1 text-gray-500 hover:text-blue-600 disabled:opacity-40"
                           >수정</button>
                         )}
                         {canDelete && (
@@ -133,7 +133,7 @@ export default function CommentList({
                             onClick={() => removeComment(c)}
                             disabled={busy}
                             aria-label="댓글 삭제"
-                            className="px-1.5 py-1 -my-1 text-gray-400 hover:text-rose-500 disabled:opacity-40"
+                            className="px-1.5 py-1 -my-1 text-gray-500 hover:text-rose-500 disabled:opacity-40"
                           >{busy ? '...' : '삭제'}</button>
                         )}
                       </div>

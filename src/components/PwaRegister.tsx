@@ -2,9 +2,10 @@
 
 import { useEffect } from 'react'
 import { startListeningForInstallPrompt } from '../lib/pwaInstall'
+import { preventIosInputAutoZoom } from '../lib/iosViewport'
 
 // 앱 최상위(app/layout.tsx)에 항상 붙어 있는 컴포넌트입니다.
-// 두 가지 일을 합니다.
+// 세 가지 일을 합니다.
 //  1) public/sw.js 등록 — 안드로이드에서 "홈 화면에 앱 추가" 버튼이 뜨려면 필요합니다.
 //     개발 모드(next dev)에서는 등록하지 않습니다.
 //  2) 브라우저의 설치 신호(beforeinstallprompt)를 **앱 시작 시점에** 가로채 보관합니다.
@@ -12,6 +13,9 @@ import { startListeningForInstallPrompt } from '../lib/pwaInstall'
 //     1~2초 뒤 딱 한 번만 오기 때문에, 버튼이 직접 기다리면 영영 못 받습니다.
 export default function PwaRegister() {
   useEffect(() => {
+    // 3) 아이폰에서 입력칸을 누를 때 화면이 저절로 확대되지 않게 (src/lib/iosViewport.ts)
+    preventIosInputAutoZoom()
+
     // 설치 신호 수신은 개발/배포 모드와 무관하게 항상 켜 둡니다.
     const stopListening = startListeningForInstallPrompt()
 

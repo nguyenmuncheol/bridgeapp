@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, Dispatch, SetStateAction, ReactNode } from 'react'
+import { useState, useRef, Dispatch, SetStateAction, ReactNode, useId } from 'react'
 import { Heart, Filter, Trash2, X, Edit2, MessageCircle, Play } from 'lucide-react'
 import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
@@ -42,6 +42,8 @@ interface PhotoGalleryProps {
 
 // ── 행사사진 갤러리 (태그 필터/좋아요/상세보기/수정/삭제) ──
 export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, setPhotos, dynamicTags, selectedTag, onTagChange, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PhotoGalleryProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [activePhotoModal, setActivePhotoModal] = useState<PostItem | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<PostItem | null>(null)
   const [editPhotoTitle, setEditPhotoTitle] = useState('')
@@ -273,7 +275,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       <Toast message={toastMsg} />
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-        <Filter size={14} className="text-gray-400 shrink-0" />
+        <Filter size={14} className="text-gray-500 shrink-0" />
         {dynamicTags.map(tag => (
           <button key={tag} onClick={() => onTagChange(tag)}
             className={`px-3 py-1 rounded-full shrink-0 transition-all text-xs ${selectedTag === tag ? 'bg-brand text-white font-bold' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>#{tag}</button>
@@ -293,7 +295,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       )}
       {isLoading && <SkeletonList count={4} variant="photo" />}
       {!isLoading && filteredPhotos.length === 0 && (
-        <div className="py-8 text-center text-xs text-gray-400">
+        <div className="py-8 text-center text-xs text-gray-500">
           {selectedTag === '전체' ? '아직 등록된 사진이 없습니다.' : `#${selectedTag} 태그의 사진이 없습니다.`}
         </div>
       )}
@@ -344,12 +346,12 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 </div>
               )}
 
-              <div className="flex justify-between text-2xs text-gray-400 items-center pt-1 border-t border-gray-50 gap-1">
+              <div className="flex justify-between text-2xs text-gray-500 items-center pt-1 border-t border-gray-50 gap-1">
                 <span className="flex items-center gap-1 min-w-0">
                   {renderAuthor(photo.authorId, photo.authorName)}
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
-                  <span className="flex items-center gap-0.5 text-gray-400 font-bold">
+                  <span className="flex items-center gap-0.5 text-gray-500 font-bold">
                     <MessageCircle size={11} /> {(photo.comments || []).length}
                   </span>
                   <button
@@ -360,7 +362,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   </button>
                 </span>
               </div>
-              <p className="text-2xs text-gray-300">{photo.createdAt}</p>
+              <p className="text-2xs text-gray-500">{photo.createdAt}</p>
             </div>
           </div>
         ))}
@@ -383,13 +385,13 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
           className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[90] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full h-[90vh] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-lg w-full h-vp-90 max-h-vp-90 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">✏️ 행사사진 정보 수정</SectionTitle>
               <button
                 type="button"
                 onClick={() => setEditingPhoto(null)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -407,7 +409,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                       <button
                         type="button"
                         onClick={() => handleRemoveEditPhotoImage(url)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center cursor-pointer"
+                        className="tap-area absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center cursor-pointer"
                         aria-label="이 사진 빼기"
                       >✕</button>
                     </div>
@@ -416,7 +418,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                     type="button"
                     onClick={() => editPhotoFileInputRef.current?.click()}
                     disabled={isUploadingEditPhoto || editPhotoImages.length >= 10}
-                    className="w-14 h-14 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 shrink-0 cursor-pointer"
+                    className="w-14 h-14 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 text-xs font-bold flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 shrink-0 cursor-pointer"
                     aria-label="사진 추가"
                   >
                     {isUploadingEditPhoto ? '…' : '+ 추가'}
@@ -426,8 +428,8 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
               </div>
 
               <div>
-                <label className="block text-2xs text-gray-500 font-bold mb-1">제목</label>
-                <input
+                <label htmlFor={`${formId}-1`} className="block text-2xs text-gray-500 font-bold mb-1">제목</label>
+                <input id={`${formId}-1`}
                   type="text"
                   value={editPhotoTitle}
                   onChange={e => setEditPhotoTitle(e.target.value)}
@@ -436,8 +438,8 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 />
               </div>
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs text-gray-500 font-bold mb-1">상세 설명 / 나눔 내용</label>
-                <textarea
+                <label htmlFor={`${formId}-2`} className="block text-2xs text-gray-500 font-bold mb-1">상세 설명 / 나눔 내용</label>
+                <textarea id={`${formId}-2`}
                   rows={6}
                   value={editPhotoContent}
                   onChange={e => setEditPhotoContent(e.target.value)}
@@ -446,8 +448,8 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 />
               </div>
               <div className="bg-gray-50/70 p-3 rounded-2xl border border-gray-200/60 space-y-1">
-                <label className="block text-2xs text-gray-600 font-bold">유튜브 영상 주소 (선택)</label>
-                <input
+                <label htmlFor={`${formId}-3`} className="block text-2xs text-gray-600 font-bold">유튜브 영상 주소 (선택)</label>
+                <input id={`${formId}-3`}
                   type="text"
                   value={editPhotoVideo}
                   onChange={e => setEditPhotoVideo(e.target.value)}
@@ -456,8 +458,8 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                 />
               </div>
               <div>
-                <label className="block text-2xs text-gray-500 font-bold mb-1">대표 태그</label>
-                <input
+                <label htmlFor={`${formId}-4`} className="block text-2xs text-gray-500 font-bold mb-1">대표 태그</label>
+                <input id={`${formId}-4`}
                   type="text"
                   value={editPhotoTag}
                   onChange={e => setEditPhotoTag(e.target.value)}
@@ -613,13 +615,13 @@ function PhotoDetailModal({
         e.preventDefault()
       } : backdropClose(onClose)}
     >
-      <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-vp-90 overflow-y-auto">
         {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-2xl z-10 font-semibold w-max max-w-[calc(100%-2rem)] text-center break-keep leading-snug">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <div className="min-w-0">
             <SectionTitle>{photo.title}</SectionTitle>
             {/* 누가 언제 올렸는지 — 다른 게시판과 동일한 표기 */}
-            <div className="flex items-center gap-1.5 text-2xs text-gray-400 mt-0.5">
+            <div className="flex items-center gap-1.5 text-2xs text-gray-500 mt-0.5">
               {renderAuthor(photo.authorId, photo.authorName)}
               <span>·</span>
               <span>{photo.createdAt}</span>
@@ -637,21 +639,21 @@ function PhotoDetailModal({
               <>
                 <button
                   onClick={() => onEdit(photo)}
-                  className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                  className="tap-area-y relative p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
                   title="수정"
                 >
                   <Edit2 size={13} />
                 </button>
                 <button
                   onClick={() => onDelete(photo.id)}
-                  className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"
+                  className="tap-area-y relative p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"
                   title="삭제"
                 >
                   <Trash2 size={13} />
                 </button>
               </>
             )}
-            <button onClick={onClose} className="text-gray-400 font-bold ml-1"><X size={18} /></button>
+            <button onClick={onClose} className="tap-area-y relative text-gray-500 font-bold ml-1"><X size={18} /></button>
           </div>
         </div>
         {/* 유튜브 영상 — 있으면 앱 안에서 바로 재생됩니다 */}

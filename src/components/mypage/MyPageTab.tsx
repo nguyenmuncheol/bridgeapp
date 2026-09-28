@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useId } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt, ROLE_LABELS } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayShort } from '../../lib/dateUtils'
-import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
+import { dbUpdateProfile, dbFetchMyPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { uploadImageToStorage } from '../../lib/storage'
 import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
@@ -28,6 +28,8 @@ interface MyPageTabProps {
 }
 
 export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin, onUpdateUsers, onLogout }: MyPageTabProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [accordionOpen, setAccordionOpen] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarLightbox, setShowAvatarLightbox] = useState(false)
@@ -132,8 +134,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
   const [selectedPrayer, setSelectedPrayer] = useState<PostItem | null>(null)
   const [prayerOverrides, setPrayerOverrides] = useState<Record<string, boolean>>({})
 
-  // Supabase DB에서 내 기도제목 및 쿠폰 로드 (나눔/쿠폰관리 탭과 캐시를 공유해 반복 조회하지 않음)
-  const { data: prayerPosts } = useCachedQuery('posts:PRAYER', () => dbFetchPosts('PRAYER'))
+  // 내 기도제목(내가 쓴 것만 서버에서 받아 옴) 및 쿠폰 로드.
+  // 키가 'posts:' 로 시작해서, 글을 쓰거나 고치면(invalidateCache('posts:')) 함께 새로 받아 옵니다.
+  const { data: prayerPosts } = useCachedQuery(`posts:PRAYER:mine:${currentUser.id}`, () => dbFetchMyPosts(currentUser.id, 'PRAYER'))
   const { data: mealCoupons, error: couponError } = useCachedQuery('mealCoupons', () => dbFetchMealCoupons())
 
   const prayers = useMemo(() => {
@@ -399,7 +402,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 <span className="text-2xs font-semibold bg-blue-50 text-brand px-2.5 py-0.5 rounded-full shrink-0">{ROLE_LABELS[currentUser.role]}</span>
               )}
             </div>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{currentUser.email}</p>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{currentUser.email}</p>
           </div>
         </div>
 
@@ -413,10 +416,13 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           정보 수정하기
         </button>
 
+        {/* 칸 폭 배분: 짧은 값(라브리·생일·가족)은 좁게, 긴 값(연락처·주소)은 넓게.
+            예전엔 똑같이 나눠서 전화번호가 한 칸에 안 들어가 항상 흘러갔습니다.
+            (두 줄 구성과 넘칠 때 흐르는 방식은 그대로입니다) */}
         <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 text-xs">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-[1fr_1.35fr_1fr] gap-2">
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+              <span className="text-gray-500 text-3xs flex items-center gap-1 truncate">
                 <span className="shrink-0">⛪</span>소속 라브리
               </span>
               {/* '출석 미적용'은 관리자용 설정값이라 본인에게는 보여 주지 않습니다 — 편성 전과 같게 표시합니다. */}
@@ -426,7 +432,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               />
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+              <span className="text-gray-500 text-3xs flex items-center gap-1 truncate">
                 <Smartphone size={11} className="text-brand shrink-0" />연락처
               </span>
               <SlidingText
@@ -435,7 +441,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               />
             </div>
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+              <span className="text-gray-500 text-3xs flex items-center gap-1 truncate">
                 <span className="shrink-0">🎂</span>생년월일
               </span>
               <SlidingText
@@ -444,9 +450,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-[1.55fr_1fr] gap-2">
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
-              <span className="text-gray-400 text-3xs flex items-center gap-1 truncate">
+              <span className="text-gray-500 text-3xs flex items-center gap-1 truncate">
                 <MapPin size={11} className="text-brand shrink-0" />거주지 주소
               </span>
               <SlidingText
@@ -455,7 +461,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               />
             </div>
             <div className={`p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0 ${familyStatusText ? 'bg-amber-50/60 text-amber-900' : 'bg-gray-50'}`}>
-              <span className={`text-3xs flex items-center gap-1 truncate ${familyStatusText ? 'text-amber-700 font-bold' : 'text-gray-400'}`}>
+              <span className={`text-3xs flex items-center gap-1 truncate ${familyStatusText ? 'text-amber-700 font-bold' : 'text-gray-500'}`}>
                 <span className="shrink-0">👨‍👩‍👧‍👦</span>가족
               </span>
               <SlidingText
@@ -567,7 +573,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 {p.isCompleted ? '응답 완료' : '기도 중'}
               </span>
             </div>
-          )) : <p className="text-xs text-gray-400 text-center py-4">작성한 기도제목이 없습니다.</p>}
+          )) : <p className="text-xs text-gray-500 text-center py-4">작성한 기도제목이 없습니다.</p>}
         </div>
       </Card>
 
@@ -577,7 +583,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-brand" />
-              <SectionTitle size="sm">📱 휴대폰 알림 받기</SectionTitle>
+              <SectionTitle size="sm">휴대폰 알림 받기</SectionTitle>
             </div>
             {pushState !== 'ios-not-installed' && (
               <button
@@ -585,6 +591,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 onClick={handleTogglePush}
                 disabled={pushBusy || pushState === 'denied'}
                 aria-pressed={pushState === 'on'}
+                aria-label="휴대폰 알림 받기"
                 className={`w-11 h-6 rounded-full shrink-0 transition-all relative disabled:opacity-40 ${pushState === 'on' ? 'bg-brand' : 'bg-gray-200'}`}
               >
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${pushState === 'on' ? 'left-[22px]' : 'left-0.5'}`} />
@@ -605,9 +612,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         <button onClick={() => setAccordionOpen(!accordionOpen)} className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-all">
           <div className="flex items-center gap-2">
             <Smartphone size={16} className="text-brand" />
-            <SectionTitle size="sm">📱 홈 화면에 앱 추가하기 (PWA 가이드)</SectionTitle>
+            <SectionTitle size="sm">홈 화면에 앱 추가하기</SectionTitle>
           </div>
-          {accordionOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+          {accordionOpen ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
         </button>
         {accordionOpen && (
           <div className="p-4 pt-0 space-y-3 text-xs border-t border-gray-50">
@@ -641,10 +648,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowEditModal(false))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-90 overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
               <SectionTitle>✏️ 내 정보 & 프로필 수정</SectionTitle>
-              <button onClick={() => setShowEditModal(false)} className="text-gray-400 font-bold">✕</button>
+              <button onClick={() => setShowEditModal(false)} className="tap-area relative text-gray-500 font-bold">✕</button>
             </div>
             <div className="space-y-3 text-xs">
               <div className="flex flex-col items-center gap-2">
@@ -654,12 +661,12 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
                   📷 프로필 사진 선택
                 </button>
-                <p className="text-2xs text-gray-400">사진은 맨 아래 &apos;저장&apos;을 눌러야 실제로 바뀝니다.</p>
+                <p className="text-2xs text-gray-500">사진은 맨 아래 &apos;저장&apos;을 눌러야 실제로 바뀝니다.</p>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
               <div>
-                <label className="text-2xs text-gray-500 font-bold">이름 (실명) <span className="text-rose-500">*</span></label>
-                <input
+                <label htmlFor={`${formId}-1`} className="text-2xs text-gray-500 font-bold">이름 (실명) <span className="text-rose-500">*</span></label>
+                <input id={`${formId}-1`}
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
@@ -669,8 +676,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 />
               </div>
               <div>
-                <label className="text-2xs text-gray-500 font-bold">연락처 (전화번호)</label>
-                <input
+                <label htmlFor={`${formId}-2`} className="text-2xs text-gray-500 font-bold">연락처 (전화번호)</label>
+                <input id={`${formId}-2`}
                   type="tel"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
@@ -679,8 +686,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 />
               </div>
               <div>
-                <label className="text-2xs text-gray-500 font-bold">거주지 주소 (아파트/동호수)</label>
-                <input
+                <label htmlFor={`${formId}-3`} className="text-2xs text-gray-500 font-bold">거주지 주소 (아파트/동호수)</label>
+                <input id={`${formId}-3`}
                   type="text"
                   value={editAddress}
                   onChange={e => setEditAddress(e.target.value)}
@@ -689,7 +696,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 />
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-bold">생년월일</label>
+                <label className="text-2xs text-gray-500 font-bold">생년월일</label>
                 <div className="grid grid-cols-3 gap-1.5 mt-1">
                   {/* 🐛 과거 버그: 빈 값 선택지가 없어서, 생일을 한 번도 입력하지 않은 분께도
                       화면에는 맨 앞 항목(올해 1월 1일)이 골라진 것처럼 보였습니다.
@@ -730,8 +737,8 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               {/* 배우자 정보 (앱에 가입하지 않은 경우 직접 입력) */}
               {findLinkedFamilyMembers(currentUser, allUsers).length === 0 && (
                 <div className="pt-1 border-t border-gray-100">
-                  <label className="text-2xs text-gray-500 font-bold">배우자 성함 (앱에 미가입 시 직접 입력)</label>
-                  <input
+                  <label htmlFor={`${formId}-4`} className="text-2xs text-gray-500 font-bold">배우자 성함 (앱에 미가입 시 직접 입력)</label>
+                  <input id={`${formId}-4`}
                     type="text"
                     value={editSpouseName}
                     onChange={e => setEditSpouseName(e.target.value)}
@@ -744,15 +751,15 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
               {/* 자녀 정보 (배우자가 연동되어 있으면 자동으로 공유됩니다) */}
               <div className="pt-1 border-t border-gray-100">
                 <div className="flex items-center justify-between mt-2">
-                  <label className="text-2xs text-gray-400 font-bold">자녀 정보</label>
+                  <label className="text-2xs text-gray-500 font-bold">자녀 정보</label>
                   <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
-                <p className="text-2xs text-gray-400 mt-1">
+                <p className="text-2xs text-gray-500 mt-1">
                   동그라미를 누르면 자녀 사진을 넣거나 바꿀 수 있습니다.
                 </p>
                 <div className="mt-1.5 space-y-2">
                   {editChildren.length === 0 && (
-                    <p className="text-2xs text-gray-300">등록된 자녀가 없습니다.</p>
+                    <p className="text-2xs text-gray-500">등록된 자녀가 없습니다.</p>
                   )}
                   {editChildren.map(child => {
                     // 교회학교 부서가 지정된 자녀만 생일을 챙깁니다.
@@ -790,7 +797,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                             placeholder="자녀 이름"
                             className="flex-1 min-w-0 p-2 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium text-2xs"
                           />
-                          <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0" title="이 자녀 지우기">
+                          <button type="button" onClick={() => removeEditChild(child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500 shrink-0" title="이 자녀 지우기">
                             <X size={13} />
                           </button>
                         </div>
@@ -865,13 +872,13 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setSelectedPrayer(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-85 overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-2">
               <div>
                 <SectionTitle>{selectedPrayer.title}</SectionTitle>
-                <p className="text-2xs text-gray-400">{selectedPrayer.createdAt}</p>
+                <p className="text-2xs text-gray-500">{selectedPrayer.createdAt}</p>
               </div>
-              <button onClick={() => setSelectedPrayer(null)} className="text-gray-400 font-bold">✕</button>
+              <button onClick={() => setSelectedPrayer(null)} className="tap-area relative text-gray-500 font-bold">✕</button>
             </div>
             <p className="text-xs text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{selectedPrayer.content}</p>
             <div className="flex items-center justify-between bg-amber-50 p-3 rounded-xl text-xs">

@@ -193,3 +193,47 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in { animation: none; }
 }
+
+/*
+ * ── 팝업 높이: 화면에 "실제로 보이는" 높이 기준 ──
+ *
+ * 🐛 과거 문제: 팝업 높이를 vh(화면 전체 높이)로 잡아서, 안드로이드에서 키보드가 올라오면
+ *    팝업 아래쪽의 [저장]·[등록] 버튼이 키보드 뒤로 숨었습니다. 쓰던 중에 저장하려면 키보드를
+ *    먼저 내려야 했습니다.
+ * → dvh(지금 보이는 높이)를 씁니다. layout.tsx 의 interactiveWidget: 'resizes-content' 와 함께
+ *   쓰면, 키보드가 올라올 때 팝업이 키보드 위 공간에 맞춰 줄어듭니다.
+ *   (dvh 는 Tailwind v4 가 요구하는 브라우저—iOS 16.4+, 안드로이드 크롬 111+—에서 모두 지원됩니다)
+ *
+ *   max-h-[90vh] → max-h-vp-90      h-[90vh] → h-vp-90
+ */
+@utility max-h-vp-* {
+  max-height: calc(--value(integer) * 1dvh);
+}
+/*
+ * ── 작은 아이콘 버튼의 "누르는 영역"만 넓히기 (보이는 크기·배치는 그대로) ──
+ *
+ * 🐛 과거 문제: 닫기(✕)·수정·삭제 같은 아이콘 버튼 70개가 손가락으로 누르기엔 작았습니다
+ *    (14~34px, 권장 44px). 특히 기도제목 카드의 수정/삭제는 약 21px 였습니다. 어르신들이
+ *    여러 번 눌러야 하거나 옆 버튼을 누르게 됩니다.
+ * → 버튼 바깥에 투명한 덧영역(::after)을 붙여, 그 영역을 눌러도 버튼이 눌리게 합니다.
+ *    · tap-area   : 사방 10px — 혼자 있는 버튼(닫기 ✕ 등)
+ *    · tap-area-y : 위아래 8px, 좌우 2px — 나란히 붙은 버튼(수정·삭제 등). 옆 버튼 영역을 넘보지 않게.
+ *   덧영역은 버튼 기준으로 자리를 잡으므로, 버튼이 absolute/fixed 가 아니면 relative 를 함께 붙입니다.
+ */
+@utility tap-area {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+  }
+}
+@utility tap-area-y {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -8px -2px;
+  }
+}
+@utility h-vp-* {
+  height: calc(--value(integer) * 1dvh);
+}

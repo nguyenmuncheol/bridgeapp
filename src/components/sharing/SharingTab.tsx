@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import { dbFetchDistinctTags } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
 import { usePaginatedPosts } from '../../lib/usePaginatedPosts'
+import { useIsTyping } from '../../lib/useIsTyping'
 import PrayerBoard, { sortPrayers } from './PrayerBoard'
 import PraiseBoard from './PraiseBoard'
 import PhotoGallery from './PhotoGallery'
@@ -101,20 +102,7 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
   const dynamicTags = useMemo(() => ['전체', ...(dynamicTagsData || [])], [dynamicTagsData])
 
   // 댓글·검색창 등에 글자를 입력하는 중인지 — 그동안은 + 버튼을 숨깁니다(아래 버튼 주석 ②).
-  const [isTyping, setIsTyping] = useState(false)
-  useEffect(() => {
-    const NON_TEXT_INPUTS = ['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'color', 'image']
-    const isTextField = (el: EventTarget | null) =>
-      el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !NON_TEXT_INPUTS.includes(el.type))
-    const onFocusIn = (e: FocusEvent) => { if (isTextField(e.target)) setIsTyping(true) }
-    const onFocusOut = (e: FocusEvent) => { if (isTextField(e.target)) setIsTyping(false) }
-    document.addEventListener('focusin', onFocusIn)
-    document.addEventListener('focusout', onFocusOut)
-    return () => {
-      document.removeEventListener('focusin', onFocusIn)
-      document.removeEventListener('focusout', onFocusOut)
-    }
-  }, [])
+  const isTyping = useIsTyping()
 
   return (
     <div className="space-y-4 pb-24 relative">

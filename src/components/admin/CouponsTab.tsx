@@ -144,7 +144,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
             💳 쿠폰구매 (QR/계좌)
           </button>
         </div>
-        <p className="text-2xs text-gray-400">승인된 가정별 쿠폰 잔액을 관리합니다. +/- 버튼으로 발급/차감하세요.</p>
+        <p className="text-2xs text-gray-500">승인된 가정별 쿠폰 잔액을 관리합니다. +/- 버튼으로 발급/차감하세요.</p>
 
         {/* 방금 한 작업을 한 번에 되돌리는 막대 (1분 뒤 자동으로 사라집니다) */}
         {lastAction && (
@@ -162,7 +162,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
             </button>
             <button
               onClick={() => setLastAction(null)}
-              className="p-1.5 -m-0.5 text-slate-400 hover:text-white shrink-0"
+              className="tap-area-y relative p-1.5 -m-0.5 text-slate-400 hover:text-white shrink-0"
               title="닫기"
             >✕</button>
           </div>
@@ -215,7 +215,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
 
             const entries = Object.values(mergedAccounts)
             if (entries.length === 0) {
-              return <p className="text-xs text-gray-400 text-center py-4">승인된 성도가 없습니다.</p>
+              return <p className="text-xs text-gray-500 text-center py-4">승인된 성도가 없습니다.</p>
             }
 
             // 최근에 발급/차감한 가정이 위로 오도록 정렬합니다.
@@ -244,7 +244,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
                   <div>
                     {/* 발급/차감 날짜 뱃지는 뺐습니다 — 최근 사용순으로 정렬되므로 순서만 보면 됩니다. */}
                     <h4 className="font-bold text-gray-800">{acc.familyName}</h4>
-                    <p className="text-2xs text-gray-400 mt-0.5">잔여 쿠폰: <strong className="text-brand">{acc.balance}장</strong></p>
+                    <p className="text-2xs text-gray-500 mt-0.5">잔여 쿠폰: <strong className="text-brand">{acc.balance}장</strong></p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -286,13 +286,13 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowQrModal(false))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-vp-85 overflow-y-auto">
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm">💳 식사쿠폰 구매 (QR/계좌)</h3>
                 <p className="text-2xs text-slate-400 mt-0.5">QR코드를 스캔하거나 계좌로 입금해 주세요.</p>
               </div>
-              <button onClick={() => setShowQrModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-all text-white font-bold">
+              <button onClick={() => setShowQrModal(false)} className="tap-area relative p-1 hover:bg-white/10 rounded-lg transition-all text-white font-bold">
                 ✕
               </button>
             </div>

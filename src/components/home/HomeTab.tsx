@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useId } from 'react'
 import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
@@ -26,6 +26,9 @@ interface HomeTabProps {
   onNavigate?: (tab: string, subTab?: string) => void
 }
 
+/** 홈에 처음 보여 줄 공지 수 (나머지는 [전체 보기]) */
+const NOTICE_PREVIEW_COUNT = 3
+
 const CHURCH_INFO = {
   vision: '하나님이 그 아들을 세상에 보내신 것은\n세상을 심판하려 하심이 아니요 그로 말미암아\n세상이 구원을 받게 하려 하심이라\n—요한복음 3:17—',
   intro: '더브릿지 교회는 하노이에서 함께 예배하며\n말씀 안에서 자라가는 교회 공동체입니다.',
@@ -33,6 +36,8 @@ const CHURCH_INFO = {
 }
 
 export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [showChurchGuideModal, setShowChurchGuideModal] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [copied, setCopied] = useState(false)
@@ -93,6 +98,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
   const notices = useMemo(() => noticeOverrides ?? (noticePosts || []), [noticeOverrides, noticePosts])
 
   const [showNoticeCreateModal, setShowNoticeCreateModal] = useState(false)
+  // 홈에는 최근 공지 몇 개만, 나머지는 [전체 보기]로 펼칩니다.
+  const [showAllNotices, setShowAllNotices] = useState(false)
   const [selectedNoticeModal, setSelectedNoticeModal] = useState<PostItem | null>(null)
   useModalDismiss(!!selectedNoticeModal, () => setSelectedNoticeModal(null))
   const [newNoticeTitle, setNewNoticeTitle] = useState('')
@@ -384,20 +391,33 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
             </button>
           )}
         </div>
-        {/* 자동 세로 스크롤 영역 */}
-        <div className="max-h-52 overflow-y-auto space-y-2 pr-1 scroll-smooth">
-          {notices.map((notice) => (
+        {/* 🐛 예전엔 카드 안에 따로 스크롤(max-h-52)이 있어서, 페이지를 내리다 손가락이 공지 칸에
+            걸리면 페이지 대신 공지 칸만 움직였고, 두 번째 공지는 반쯤 잘려 보였습니다.
+            → 최근 3개만 보여 주고, 나머지는 [전체 보기]로 펼칩니다(페이지 스크롤 하나로 통일). */}
+        <div className="space-y-2">
+          {(showAllNotices ? notices : notices.slice(0, NOTICE_PREVIEW_COUNT)).map((notice) => (
             <div key={notice.id} onClick={() => setSelectedNoticeModal(notice)}
               className="bg-gradient-to-br from-[#f7f9ff] to-white p-3.5 rounded-xl border border-blue-50 cursor-pointer hover:border-blue-200 transition-all space-y-0.5">
               <div className="flex items-center gap-2">
                 <span className="text-2xs font-bold text-brand bg-blue-50 px-2 py-0.5 rounded-md">공지</span>
                 <h3 className="font-bold text-xs text-gray-800 line-clamp-1">{notice.title}</h3>
               </div>
-              <p className="text-2xs text-gray-400 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
+              <p className="text-2xs text-gray-500 line-clamp-2 whitespace-pre-line leading-relaxed mt-0.5">{notice.content}</p>
             </div>
           ))}
+          {notices.length > NOTICE_PREVIEW_COUNT && (
+            <button
+              type="button"
+              onClick={() => setShowAllNotices(v => !v)}
+              aria-expanded={showAllNotices}
+              className="w-full py-2 bg-gray-50 text-gray-600 text-xs font-semibold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1"
+            >
+              {showAllNotices ? '접기' : `전체 보기 (${notices.length}개)`}
+              <ChevronRight size={14} className={`transition-transform ${showAllNotices ? '-rotate-90' : 'rotate-90'}`} />
+            </button>
+          )}
           {notices.length === 0 && (
-            <p className="py-6 text-center text-xs text-gray-400">
+            <p className="py-6 text-center text-xs text-gray-500">
               등록된 공지사항이 없습니다.<br />
               <span className="text-2xs">공지가 없는 동안에는 성도님 화면에 이 칸이 보이지 않습니다.</span>
             </p>
@@ -429,7 +449,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
               </button>
             )}
             {bulletin && (
-              <span className="text-2xs text-gray-400">{formatBulletinDisplay(bulletin.date)}</span>
+              <span className="text-2xs text-gray-500">{formatBulletinDisplay(bulletin.date)}</span>
             )}
           </div>
         </div>
@@ -455,7 +475,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
             </button>
           </>
         ) : (
-          <div className="py-8 text-center text-xs text-gray-400">
+          <div className="py-8 text-center text-xs text-gray-500">
             아직 등록된 주보가 없습니다.
           </div>
         )}
@@ -490,13 +510,13 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowBulletinModal(false))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-90 overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-gray-900">이번 주 주보</h3>
-                <p className="text-xs text-gray-400">{formatBulletinDisplay(bulletin.date)}</p>
+                <p className="text-xs text-gray-500">{formatBulletinDisplay(bulletin.date)}</p>
               </div>
-              <button onClick={() => setShowBulletinModal(false)} className="text-gray-400 font-bold text-lg px-1">✕</button>
+              <button onClick={() => setShowBulletinModal(false)} className="tap-area relative text-gray-500 font-bold text-lg px-1">✕</button>
             </div>
 
             {/* 앱에서 작성한 주보 — 1 → 2 → 3 → 4쪽 순서로 이어서 보여 줍니다.
@@ -524,7 +544,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   maxHeightClass="max-h-[360px]"
                   bgClass="bg-gray-50"
                 />
-                <p className="text-2xs text-center text-gray-400">사진을 탭하면 크게 볼 수 있고, 다시 탭하면 닫힙니다</p>
+                <p className="text-2xs text-center text-gray-500">사진을 탭하면 크게 볼 수 있고, 다시 탭하면 닫힙니다</p>
                 {bulletin.imageUrls.length > 1 && (
                   <div className="flex justify-center gap-1.5">
                     {bulletin.imageUrls.map((_, idx) => (
@@ -559,14 +579,14 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full h-[90vh] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-lg w-full h-vp-90 max-h-vp-90 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">✏️ 주보 수정 (관리자)</SectionTitle>
               <button
                 type="button"
                 onClick={() => setShowBulletinEditModal(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -599,10 +619,10 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
 
               {/* 주보 이미지 파일 업로드 (2~4장) */}
               <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-200/60">
-                <label className="text-2xs text-gray-600 font-bold block mb-1">
+                <label htmlFor={`${formId}-1`} className="text-2xs text-gray-600 font-bold block mb-1">
                   📸 주보 이미지 업로드 (2~4장, 휴대폰 사진 직접 선택)
                 </label>
-                <input
+                <input id={`${formId}-1`}
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
@@ -618,19 +638,19 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                         <button
                           type="button"
                           onClick={() => setEditBulletinImages(prev => prev.filter((_, i) => i !== idx))}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white text-2xs rounded-full flex items-center justify-center font-bold cursor-pointer"
+                          className="tap-area absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white text-2xs rounded-full flex items-center justify-center font-bold cursor-pointer"
                           aria-label="이 사진 삭제"
                         >✕</button>
                       </div>
                     ))}
                   </div>
                 )}
-                <p className="text-2xs text-gray-400 mt-1">선택된 이미지: {editBulletinImages.length}장</p>
+                <p className="text-2xs text-gray-500 mt-1">선택된 이미지: {editBulletinImages.length}장</p>
               </div>
 
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">설교 제목</label>
-                <input
+                <label htmlFor={`${formId}-2`} className="block text-2xs font-bold text-gray-500 mb-1">설교 제목</label>
+                <input id={`${formId}-2`}
                   type="text"
                   value={editBulletinTitle}
                   onChange={e => setEditBulletinTitle(e.target.value)}
@@ -638,8 +658,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                 />
               </div>
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">성경 구절</label>
-                <input
+                <label htmlFor={`${formId}-3`} className="block text-2xs font-bold text-gray-500 mb-1">성경 구절</label>
+                <input id={`${formId}-3`}
                   type="text"
                   value={editBulletinPassage}
                   onChange={e => setEditBulletinPassage(e.target.value)}
@@ -647,8 +667,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                 />
               </div>
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">설교자</label>
-                <input
+                <label htmlFor={`${formId}-4`} className="block text-2xs font-bold text-gray-500 mb-1">설교자</label>
+                <input id={`${formId}-4`}
                   type="text"
                   value={editBulletinPreacher}
                   onChange={e => setEditBulletinPreacher(e.target.value)}
@@ -656,8 +676,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                 />
               </div>
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs font-bold text-gray-500 mb-1">설교 요약 / 본문 메모</label>
-                <textarea
+                <label htmlFor={`${formId}-5`} className="block text-2xs font-bold text-gray-500 mb-1">설교 요약 / 본문 메모</label>
+                <textarea id={`${formId}-5`}
                   rows={6}
                   value={editBulletinSummary}
                   onChange={e => setEditBulletinSummary(e.target.value)}
@@ -693,7 +713,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">
@@ -707,7 +727,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   }
                   setShowNoticeCreateModal(false)
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -717,8 +737,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
             {/* 본문 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
-                <input
+                <label htmlFor={`${formId}-6`} className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
+                <input id={`${formId}-6`}
                   type="text"
                   placeholder="공지 제목 입력"
                   value={newNoticeTitle}
@@ -728,8 +748,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
               </div>
 
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs font-bold text-gray-500 mb-1">공지 상세 내용</label>
-                <textarea
+                <label htmlFor={`${formId}-7`} className="block text-2xs font-bold text-gray-500 mb-1">공지 상세 내용</label>
+                <textarea id={`${formId}-7`}
                   rows={6}
                   placeholder="공지 상세 내용 입력..."
                   value={newNoticeContent}
@@ -772,11 +792,11 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setSelectedNoticeModal(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-vp-85 overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
                 <SectionTitle>{selectedNoticeModal.title}</SectionTitle>
-                <p className="text-2xs text-gray-400">{selectedNoticeModal.createdAt}</p>
+                <p className="text-2xs text-gray-500">{selectedNoticeModal.createdAt}</p>
               </div>
               {currentUser.role === 'ADMIN' && (
                 <div className="flex items-center gap-1.5 shrink-0">

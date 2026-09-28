@@ -125,7 +125,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
       {/* 헤더 */}
       <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2">
-          <button onClick={onBack} className="p-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 text-slate-300">
+          <button onClick={onBack} className="tap-area relative p-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 text-slate-300">
             <ArrowLeft size={16} />
           </button>
           <div>

@@ -154,12 +154,12 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
       <Card padding="none" className="overflow-hidden">
         <div className="bg-brand text-white px-4 py-3 flex items-center justify-between">
-          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
+          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }} className="tap-area relative p-1 hover:bg-white/20 rounded-lg"><ChevronLeft size={18} /></button>
           <div className="text-center">
             <span className="font-black text-sm">{monthLabel}</span>
             {isLeaderOrAdmin && <p className="text-2xs text-blue-200 mt-0.5">날짜 클릭 시 일정 수정/추가 가능</p>}
           </div>
-          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) } else setCalMonth(m => m + 1) }} className="p-1 hover:bg-white/20 rounded-lg"><ChevronRight size={18} /></button>
+          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) } else setCalMonth(m => m + 1) }} className="tap-area relative p-1 hover:bg-white/20 rounded-lg"><ChevronRight size={18} /></button>
         </div>
 
         <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
@@ -229,15 +229,15 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setCalEditModal(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl max-h-vp-85 overflow-y-auto">
             <div className="flex justify-between items-center">
               <SectionTitle>📅 {calEditModal.dateStr} 일정 편집</SectionTitle>
-              <button onClick={() => setCalEditModal(null)} className="text-gray-400 font-bold">✕</button>
+              <button onClick={() => setCalEditModal(null)} className="tap-area relative text-gray-500 font-bold">✕</button>
             </div>
 
             {/* 해당 날짜 일정 목록 */}
             <div className="space-y-1.5">
-              <p className="text-2xs text-gray-400 font-bold">등록된 일정 목록 (클릭하여 수정)</p>
+              <p className="text-2xs text-gray-500 font-bold">등록된 일정 목록 (클릭하여 수정)</p>
               {getEventsForDate(calEditModal.day).map(ev => (
                 <div key={ev.id} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl text-xs">
                   <div className="flex items-center gap-2">
@@ -251,10 +251,10 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
                         setEditEventTitle(ev.title)
                         setEditEventType(ev.type)
                       }}
-                      className="text-blue-600 font-bold text-xs p-1 hover:bg-blue-50 rounded"
+                      className="tap-area-y relative text-blue-600 font-bold text-xs p-1 hover:bg-blue-50 rounded"
                     ><Edit2 size={12} /></button>
                     {ev.type !== 'sunday' && (
-                      <button onClick={() => handleDeleteEvent(ev.id)} className="text-rose-500 font-bold text-xs p-1 hover:bg-rose-50 rounded"><Trash2 size={12} /></button>
+                      <button onClick={() => handleDeleteEvent(ev.id)} className="tap-area-y relative text-rose-500 font-bold text-xs p-1 hover:bg-rose-50 rounded"><Trash2 size={12} /></button>
                     )}
                   </div>
                 </div>
@@ -263,7 +263,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
             {/* 일정 이름 수정 또는 추가 */}
             <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-              <p className="text-2xs text-gray-400 font-bold">{editingEventId ? '✏️ 일정 내용 수정' : '+ 새 일정 추가'}</p>
+              <p className="text-2xs text-gray-500 font-bold">{editingEventId ? '✏️ 일정 내용 수정' : '+ 새 일정 추가'}</p>
               <input
                 type="text"
                 placeholder="일정 이름 입력 (예: 주일 예배 + 세례식)"

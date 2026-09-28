@@ -15,7 +15,7 @@
  * 계정과 연결되어(prayerAssignments) 나중에 그 사람에게만 알림을 보낼 수 있습니다.
  */
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState, useId } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Save, Eye, EyeOff, Printer,
   RefreshCw, Copy, Sparkles, ChevronRight, Undo2, AlignCenter,
@@ -47,6 +47,8 @@ interface BulletinTabProps {
 }
 
 export default function BulletinTab({ currentUser, allUsers, showToast }: BulletinTabProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   // 새로 만들 수 있는 미래 주일: 이번 주 포함 2주치만. 내용은 보통 해당 주일
   // 2~3일 전에 확정되므로 그보다 멀리 미리 만들어 둘 일이 없습니다.
   const upcomingSundays = useMemo(() => getUpcomingSundays(2), [])
@@ -270,11 +272,11 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       >
         <ChevronRight
           size={15}
-          className={`text-gray-400 transition-transform ${open[key] ? 'rotate-90' : ''}`}
+          className={`text-gray-500 transition-transform ${open[key] ? 'rotate-90' : ''}`}
         />
         <div className="min-w-0">
           <p className="text-xs font-bold text-slate-900">{title}</p>
-          <p className="text-2xs text-gray-400 truncate">{subtitle}</p>
+          <p className="text-2xs text-gray-500 truncate">{subtitle}</p>
         </div>
       </button>
       {/* 지난 발행 주보는 fieldset 으로 통째로 잠급니다 — 안의 input/select/
@@ -292,7 +294,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   //    Tailwind 는 class 문자열 순서가 아니라 CSS 출력 순서로 이기기 때문에
   //    여기 폭이 있으면 그쪽을 눌러 버립니다(절 내용·버튼이 화면 밖으로 밀려남).
   const inputCls = 'p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs min-w-0 focus:outline-none focus:border-blue-400'
-  const miniBtn = 'p-1.5 rounded-lg text-gray-400 hover:text-slate-900 hover:bg-gray-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
+  // 위/아래/삭제 버튼이 나란히 붙어 있어 누르는 영역은 위아래로만 넓힙니다(globals.css 의 tap-area-y).
+  const miniBtn = 'tap-area-y relative p-1.5 rounded-lg text-gray-500 hover:text-slate-900 hover:bg-gray-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
   const addBtn = 'w-full py-2 border border-dashed border-gray-300 rounded-lg text-2xs font-semibold text-gray-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer flex items-center justify-center gap-1'
 
   /**
@@ -577,12 +580,12 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
         </div>
 
         {isReadOnly ? (
-          <p className="text-3xs text-gray-400 leading-relaxed">
+          <p className="text-3xs text-gray-500 leading-relaxed">
             이미 지난 주일에 발행된 주보라 고쳐 쓸 수 없습니다. 내용을 보면서
             필요한 부분만 <strong>지난 주보 불러오기</strong>로 앞으로 만들 주보에 복사해 쓰세요.
           </p>
         ) : (
-          <p className="text-3xs text-gray-400 leading-relaxed">
+          <p className="text-3xs text-gray-500 leading-relaxed">
             임시저장한 주보는 성도 화면에 나오지 않고 알림도 가지 않습니다.
             내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면 &ldquo;이번 주 주보&rdquo;에
             올라갑니다. 한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
@@ -594,8 +597,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       {section('cover', '① 표지 · 예배 순서', '날짜 / 예배시간 / 순서 / 설교', (
         <>
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">예배 안내 (날짜 옆 작은 글씨)</label>
-            <input className={inputCls + ' w-full'} value={content.dateSub} placeholder="주일예배 · 오전 11:00"
+            <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">예배 안내 (날짜 옆 작은 글씨)</label>
+            <input id={`${formId}-1`} className={inputCls + ' w-full'} value={content.dateSub} placeholder="주일예배 · 오전 11:00"
               onChange={e => patch({ dateSub: e.target.value })} />
           </div>
 
@@ -643,16 +646,16 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       {section('scripture', '③ 성경말씀', `${content.scriptureRef || '본문 미지정'} · ${content.verses.length}절`, (
         <>
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">본문</label>
-            <input className={inputCls + ' w-full'} value={content.scriptureRef} placeholder="요한복음 3:1-12"
+            <label htmlFor={`${formId}-2`} className="block text-2xs font-bold text-gray-500 mb-1">본문</label>
+            <input id={`${formId}-2`} className={inputCls + ' w-full'} value={content.scriptureRef} placeholder="요한복음 3:1-12"
               onChange={e => patch({ scriptureRef: e.target.value })} />
           </div>
 
           <div className="p-2.5 bg-gray-50 rounded-xl space-y-1.5">
-            <label className="block text-2xs font-bold text-gray-500">
+            <label htmlFor={`${formId}-3`} className="block text-2xs font-bold text-gray-500">
               본문 붙여넣기 — 절 번호가 붙어 있으면 그대로, 없으면 한 줄에 한 절
             </label>
-            <textarea
+            <textarea id={`${formId}-3`}
               className={inputCls + ' w-full bg-white leading-relaxed'}
               rows={4}
               value={versePaste}
@@ -704,13 +707,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       {section('back', '④ 메시지 · 섬김 · 공지 · 헌금', `공지 ${content.notices.length}건 · 대표기도 ${content.prayerAssignments.length}명 지정`, (
         <>
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">메시지 제목 (줄바꿈 가능)</label>
-            <textarea className={inputCls + ' w-full font-bold'} rows={2} value={content.messageTitle}
+            <label htmlFor={`${formId}-4`} className="block text-2xs font-bold text-gray-500 mb-1">메시지 제목 (줄바꿈 가능)</label>
+            <textarea id={`${formId}-4`} className={inputCls + ' w-full font-bold'} rows={2} value={content.messageTitle}
               onChange={e => patch({ messageTitle: e.target.value })} />
           </div>
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">메시지 본문 (5~7줄 권장)</label>
-            <textarea className={inputCls + ' w-full leading-relaxed'} rows={6} value={content.messageBody}
+            <label htmlFor={`${formId}-5`} className="block text-2xs font-bold text-gray-500 mb-1">메시지 본문 (5~7줄 권장)</label>
+            <textarea id={`${formId}-5`} className={inputCls + ' w-full leading-relaxed'} rows={6} value={content.messageBody}
               onChange={e => patch({ messageBody: e.target.value })} />
           </div>
 
@@ -719,7 +722,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             <div className="flex items-center justify-between gap-2">
               <label className="text-2xs font-bold text-gray-500">기도 및 식사 섬김 (월별 두 달치)</label>
               <button
-                className="text-2xs font-bold text-gray-400 hover:text-rose-600 hover:underline cursor-pointer shrink-0"
+                className="text-2xs font-bold text-gray-500 hover:text-rose-600 hover:underline cursor-pointer shrink-0"
                 onClick={() => patch({ servingMonths: buildServingMonths(dateStr), prayerAssignments: [] })}
               >
                 비우고 새로
@@ -741,7 +744,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 </button>
               </div>
             )}
-            <p className="text-3xs text-gray-400 leading-relaxed">
+            <p className="text-3xs text-gray-500 leading-relaxed">
               대표기도에 성도를 고르면 그 주일 주보의 예배 순서 <strong>기도</strong> 줄
               담당자로 자동으로 들어갑니다.
               달을 고르면 그 달의 주일 날짜로 줄이 깔립니다. 모자라거나 남으면
@@ -760,10 +763,10 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                   onChange={e => setServingMonthYm(mi, e.target.value)}
                 />
                 <div className="flex items-center gap-1.5 px-0.5">
-                  <span className="w-12 shrink-0 text-3xs font-bold text-gray-400">주일</span>
-                  <span className="w-24 shrink-0 text-3xs font-bold text-gray-400">성도 선택</span>
-                  <span className="flex-1 text-3xs font-bold text-gray-400">주보 표기명</span>
-                  <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-400">식사</span>
+                  <span className="w-12 shrink-0 text-3xs font-bold text-gray-500">주일</span>
+                  <span className="w-24 shrink-0 text-3xs font-bold text-gray-500">성도 선택</span>
+                  <span className="flex-1 text-3xs font-bold text-gray-500">주보 표기명</span>
+                  <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-500">식사</span>
                   <span className="w-[26px] shrink-0" />
                 </div>
                 {m.rows.map((r, ri) => (
@@ -818,8 +821,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
           {/* 공지 */}
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
-            <input
+            <label htmlFor={`${formId}-6`} className="block text-2xs font-bold text-gray-500 mb-1">공지 제목</label>
+            <input id={`${formId}-6`}
               className={inputCls + ' w-full font-bold'}
               value={content.noticeTitle}
               placeholder="공지 사항"
@@ -840,7 +843,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 <Plus size={12} /> 공지 추가
               </button>
             </div>
-            <p className="text-3xs text-gray-400 leading-relaxed mt-1.5">
+            <p className="text-3xs text-gray-500 leading-relaxed mt-1.5">
               내용을 하나도 적지 않으면 주보에서 공지 칸이 통째로 빠집니다
               (빈 상자만 남지 않도록).
             </p>

@@ -28,7 +28,7 @@ function formatShortDate(dateStr: string): string {
 
 /** 한 화면에 나란히 보여줄 글 수(가로 2칸). */
 const PER_VIEW = 2
-const AUTO_SLIDE_MS = 2000
+const AUTO_SLIDE_MS = 3000
 /** 직접 넘긴 직후에는 자동 전환을 잠시 멈춥니다(읽는 중에 화면이 바뀌면 불편합니다). */
 const PAUSE_AFTER_MANUAL_MS = 10000
 /** 카드가 옆으로 미끄러지는 시간. 끝에서 처음으로 되돌릴 때 이만큼 기다렸다 자리를 맞춥니다. */
@@ -154,7 +154,7 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
         <span className="p-2 bg-violet-50 text-violet-600 rounded-xl"><Sparkles size={18} /></span>
         <h2 className="font-bold text-gray-900 text-sm">최신 글</h2>
         {canSlide && (
-          <span className="ml-auto text-2xs text-gray-400 tabular-nums">{activeDot + 1} / {total}</span>
+          <span className="ml-auto text-2xs text-gray-500 tabular-nums">{activeDot + 1} / {total}</span>
         )}
       </div>
 
@@ -187,7 +187,7 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
                     {info?.label || '글'}
                   </span>
                   <h3 className="font-bold text-xs text-gray-800 line-clamp-2 leading-relaxed grow">{post.title}</h3>
-                  <div className="flex items-baseline gap-1 text-2xs text-gray-400">
+                  <div className="flex items-baseline gap-1 text-2xs text-gray-500">
                     <span className="truncate">{post.authorName}</span>
                     <span className="ml-auto shrink-0">{formatShortDate(post.createdAt)}</span>
                   </div>

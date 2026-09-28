@@ -221,7 +221,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
           type="text"
           placeholder="성도 또는 자녀 이름으로 검색..."
@@ -229,7 +229,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
           onChange={e => setSearchQuery(e.target.value)}
           className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand shadow-2xs text-gray-900 font-medium"
         />
-        {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
+        {searchQuery && <button onClick={() => setSearchQuery('')} className="tap-area absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">✕</button>}
       </div>
 
       {/* 필터 칩 */}
@@ -257,7 +257,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
       </div>
 
       {/* 인원 카운팅 */}
-      <p className="text-2xs text-gray-400 font-medium px-1">
+      <p className="text-2xs text-gray-500 font-medium px-1">
         {(() => {
           if (searchQuery.trim()) {
             if (addressFilter === '교회학교') {
@@ -287,7 +287,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
 
       <div className="space-y-2">
         {displayedMembers.length === 0 && filteredVisitors.length === 0 && (
-          <div className="py-8 text-center text-xs text-gray-400">
+          <div className="py-8 text-center text-xs text-gray-500">
             {searchQuery.trim()
               ? `'${searchQuery.trim()}' 검색 결과가 없습니다.`
               : '표시할 성도가 없습니다.'}
@@ -344,7 +344,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-gray-900 text-sm">{member.name}</span>
-                        <span className="text-2xs text-gray-400">{member.duty}</span>
+                        <span className="text-2xs text-gray-500">{member.duty}</span>
                       </div>
                       {member.isDependent ? (
                         getChildGroupLabel(member.childLabriId) && (
@@ -359,15 +359,15 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                       )}
                     </div>
                   </div>
-                  <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
+                  <ChevronRight size={14} className={`text-gray-500 transition-transform ${expandedMember === member.id ? 'rotate-90' : ''}`} />
                 </button>
                 {expandedMember === member.id && (
                   <div className="px-4 pb-3.5 space-y-2 text-xs border-t border-gray-50 pt-2.5">
                     {member.isUnregistered ? (
-                      <p className="text-2xs text-gray-300">앱에 가입하지 않아 등록된 정보가 없습니다.</p>
+                      <p className="text-2xs text-gray-500">앱에 가입하지 않아 등록된 정보가 없습니다.</p>
                     ) : member.isDependent ? (
                       <>
-                        <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{member.parentName}</span></div>
+                        <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-500" /><span>{member.parentName}</span></div>
                         {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
                       </>
                     ) : (
@@ -379,7 +379,7 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                           </div>
                         )}
                         {member.birthday && <div className="flex items-center gap-2 text-gray-600"><span className="w-3 text-center text-2xs">🎂</span><span>{formatBirthdayMonthDayOnly(member.birthday)}</span></div>}
-                        {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-400" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
+                        {buildFamilyStatusText(member, allUsers) && <div className="flex items-center gap-2 text-gray-600"><Users size={12} className="text-gray-500" /><span>{buildFamilyStatusText(member, allUsers)}</span></div>}
                       </>
                     )}
                   </div>
@@ -430,13 +430,13 @@ export default function AddressBook({ addressBookEntries, allUsers, currentUser 
                           <UserCheck size={11} className="text-amber-600" />
                           {v.visitCount}회 출석
                         </span>
-                        <span className="text-3xs text-gray-400">
+                        <span className="text-3xs text-gray-500">
                           최근 {v.recentDate}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedMember === `vis_${v.key}` ? 'rotate-90' : ''}`} />
+                  <ChevronRight size={14} className={`text-gray-500 transition-transform ${expandedMember === `vis_${v.key}` ? 'rotate-90' : ''}`} />
                 </button>
 
                 {expandedMember === `vis_${v.key}` && (

@@ -21,7 +21,7 @@ export default function WelcomeModal({ currentUser, onClose }: WelcomeModalProps
       className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex items-center justify-center p-4"
       onClick={backdropClose(onClose)}
     >
-      <div className="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl animate-fade-in max-h-vp-90 overflow-y-auto">
         <img src="/logo-wide.png" alt="더브릿지교회" className="h-12 w-auto mx-auto" />
 
         <div className="space-y-1.5">

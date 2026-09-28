@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Dispatch, SetStateAction } from 'react'
+import { useState, Dispatch, SetStateAction, useId } from 'react'
 import { Play, Trash2, X, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
@@ -34,6 +34,8 @@ interface PraiseBoardProps {
 
 // ── 찬양/묵상나눔 게시판 (유튜브 임베드 + 수정/삭제) ──
 export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, setPraises, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PraiseBoardProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [toastMsg, setToastMsg] = useState('')
   const showToast = (msg: string, isErr = false) => {
     setToastMsg((isErr ? '⚠️ ' : '') + msg)
@@ -187,7 +189,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
       )}
       {isLoading && <SkeletonList count={3} />}
       {!isLoading && !error && praises.length === 0 && (
-        <div className="py-8 text-center text-xs text-gray-400">아직 등록된 찬양/묵상나눔이 없습니다.</div>
+        <div className="py-8 text-center text-xs text-gray-500">아직 등록된 찬양/묵상나눔이 없습니다.</div>
       )}
       {praises.map(praise => (
         <Card
@@ -201,14 +203,14 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <span className="font-bold text-gray-900">{praise.authorName}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-2xs text-gray-400">{praise.createdAt}</span>
+              <span className="text-2xs text-gray-500">{praise.createdAt}</span>
               {(praise.authorId === currentUser.id || isAdmin) && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     handleDeletePraise(praise.id)
                   }}
-                  className="p-1 text-gray-400 hover:text-rose-500 rounded"
+                  className="tap-area relative p-1 text-gray-500 hover:text-rose-500 rounded"
                   title="삭제"
                 >
                   <Trash2 size={12} />
@@ -261,13 +263,13 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             <button
               onClick={(e) => handleLike(e, praise.id, { likes: praise.likes, likedUserIds: praise.likedUserIds || [] })}
               className={`flex items-center gap-1 font-bold transition-transform active:scale-95 ${
-                (praise.likedUserIds || []).includes(currentUser.id) ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
+                (praise.likedUserIds || []).includes(currentUser.id) ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
               }`}
             >
               <Heart size={12} className={(praise.likedUserIds || []).includes(currentUser.id) ? 'fill-rose-500' : ''} />
               {praise.likes || 0}
             </button>
-            <span className="flex items-center gap-1 font-bold text-gray-400">
+            <span className="flex items-center gap-1 font-bold text-gray-500">
               <MessageCircle size={12} /> {(praise.comments || []).length}
             </span>
           </div>
@@ -291,12 +293,12 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setSelectedPraise(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-vp-85 overflow-y-auto">
             <div className="p-5 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
                   <SectionTitle>{selectedPraise.title}</SectionTitle>
-                  <p className="text-2xs text-gray-400 mt-0.5">{selectedPraise.authorName} · {selectedPraise.createdAt}</p>
+                  <p className="text-2xs text-gray-500 mt-0.5">{selectedPraise.authorName} · {selectedPraise.createdAt}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {(selectedPraise.authorId === currentUser.id || isAdmin) && (
@@ -311,17 +313,17 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                             setEditPraiseContent(target.content)
                           }, 50)
                         }}
-                        className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                        className="tap-area-y relative p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
                         title="수정"
                       ><Edit2 size={14} /></button>
                       <button
                         onClick={() => handleDeletePraise(selectedPraise.id)}
-                        className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"
+                        className="tap-area-y relative p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100"
                         title="삭제"
                       ><Trash2 size={14} /></button>
                     </>
                   )}
-                  <button onClick={() => setSelectedPraise(null)} className="text-gray-400 hover:text-gray-600 ml-1"><X size={18} /></button>
+                  <button onClick={() => setSelectedPraise(null)} className="tap-area-y relative text-gray-500 hover:text-gray-600 ml-1"><X size={18} /></button>
                 </div>
               </div>
               {selectedPraise.youtubeUrl && (() => {
@@ -359,7 +361,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                         <ExternalLink size={14} /> 링크 열기 ({linkHostOf(selectedPraise.youtubeUrl)})
                       </a>
                     ) : (
-                      <p className="text-2xs text-gray-400 text-center py-2">
+                      <p className="text-2xs text-gray-500 text-center py-2">
                         열 수 없는 주소입니다. (http:// 또는 https:// 로 시작해야 합니다)
                       </p>
                     )}
@@ -395,7 +397,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">✏️ 찬양/묵상 수정</SectionTitle>
@@ -407,7 +409,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   }
                   setEditingPraise(null)
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -417,8 +419,8 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             {/* 본문 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
-                <input
+                <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+                <input id={`${formId}-1`}
                   type="text"
                   value={editPraiseTitle}
                   onChange={e => setEditPraiseTitle(e.target.value)}
@@ -428,8 +430,8 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               </div>
 
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
-                <textarea
+                <label htmlFor={`${formId}-2`} className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
+                <textarea id={`${formId}-2`}
                   rows={6}
                   value={editPraiseContent}
                   onChange={e => setEditPraiseContent(e.target.value)}

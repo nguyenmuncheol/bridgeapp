@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
 import { getYouTubeVideoId } from './youtube'
@@ -34,6 +34,8 @@ export default function AddPostModal({
   onPraiseCreated,
   onPhotoCreated
 }: AddPostModalProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
   const [isSecret, setIsSecret] = useState(false)
@@ -234,7 +236,7 @@ export default function AddPostModal({
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
       onClick={e => e.stopPropagation()}
     >
-      <div className={`bg-white rounded-3xl w-full flex flex-col shadow-2xl overflow-hidden overscroll-contain max-h-[85vh] ${
+      <div className={`bg-white rounded-3xl w-full flex flex-col shadow-2xl overflow-hidden overscroll-contain max-h-vp-85 ${
         subTab === 'photo' ? 'max-w-lg' : 'max-w-md'
       }`}>
         {/* 상단 고정 헤더 (제목 + 명시적 닫기 버튼) */}
@@ -245,7 +247,7 @@ export default function AddPostModal({
           <button
             type="button"
             onClick={handleCloseRequest}
-            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+            className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
             title="닫기"
             aria-label="닫기"
           >
@@ -273,7 +275,7 @@ export default function AddPostModal({
                   <span className="text-2xs font-bold text-brand truncate">더브릿지 교회 이름으로 올리기</span>
                 </>
               ) : (
-                <span className="text-2xs font-semibold text-gray-400">교회 이름으로 올리기 (현재: 내 이름)</span>
+                <span className="text-2xs font-semibold text-gray-500">교회 이름으로 올리기 (현재: 내 이름)</span>
               )}
             </div>
           </div>
@@ -282,8 +284,8 @@ export default function AddPostModal({
         {/* 본문 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
           <div>
-            <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
-            <input
+            <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+            <input id={`${formId}-1`}
               type="text"
               placeholder={subTab === 'photo' ? '행사/사진 제목 입력' : '제목을 입력해 주세요'}
               value={newTitle}
@@ -293,10 +295,10 @@ export default function AddPostModal({
           </div>
 
           <div className="flex-1 flex flex-col">
-            <label className="block text-2xs font-bold text-gray-500 mb-1">
+            <label htmlFor={`${formId}-2`} className="block text-2xs font-bold text-gray-500 mb-1">
               {subTab === 'photo' ? '상세 설명 (선택사항)' : '상세 내용'}
             </label>
-            <textarea
+            <textarea id={`${formId}-2`}
               rows={subTab === 'photo' ? 4 : 7}
               placeholder={subTab === 'photo' ? '사진에 대한 이야기나 설명을 적어주세요...' : '내용을 자유롭고 편안하게 작성해 주세요...'}
               value={newContent}
@@ -321,15 +323,15 @@ export default function AddPostModal({
 
           {subTab === 'praise' && (
             <div className="space-y-1 bg-gray-50/70 p-3 rounded-xl border border-gray-200/60">
-              <label className="block text-2xs font-bold text-gray-600">영상 또는 웹페이지 주소 (선택)</label>
-              <input
+              <label htmlFor={`${formId}-3`} className="block text-2xs font-bold text-gray-600">영상 또는 웹페이지 주소 (선택)</label>
+              <input id={`${formId}-3`}
                 type="text"
                 placeholder="https://youtu.be/... 또는 웹페이지 URL"
                 value={youtubeUrl}
                 onChange={e => setYoutubeUrl(e.target.value)}
                 className="w-full text-xs p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
               />
-              <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
+              <p className="text-2xs text-gray-500 leading-relaxed px-0.5">
                 유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
               </p>
             </div>
@@ -338,22 +340,22 @@ export default function AddPostModal({
           {subTab === 'photo' && (
             <div className="space-y-3 text-xs">
               <div className="space-y-1 bg-gray-50/70 p-3 rounded-xl border border-gray-200/60">
-                <label className="block text-gray-700 font-semibold">🎬 유튜브 영상 주소 (선택)</label>
-                <input
+                <label htmlFor={`${formId}-4`} className="block text-gray-700 font-semibold">🎬 유튜브 영상 주소 (선택)</label>
+                <input id={`${formId}-4`}
                   type="text"
                   placeholder="https://youtu.be/..."
                   value={youtubeUrl}
                   onChange={e => setYoutubeUrl(e.target.value)}
                   className="w-full p-2.5 bg-white rounded-lg border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 leading-relaxed px-0.5">
+                <p className="text-2xs text-gray-500 leading-relaxed px-0.5">
                   유튜브 주소만 됩니다. 사진 없이 영상만 올려도 괜찮습니다.
                 </p>
               </div>
 
               <div>
-                <label className="block text-gray-700 font-semibold mb-1">📸 사진 파일 선택 (최대 10장)</label>
-                <input
+                <label htmlFor={`${formId}-5`} className="block text-gray-700 font-semibold mb-1">📸 사진 파일 선택 (최대 10장)</label>
+                <input id={`${formId}-5`}
                   type="file"
                   multiple
                   accept="image/*"
@@ -383,7 +385,7 @@ export default function AddPostModal({
                           setPhotoFiles(prev => prev.filter((_, idx) => idx !== i))
                           setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i))
                         }}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center cursor-pointer"
+                        className="tap-area absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800/80 text-white rounded-full text-2xs font-bold flex items-center justify-center cursor-pointer"
                         aria-label="이 사진 빼기"
                       >✕</button>
                     </div>
@@ -419,15 +421,15 @@ export default function AddPostModal({
               })()}
 
               <div>
-                <label className="block text-gray-700 font-semibold mb-1">태그 직접 입력</label>
-                <input
+                <label htmlFor={`${formId}-6`} className="block text-gray-700 font-semibold mb-1">태그 직접 입력</label>
+                <input id={`${formId}-6`}
                   type="text"
                   placeholder="예: 크리스마스, 라브리, 유아부, 수련회"
                   value={customTag}
                   onChange={e => setCustomTag(e.target.value)}
                   className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
+                <p className="text-2xs text-gray-500 mt-0.5">추천 태그를 누르거나 직접 새 태그를 입력하세요.</p>
               </div>
 
               {uploadProgress?.isUploading && (

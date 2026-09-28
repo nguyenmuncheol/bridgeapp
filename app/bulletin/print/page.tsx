@@ -136,7 +136,7 @@ function BulletinPrintScreen() {
       <div className="bl-toolbar sticky top-0 z-50 flex items-center gap-3 px-4 py-2.5 bg-slate-900 text-white">
         <button
           onClick={() => router.push('/')}
-          className="p-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 text-slate-300 cursor-pointer"
+          className="tap-area relative p-1.5 bg-slate-800 rounded-lg hover:bg-slate-700 text-slate-300 cursor-pointer"
           aria-label="홈으로"
         >
           <ArrowLeft size={16} />

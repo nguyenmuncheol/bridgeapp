@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, Dispatch, SetStateAction } from 'react'
+import { useState, useCallback, Dispatch, SetStateAction, useId } from 'react'
 import { X } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
@@ -55,6 +55,8 @@ interface PrayerBoardProps {
 
 // ── 기도제목 게시판 (아멘/고정/댓글/비밀글/수정/삭제) ──
 export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, setPrayers, isLoading, isLoadingMore, hasMore, onLoadMore, error, onRetry }: PrayerBoardProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [editingPrayer, setEditingPrayer] = useState<PostItem | null>(null)
   const [editPrayerTitle, setEditPrayerTitle] = useState('')
   const [editPrayerContent, setEditPrayerContent] = useState('')
@@ -257,7 +259,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
 
       {isLoading && <SkeletonList count={3} />}
       {!isLoading && !error && prayers.length === 0 && (
-        <div className="py-8 text-center text-xs text-gray-400">아직 등록된 기도제목이 없습니다.</div>
+        <div className="py-8 text-center text-xs text-gray-500">아직 등록된 기도제목이 없습니다.</div>
       )}
 
       {prayers.map(prayer => (
@@ -294,7 +296,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">✏️ 기도제목 수정</SectionTitle>
@@ -306,7 +308,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   }
                   setEditingPrayer(null)
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -316,8 +318,8 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
             {/* 본문 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
-                <input
+                <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+                <input id={`${formId}-1`}
                   type="text"
                   value={editPrayerTitle}
                   onChange={e => setEditPrayerTitle(e.target.value)}
@@ -327,8 +329,8 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
               </div>
 
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
-                <textarea
+                <label htmlFor={`${formId}-2`} className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
+                <textarea id={`${formId}-2`}
                   rows={6}
                   value={editPrayerContent}
                   onChange={e => setEditPrayerContent(e.target.value)}

@@ -321,13 +321,13 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
               {pendingCount}가정
             </span>
           </span>
-          <span className="text-gray-400 text-xs">{showPending ? '▲' : '▼'}</span>
+          <span className="text-gray-500 text-xs">{showPending ? '▲' : '▼'}</span>
         </button>
 
         {showPending && (
           <div className="px-4 pb-4 space-y-3">
             {totalFamilies === 0 ? (
-              <p className="text-xs text-gray-400 py-2">등록된 성도 명단이 없습니다.</p>
+              <p className="text-xs text-gray-500 py-2">등록된 성도 명단이 없습니다.</p>
             ) : pendingCount === 0 ? (
               <p className="text-xs text-emerald-600 py-2 font-medium">
                 모든 가정이 응답해 주셨습니다. 집계 숫자를 그대로 믿으셔도 됩니다 🙏
@@ -335,7 +335,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
             ) : (
               <>
                 {canProxyRegister && (
-                  <p className="text-2xs text-gray-400">
+                  <p className="text-2xs text-gray-500">
                     가정 이름을 누르면 대신 신청할 수 있습니다 — 앱을 쓰지 않으시는 가정의 답을 옮겨 담을 때 쓰세요.
                   </p>
                 )}
@@ -384,7 +384,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                         onClick={() => openProxy(u.key, u.label)}
                         className="text-2xs bg-gray-50 text-gray-500 border border-gray-100 px-2 py-1 rounded-lg hover:bg-gray-100 active:scale-95 transition-all whitespace-nowrap"
                       >
-                        {u.label} <span className="text-gray-400">✍️</span>
+                        {u.label} <span className="text-gray-500">✍️</span>
                       </button>
                     ) : (
                       <span
@@ -413,7 +413,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
           </span>
         </div>
         {canProxyRegister && currentWeekStat.rows.length > 0 && (
-          <p className="text-2xs text-gray-400 -mt-1">줄을 누르면 인원을 고칠 수 있습니다.</p>
+          <p className="text-2xs text-gray-500 -mt-1">줄을 누르면 인원을 고칠 수 있습니다.</p>
         )}
         {currentWeekStat.rows.length > 0 ? (
           <table className="w-full text-xs text-left">
@@ -438,13 +438,13 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                   </td>
                   <td className="p-2 text-center font-bold text-brand">{row.adult}명</td>
                   <td className="p-2 text-center">{row.child}명</td>
-                  <td className="p-2 text-right text-gray-400">{row.updater}</td>
+                  <td className="p-2 text-right text-gray-500">{row.updater}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <div className="py-6 text-center text-xs text-gray-400">
+          <div className="py-6 text-center text-xs text-gray-500">
             아직 식사를 신청한 성도가 없습니다.
           </div>
         )}
@@ -456,20 +456,20 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setProxyTarget(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-vp-85 overflow-y-auto">
             <div className="flex items-start justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-[14px] text-gray-900">
                   ✍️ {proxyTarget.label} {proxyTarget.isEdit ? '신청 수정' : '대신 신청'}
                 </h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">
+                <p className="text-[10px] text-gray-500 mt-0.5">
                   주일 날짜: <strong className="text-brand">{upcomingSundays[forecastWeek]?.shortLabelStr}</strong>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setProxyTarget(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 font-bold"
+                className="tap-area relative p-1 hover:bg-gray-100 rounded-lg text-gray-500 font-bold"
               >
                 <X size={16} />
               </button>
@@ -488,7 +488,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
 
             {/* 식사함 / 안함 */}
             <div className="space-y-1.5">
-              <label className="text-[10px] text-gray-400 font-bold">참석 여부</label>
+              <label className="text-[10px] text-gray-500 font-bold">참석 여부</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {[
                   { attending: true, label: '🍚 식사함', on: 'bg-brand text-white' },
@@ -539,7 +539,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
               </div>
             )}
 
-            <p className="text-[10px] text-gray-400">
+            <p className="text-[10px] text-gray-500">
               최종 신청자는 <strong className="text-gray-500">{currentUser ? getSimpleUserName(currentUser) : '성도님'}</strong>
               으로 남습니다. 그 가정 화면에도 이 이름이 보입니다.
             </p>

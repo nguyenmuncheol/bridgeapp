@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useId } from 'react'
 import { Plus } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem } from '../../lib/mockData'
 import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
@@ -22,6 +22,8 @@ interface MemberNewsBoardProps {
 
 // ── 교우소식 게시판 (작성/수정/삭제/좋아요/댓글) ──
 export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: MemberNewsBoardProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const [showAddNewsModal, setShowAddNewsModal] = useState(false)
   const [newNewsTitle, setNewNewsTitle] = useState('')
   const [newNewsContent, setNewNewsContent] = useState('')
@@ -259,7 +261,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
       )}
       {isNewsLoading && <SkeletonList count={3} />}
       {!isNewsLoading && !newsError && memberNewsList.length === 0 && (
-        <div className="py-8 text-center text-xs text-gray-400">아직 등록된 소식이 없습니다.</div>
+        <div className="py-8 text-center text-xs text-gray-500">아직 등록된 소식이 없습니다.</div>
       )}
 
       {memberNewsList.map(item => (
@@ -295,7 +297,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">📣 교우소식 작성</SectionTitle>
@@ -307,7 +309,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   }
                   setShowAddNewsModal(false)
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -332,7 +334,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                       <span className="text-2xs font-bold text-brand truncate">더브릿지 교회 이름으로 올리기</span>
                     </>
                   ) : (
-                    <span className="text-2xs font-semibold text-gray-400">교회 이름으로 올리기 (현재: 내 이름)</span>
+                    <span className="text-2xs font-semibold text-gray-500">교회 이름으로 올리기 (현재: 내 이름)</span>
                   )}
                 </div>
               </div>
@@ -341,8 +343,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
             {/* 본문 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">소식 제목</label>
-                <input
+                <label htmlFor={`${formId}-1`} className="block text-2xs font-bold text-gray-500 mb-1">소식 제목</label>
+                <input id={`${formId}-1`}
                   type="text"
                   placeholder="소식 제목 (예: 박성도 성도님 득남 축하)"
                   value={newNewsTitle}
@@ -352,8 +354,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
               </div>
 
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs font-bold text-gray-500 mb-1">상세 내용</label>
-                <textarea
+                <label htmlFor={`${formId}-2`} className="block text-2xs font-bold text-gray-500 mb-1">상세 내용</label>
+                <textarea id={`${formId}-2`}
                   rows={6}
                   placeholder="축하, 기도, 소식 등 성도들과 함께 나눌 상세 내용을 작성해 주세요..."
                   value={newNewsContent}
@@ -396,7 +398,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4 overscroll-contain"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-vp-85 flex flex-col shadow-2xl overflow-hidden overscroll-contain">
             {/* 상단 고정 헤더 */}
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <SectionTitle size="lg">✏️ 교우소식 수정</SectionTitle>
@@ -408,7 +410,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   }
                   setEditingNews(null)
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
+                className="tap-area relative p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-all font-bold text-base cursor-pointer"
                 title="닫기"
               >
                 ✕
@@ -418,8 +420,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
             {/* 본문 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain touch-pan-y">
               <div>
-                <label className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
-                <input
+                <label htmlFor={`${formId}-3`} className="block text-2xs font-bold text-gray-500 mb-1">제목</label>
+                <input id={`${formId}-3`}
                   type="text"
                   value={editNewsTitle}
                   onChange={e => setEditNewsTitle(e.target.value)}
@@ -429,8 +431,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
               </div>
 
               <div className="flex-1 flex flex-col">
-                <label className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
-                <textarea
+                <label htmlFor={`${formId}-4`} className="block text-2xs font-bold text-gray-500 mb-1">내용</label>
+                <textarea id={`${formId}-4`}
                   rows={6}
                   value={editNewsContent}
                   onChange={e => setEditNewsContent(e.target.value)}

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Lock, LogIn, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
 import { supabase } from '../../src/lib/supabase'
@@ -15,6 +15,8 @@ function errorMessage(err: unknown): string {
 }
 
 export default function AnalyticsPage() {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const router = useRouter()
   const [sessionUser, setSessionUser] = useState<User | null>(null)
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null)
@@ -182,8 +184,8 @@ export default function AnalyticsPage() {
           {/* 이메일 로그인 폼 */}
           <form onSubmit={handleEmailLogin} className="space-y-3 text-xs">
             <div>
-              <label className="block text-2xs font-semibold text-slate-400 mb-1">관리자 이메일</label>
-              <input
+              <label htmlFor={`${formId}-1`} className="block text-2xs font-semibold text-slate-400 mb-1">관리자 이메일</label>
+              <input id={`${formId}-1`}
                 type="email"
                 value={loginEmail}
                 onChange={e => setLoginEmail(e.target.value)}
@@ -193,8 +195,8 @@ export default function AnalyticsPage() {
               />
             </div>
             <div>
-              <label className="block text-2xs font-semibold text-slate-400 mb-1">비밀번호</label>
-              <input
+              <label htmlFor={`${formId}-2`} className="block text-2xs font-semibold text-slate-400 mb-1">비밀번호</label>
+              <input id={`${formId}-2`}
                 type="password"
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}

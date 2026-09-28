@@ -9,7 +9,7 @@
  *
  *   <SectionTitle>🗓️ 기간 출석률</SectionTitle>
  *   <SectionTitle size="lg">✏️ 기도제목 수정</SectionTitle>
- *   <SectionTitle size="sm" trailing={<span className="text-2xs text-gray-400">3명</span>}>방문자</SectionTitle>
+ *   <SectionTitle size="sm" trailing={<span className="text-2xs text-gray-500">3명</span>}>방문자</SectionTitle>
  */
 
 type TitleSize = 'sm' | 'md' | 'lg'

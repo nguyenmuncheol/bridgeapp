@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useId } from 'react'
 import { Search, Edit2, Save, X, Camera, UserPlus, UserMinus, Trash2 } from 'lucide-react'
 import { UserProfile, Role, getUserDisplayName, isApprovedMember, getInitials, DUTY_OPTIONS } from '../../lib/mockData'
 import { formatBirthdayDisplay, todayLocalDateStr } from '../../lib/dateUtils'
@@ -29,6 +29,8 @@ export default function MembersTab({
   currentUser, allUsers, isLeader, onUpdateUsers, showToast,
   dbAttendanceData, attendanceDateKeysDesc, getAbsenceStreak, latestAttendanceDate
 }: MembersTabProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   // ── 성도관리 탭 상태 ──
   const approvedMembers = allUsers.filter(u => isApprovedMember(u.role))
   // 탈퇴 처리된 성도 (가입자·미가입 공통) — 명단에는 안 보이지만 관리자는 여기서 복구할 수 있습니다.
@@ -724,7 +726,7 @@ export default function MembersTab({
       <div className="space-y-3">
         {/* 검색 */}
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="이름, 전화번호, 이메일로 검색..."
@@ -732,7 +734,7 @@ export default function MembersTab({
             onChange={e => setMemberSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand shadow-2xs text-gray-900 font-medium"
           />
-          {memberSearch && <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">✕</button>}
+          {memberSearch && <button onClick={() => setMemberSearch('')} className="tap-area absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">✕</button>}
         </div>
 
         {/* 부모가 등록했지만 교회학교 그룹이 없는 자녀 — 그룹을 정해 주기 전까지
@@ -789,7 +791,7 @@ export default function MembersTab({
         )}
 
         <div className="flex items-center justify-between gap-2">
-          <p className="text-2xs text-gray-400 font-semibold">총 {filteredMembers.length}명의 성도</p>
+          <p className="text-2xs text-gray-500 font-semibold">총 {filteredMembers.length}명의 성도</p>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* 앱을 쓰지 않는 분을 명단에 직접 추가합니다 (출석체크·식수 가정에 포함) */}
             {!isLeader && (
@@ -824,7 +826,7 @@ export default function MembersTab({
               className="w-full p-3 flex items-center justify-between text-left"
             >
               <span className="text-2xs font-bold text-gray-500">🚪 탈퇴 처리된 성도 ({leftMembers.length}명)</span>
-              <span className="text-2xs text-gray-400">{showLeftMembers ? '접기 ▲' : '펼치기 ▼'}</span>
+              <span className="text-2xs text-gray-500">{showLeftMembers ? '접기 ▲' : '펼치기 ▼'}</span>
             </button>
             {showLeftMembers && (
               <div className="px-3 pb-3 space-y-1.5">
@@ -832,7 +834,7 @@ export default function MembersTab({
                   <div key={member.id} className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-gray-700 truncate">{member.name}</p>
-                      <p className="text-2xs text-gray-400">
+                      <p className="text-2xs text-gray-500">
                         {member.previousRole ? `이전 등급: ${member.previousRole}` : ''}
                         {member.isUnregistered ? ' · 미가입' : ''}
                         {member.keepAppAccess ? ' · 🟢 커뮤니티 접근 유지' : ''}
@@ -850,7 +852,7 @@ export default function MembersTab({
                         onClick={() => handleDeletePermanently(member)}
                         disabled={deletingId === member.id}
                         title="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
-                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg disabled:opacity-50"
+                        className="tap-area-y relative p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg disabled:opacity-50"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -873,7 +875,7 @@ export default function MembersTab({
                   </div>
                   <div>
                     <SectionTitle>{getUserDisplayName(member, '')}</SectionTitle>
-                    <p className="text-2xs text-gray-400 mt-0.5">{member.email || '이메일 없음'}</p>
+                    <p className="text-2xs text-gray-500 mt-0.5">{member.email || '이메일 없음'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -887,7 +889,7 @@ export default function MembersTab({
                     <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">미가입</span>
                   )}
                   {!isLeader && (
-                    <button onClick={() => handleStartEditMember(member)} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
+                    <button onClick={() => handleStartEditMember(member)} className="tap-area relative p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-all">
                       <Edit2 size={13} />
                     </button>
                   )}
@@ -934,7 +936,7 @@ export default function MembersTab({
         })}
 
         {filteredMembers.length === 0 && (
-          <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-xs text-gray-400">검색 결과가 없습니다.</div>
+          <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-xs text-gray-500">검색 결과가 없습니다.</div>
         )}
       </div>
 
@@ -944,14 +946,14 @@ export default function MembersTab({
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setEditingMember(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-vp-90 overflow-y-auto">
             {/* 헤더 */}
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm">성도 정보 수정</h3>
                 <p className="text-2xs text-slate-400 mt-0.5">{editingMember.name} ({editingMember.email || '이메일 없음'})</p>
               </div>
-              <button onClick={() => setEditingMember(null)} className="p-1 hover:bg-white/10 rounded-lg transition-all">
+              <button onClick={() => setEditingMember(null)} className="tap-area relative p-1 hover:bg-white/10 rounded-lg transition-all">
                 <X size={18} />
               </button>
             </div>
@@ -959,15 +961,15 @@ export default function MembersTab({
             <div className="p-5 space-y-3 text-xs">
               {/* 이름 */}
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">이름</label>
-                <input type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" />
+                <label htmlFor={`${formId}-1`} className="text-2xs text-gray-500 font-semibold">이름</label>
+                <input id={`${formId}-1`} type="text" value={editMemberData.name} onChange={e => setEditMemberData(p => ({ ...p, name: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" />
               </div>
 
               {/* 등급 + 직분 */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">등급 (Role)</label>
-                  <select value={editMemberData.role} onChange={e => setEditMemberData(p => ({ ...p, role: e.target.value as Role }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
+                  <label htmlFor={`${formId}-2`} className="text-2xs text-gray-500 font-semibold">등급 (Role)</label>
+                  <select id={`${formId}-2`} value={editMemberData.role} onChange={e => setEditMemberData(p => ({ ...p, role: e.target.value as Role }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                     <option value="MEMBER">일반 성도</option>
                     <option value="LEADER">라브리 리더</option>
                     <option value="TEACHER">교회학교 선생님</option>
@@ -976,8 +978,8 @@ export default function MembersTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">직분</label>
-                  <select value={editMemberData.duty} onChange={e => setEditMemberData(p => ({ ...p, duty: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
+                  <label htmlFor={`${formId}-3`} className="text-2xs text-gray-500 font-semibold">직분</label>
+                  <select id={`${formId}-3`} value={editMemberData.duty} onChange={e => setEditMemberData(p => ({ ...p, duty: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                     {DUTY_OPTIONS.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
@@ -987,8 +989,8 @@ export default function MembersTab({
 
               {/* 소속 라브리 */}
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">소속 라브리</label>
-                <select value={editMemberData.labriId} onChange={e => setEditMemberData(p => ({ ...p, labriId: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
+                <label htmlFor={`${formId}-4`} className="text-2xs text-gray-500 font-semibold">소속 라브리</label>
+                <select id={`${formId}-4`} value={editMemberData.labriId} onChange={e => setEditMemberData(p => ({ ...p, labriId: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none">
                   <option value="">라브리 미정</option>
                   <option value="라브리1">라브리1</option>
                   <option value="라브리2">라브리2</option>
@@ -998,7 +1000,7 @@ export default function MembersTab({
                       출석 그룹은 라브리1~3·미정뿐이라 이 값이면 어느 명단에도 뜨지 않습니다. */}
                   <option value={NO_ATTENDANCE}>출석 미적용 (출석체크·식수 명단에서 제외)</option>
                 </select>
-                <p className="text-2xs text-gray-400 mt-1">
+                <p className="text-2xs text-gray-500 mt-1">
                   &apos;출석 미적용&apos;은 출석체크 명단과 식수 신청 알림에서만 빠집니다.
                   주소록·생일·식권과 공지·나눔 알림은 그대로이고, 오시는 주에는 본인이 식사 신청을 할 수 있습니다.
                   다시 나오시면 라브리를 골라 주시면 원래대로 돌아옵니다.
@@ -1015,7 +1017,7 @@ export default function MembersTab({
               */}
               {(editMemberData.role === 'TEACHER' || editMemberData.role === 'ADMIN' || editMemberData.role === 'LEADER') && (
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">담당 자녀 그룹 (복수 선택 가능)</label>
+                  <label className="text-2xs text-gray-500 font-semibold">담당 자녀 그룹 (복수 선택 가능)</label>
                   <div className="mt-1 grid grid-cols-2 gap-1.5">
                     {CHILD_ATTENDANCE_GROUPS.map(g => {
                       const selected = parseTeachGroups(editMemberData.teachGroup).includes(g)
@@ -1039,7 +1041,7 @@ export default function MembersTab({
                       )
                     })}
                   </div>
-                  <p className="text-2xs text-gray-400 mt-1">
+                  <p className="text-2xs text-gray-500 mt-1">
                     {editMemberData.role === 'TEACHER'
                       ? '하나도 고르지 않으면 모든 자녀 그룹을 담당하는 것으로 보고, 미완료 부서가 있을 때마다 전체 요약 알림을 받습니다.'
                       : '고른 부서의 출석체크 미완료 알림만 이 분께 갑니다. 출석체크 자체는 부서 선택과 무관하게 모든 부서를 할 수 있습니다.'}
@@ -1049,14 +1051,14 @@ export default function MembersTab({
 
               {/* 연락처 */}
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">연락처</label>
-                <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="037-123-4567" />
+                <label htmlFor={`${formId}-5`} className="text-2xs text-gray-500 font-semibold">연락처</label>
+                <input id={`${formId}-5`} type="tel" value={editMemberData.phone} onChange={e => setEditMemberData(p => ({ ...p, phone: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="037-123-4567" />
               </div>
 
               {/* 주소 */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-2xs text-gray-400 font-semibold">주소</label>
+                  <label className="text-2xs text-gray-500 font-semibold">주소</label>
                   {editingMember && (
                     <button
                       type="button"
@@ -1100,15 +1102,15 @@ export default function MembersTab({
 
               {/* 생년월일 */}
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
-                <input type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="1990-08-15" />
+                <label htmlFor={`${formId}-6`} className="text-2xs text-gray-500 font-semibold">생년월일 (YYYY-MM-DD)</label>
+                <input id={`${formId}-6`} type="text" value={editMemberData.birthday} onChange={e => setEditMemberData(p => ({ ...p, birthday: e.target.value }))} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="1990-08-15" />
               </div>
 
               {/* 가족 연결 및 호칭 */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
-                  <select
+                  <label htmlFor={`${formId}-7`} className="text-2xs text-gray-500 font-semibold">가족/배우자 연결 (가정별 묶음)</label>
+                  <select id={`${formId}-7`}
                     value={editLinkedMemberId}
                     onChange={e => handleChangeLinkedMember(e.target.value)}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
@@ -1122,8 +1124,8 @@ export default function MembersTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">가족 내 호칭/역할</label>
-                  <select
+                  <label htmlFor={`${formId}-8`} className="text-2xs text-gray-500 font-semibold">가족 내 호칭/역할</label>
+                  <select id={`${formId}-8`}
                     value={editMemberData.familyRole || ''}
                     onChange={e => setEditMemberData(p => ({ ...p, familyRole: e.target.value }))}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
@@ -1135,13 +1137,13 @@ export default function MembersTab({
                   </select>
                 </div>
               </div>
-              <p className="text-2xs text-gray-400">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
+              <p className="text-2xs text-gray-500">가족으로 묶으면 식사 신청과 식사 쿠폰이 조부/조모/부/모/자녀 순으로 정렬되어 하나로 연동됩니다.</p>
 
               {/* 미가입 배우자 성함 (계정 연동 없이 텍스트로만 저장 시) */}
               {!editLinkedMemberId && (
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">미가입 배우자 성함 (앱에 미가입 시 직접 입력)</label>
-                  <input
+                  <label htmlFor={`${formId}-9`} className="text-2xs text-gray-500 font-semibold">미가입 배우자 성함 (앱에 미가입 시 직접 입력)</label>
+                  <input id={`${formId}-9`}
                     type="text"
                     value={editSpouseName}
                     onChange={e => setEditSpouseName(e.target.value)}
@@ -1154,12 +1156,12 @@ export default function MembersTab({
               {/* 가족 현황: 미가입 자녀 등 (교회학교 그룹은 직접 지정합니다) */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-2xs text-gray-400 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
+                  <label className="text-2xs text-gray-500 font-semibold">자녀 등 미가입 가족 (이름 / 생일 / 교회학교)</label>
                   <button type="button" onClick={addEditChild} className="text-2xs font-bold text-brand px-2 py-0.5 bg-blue-50 rounded-lg">+ 자녀 추가</button>
                 </div>
                 <div className="mt-1 space-y-1.5">
                   {editChildren.length === 0 && (
-                    <p className="text-2xs text-gray-300">등록된 미가입 자녀가 없습니다.</p>
+                    <p className="text-2xs text-gray-500">등록된 미가입 자녀가 없습니다.</p>
                   )}
                   {editChildren.map(child => (
                     <div key={child.id} className="flex gap-1 items-center">
@@ -1200,7 +1202,7 @@ export default function MembersTab({
                           <option key={g} value={g}>{g}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => removeEditChild(child.id)} className="p-1.5 text-gray-400 hover:text-rose-500 shrink-0">
+                      <button type="button" onClick={() => removeEditChild(child.id)} className="tap-area relative p-1.5 text-gray-500 hover:text-rose-500 shrink-0">
                         <X size={13} />
                       </button>
                     </div>
@@ -1212,8 +1214,8 @@ export default function MembersTab({
 
               {/* 기타 메모 — 관리자만 보는 내부 메모(성도에게는 어디에도 노출되지 않음) */}
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">기타 메모</label>
-                <input type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
+                <label htmlFor={`${formId}-10`} className="text-2xs text-gray-500 font-semibold">기타 메모</label>
+                <input id={`${formId}-10`} type="text" value={editFamilyNote} onChange={e => setEditFamilyNote(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium" placeholder="관리자만 보는 메모 (성도에게는 안 보임)" />
               </div>
 
               {/* 탈퇴 처리 — 목록에서 바로 안 보이게 여기로만 옮겼습니다(오조작 방지) */}
@@ -1260,7 +1262,7 @@ export default function MembersTab({
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowAddUnregistered(false))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-vp-90 overflow-y-auto">
             <div className="bg-brand text-white px-5 py-4">
               <h3 className="font-black text-sm">미가입 성도 추가</h3>
               <p className="text-2xs text-blue-200 mt-0.5">앱을 쓰지 않는 분을 명단에만 올립니다</p>
@@ -1275,8 +1277,8 @@ export default function MembersTab({
               </p>
 
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">이름 <span className="text-rose-500">*</span></label>
-                <input
+                <label htmlFor={`${formId}-11`} className="text-2xs text-gray-500 font-semibold">이름 <span className="text-rose-500">*</span></label>
+                <input id={`${formId}-11`}
                   type="text"
                   value={newMember.name}
                   onChange={e => setNewMember(p => ({ ...p, name: e.target.value }))}
@@ -1287,8 +1289,8 @@ export default function MembersTab({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">직분</label>
-                  <select
+                  <label htmlFor={`${formId}-12`} className="text-2xs text-gray-500 font-semibold">직분</label>
+                  <select id={`${formId}-12`}
                     value={newMember.duty}
                     onChange={e => setNewMember(p => ({ ...p, duty: e.target.value }))}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
@@ -1299,8 +1301,8 @@ export default function MembersTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">연락처</label>
-                  <input
+                  <label htmlFor={`${formId}-13`} className="text-2xs text-gray-500 font-semibold">연락처</label>
+                  <input id={`${formId}-13`}
                     type="tel"
                     value={newMember.phone}
                     onChange={e => setNewMember(p => ({ ...p, phone: e.target.value }))}
@@ -1311,8 +1313,8 @@ export default function MembersTab({
               </div>
 
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">출석 그룹</label>
-                <select
+                <label htmlFor={`${formId}-14`} className="text-2xs text-gray-500 font-semibold">출석 그룹</label>
+                <select id={`${formId}-14`}
                   value={newMember.labriId}
                   onChange={e => setNewMember(p => ({ ...p, labriId: e.target.value }))}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
@@ -1323,7 +1325,7 @@ export default function MembersTab({
                   <option value="라브리3">라브리3</option>
                   <option value={NO_ATTENDANCE}>출석 미적용 (출석체크·식수 명단에서 제외)</option>
                 </select>
-                <p className="text-2xs text-gray-400 mt-1">
+                <p className="text-2xs text-gray-500 mt-1">
                   매주 나오시는 분은 라브리를 고르세요. 배우자로만 표기하면 되는 분, 일 때문에 장기간 쉬시는 분,
                   가끔만 나오시는 분은 &apos;출석 미적용&apos;을 고르시면 출석체크 명단과 식수 신청 알림에서만 빠집니다.
                 </p>
@@ -1331,8 +1333,8 @@ export default function MembersTab({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">가족 연결</label>
-                  <select
+                  <label htmlFor={`${formId}-15`} className="text-2xs text-gray-500 font-semibold">가족 연결</label>
+                  <select id={`${formId}-15`}
                     value={newMember.familyMemberId}
                     onChange={e => setNewMember(p => ({ ...p, familyMemberId: e.target.value }))}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
@@ -1344,8 +1346,8 @@ export default function MembersTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-2xs text-gray-400 font-semibold">가족 내 호칭</label>
-                  <select
+                  <label htmlFor={`${formId}-16`} className="text-2xs text-gray-500 font-semibold">가족 내 호칭</label>
+                  <select id={`${formId}-16`}
                     value={newMember.familyRole}
                     onChange={e => setNewMember(p => ({ ...p, familyRole: e.target.value }))}
                     className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"
@@ -1359,8 +1361,8 @@ export default function MembersTab({
               </div>
 
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">생년월일 (YYYY-MM-DD)</label>
-                <input
+                <label htmlFor={`${formId}-17`} className="text-2xs text-gray-500 font-semibold">생년월일 (YYYY-MM-DD)</label>
+                <input id={`${formId}-17`}
                   type="text"
                   value={newMember.birthday}
                   onChange={e => setNewMember(p => ({ ...p, birthday: e.target.value }))}
@@ -1390,7 +1392,7 @@ export default function MembersTab({
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setClaimTarget(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden max-h-vp-90 overflow-y-auto">
             <div className="bg-brand text-white px-5 py-4">
               <h3 className="font-black text-sm">{claimTarget.name}님 — 가입 계정과 연결</h3>
               <p className="text-2xs text-blue-200 mt-0.5">출석·식수 기록을 그대로 이어 붙입니다</p>
@@ -1406,8 +1408,8 @@ export default function MembersTab({
               </p>
 
               <div>
-                <label className="text-2xs text-gray-400 font-semibold">연결할 가입 계정</label>
-                <select
+                <label htmlFor={`${formId}-18`} className="text-2xs text-gray-500 font-semibold">연결할 가입 계정</label>
+                <select id={`${formId}-18`}
                   value={claimAccountId}
                   onChange={e => setClaimAccountId(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none"

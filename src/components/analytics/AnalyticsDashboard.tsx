@@ -1133,7 +1133,7 @@ export default function AnalyticsDashboard({ currentUser, onGoHome }: AnalyticsD
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-medium"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">✕</button>
+                <button onClick={() => setSearchQuery('')} className="tap-area absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">✕</button>
               )}
             </div>
 

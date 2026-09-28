@@ -31,13 +31,13 @@ function MemberNewsCardImpl({ item, currentUser, allUsers, isAdmin, onLike, onEd
           <span className="font-bold text-xs text-gray-900">{item.authorName}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-2xs text-gray-400">{item.createdAt}</span>
+          <span className="text-2xs text-gray-500">{item.createdAt}</span>
           {(item.authorId === currentUser.id || isAdmin) && (
             <>
-              <button onClick={() => onEdit(item)} className="p-1 text-gray-400 hover:text-blue-600 rounded" title="수정">
+              <button onClick={() => onEdit(item)} className="tap-area-y relative p-1 text-gray-500 hover:text-blue-600 rounded" title="수정">
                 <Edit2 size={12} />
               </button>
-              <button onClick={() => onDelete(item.id)} className="p-1 text-gray-400 hover:text-rose-500 rounded" title="삭제">
+              <button onClick={() => onDelete(item.id)} className="tap-area-y relative p-1 text-gray-500 hover:text-rose-500 rounded" title="삭제">
                 <Trash2 size={12} />
               </button>
             </>

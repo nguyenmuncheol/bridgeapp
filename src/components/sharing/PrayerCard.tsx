@@ -56,7 +56,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
           {canPin && (
             <button
               onClick={() => onPin(prayer.id)}
-              className={`p-1.5 rounded-lg hover:bg-amber-50 transition-all ${prayer.isPinned ? 'text-amber-600 font-bold bg-amber-50' : 'text-gray-300 hover:text-amber-500'}`}
+              className={`tap-area-y relative p-1.5 rounded-lg hover:bg-amber-50 transition-all ${prayer.isPinned ? 'text-amber-600 font-bold bg-amber-50' : 'text-gray-400 hover:text-amber-500'}`}
               title={prayer.isPinned ? "상단 고정 해제" : "상단 고정"}
               aria-label={prayer.isPinned ? "상단 고정 해제" : "상단 고정"}
             >
@@ -65,10 +65,10 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
           )}
           {(prayer.authorId === currentUser.id || isAdmin) && (
             <>
-              <button onClick={() => onEdit(prayer)} className="p-1 text-gray-400 hover:text-blue-600" title="수정">
+              <button onClick={() => onEdit(prayer)} className="tap-area-y relative p-1 text-gray-500 hover:text-blue-600" title="수정">
                 <Edit2 size={13} />
               </button>
-              <button onClick={() => onDelete(prayer.id)} className="p-1 text-gray-400 hover:text-rose-500" title="삭제">
+              <button onClick={() => onDelete(prayer.id)} className="tap-area-y relative p-1 text-gray-500 hover:text-rose-500" title="삭제">
                 <Trash2 size={13} />
               </button>
             </>
@@ -82,7 +82,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
             <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{prayer.content}</p>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-xs">
-            <span className="text-2xs text-gray-400">{prayer.createdAt}</span>
+            <span className="text-2xs text-gray-500">{prayer.createdAt}</span>
             <div className="flex items-center gap-2">
               <button onClick={() => onAmen(prayer.id, { likes: prayer.likes, likedUserIds: prayer.likedUserIds || [] })} className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-2xs font-bold rounded-lg flex items-center gap-1">
                 <Heart size={12} className="fill-amber-500 text-amber-500" /> 아멘 ({prayer.likes})
@@ -105,7 +105,7 @@ function PrayerCardImpl({ prayer, currentUser, allUsers, isAdmin, onAmen, onPin,
           />
         </>
       ) : (
-        <div className="flex items-center gap-2 py-3 px-1 text-gray-400 text-xs bg-gray-50/70 rounded-xl justify-center">
+        <div className="flex items-center gap-2 py-3 px-1 text-gray-500 text-xs bg-gray-50/70 rounded-xl justify-center">
           <Lock size={13} /> 비밀글입니다. 작성자 본인과 목회자/리더만 열람할 수 있습니다.
         </div>
       )}

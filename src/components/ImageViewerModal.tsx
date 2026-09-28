@@ -162,7 +162,7 @@ export default function ImageViewerModal({
           <button
             type="button"
             onClick={handleDownload}
-            className="p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all cursor-pointer active:scale-95"
+            className="tap-area-y relative p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all cursor-pointer active:scale-95"
             title="현재 사진 저장"
             aria-label="현재 사진 저장"
           >
@@ -199,7 +199,7 @@ export default function ImageViewerModal({
         <img
           src={currentImage}
           alt={`${alt} (${currentIndex + 1})`}
-          className="max-w-full max-h-[85vh] object-contain shadow-2xl transition-transform duration-200 cursor-zoom-out"
+          className="max-w-full max-h-vp-85 object-contain shadow-2xl transition-transform duration-200 cursor-zoom-out"
           draggable={false}
           onClick={handleContainerClick}
         />

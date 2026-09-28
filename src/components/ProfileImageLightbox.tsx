@@ -97,7 +97,7 @@ export default function ProfileImageLightbox({ src, alt, onClose }: ProfileImage
           src={src}
           alt={alt}
           onClick={handleImageClick}
-          className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl animate-fade-in cursor-zoom-out"
+          className="max-w-[90vw] max-h-vp-85 rounded-2xl object-contain shadow-2xl animate-fade-in cursor-zoom-out"
           draggable={false}
         />
       </div>

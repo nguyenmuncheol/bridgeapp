@@ -45,7 +45,7 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <span className="font-bold text-xs text-gray-900 truncate">{m.name}</span>
-                    <span className="text-2xs text-gray-400 shrink-0">{m.duty}</span>
+                    <span className="text-2xs text-gray-500 shrink-0">{m.duty}</span>
                   </div>
                   <p className="text-2xs font-bold text-pink-600 mt-0.5">🎉 {dayStr}</p>
                 </div>
@@ -54,7 +54,7 @@ export default function BirthdayList({ addressBookEntries, allUsers, calMonth }:
           })}
         </div>
       ) : (
-        <p className="text-xs text-gray-400 text-center py-4 bg-gray-50 rounded-xl">
+        <p className="text-xs text-gray-500 text-center py-4 bg-gray-50 rounded-xl">
           {calMonth + 1}월에는 등록된 생일 성도가 없습니다.
         </p>
       )}

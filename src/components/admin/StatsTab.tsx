@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useId } from 'react'
 import { Edit2, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, isAttendanceExempt, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
@@ -45,6 +45,8 @@ export default function StatsTab({
   currentUser, allUsers, showToast,
   dbAttendanceData, attendanceDateKeysDesc, getAbsenceStreak, loadAttendanceStats
 }: StatsTabProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   // 선생님은 자녀(교회학교) 출석만 봅니다. 어른 출석 통계는 숨깁니다.
   const isTeacher = currentUser?.role === 'TEACHER'
 
@@ -551,7 +553,7 @@ export default function StatsTab({
                   <span className="font-bold text-gray-800">{label}</span>
                   {/* 아직 출석체크를 안 한 라브리는 0%가 아니라 "미기록"으로 구분해서 보여줍니다 */}
                   {notRecorded ? (
-                    <span className="font-bold text-gray-400">미기록 (성도 {memberCount}명)</span>
+                    <span className="font-bold text-gray-500">미기록 (성도 {memberCount}명)</span>
                   ) : (
                     <span className="font-bold" style={{ color: textColor }}>{attend}/{total}명 ({rate}%)</span>
                   )}
@@ -570,7 +572,7 @@ export default function StatsTab({
           {labriStats.rows.length > 0 && (
             <div className="pt-2 border-t border-gray-200 space-y-1.5">
               <div className="flex justify-between text-[12px]">
-                <span className="font-black text-gray-900">전체 합계 <span className="font-normal text-[10px] text-gray-400">(기록된 라브리만)</span></span>
+                <span className="font-black text-gray-900">전체 합계 <span className="font-normal text-[10px] text-gray-500">(기록된 라브리만)</span></span>
                 <span className="font-black text-indigo-600">
                   {labriStats.totalAttend}/{labriStats.totalTotal}명 ({labriStats.totalTotal > 0 ? Math.round((labriStats.totalAttend / labriStats.totalTotal) * 100) : 0}%)
                 </span>
@@ -597,7 +599,7 @@ export default function StatsTab({
                 {selectedStatsDate || '선택한 주일'} 출석/결석 명단 ({sortedAttendanceRows.length}명)
               </h3>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-brand">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 group-hover:text-brand">
               <span>{showAdultRoster ? '접기' : '펼치기'}</span>
               {showAdultRoster ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </div>
@@ -625,7 +627,7 @@ export default function StatsTab({
                           {status === 'ABSENT' ? `❌ ${formatAbsenceStreak(absenceStreak)}` : '✅'}
                         </span>
                       ) : (
-                        <span className="text-gray-300 text-[10px]">미기록</span>
+                        <span className="text-gray-500 text-[10px]">미기록</span>
                       )}
                     </td>
                     {/* 결석사유는 글로 바로 보여 줍니다. 눌러서 열어 보는 방식은 방문자 특이사항 전용입니다. */}
@@ -644,7 +646,7 @@ export default function StatsTab({
                           })
                         }}
                         disabled={!selectedStatsDate}
-                        className="px-2 py-1 bg-gray-100 hover:bg-brand hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
+                        className="tap-area relative px-2 py-1 bg-gray-100 hover:bg-brand hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
                       >
                         <Edit2 size={11} /> </button>
                     </td>
@@ -660,11 +662,11 @@ export default function StatsTab({
         <Card className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[12px] text-gray-900">🧒 교회학교 출석</h3>
-            <span className="text-[10px] text-gray-400">{selectedStatsDate || '선택한 주일'}</span>
+            <span className="text-[10px] text-gray-500">{selectedStatsDate || '선택한 주일'}</span>
           </div>
 
           {childStatsSelectedDate.rows.length === 0 ? (
-            <p className="py-4 text-center text-[10px] text-gray-400">
+            <p className="py-4 text-center text-[10px] text-gray-500">
               이 주일에 입력된 교회학교 출석이 없습니다.
             </p>
           ) : (
@@ -706,7 +708,7 @@ export default function StatsTab({
                 🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단 ({childRosterRows.length}명)
               </h3>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 group-hover:text-brand">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 group-hover:text-brand">
               <span>{showChildRoster ? '접기' : '펼치기'}</span>
               {showChildRoster ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </div>
@@ -714,7 +716,7 @@ export default function StatsTab({
 
           {showChildRoster && (
             childRosterRows.length === 0 ? (
-              <p className="py-4 text-center text-[10px] text-gray-400">
+              <p className="py-4 text-center text-[10px] text-gray-500">
                 교회학교 그룹이 지정된 자녀가 없습니다.
               </p>
             ) : (
@@ -739,7 +741,7 @@ export default function StatsTab({
                             {row.status === 'ABSENT' ? `❌ ${formatAbsenceStreak(row.absenceStreak)}` : '✅ 출석'}
                           </span>
                         ) : (
-                          <span className="text-gray-300 text-[10px]">미기록</span>
+                          <span className="text-gray-500 text-[10px]">미기록</span>
                         )}
                       </td>
                       {/* 결석사유는 글로 바로 보여 줍니다(방문자 특이사항만 눌러서 여는 방식입니다). */}
@@ -756,7 +758,7 @@ export default function StatsTab({
                             note: row.note || ''
                           })}
                           disabled={!selectedStatsDate}
-                          className="px-2 py-1 bg-gray-100 hover:bg-brand hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
+                          className="tap-area relative px-2 py-1 bg-gray-100 hover:bg-brand hover:text-white text-gray-600 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ml-auto"
                         >
                           <Edit2 size={11} /> </button>
                       </td>
@@ -787,7 +789,7 @@ export default function StatsTab({
               기명 방문자 <span className="text-brand">{visitorStats.namedVisitors.length}명</span>
             </div>
             {visitorStats.namedVisitors.length === 0 ? (
-              <p className="py-2.5 text-center text-[10px] text-gray-400 bg-gray-50 rounded-xl">
+              <p className="py-2.5 text-center text-[10px] text-gray-500 bg-gray-50 rounded-xl">
                 등록된 기명 방문자가 없습니다.
               </p>
             ) : (
@@ -830,7 +832,7 @@ export default function StatsTab({
 
           {/* 2. 익명 카운터 (보조 숫자 — 무채색) */}
           <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 shrink-0">익명 카운터</span>
+            <span className="text-[10px] font-bold text-gray-500 shrink-0">익명 카운터</span>
             <div className="flex-1 flex gap-1.5">
               <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
                 <span className="text-[10px] font-medium text-gray-500">성인</span>
@@ -849,18 +851,18 @@ export default function StatsTab({
           <h3 className="font-bold text-[12px] text-gray-900">🗓️ 기간 출석률</h3>
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">시작일</label>
-              <input
+              <label htmlFor={`${formId}-1`} className="text-[10px] text-gray-500 font-bold block mb-1">시작일</label>
+              <input id={`${formId}-1`}
                 type="date"
                 value={rangeStart}
                 onChange={e => setRangeStart(e.target.value)}
                 className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 font-bold focus:outline-none"
               />
             </div>
-            <span className="pb-2.5 text-gray-400 font-bold">~</span>
+            <span className="pb-2.5 text-gray-500 font-bold">~</span>
             <div className="flex-1">
-              <label className="text-[10px] text-gray-400 font-bold block mb-1">종료일</label>
-              <input
+              <label htmlFor={`${formId}-2`} className="text-[10px] text-gray-500 font-bold block mb-1">종료일</label>
+              <input id={`${formId}-2`}
                 type="date"
                 value={rangeEnd}
                 onChange={e => setRangeEnd(e.target.value)}
@@ -896,7 +898,7 @@ export default function StatsTab({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-bold text-[12px] text-gray-900">기간 합산 결과</h3>
-              <span className="text-[10px] text-gray-400 font-medium">
+              <span className="text-[10px] text-gray-500 font-medium">
                 {rangeLabel} · 기록 {rangeLabriStats.sundayCount}주일
               </span>
             </div>
@@ -912,7 +914,7 @@ export default function StatsTab({
           </div>
 
           {rangeLabriStats.sundayCount === 0 ? (
-            <p className="text-[12px] text-gray-400 py-2 text-center">이 기간에는 출석 기록이 없습니다.</p>
+            <p className="text-[12px] text-gray-500 py-2 text-center">이 기간에는 출석 기록이 없습니다.</p>
           ) : (
             <>
               {rangeLabriStats.rows.map(({ label, attend, total, memberCount, notRecorded }) => {
@@ -924,7 +926,7 @@ export default function StatsTab({
                     <div className="flex justify-between text-[12px]">
                       <span className="font-bold text-gray-800">{label}</span>
                       {notRecorded ? (
-                        <span className="font-bold text-gray-400">미기록 (성도 {memberCount}명)</span>
+                        <span className="font-bold text-gray-500">미기록 (성도 {memberCount}명)</span>
                       ) : (
                         <span className="font-bold" style={{ color: textColor }}>{attend}/{total}회 ({rate}%)</span>
                       )}
@@ -964,7 +966,7 @@ export default function StatsTab({
               {(rangeLabriStats.rows.length > 0 || childStats.rows.length > 0) && (
                 <div className="pt-2 border-t border-gray-200 space-y-1.5">
                   <div className="flex justify-between text-[12px]">
-                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-400">(어른 + 교회학교)</span></span>
+                    <span className="font-black text-gray-900">기간 합계 <span className="font-normal text-[10px] text-gray-500">(어른 + 교회학교)</span></span>
                     <span className="font-black text-indigo-600">
                       {rangeLabriStats.totalAttend + childStats.totalAttend}/{rangeLabriStats.totalTotal + childStats.totalTotal}회 ({(rangeLabriStats.totalTotal + childStats.totalTotal) > 0 ? Math.round(((rangeLabriStats.totalAttend + childStats.totalAttend) / (rangeLabriStats.totalTotal + childStats.totalTotal)) * 100) : 0}%)
                     </span>
@@ -988,7 +990,7 @@ export default function StatsTab({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-bold text-[12px] text-gray-900">🏷️ 기간 방문자</h3>
-              <span className="text-[10px] text-gray-400 font-medium">
+              <span className="text-[10px] text-gray-500 font-medium">
                 {rangeLabel} · 방문 기록 {rangeVisitorStats.sundayCount}주일
               </span>
             </div>
@@ -998,7 +1000,7 @@ export default function StatsTab({
           </div>
 
           {rangeVisitorStats.totalCount === 0 ? (
-            <p className="text-[12px] text-gray-400 py-2 text-center">이 기간에는 방문자 기록이 없습니다.</p>
+            <p className="text-[12px] text-gray-500 py-2 text-center">이 기간에는 방문자 기록이 없습니다.</p>
           ) : (
             <>
               {/* 1. 기명 방문자 — 사람 단위로 합친 명단 */}
@@ -1006,11 +1008,11 @@ export default function StatsTab({
                 <div className="text-[11px] font-bold text-gray-700">
                   기명 방문자 <span className="text-brand">{rangeVisitorStats.people.length}명</span>
                   {rangeVisitorStats.namedVisitCount !== rangeVisitorStats.people.length && (
-                    <span className="font-medium text-gray-400"> · 연 {rangeVisitorStats.namedVisitCount}회</span>
+                    <span className="font-medium text-gray-500"> · 연 {rangeVisitorStats.namedVisitCount}회</span>
                   )}
                 </div>
                 {rangeVisitorStats.people.length === 0 ? (
-                  <p className="py-2.5 text-center text-[10px] text-gray-400 bg-gray-50 rounded-xl">
+                  <p className="py-2.5 text-center text-[10px] text-gray-500 bg-gray-50 rounded-xl">
                     이 기간에는 기명 방문자가 없습니다.
                   </p>
                 ) : (
@@ -1066,7 +1068,7 @@ export default function StatsTab({
 
               {/* 2. 익명 카운터 합계 (보조 숫자 — 무채색) */}
               <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
-                <span className="text-[10px] font-bold text-gray-400 shrink-0">익명 합계</span>
+                <span className="text-[10px] font-bold text-gray-500 shrink-0">익명 합계</span>
                 <div className="flex-1 flex gap-1.5">
                   <div className="flex-1 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
                     <span className="text-[10px] font-medium text-gray-500">성인</span>
@@ -1094,7 +1096,7 @@ export default function StatsTab({
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setEditingAttendanceUser(null))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-fade-in max-h-vp-85 overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-[14px] text-gray-900">
@@ -1102,7 +1104,7 @@ export default function StatsTab({
                         ? editingAttendanceUser.user.name
                         : getUserDisplayName(editingAttendanceUser.user)} 출석 수정
                 </h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">
+                <p className="text-[10px] text-gray-500 mt-0.5">
                   주일 날짜: <strong className="text-brand">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
                     ? (editingAttendanceUser.user.childLabriId || '미지정')
                     : (editingAttendanceUser.user.labriId || '라브리 미정')})
@@ -1111,7 +1113,7 @@ export default function StatsTab({
               <button
                 type="button"
                 onClick={() => setEditingAttendanceUser(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 font-bold"
+                className="tap-area relative p-1 hover:bg-gray-100 rounded-lg text-gray-500 font-bold"
               >
                 <X size={16} />
               </button>
@@ -1119,7 +1121,7 @@ export default function StatsTab({
 
             {/* 출석 상태 선택 (출석 / 결석 / 미기록) */}
             <div className="space-y-1.5">
-              <label className="text-[10px] text-gray-400 font-bold">출석 상태 선택</label>
+              <label className="text-[10px] text-gray-500 font-bold">출석 상태 선택</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {[
                   { id: 'ATTEND', label: '✅ 출석', bg: 'bg-emerald-600 text-white' },
@@ -1145,7 +1147,7 @@ export default function StatsTab({
             {/* 결석일 때만 사유 입력 */}
             {editingAttendanceUser.status === 'ABSENT' && (
               <div className="space-y-2 pt-1 border-t border-gray-100">
-                <label className="text-[10px] text-gray-400 font-bold">결석 사유 (추천 태그 선택 또는 직접 입력)</label>
+                <label className="text-[10px] text-gray-500 font-bold">결석 사유 (추천 태그 선택 또는 직접 입력)</label>
                 <div className="flex gap-1 flex-wrap text-[10px]">
                   {['출장', '여행', '병가', '개인사정', '가족행사'].map(tag => (
                     <button
@@ -1206,19 +1208,19 @@ export default function StatsTab({
               <button
                 type="button"
                 onClick={() => setNotePopup(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                className="tap-area relative p-1 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-600 transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
 
             <div className="space-y-1">
-              <div className="text-[10px] font-bold text-gray-400">대상</div>
+              <div className="text-[10px] font-bold text-gray-500">대상</div>
               <div className="font-bold text-[12px] text-gray-800">{notePopup.name}</div>
             </div>
 
             <div className="space-y-1">
-              <div className="text-[10px] font-bold text-gray-400">내용</div>
+              <div className="text-[10px] font-bold text-gray-500">내용</div>
               <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[12px] text-gray-800 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-medium">
                 {notePopup.note}
               </div>

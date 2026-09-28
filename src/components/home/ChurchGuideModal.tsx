@@ -73,14 +73,14 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
       onClick={backdropClose(onClose)}
     >
-      <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-vp-85 flex flex-col shadow-2xl">
         {/* 헤더 */}
         <div className="bg-brand text-white p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Church size={18} className="text-blue-200" />
             <h3 className="font-bold text-sm">더브릿지 교회 상세 안내</h3>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-all">
+          <button onClick={onClose} className="tap-area relative p-1 hover:bg-white/10 rounded-lg transition-all">
             <X size={18} />
           </button>
         </div>
@@ -193,7 +193,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                       href={`mailto:${PASTOR.email}`}
                       className="flex items-center gap-1.5 text-2xs text-gray-600 hover:text-brand"
                     >
-                      <Mail size={12} className="shrink-0 text-gray-400" />
+                      <Mail size={12} className="shrink-0 text-gray-500" />
                       {PASTOR.email}
                     </a>
                   </div>
@@ -214,7 +214,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                 <div className="space-y-1.5">
                   <div className="p-2.5 bg-blue-50/60 rounded-xl flex justify-between items-center">
                     <span className="font-bold text-gray-800">주일 예배</span>
-                    <div className="text-right"><p className="font-bold text-brand">일요일 11:00 AM</p><p className="text-2xs text-gray-400">대예배실</p></div>
+                    <div className="text-right"><p className="font-bold text-brand">일요일 11:00 AM</p><p className="text-2xs text-gray-500">대예배실</p></div>
                   </div>
                 </div>
               </div>

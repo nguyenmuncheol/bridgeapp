@@ -196,19 +196,19 @@ export default function NotificationPanel({
               <button
                 onClick={handleDeleteAll}
                 disabled={isDeletingAll}
-                className="text-2xs font-bold text-gray-400 hover:text-rose-500 disabled:opacity-50"
+                className="text-2xs font-bold text-gray-500 hover:text-rose-500 disabled:opacity-50"
               >
                 전체삭제
               </button>
             )}
-            <button onClick={onClose} className="p-1.5 -m-1 text-gray-400 hover:text-gray-600" aria-label="닫기">
+            <button onClick={onClose} className="tap-area-y relative p-1.5 -m-1 text-gray-500 hover:text-gray-600" aria-label="닫기">
               <X size={16} />
             </button>
           </div>
         </div>
 
-        <div className="max-h-[55vh] overflow-y-auto">
-          {isLoading && <p className="py-8 text-center text-xs text-gray-400">불러오는 중...</p>}
+        <div className="max-h-vp-55 overflow-y-auto">
+          {isLoading && <p className="py-8 text-center text-xs text-gray-500">불러오는 중...</p>}
 
           {!isLoading && error && (
             <p className="py-8 px-4 text-center text-xs text-amber-700">{error}</p>
@@ -217,7 +217,7 @@ export default function NotificationPanel({
           {!isLoading && !error && items.length === 0 && (
             <div className="py-10 text-center space-y-1">
               <p className="text-2xl">🔔</p>
-              <p className="text-xs text-gray-400">새로운 알림이 없습니다</p>
+              <p className="text-xs text-gray-500">새로운 알림이 없습니다</p>
             </div>
           )}
 
@@ -250,7 +250,7 @@ export default function NotificationPanel({
                     <span className="block text-2xs text-gray-500 leading-relaxed">{n.body}</span>
                     {/* 관리자가 직접 보낸 알림은 누가 보냈는지 밝힙니다 */}
                     {n.type === 'MANUAL' && n.actorName && (
-                      <span className="block text-2xs text-gray-400">보낸 사람 · {n.actorName}</span>
+                      <span className="block text-2xs text-gray-500">보낸 사람 · {n.actorName}</span>
                     )}
                   </>
                 ) : (
@@ -267,12 +267,12 @@ export default function NotificationPanel({
                     </span>
                   </>
                 )}
-                <span className="block text-2xs text-gray-400">{whenText(n.createdAt)}</span>
+                <span className="block text-2xs text-gray-500">{whenText(n.createdAt)}</span>
               </span>
             </button>
             <button
               onClick={e => handleDelete(e, n.id)}
-              className="shrink-0 w-11 flex items-start justify-center pt-3.5 text-gray-300 hover:text-rose-500 hover:bg-gray-50 transition-colors"
+              className="shrink-0 w-11 flex items-start justify-center pt-3.5 text-gray-400 hover:text-rose-500 hover:bg-gray-50 transition-colors"
               aria-label="이 알림 지우기"
               title="이 알림 지우기"
             >
@@ -293,7 +293,7 @@ export default function NotificationPanel({
           {canLogout && (
             <button
               onClick={() => closeThen(onLogout)}
-              className="w-full py-2 text-xs font-bold text-gray-400 rounded-lg hover:bg-white hover:text-rose-500 transition-colors"
+              className="w-full py-2 text-xs font-bold text-gray-500 rounded-lg hover:bg-white hover:text-rose-500 transition-colors"
             >
               로그아웃
             </button>

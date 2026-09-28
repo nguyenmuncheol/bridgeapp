@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useId } from 'react'
 import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2, X } from 'lucide-react'
 import { UserProfile, getSimpleUserName, simplifyStoredName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } from '../../lib/dateUtils'
@@ -30,6 +30,8 @@ interface MealSlotData {
 }
 
 export default function RequestTab({ currentUser, allUsers, openSubTab = '', openToken = 0 }: RequestTabProps) {
+  // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
+  const formId = useId()
   const isAdmin = currentUser.role === 'ADMIN'
   const isLeaderOrAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'LEADER'
 
@@ -358,15 +360,19 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
               <div className="flex bg-[#f1f4fa] p-1 rounded-xl text-xs font-bold">
                 <button
                   onClick={() => setCustomDraft({ attending: true, adult: tempAdult, child: tempChild })}
+                  aria-pressed={tempAttending}
                   className={`px-4 py-1.5 rounded-lg transition-all ${tempAttending ? 'bg-brand text-white shadow-xs' : 'text-gray-500'}`}
                 >식사함</button>
+                {/* 🐛 예전엔 '안함'을 고르면 연회색(bg-gray-400)이 되어, 선택된 게 아니라 눌리지 않는
+                    버튼처럼 보였습니다. → '식사함'과 같은 무게의 짙은 색으로 "골랐음"을 분명히 보여 줍니다. */}
                 <button
                   onClick={() => setCustomDraft({ attending: false, adult: tempAdult, child: tempChild })}
-                  className={`px-4 py-1.5 rounded-lg transition-all ${!tempAttending ? 'bg-gray-400 text-white shadow-xs' : 'text-gray-500'}`}
+                  aria-pressed={!tempAttending}
+                  className={`px-4 py-1.5 rounded-lg transition-all ${!tempAttending ? 'bg-slate-700 text-white shadow-xs' : 'text-gray-500'}`}
                 >안함</button>
               </div>
             ) : (
-              <span className="text-xs font-bold text-gray-400 flex items-center gap-1"><Lock size={12} /> 마감됨</span>
+              <span className="text-xs font-bold text-gray-500 flex items-center gap-1"><Lock size={12} /> 마감됨</span>
             )}
           </div>
 
@@ -415,7 +421,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
               {currentMenu ? (
                 <span><strong className="text-gray-800">이번주 메뉴</strong> · {currentMenu}</span>
               ) : (
-                <span className="text-gray-400">아직 메뉴가 등록되지 않았습니다</span>
+                <span className="text-gray-500">아직 메뉴가 등록되지 않았습니다</span>
               )}
             </p>
             {isLeaderOrAdmin && (
@@ -459,7 +465,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 </div>
               )}
               {upcomingSundays.length > 1 && (
-                <p className="text-2xs text-gray-400 text-center">
+                <p className="text-2xs text-gray-500 text-center">
                   다음 주일은 위 날짜 탭에서 신청하실 수 있습니다.
                 </p>
               )}
@@ -524,7 +530,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
           <div className="py-8 text-center space-y-1.5">
             <p className="text-2xl">📭</p>
             <p className="text-sm font-bold text-gray-500">현재 진행 중인 행사가 없습니다</p>
-            <p className="text-2xs text-gray-400">행사 일정이 확정되면 신청 안내가 이곳에 게시됩니다.</p>
+            <p className="text-2xs text-gray-500">행사 일정이 확정되면 신청 안내가 이곳에 게시됩니다.</p>
           </div>
         )}
       </section>
@@ -536,15 +542,15 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
           onClick={backdropClose(() => setShowEventEditModal(false))}
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-vp-85 overflow-y-auto">
             <div className="flex items-center justify-between">
               <SectionTitle>📋 행사 신청 관리 (관리자)</SectionTitle>
-              <button onClick={() => setShowEventEditModal(false)} className="text-gray-400"><X size={16} /></button>
+              <button onClick={() => setShowEventEditModal(false)} className="tap-area relative text-gray-500"><X size={16} /></button>
             </div>
             <div className="space-y-2.5 text-xs">
               <div>
-                <label className="text-2xs text-gray-400 font-bold">행사 이름</label>
-                <input
+                <label htmlFor={`${formId}-1`} className="text-2xs text-gray-500 font-bold">행사 이름</label>
+                <input id={`${formId}-1`}
                   type="text"
                   placeholder="예: 2026 여름 수련회"
                   value={editTitle}
@@ -553,8 +559,8 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 />
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-bold">내용 (신청 안내사항)</label>
-                <textarea
+                <label htmlFor={`${formId}-2`} className="text-2xs text-gray-500 font-bold">내용 (신청 안내사항)</label>
+                <textarea id={`${formId}-2`}
                   rows={4}
                   placeholder="행사 일시, 장소, 신청 방법 등 안내 내용을 입력하세요..."
                   value={editContent}
@@ -563,26 +569,26 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                 />
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-bold">구글 폼 URL (없으면 빈칸)</label>
-                <input
+                <label htmlFor={`${formId}-3`} className="text-2xs text-gray-500 font-bold">구글 폼 URL (없으면 빈칸)</label>
+                <input id={`${formId}-3`}
                   type="url"
                   placeholder="https://forms.google.com/..."
                   value={editUrl}
                   onChange={e => setEditUrl(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 mt-1">URL 미입력 시 &quot;담당자에게 직접 신청&quot; 안내 표시</p>
+                <p className="text-2xs text-gray-500 mt-1">URL 미입력 시 &quot;담당자에게 직접 신청&quot; 안내 표시</p>
               </div>
               <div>
-                <label className="text-2xs text-gray-400 font-bold">담당자 이름 (선택)</label>
-                <input
+                <label htmlFor={`${formId}-4`} className="text-2xs text-gray-500 font-bold">담당자 이름 (선택)</label>
+                <input id={`${formId}-4`}
                   type="text"
                   placeholder="예: 홍길동"
                   value={editManager}
                   onChange={e => setEditManager(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 mt-1">입력하면 &quot;담당자(홍길동)에게 직접 신청해 주세요&quot;로 표시됩니다</p>
+                <p className="text-2xs text-gray-500 mt-1">입력하면 &quot;담당자(홍길동)에게 직접 신청해 주세요&quot;로 표시됩니다</p>
               </div>
               {(eventFormTitle || eventFormUrl) && (
                 <button
@@ -611,19 +617,19 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
             <div className="flex items-center justify-between">
               <SectionTitle>🍚 이번 주 메뉴 입력 ({sundayDates[selectedWeek]})</SectionTitle>
-              <button onClick={() => setShowMenuEditModal(false)} className="text-gray-400"><X size={16} /></button>
+              <button onClick={() => setShowMenuEditModal(false)} className="tap-area relative text-gray-500"><X size={16} /></button>
             </div>
             <div className="space-y-2.5 text-xs">
               <div>
-                <label className="text-2xs text-gray-400 font-bold">메뉴</label>
-                <input
+                <label htmlFor={`${formId}-5`} className="text-2xs text-gray-500 font-bold">메뉴</label>
+                <input id={`${formId}-5`}
                   type="text"
                   placeholder="예: 김치찌개, 계란찜, 잡곡밥"
                   value={editMenuText}
                   onChange={e => setEditMenuText(e.target.value)}
                   className="w-full mt-1 p-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand text-gray-900 font-medium"
                 />
-                <p className="text-2xs text-gray-400 mt-1">신청자들이 신청 화면에서 볼 수 있습니다. 비워두면 안내가 사라집니다.</p>
+                <p className="text-2xs text-gray-500 mt-1">신청자들이 신청 화면에서 볼 수 있습니다. 비워두면 안내가 사라집니다.</p>
               </div>
             </div>
             <div className="flex gap-2 pt-1">

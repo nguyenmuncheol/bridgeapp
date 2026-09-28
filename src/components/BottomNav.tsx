@@ -1,6 +1,7 @@
 'use client'
 
 import { Home, Newspaper, Heart, ClipboardList, User } from 'lucide-react'
+import { useIsTyping } from '../lib/useIsTyping'
 
 interface BottomNavProps {
   currentTab: string
@@ -21,11 +22,19 @@ export default function BottomNav({ currentTab, setCurrentTab, hiddenTabIds }: B
   const items = hiddenTabIds && hiddenTabIds.length > 0
     ? NAV_ITEMS.filter(item => !hiddenTabIds.includes(item.id))
     : NAV_ITEMS
+  // 글자를 입력하는 동안(키보드가 올라와 있는 동안)은 숨깁니다. 안드로이드에서는 키보드 바로 위로
+  // 따라 올라와 입력칸·[등록] 버튼 자리를 차지했습니다 (src/lib/useIsTyping.ts).
+  const isTyping = useIsTyping()
   return (
     // pb-[env(safe-area-inset-bottom)]: 아이폰에서 홈 화면 앱으로 실행하면 화면 맨 아래
     // 약 34px이 시스템 홈 인디케이터 영역입니다. 이 여백이 없으면 메뉴가 그 아래로 들어가
     // 글자가 가려지고, 그 부분을 누르면 iOS가 탭을 가로채서 "가끔 안 눌려요"가 됩니다.
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-lg pb-[env(safe-area-inset-bottom)]">
+    <nav
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-lg pb-[env(safe-area-inset-bottom)] transition-transform duration-150 ${
+        isTyping ? 'translate-y-full pointer-events-none' : ''
+      }`}
+      aria-hidden={isTyping || undefined}
+    >
       <div className="w-full max-w-lg md:max-w-xl mx-auto flex items-stretch">
         {items.map(({ id, label, icon: Icon }) => {
           const isActive = currentTab === id
@@ -34,7 +43,7 @@ export default function BottomNav({ currentTab, setCurrentTab, hiddenTabIds }: B
               key={id}
               onClick={() => setCurrentTab(id)}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-w-0 transition-all ${
-                isActive ? 'text-brand' : 'text-gray-400 hover:text-gray-600'
+                isActive ? 'text-brand' : 'text-gray-500 hover:text-gray-600'
               }`}
             >
               <div className={`relative flex items-center justify-center rounded-xl transition-all ${
