@@ -62,6 +62,48 @@
     /* font-family는 layout.tsx가 지정하는 --font-sans(한글 포함 시스템 폰트로 대체)를
        쓰도록 두고, Arial 하드코딩은 제거합니다. */
   }
+
+  /*
+   * ── 눌렀을 때 반응 (휴대폰) ──
+   *
+   * 🐛 과거 문제: 버튼의 눌림 표시를 대부분 hover:(마우스를 올렸을 때)로만 만들었는데,
+   *    Tailwind v4 의 hover: 는 마우스가 있는 기기에서만 동작합니다. 사용자 대부분이 휴대폰
+   *    앱으로 쓰는데 버튼 335개 중 눌림 표시(active:)가 있는 건 52개뿐이라, 눌러도 아무 변화가
+   *    없었습니다. 어르신들이 "눌렸나?" 하며 한 번 더 눌러 두 번 저장되기도 합니다.
+   *    대신 안드로이드는 누를 때마다 회색·파란 네모(탭 하이라이트)를 번쩍 띄웠습니다.
+   *
+   * → 누르는 것(버튼·링크·cursor-pointer 카드) 전체에 공통 눌림 표시를 줍니다.
+   *    · 누르는 동안 살짝 어둡게(모든 색의 버튼에 통함) + 살짝 작아짐(움직임 줄이기 설정이면 생략)
+   *    · 안드로이드 기본 탭 하이라이트는 끕니다(위 표시로 대신)
+   *    · touch-action: manipulation — 빠르게 두 번 눌러도(식사 인원 +/−) 화면이 확대되지 않게.
+   *      두 손가락 확대는 그대로 됩니다(어르신 배려로 확대를 막지 않은 설정 유지).
+   *    · 길게 눌렀을 때 버튼 글자가 선택되지 않게
+   *   이미 active: 로 따로 정한 곳(active:scale-95 등)은 그 설정이 우선합니다(이 규칙은 base 층).
+   *   iOS 는 touchstart 처리기가 있어야 :active 가 켜지는데, React 와 당겨서 새로고침이 이미 붙여 둡니다.
+   */
+  button,
+  a[href],
+  [role="button"],
+  summary,
+  label[for],
+  .cursor-pointer {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  button,
+  [role="button"],
+  .cursor-pointer {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  :is(button, a[href], [role="button"], summary, .cursor-pointer):not(:disabled):active {
+    filter: brightness(0.93);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :is(button, [role="button"], .cursor-pointer):not(:disabled):active {
+      scale: 0.98;
+    }
+  }
 }
 
 /*
