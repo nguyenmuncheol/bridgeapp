@@ -13,7 +13,7 @@ interface RecentPostsCarouselProps {
 
 /** 글 카테고리 → 홈에서 보여줄 탭 이름과 이동할 위치. */
 const CATEGORY_INFO: Record<string, { label: string; tab: string; subTab: string; chipClass: string }> = {
-  MEMBER_NEWS: { label: '성도소식', tab: 'news', subTab: 'memberNews', chipClass: 'bg-gray-100 text-gray-700' },
+  MEMBER_NEWS: { label: '성도소식', tab: 'news', subTab: 'memberNews', chipClass: 'bg-brand text-white' },
   PRAYER: { label: '기도제목', tab: 'sharing', subTab: 'prayer', chipClass: 'bg-brand-50 text-brand' },
   PRAISE: { label: '찬양/묵상', tab: 'sharing', subTab: 'praise', chipClass: 'bg-emerald-50 text-emerald-700' },
   PHOTO: { label: '행사사진', tab: 'sharing', subTab: 'photo', chipClass: 'bg-amber-50 text-amber-700' },
