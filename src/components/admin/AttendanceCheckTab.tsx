@@ -11,17 +11,15 @@ import {
 } from '../../lib/db'
 import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
-import { useModalDismiss } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import Toast from '../ui/Toast'
-import Modal, { ModalBottomCloseButton } from '../ui/Modal'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
 const ANONYMOUS_CATEGORIES: AnonymousVisitorCategory[] = ['성인', '학생']
 const NAMED_VISITOR_CATEGORIES: NamedVisitorCategory[] = ['성인', '중고등부', '초등부', '유아유치부']
 
-interface AttendanceCheckModalProps {
+interface AttendanceCheckTabProps {
   currentUser: UserProfile
   allUsers: UserProfile[]
 }
@@ -32,14 +30,12 @@ function isChildGroup(group: string): boolean {
 }
 
 // ── 출석체크 버튼 + 모달 (리더/관리자/선생님 전용, 자체 상태 관리) ──
-export default function AttendanceCheckModal({ currentUser, allUsers }: AttendanceCheckModalProps) {
+export default function AttendanceCheckTab({ currentUser, allUsers }: AttendanceCheckTabProps) {
   const isLeader = currentUser.role === 'LEADER'
   const isAdmin = currentUser.role === 'ADMIN'
   const isTeacher = currentUser.role === 'TEACHER'
   const canCheck = canEditChildAttendance(currentUser.role)
 
-  const [showAttendanceModal, setShowAttendanceModal] = useState(false)
-  useModalDismiss(showAttendanceModal, () => setShowAttendanceModal(false))
   const [checkSubmitted, setCheckSubmitted] = useState(false)
 
   const [toastMsg, setToastMsg] = useState('')
@@ -141,6 +137,17 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     () => dbFetchAllNamedVisitors(),
     { enabled: canCheck }
   )
+
+  // 출첵 탭을 열 때마다 최신 기록을 다시 받습니다(다른 분이 방금 저장한 내용을 덮어쓰지 않도록).
+  // 예전 팝업 방식에서 버튼을 누를 때 하던 일입니다.
+  useEffect(() => {
+    if (!canCheck) return
+    if (!isTeacher) refetchAttendance()
+    refetchChildAttendance()
+    refetchVisitorRecords()
+    refetchAllNamedVisitors()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── 방문자 익명 카운터 ──
   // 🐛 과거 버그: DB 기록을 useEffect + setState로 로컬 상태에 "복사"해 두었더니,
@@ -346,7 +353,6 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
       setCheckSubmitted(true)
       setTimeout(() => {
         setCheckSubmitted(false)
-        setShowAttendanceModal(false)
       }, 1200)
       return
     }
@@ -393,12 +399,20 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
     setCheckSubmitted(true)
     setTimeout(() => {
       setCheckSubmitted(false)
-      setShowAttendanceModal(false)
     }, 1200)
   }
 
   if (!canCheck) return null
-  if (availableGroups.length === 0) return null
+  // 예전 팝업 방식에선 버튼 자체를 숨겼지만, 이제는 탭을 눌러 들어오므로 빈 화면 대신 이유를 알려 줍니다.
+  if (availableGroups.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center space-y-1.5">
+        <p className="text-2xl">🧒</p>
+        <p className="text-sm font-bold text-gray-700">출석체크할 담당 그룹이 없습니다</p>
+        <p className="text-2xs text-gray-500">관리자에게 담당 자녀 그룹을 정해 달라고 요청해 주세요.</p>
+      </div>
+    )
+  }
 
   const showGroupTabs = availableGroups.length > 1
 
@@ -448,43 +462,30 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
   )
 
   return (
-    <>
+    <div className="space-y-3">
       <Toast message={toastMsg} />
 
-      <button
-        onClick={() => {
-          if (!isTeacher) refetchAttendance()
-          refetchChildAttendance()
-          refetchVisitorRecords()
-          refetchAllNamedVisitors()
-          setShowAttendanceModal(true)
-        }}
-        className={`px-2.5 py-1.5 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition-all ${
-          hasSubmittedAttendance ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-500 hover:bg-rose-600 animate-pulse'
-        }`}
-      >
-        <CheckSquare size={13} />
-        {hasSubmittedAttendance ? `✅ ${targetSundayShortLabel} 출첵완료` : `🚨 ${targetSundayShortLabel} 출첵하기`}
-      </button>
+      {/* 🗂️ 예전엔 우리소식 탭 맨 위의 버튼을 눌러 팝업으로 열었습니다. 출석체크는 리더·선생님·관리자만
+          하는 일이라 관리 화면의 "출첵" 탭으로 옮기고, 팝업 대신 탭 안에 바로 펼쳐 보여 줍니다. */}
+      <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+          <div className="min-w-0">
+            <h3 className="font-bold text-sm text-gray-900">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
+            <p className="text-2xs text-gray-500 mt-0.5">
+              {isVisitorTab
+                ? `방문자 출석 · 총 ${totalVisitorCount}명`
+                : `${selectedGroup} · 출석 ${attendedCount}/${targetMembers.length}명${departmentLinkedVisitors.length > 0 ? ` (방문자 +${departmentLinkedVisitors.length}명)` : ''}`}
+            </p>
+          </div>
+          <span className={`shrink-0 text-2xs font-bold px-2 py-1 rounded-full flex items-center gap-1 ${
+            hasSubmittedAttendance ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
+          }`}>
+            <CheckSquare size={12} />
+            {hasSubmittedAttendance ? '출첵완료' : '아직 안 함'}
+          </span>
+        </div>
 
-      {/* ── 출석체크 모달 ── */}
-      {showAttendanceModal && (
-        <Modal
-          onClose={() => setShowAttendanceModal(false)}
-          title={`✏️ ${targetSundayShortLabel}(일) 출석체크`}
-          subtitle={isVisitorTab
-            ? `방문자 출석 · 총 ${totalVisitorCount}명`
-            : `${selectedGroup} · 출석 ${attendedCount}/${targetMembers.length}명${departmentLinkedVisitors.length > 0 ? ` (방문자 +${departmentLinkedVisitors.length}명)` : ''}`}
-          size="md"
-          bodyClassName="overflow-x-hidden p-4 space-y-3"
-          bottomClose={false}
-          footer={
-            <div className="flex-1 space-y-2">
-              {attendanceSubmitArea}
-              <ModalBottomCloseButton onClick={() => setShowAttendanceModal(false)} className="w-full" />
-            </div>
-          }
-        >
+        <div className="overflow-x-hidden p-4 space-y-3">
               {/* 그룹 선택 탭 (어른 라브리 + 자녀 그룹 + 방문자) */}
               {showGroupTabs && (
                 <div className="bg-white border border-gray-100 p-1.5 rounded-xl space-y-1">
@@ -815,8 +816,13 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
                   )}
                 </>
               )}
-        </Modal>
-      )}
-    </>
+        </div>
+
+        {/* 저장 버튼 — 명단이 길어도 아래로 끝까지 내리지 않고 누를 수 있게 하단 메뉴 바로 위에 붙여 둡니다 */}
+        <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 border-t border-gray-100 bg-white/95 backdrop-blur-sm rounded-b-2xl p-3">
+          {attendanceSubmitArea}
+        </div>
+      </section>
+    </div>
   )
 }

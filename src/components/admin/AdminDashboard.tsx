@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { UserProfile, Role } from '../../lib/mockData'
+import { UserProfile, Role, canEditChildAttendance } from '../../lib/mockData'
 import { dbFetchAttendanceRecords } from '../../lib/db'
 import { getUnassignedChildren } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -11,6 +11,7 @@ import ApprovalTab from './ApprovalTab'
 import CouponsTab from './CouponsTab'
 import MembersTab from './MembersTab'
 import StatsTab from './StatsTab'
+import AttendanceCheckTab from './AttendanceCheckTab'
 import NotificationJobsTab from './NotificationJobsTab'
 import BulletinTab from './BulletinTab'
 import Toast from '../ui/Toast'
@@ -33,7 +34,7 @@ interface AdminDashboardProps {
   openToken?: number
 }
 
-type AdminTabId = 'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts' | 'bulletin'
+type AdminTabId = 'meals' | 'approval' | 'stats' | 'check' | 'coupons' | 'members' | 'alerts' | 'bulletin'
 
 export default function AdminDashboard({ currentUser, allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack, openTab = '', openToken = 0 }: AdminDashboardProps) {
   const isLeader = currentUser?.role === 'LEADER'
@@ -49,6 +50,8 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
     !isCouponManager && !isTeacher && 'members',
     !isLeader && !isTeacher && 'coupons',
     !isCouponManager && 'stats',
+    // 출석체크 입력 — 예전엔 우리소식 탭 맨 위 버튼이었습니다. 출석 탭 바로 옆에 둡니다.
+    canEditChildAttendance(currentUser?.role) && 'check',
     currentUser?.role === 'ADMIN' && 'bulletin',
     currentUser?.role === 'ADMIN' && 'alerts',
   ].filter(Boolean) as AdminTabId[]
@@ -150,6 +153,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}` },
           { id: 'coupons', label: '🎟️ 쿠폰' },
           { id: 'stats', label: '📊 출석' },
+          { id: 'check', label: '✅ 출첵' },
           { id: 'bulletin', label: '📖 주보' },
           { id: 'alerts', label: '🔔 알림' },
         ].filter(t => visibleTabIds.includes(t.id as AdminTabId))
@@ -204,6 +208,9 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
       {/* ── 자동 알림 점검 탭 (관리자 전용) ── */}
       {adminTab === 'alerts' && <NotificationJobsTab showToast={showToast} currentUser={currentUser} allUsers={allUsers} />}
+
+      {/* ── 출석체크 입력 탭 ── */}
+      {adminTab === 'check' && currentUser && <AttendanceCheckTab currentUser={currentUser} allUsers={allUsers} />}
 
       {/* ── 출석 탭 ── */}
       {adminTab === 'stats' && (

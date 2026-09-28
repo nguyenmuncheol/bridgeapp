@@ -6,7 +6,6 @@ import { buildDependentEntries } from '../../lib/familyInfo'
 import MemberNewsBoard from './MemberNewsBoard'
 import ScheduleCalendar from './ScheduleCalendar'
 import AddressBook from './AddressBook'
-import AttendanceCheckModal from './AttendanceCheckModal'
 import SegmentedTabs from '../ui/SegmentedTabs'
 
 interface NewsTabProps {
@@ -66,12 +65,6 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
 
   return (
     <div className="space-y-5 pb-6 relative">
-      {/* 상단 헤더 + 출석체크 버튼 */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-black text-gray-900 text-base">우리소식</h2>
-        <AttendanceCheckModal currentUser={currentUser} allUsers={allUsers} />
-      </div>
-
       {/* 서브탭 3종: 교회일정 | 가족소식 | 주소록 */}
       <SegmentedTabs
         sticky

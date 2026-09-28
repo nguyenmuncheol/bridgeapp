@@ -38,8 +38,9 @@ interface NotificationPanelProps {
 export function destinationOf(n: NotificationItem): { tab: string; sub: string } {
   // ① 서버가 시간에 맞춰 보내는 알림은 글이 아니라 "할 일"이라 목적지가 정해져 있습니다.
   if (n.type === 'MEAL') return { tab: 'request', sub: 'meal' }
-  // 본문이 "(관리 화면 > 출석)" 이라고 안내하므로 그 탭을 바로 엽니다.
-  if (n.type === 'ATTENDANCE') return { tab: 'admin', sub: 'stats' }
+  // "출석체크가 아직 안 끝났습니다" 알림 → 바로 입력할 수 있는 관리 화면의 출첵 탭을 엽니다.
+  // (서버가 만드는 본문에는 아직 "(관리 화면 > 출석)"이라고 적혀 있습니다)
+  if (n.type === 'ATTENDANCE') return { tab: 'admin', sub: 'check' }
   if (n.type === 'BULLETIN') return { tab: 'home', sub: '' }
   if (n.type === 'BIRTHDAY') return { tab: 'news', sub: 'memberNews' }
   if (n.type === 'MANUAL') return { tab: 'home', sub: '' }
