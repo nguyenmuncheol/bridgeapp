@@ -1,5 +1,6 @@
 'use client'
 
+import { HandHeart, Music, Camera } from 'lucide-react'
 import { useState, useId } from 'react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
@@ -234,7 +235,8 @@ export default function AddPostModal({
   return (
     <Modal
       onClose={handleCloseRequest}
-      title={subTab === 'prayer' ? '🙏 기도제목 작성' : subTab === 'praise' ? '🎵 찬양/묵상나눔 작성' : '📸 사진 업로드하기'}
+      title={subTab === 'prayer' ? '기도제목 작성' : subTab === 'praise' ? '찬양/묵상나눔 작성' : '사진 업로드하기'}
+      icon={subTab === 'prayer' ? <HandHeart size={18} /> : subTab === 'praise' ? <Music size={18} /> : <Camera size={18} />}
       size={subTab === 'photo' ? 'lg' : 'md'}
       closeOnBackdrop={false}
       bodyClassName="p-4 sm:p-5 space-y-4"

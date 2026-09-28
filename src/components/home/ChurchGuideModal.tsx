@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Church, Clock3, Users, Heart, Mail } from 'lucide-react'
+import { Church, Clock3, Users, Heart, Mail, Sparkles, UserRound } from 'lucide-react'
 import { useModalDismiss } from '../../lib/useModalDismiss'
 import SegmentedTabs from '../ui/SegmentedTabs'
 import Modal from '../ui/Modal'
@@ -82,9 +82,9 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
             value={activeTab}
             onChange={setActiveTab}
             items={[
-              { id: 'vision', label: '🌟 비전' },
-              { id: 'pastor', label: '🙋 사역자 소개' },
-              { id: 'guide', label: '🏫 예배/부서' },
+              { id: 'vision', label: '비전', icon: Sparkles },
+              { id: 'pastor', label: '사역자 소개', icon: UserRound },
+              { id: 'guide', label: '예배/부서', icon: Clock3 },
             ]}
           />
         </div>

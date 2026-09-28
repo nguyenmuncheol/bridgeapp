@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useId } from 'react'
-import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2 } from 'lucide-react'
+import { Utensils, Pencil, Clock, Lock, Users, ExternalLink, Edit, Trash2, ClipboardList } from 'lucide-react'
 import { UserProfile, getSimpleUserName, simplifyStoredName } from '../../lib/mockData'
 import { getUpcomingSundays, isMealRegistrationLocked, formatDateTimeShort } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations, dbFetchLatestEventForm, dbUpsertEventForm, dbFetchMealMenus, dbUpsertMealMenu } from '../../lib/db'
@@ -284,8 +284,8 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
         value={subTab}
         onChange={goSubTab}
         items={[
-          { id: 'meal', label: '🍚 주일식사' },
-          { id: 'event', label: '📋 교회행사' },
+          { id: 'meal', label: '주일식사', icon: Utensils },
+          { id: 'event', label: '교회행사', icon: ClipboardList },
         ]}
       />
 
@@ -544,7 +544,8 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       {showEventEditModal && (
         <Modal
           onClose={() => setShowEventEditModal(false)}
-          title="📋 행사 신청 관리 (관리자)"
+          title="행사 신청 관리 (관리자)"
+          icon={<ClipboardList size={18} />}
           bodyClassName="p-5 space-y-3"
           footer={<>
               <button onClick={() => setShowEventEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>
@@ -611,7 +612,8 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
       {showMenuEditModal && (
         <Modal
           onClose={() => setShowMenuEditModal(false)}
-          title={`🍚 이번 주 메뉴 입력 (${sundayDates[selectedWeek]})`}
+          icon={<Utensils size={18} />}
+          title={`이번 주 메뉴 입력 (${sundayDates[selectedWeek]})`}
           bodyClassName="p-5 space-y-3"
           footer={<>
               <button onClick={() => setShowMenuEditModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>

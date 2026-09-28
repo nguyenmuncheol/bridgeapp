@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useId } from 'react'
-import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
+import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info, Pencil } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbFetchRecentPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
@@ -573,7 +573,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
       {showBulletinEditModal && (
         <Modal
           onClose={() => setShowBulletinEditModal(false)}
-          title="✏️ 주보 수정 (관리자)"
+          title="주보 수정 (관리자)"
+          icon={<Pencil size={18} />}
           size="lg"
           fullHeight
           closeOnBackdrop={false}
@@ -686,7 +687,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
       {showNoticeCreateModal && (
         <Modal
           onClose={closeNoticeEditor}
-          title={editingNoticeId ? '✏️ 공지 수정 (관리자)' : '📣 신규 공지 작성 (관리자)'}
+          title={editingNoticeId ? '공지 수정 (관리자)' : '신규 공지 작성 (관리자)'}
+          icon={editingNoticeId ? <Pencil size={18} /> : <Megaphone size={18} />}
           size="md"
           closeOnBackdrop={false}
           bodyClassName="p-4 sm:p-5 space-y-4"

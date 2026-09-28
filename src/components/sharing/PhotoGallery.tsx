@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, Dispatch, SetStateAction, ReactNode, useId } from 'react'
-import { Heart, Filter, Trash2, Edit2, MessageCircle, Play } from 'lucide-react'
+import { Heart, Filter, Trash2, Edit2, MessageCircle, Play, Pencil } from 'lucide-react'
 import { PostItem, UserProfile, CommentItem, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbTogglePostLike } from '../../lib/db'
 import { SkeletonList } from '../SkeletonCard'
@@ -384,7 +384,8 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
       {editingPhoto && (
         <Modal
           onClose={() => setEditingPhoto(null)}
-          title="✏️ 행사사진 정보 수정"
+          title="행사사진 정보 수정"
+          icon={<Pencil size={18} />}
           size="lg"
           fullHeight
           closeOnBackdrop={false}

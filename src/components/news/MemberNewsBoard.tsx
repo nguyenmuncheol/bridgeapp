@@ -1,5 +1,6 @@
 'use client'
 
+import { Megaphone, Pencil } from 'lucide-react'
 import { useState, useCallback, useId } from 'react'
 import { UserProfile, getUserDisplayName, PostItem } from '../../lib/mockData'
 import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
@@ -296,7 +297,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   }
                   setShowAddNewsModal(false)
                 }}
-          title="📣 교우소식 작성"
+          title="교우소식 작성"
+          icon={<Megaphone size={18} />}
           size="md"
           closeOnBackdrop={false}
           bodyClassName="p-4 sm:p-5 space-y-4"
@@ -382,7 +384,8 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   }
                   setEditingNews(null)
                 }}
-          title="✏️ 교우소식 수정"
+          title="교우소식 수정"
+          icon={<Pencil size={18} />}
           size="md"
           closeOnBackdrop={false}
           bodyClassName="p-4 sm:p-5 space-y-4"

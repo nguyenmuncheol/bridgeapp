@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, Dispatch, SetStateAction, useId } from 'react'
-import { X } from 'lucide-react'
+import { X, Pencil } from 'lucide-react'
 import { PostItem, UserProfile } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getUserDisplayName } from '../../lib/mockData'
@@ -299,7 +299,8 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   }
                   setEditingPrayer(null)
                 }}
-          title="✏️ 기도제목 수정"
+          title="기도제목 수정"
+          icon={<Pencil size={18} />}
           size="md"
           closeOnBackdrop={false}
           bodyClassName="p-4 sm:p-5 space-y-4"

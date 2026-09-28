@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Utensils, UserCheck, Users, Ticket, ChartColumn, SquareCheck, BookOpen, Bell, Baby, Wrench } from 'lucide-react'
 import { UserProfile, Role, canEditChildAttendance } from '../../lib/mockData'
 import { dbFetchAttendanceRecords } from '../../lib/db'
 import { getUnassignedChildren } from '../../lib/familyInfo'
@@ -70,6 +70,8 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
   // 지난 주일 출석체크를 아직 다 못 했으면 "출첵" 탭 이름 옆에 빨간 점을 붙입니다.
   const attendanceStatus = useAttendanceCheckStatus(currentUser, allUsers)
 
+  const HeaderIcon = isCouponManager ? Ticket : isTeacher ? Baby : isLeader ? ChartColumn : Wrench
+
   const pendingCount = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt).length
 
   // 부모가 등록했지만 아직 교회학교 그룹이 없는 자녀 — 그룹을 정해 주기 전까지
@@ -137,8 +139,9 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
             <ArrowLeft size={16} />
           </button>
           <div>
-            <h1 className="font-bold text-base">
-              {isCouponManager ? '🎟️ 쿠폰 관리 대시보드' : isTeacher ? '🧒 교회학교 출석 관리' : isLeader ? '📊 리더 대시보드' : '🛠️ 관리자 대시보드'}
+            <h1 className="font-bold text-base flex items-center gap-1.5">
+              <HeaderIcon size={18} strokeWidth={2.2} aria-hidden="true" />
+              {isCouponManager ? '쿠폰 관리 대시보드' : isTeacher ? '교회학교 출석 관리' : isLeader ? '리더 대시보드' : '관리자 대시보드'}
             </h1>
             <p className="text-2xs text-brand-100">
               {isCouponManager ? '식사 쿠폰 전용 관리' : isTeacher ? '담당 자녀 그룹 출석 확인' : isLeader ? '식사 집계 및 출석 통계' : '더브릿지교회 운영 관리 모드'}
@@ -152,24 +155,25 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           접어 두 줄로 보여 줍니다. 탭이 4개 이하인 권한에서는 예전처럼 한 줄입니다. */}
       {(() => {
         const tabs = [
-          { id: 'meals', label: '🍱 식사' },
-          { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
-          { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}` },
-          { id: 'coupons', label: '🎟️ 쿠폰' },
-          { id: 'stats', label: '📊 출석' },
+          { id: 'meals', label: '식사', icon: Utensils },
+          { id: 'approval', label: `승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, icon: UserCheck },
+          { id: 'members', label: `성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}`, icon: Users },
+          { id: 'coupons', label: '쿠폰', icon: Ticket },
+          { id: 'stats', label: '출석', icon: ChartColumn },
           {
             id: 'check',
+            icon: SquareCheck,
             label: (
               <span className="relative">
-                ✅ 출첵
+                출첵
                 {!attendanceStatus.done && (
                   <span className="absolute -top-1 -right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" aria-label="미완료" />
                 )}
               </span>
             ),
           },
-          { id: 'bulletin', label: '📖 주보' },
-          { id: 'alerts', label: '🔔 알림' },
+          { id: 'bulletin', label: '주보', icon: BookOpen },
+          { id: 'alerts', label: '알림', icon: Bell },
         ].filter(t => visibleTabIds.includes(t.id as AdminTabId))
 
         return (
@@ -178,7 +182,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
             value={adminTab}
             onChange={setAdminTab}
             maxCols={4}
-            items={tabs.map(t => ({ id: t.id as AdminTabId, label: t.label }))}
+            items={tabs.map(t => ({ id: t.id as AdminTabId, label: t.label, icon: t.icon }))}
           />
         )
       })()}

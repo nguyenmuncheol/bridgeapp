@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit2, Trash2, CalendarDays } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import { birthdayMatchesCalendarDay } from '../../lib/dateUtils'
 import { dbFetchChurchEvents, dbCreateChurchEvent, dbUpdateChurchEvent, dbDeleteChurchEvent } from '../../lib/db'
@@ -228,7 +228,8 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
       {calEditModal && (
         <Modal
           onClose={() => setCalEditModal(null)}
-          title={`📅 ${calEditModal.dateStr} 일정 편집`}
+          title={`${calEditModal.dateStr} 일정 편집`}
+          icon={<CalendarDays size={18} />}
           bodyClassName="p-5 space-y-4"
         >
 

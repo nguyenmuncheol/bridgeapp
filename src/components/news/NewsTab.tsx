@@ -1,5 +1,6 @@
 'use client'
 
+import { CalendarDays, Megaphone, BookUser } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { UserProfile, isApprovedMember } from '../../lib/mockData'
 import { buildDependentEntries } from '../../lib/familyInfo'
@@ -71,9 +72,9 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
         value={subTab}
         onChange={goSubTab}
         items={[
-          { id: 'schedule', label: '📅 교회일정' },
-          { id: 'memberNews', label: '📣 가족소식' },
-          { id: 'members', label: '📖 주소록' },
+          { id: 'schedule', label: '교회일정', icon: CalendarDays },
+          { id: 'memberNews', label: '가족소식', icon: Megaphone },
+          { id: 'members', label: '주소록', icon: BookUser },
         ]}
       />
 

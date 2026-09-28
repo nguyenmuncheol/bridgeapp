@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Lock } from 'lucide-react'
+import { Lock, PenLine, CalendarDays } from 'lucide-react'
 import { getUpcomingSundays, isMealRegistrationLocked } from '../../lib/dateUtils'
 import { dbFetchMealRegistrations, dbSaveMealRegistration, dbCleanupStaleMealRegistrations } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -238,7 +238,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
 
       {/* 향후 4주 식수 예상 — 항상 노출 (토글 없음) */}
       <div className="p-4 bg-white border border-gray-100 rounded-2xl space-y-2 text-xs">
-        <h3 className="font-bold text-gray-900">📅 향후 4주 주일 식수 예상</h3>
+        <h3 className="font-bold text-gray-900 flex items-center gap-1.5"><CalendarDays size={14} className="shrink-0 text-brand" aria-hidden="true" />향후 4주 주일 식수 예상</h3>
         <div className="grid grid-cols-4 gap-2 text-center">
           {upcomingSundays.map((s, idx) => {
             const stat = weekMealStats[idx] || { total: 0, pendingUnits: [] }
@@ -455,7 +455,8 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
       {proxyTarget && (
         <Modal
           onClose={() => setProxyTarget(null)}
-          title={`✍️ ${proxyTarget.label} ${proxyTarget.isEdit ? '신청 수정' : '대신 신청'}`}
+          icon={<PenLine size={18} />}
+          title={`${proxyTarget.label} ${proxyTarget.isEdit ? '신청 수정' : '대신 신청'}`}
           subtitle={<>주일 날짜: <strong className="text-brand">{upcomingSundays[forecastWeek]?.shortLabelStr}</strong></>}
           footer={<>
             <ModalBottomCloseButton label="취소" onClick={() => setProxyTarget(null)} />

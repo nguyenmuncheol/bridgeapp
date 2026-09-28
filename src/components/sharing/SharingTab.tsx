@@ -1,5 +1,6 @@
 'use client'
 
+import { HandHeart, Camera, Music } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { UserProfile } from '../../lib/mockData'
 import { dbFetchDistinctTags } from '../../lib/db'
@@ -111,9 +112,9 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
         value={subTab}
         onChange={goSubTab}
         items={[
-          { id: 'prayer', label: '🙏 기도제목' },
-          { id: 'photo', label: '📸 행사사진' },
-          { id: 'praise', label: '🎵 찬양/묵상나눔' },
+          { id: 'prayer', label: '기도제목', icon: HandHeart },
+          { id: 'photo', label: '행사사진', icon: Camera },
+          { id: 'praise', label: '찬양/묵상나눔', icon: Music },
         ]}
       />
 
