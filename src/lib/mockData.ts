@@ -12,6 +12,18 @@ export function isApprovedMember(role: Role | undefined | null): boolean {
 }
 
 /**
+ * 성도 명단·나눔 글 등 공동체 내부 정보를 볼 수 있는 계정인지.
+ *
+ * 승인된 성도 + 탈퇴(LEFT) 중 관리자가 '커뮤니티 접근 유지'를 켜 둔 분입니다.
+ * 서버 규칙(RLS)의 public.is_approved_member() 와 같은 기준이라, 둘 중 하나를 바꾸면
+ * 다른 쪽도 맞춰 주세요. (supabase/migrations/*_approved_member_rls.sql)
+ */
+export function hasCommunityAccess(user?: { role?: Role | null; keepAppAccess?: boolean } | null): boolean {
+  if (!user) return false
+  return isApprovedMember(user.role) || (user.role === 'LEFT' && !!user.keepAppAccess)
+}
+
+/**
  * "실제 교회 성도"인지 — 명단·집계·통계에 넣을 대상인지 판단합니다.
  *
  * 🐛 과거 문제: 식권 명단과 식사 미응답 목록이 isApprovedMember()만 썼는데,

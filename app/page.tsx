@@ -13,7 +13,7 @@ import { copyExternalImageToStorage } from '../src/lib/storage'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
 import WelcomeModal from '../src/components/auth/WelcomeModal'
-import { UserProfile, Role, getUserDisplayName, isApprovedMember, NotificationItem, getInitials } from '../src/lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember, hasCommunityAccess, NotificationItem, getInitials } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
 import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications, dbMarkWelcomed } from '../src/lib/db'
 import NotificationPanel from '../src/components/NotificationPanel'
@@ -102,7 +102,8 @@ export default function Home() {
   }
 
   // Supabase profiles 조회 → 신규면 추가정보 입력 모달 표시
-  const fetchProfile = async (id: string, email: string, name: string) => {
+  // 확인된 내 프로필을 돌려줍니다(실패하면 null). 부르는 쪽이 전체 명단을 받아도 되는지 판단합니다.
+  const fetchProfile = async (id: string, email: string, name: string): Promise<UserProfile | null> => {
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle()
       
@@ -148,6 +149,8 @@ export default function Home() {
         welcomedAt: profileData.welcomed_at || undefined,
         // "가입 완료 및 승인 신청" 버튼을 실제로 눌렀는지 (없으면 로그인만 한 상태)
         signupRequestedAt: profileData.signup_requested_at || undefined,
+        // 탈퇴(LEFT) 계정도 이 값이 켜져 있으면 커뮤니티를 계속 씁니다 — 명단을 받을지 여기서 정합니다.
+        keepAppAccess: profileData.keep_app_access === true,
       }
 
       // ── 카톡 프로필 사진을 우리 저장소로 한 번만 옮깁니다 ──
@@ -182,14 +185,23 @@ export default function Home() {
         setOauthEmail(profileData.email || email || '')
         setShowProfileSetup(true)
       }
+      return spUser
     } catch (err) {
       console.error('fetchProfile error:', err)
+      return null
     }
   }
 
   // Supabase 세션 및 전체 profiles 동기화
   // 🔒 개인정보 보호: 전화번호/주소/생일/가족정보가 담긴 성도 전체 명단(dbFetchProfiles)은
-  // 로그인이 확인된 사용자에게만 불러옵니다. 비로그인 방문자에게는 절대 로드하지 않습니다.
+  // **승인된 성도에게만** 불러옵니다.
+  // 🐛 예전엔 "로그인했으면" 불러왔습니다. 구글·카카오 로그인은 누구나 할 수 있어서, 가입 신청만
+  //    해 둔 모르는 사람의 브라우저에도 전 성도 명단이 내려갔습니다(개발자도구에 그대로 보임).
+  //    서버 규칙(RLS)도 함께 막았으므로 이제 대기자가 불러도 자기 행만 옵니다. 여기서는 그 헛걸음까지 없앱니다.
+  //    승인되는 순간에는 아래 "승인되면 화면이 저절로 바뀌도록" 효과가 명단을 받아 옵니다.
+  const loadRosterIfMember = (me: UserProfile | null, loadFullRoster: () => void) => {
+    if (hasCommunityAccess(me)) loadFullRoster()
+  }
   useEffect(() => {
     const loadFullRoster = () => {
       dbFetchProfiles().then(dbUsers => {
@@ -219,7 +231,7 @@ export default function Home() {
         // 내 프로필을 먼저 확정한 뒤 전체 명단을 불러와야, 둘이 경쟁하면서
         // 방금 만든 내 프로필이 덮여 사라지는 일이 없습니다.
         fetchProfile(session.user.id, session.user.email || '', name)
-          .then(() => loadFullRoster())
+          .then(me => loadRosterIfMember(me, loadFullRoster))
           .finally(() => setIsLoading(false))
       } else {
         // 비로그인 방문자: 성도 개인정보 명단을 불러오지 않고 바로 로딩 종료
@@ -241,7 +253,7 @@ export default function Home() {
         const uMeta = user.user_metadata || {}
         const name = uMeta.full_name || uMeta.name || uMeta.preferred_username || uMeta.user_name || ''
         setTimeout(() => {
-          fetchProfile(user.id, user.email || '', name).then(() => loadFullRoster())
+          fetchProfile(user.id, user.email || '', name).then(me => loadRosterIfMember(me, loadFullRoster))
         }, 0)
       } else if (event === 'SIGNED_OUT') {
         // 🐛 과거 버그: 여기서 currentUserId를 초기화하지 않아, 세션이 만료되면
