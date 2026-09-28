@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Minus, Undo2, CreditCard, Ticket } from 'lucide-react'
+import { Plus, Minus, Undo2 } from 'lucide-react'
 import { UserProfile, MealCouponAccount, isChurchMember } from '../../lib/mockData'
 import { dbFetchMealCoupons, dbUpdateMealCoupon } from '../../lib/db'
 import { useCachedQuery } from '../../lib/dataCache'
@@ -137,7 +137,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
     <>
       <Card className="space-y-3">
         <div className="flex items-center justify-between">
-          <SectionTitle size="sm"><span className="inline-flex items-center gap-1.5"><Ticket size={14} className="shrink-0 text-brand" aria-hidden="true" />식사쿠폰 발급 / 차감</span></SectionTitle>
+          <SectionTitle size="sm">🎟️ 식사쿠폰 발급 / 차감</SectionTitle>
           <button
             onClick={() => setShowQrModal(true)}
             className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-2xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition-all"
@@ -285,8 +285,7 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
       {showQrModal && (
         <Modal
           onClose={() => setShowQrModal(false)}
-          title="식사쿠폰 구매 (QR/계좌)"
-          icon={<CreditCard size={18} />}
+          title="💳 식사쿠폰 구매 (QR/계좌)"
           subtitle="QR코드를 스캔하거나 계좌로 입금해 주세요."
           bodyClassName="p-4 space-y-3"
         >

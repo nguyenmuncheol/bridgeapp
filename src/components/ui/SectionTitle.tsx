@@ -7,8 +7,8 @@
  * `font-bold text-xs text-gray-900`, `font-bold text-sm sm:text-base text-gray-900` 처럼
  * 조금씩 다르게 적혀 있었습니다. 크기를 고르는 것만 화면에 맡기고 나머지는 여기서 정합니다.
  *
- *   <SectionTitle>기간 출석률</SectionTitle>
- *   <SectionTitle size="lg">기도제목 수정</SectionTitle>
+ *   <SectionTitle>🗓️ 기간 출석률</SectionTitle>
+ *   <SectionTitle size="lg">✏️ 기도제목 수정</SectionTitle>
  *   <SectionTitle size="sm" trailing={<span className="text-2xs text-gray-500">3명</span>}>방문자</SectionTitle>
  */
 

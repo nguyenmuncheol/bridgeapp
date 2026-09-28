@@ -1,17 +1,12 @@
 'use client'
 
-import type { LucideIcon } from 'lucide-react'
-
 /**
  * 화면 안의 작은 탭 메뉴(기도제목 | 행사사진 | 찬양, 식사 | 쿠폰 …).
  *
  * 예전에는 탭마다 모양이 달랐습니다(회색 바탕에 흰 칸, 흰 바탕에 남색 칸, 관리자 화면은 검정 칸).
  * → 모두 "흰 바탕 + 고른 칸은 남색 채움"으로 맞춥니다.
  *
- *   <SegmentedTabs value={tab} onChange={setTab} items={[{ id: 'a', label: '기도제목', icon: HandHeart }, …]} />
- *
- * 아이콘은 이모지 대신 선 아이콘(lucide)을 씁니다(리뷰 C-4). 이모지는 폰 회사마다 그림이 다르고
- * 알록달록해서 남색 중심 화면과 어긋났습니다. 선 아이콘은 어느 폰에서나 같고 글자색을 따라갑니다.
+ *   <SegmentedTabs value={tab} onChange={setTab} items={[{ id: 'a', label: '🙏 기도제목' }, …]} />
  *
  * 한 줄에 칸이 너무 많으면 글자가 뭉개지므로, maxCols 를 넘으면 여러 줄 격자로 접습니다.
  *
@@ -23,8 +18,6 @@ import type { LucideIcon } from 'lucide-react'
 export interface SegmentedTabItem<T extends string> {
   id: T
   label: React.ReactNode
-  /** 글자 앞 선 아이콘 */
-  icon?: LucideIcon
 }
 
 export default function SegmentedTabs<T extends string>({
@@ -48,7 +41,7 @@ export default function SegmentedTabs<T extends string>({
       className={`grid gap-1 bg-white p-1 rounded-xl border border-gray-100 text-xs font-semibold ${className}`}
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
-      {items.map(({ id, label, icon: Icon }) => {
+      {items.map(({ id, label }) => {
         const active = value === id
         return (
           <button
@@ -61,10 +54,7 @@ export default function SegmentedTabs<T extends string>({
               active ? 'bg-brand text-white font-bold shadow-xs' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            <span className="inline-flex items-center justify-center gap-1 max-w-full">
-              {Icon && <Icon size={14} strokeWidth={2.2} className="shrink-0" aria-hidden="true" />}
-              {label}
-            </span>
+            {label}
           </button>
         )
       })}

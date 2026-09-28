@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useId } from 'react'
-import { Edit2, ChevronDown, ChevronUp, Pencil, StickyNote, ChartColumn, Baby, Tag, CalendarRange } from 'lucide-react'
+import { Edit2, ChevronDown, ChevronUp } from 'lucide-react'
 import { UserProfile, getUserDisplayName, isApprovedMember, isAttendanceExempt, formatAbsenceStreak } from '../../lib/mockData'
 import { getMostRecentSunday } from '../../lib/dateUtils'
 import { dbSaveAttendanceRecords, dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords, dbDeleteChildAttendance, dbFetchAllVisitorRecords, ChildAttendanceRow, VisitorRecordRow } from '../../lib/db'
@@ -533,7 +533,7 @@ export default function StatsTab({
         {!isTeacher && (
         <Card className="space-y-4">
           <div className="space-y-1.5">
-            <h3 className="font-bold text-[12px] text-gray-900 flex items-center gap-1.5"><ChartColumn size={14} className="shrink-0 text-brand" aria-hidden="true" />선택한 주일 출석률</h3>
+            <h3 className="font-bold text-[12px] text-gray-900">📊 선택한 주일 출석률</h3>
             <select
               value={selectedStatsDate}
               onChange={e => setStatsDate(e.target.value)}
@@ -662,7 +662,7 @@ export default function StatsTab({
         {/* ── 자녀(교회학교) 출석 ── */}
         <Card className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[12px] text-gray-900 flex items-center gap-1.5"><Baby size={14} className="shrink-0 text-brand" aria-hidden="true" />교회학교 출석</h3>
+            <h3 className="font-bold text-[12px] text-gray-900">🧒 교회학교 출석</h3>
             <span className="text-[10px] text-gray-500">{selectedStatsDate || '선택한 주일'}</span>
           </div>
 
@@ -705,8 +705,8 @@ export default function StatsTab({
             className="w-full flex items-center justify-between text-left group"
           >
             <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-brand transition-colors flex items-center gap-1.5">
-                <Baby size={14} className="shrink-0 text-brand" aria-hidden="true" />{selectedStatsDate || '선택한 주일'} 교회학교 명단 ({childRosterRows.length}명)
+              <h3 className="font-bold text-[12px] text-gray-900 group-hover:text-brand transition-colors">
+                🧒 {selectedStatsDate || '선택한 주일'} 교회학교 명단 ({childRosterRows.length}명)
               </h3>
             </div>
             <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 group-hover:text-brand">
@@ -776,8 +776,8 @@ export default function StatsTab({
             보조 숫자라서 아래쪽에 무채색으로 조용히 둡니다. */}
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[12px] text-gray-900 flex items-center gap-1.5">
-              <Tag size={14} className="shrink-0 text-brand" aria-hidden="true" />{selectedStatsDate || '선택한 주일'} 방문자 현황
+            <h3 className="font-bold text-[12px] text-gray-900">
+              🏷️ {selectedStatsDate || '선택한 주일'} 방문자 현황
             </h3>
             <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
               총 {visitorStats.totalCount}명
@@ -849,7 +849,7 @@ export default function StatsTab({
 
         {/* ───────── 하단: 기간 통계 ───────── */}
         <Card padding="sm" className="space-y-2.5 text-[12px]">
-          <h3 className="font-bold text-[12px] text-gray-900 flex items-center gap-1.5"><CalendarRange size={14} className="shrink-0 text-brand" aria-hidden="true" />기간 출석률</h3>
+          <h3 className="font-bold text-[12px] text-gray-900">🗓️ 기간 출석률</h3>
           <div className="flex gap-2 items-end">
             <div className="flex-1">
               <label htmlFor={`${formId}-1`} className="text-[10px] text-gray-500 font-bold block mb-1">시작일</label>
@@ -990,7 +990,7 @@ export default function StatsTab({
         <Card className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="font-bold text-[12px] text-gray-900 flex items-center gap-1.5"><Tag size={14} className="shrink-0 text-brand" aria-hidden="true" />기간 방문자</h3>
+              <h3 className="font-bold text-[12px] text-gray-900">🏷️ 기간 방문자</h3>
               <span className="text-[10px] text-gray-500 font-medium">
                 {rangeLabel} · 방문 기록 {rangeVisitorStats.sundayCount}주일
               </span>
@@ -1095,8 +1095,7 @@ export default function StatsTab({
       {editingAttendanceUser && (
         <Modal
           onClose={() => setEditingAttendanceUser(null)}
-          icon={<Pencil size={18} />}
-          title={`${editingAttendanceUser.user.isDependent ? editingAttendanceUser.user.name : getUserDisplayName(editingAttendanceUser.user)} 출석 수정`}
+          title={`✏️ ${editingAttendanceUser.user.isDependent ? editingAttendanceUser.user.name : getUserDisplayName(editingAttendanceUser.user)} 출석 수정`}
           subtitle={<>주일 날짜: <strong className="text-brand">{editingAttendanceUser.dateStr}</strong> ({editingAttendanceUser.user.isDependent
                     ? (editingAttendanceUser.user.childLabriId || '미지정')
                     : (editingAttendanceUser.user.labriId || '라브리 미정')})</>}
@@ -1180,8 +1179,7 @@ export default function StatsTab({
       {notePopup && (
         <Modal
           onClose={() => setNotePopup(null)}
-          title="특이사항 / 메모"
-          icon={<StickyNote size={18} />}
+          title="📝 특이사항 / 메모"
           bodyClassName="p-5 space-y-3.5"
         >
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { CheckSquare, Plus, Trash2, SquareCheck } from 'lucide-react'
+import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import { UserProfile, canEditChildAttendance } from '../../lib/mockData'
 import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
@@ -427,7 +427,7 @@ export default function AttendanceCheckTab({ currentUser, allUsers }: Attendance
       <section className="bg-white rounded-2xl border border-gray-100 shadow-2xs">
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
           <div className="min-w-0">
-            <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5"><SquareCheck size={16} className="text-brand" aria-hidden="true" />{targetSundayShortLabel}(일) 출석체크</h3>
+            <h3 className="font-bold text-sm text-gray-900">✏️ {targetSundayShortLabel}(일) 출석체크</h3>
             <p className="text-2xs text-gray-500 mt-0.5">
               {isVisitorTab
                 ? `방문자 출석 · 총 ${totalVisitorCount}명`

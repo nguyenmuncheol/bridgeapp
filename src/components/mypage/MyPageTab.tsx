@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useId } from 'react'
-import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil, HandHeart } from 'lucide-react'
+import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
 import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt, ROLE_LABELS } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayShort } from '../../lib/dateUtils'
@@ -561,7 +561,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       {/* ── 내 기도제목 모아보기 ── */}
       <Card as="section" padding="none" className="overflow-hidden">
         <div className="p-4 border-b border-gray-50">
-          <SectionTitle size="sm"><span className="inline-flex items-center gap-1.5"><HandHeart size={14} className="shrink-0 text-brand" aria-hidden="true" />내 기도제목 ({myPrayers.length})</span></SectionTitle>
+          <SectionTitle size="sm">🙏 내 기도제목 ({myPrayers.length})</SectionTitle>
         </div>
         <div className="p-4 space-y-2">
           {myPrayers.length > 0 ? myPrayers.map(p => (
@@ -647,8 +647,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
       {showEditModal && (
         <Modal
           onClose={() => setShowEditModal(false)}
-          title="내 정보 & 프로필 수정"
-          icon={<Pencil size={18} />}
+          title="✏️ 내 정보 & 프로필 수정"
           bodyClassName="p-5 space-y-4"
           footer={<>
               <button onClick={() => setShowEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl">취소</button>

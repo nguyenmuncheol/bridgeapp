@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction, useId } from 'react'
-import { Play, Trash2, ExternalLink, Edit2, Heart, MessageCircle, Pencil } from 'lucide-react'
+import { Play, Trash2, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
 import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
 import { getYouTubeVideoId } from './youtube'
@@ -390,8 +390,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   }
                   setEditingPraise(null)
                 }}
-          title="찬양/묵상 수정"
-          icon={<Pencil size={18} />}
+          title="✏️ 찬양/묵상 수정"
           size="md"
           closeOnBackdrop={false}
           bodyClassName="p-4 sm:p-5 space-y-4"
