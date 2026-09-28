@@ -6,6 +6,7 @@ import { UserProfile, Role, canEditChildAttendance } from '../../lib/mockData'
 import { dbFetchAttendanceRecords } from '../../lib/db'
 import { getUnassignedChildren } from '../../lib/familyInfo'
 import { useCachedQuery } from '../../lib/dataCache'
+import { useAttendanceCheckStatus } from '../../lib/attendanceStatus'
 import MealsTab from './MealsTab'
 import ApprovalTab from './ApprovalTab'
 import CouponsTab from './CouponsTab'
@@ -65,6 +66,9 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
     setPrevOpenToken(openToken)
     if (requestedTab) setAdminTab(requestedTab)
   }
+
+  // 지난 주일 출석체크를 아직 다 못 했으면 "출첵" 탭 이름 옆에 빨간 점을 붙입니다.
+  const attendanceStatus = useAttendanceCheckStatus(currentUser, allUsers)
 
   const pendingCount = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt).length
 
@@ -153,7 +157,17 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}` },
           { id: 'coupons', label: '🎟️ 쿠폰' },
           { id: 'stats', label: '📊 출석' },
-          { id: 'check', label: '✅ 출첵' },
+          {
+            id: 'check',
+            label: (
+              <span className="relative">
+                ✅ 출첵
+                {!attendanceStatus.done && (
+                  <span className="absolute -top-1 -right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" aria-label="미완료" />
+                )}
+              </span>
+            ),
+          },
           { id: 'bulletin', label: '📖 주보' },
           { id: 'alerts', label: '🔔 알림' },
         ].filter(t => visibleTabIds.includes(t.id as AdminTabId))

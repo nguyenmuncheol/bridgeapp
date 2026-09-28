@@ -136,7 +136,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
     const dateStr = upcomingSundays[forecastWeek]?.displayStr || ''
     const names = currentWeekStat.pendingUnits.map(u => `• ${u.label}`).join('\n')
     const txt = names
-      ? `[더브릿지교회] ${dateStr} 주일 식사 신청 안내\n\n아래 가정은 아직 식사 신청을 해주지 않으셨습니다.\n앱 [신청] 탭에서 참석 여부를 알려주세요 🙏\n\n${names}`
+      ? `[더브릿지교회] ${dateStr} 주일 식사 신청 안내\n아래 가정은 아직 식사 신청을 해주지 않으셨습니다.\n홈페이지 어플 [신청] 탭에서 이번주 주일 식사여부를 알려주세요 🙏\n\n${names}`
       : `[더브릿지교회] ${dateStr} 주일 식사 신청\n\n모든 가정이 응답해 주셨습니다. 감사합니다! 🙏`
     navigator.clipboard.writeText(txt)
     showToast('📋 미응답 가정 안내문이 복사되었습니다!')

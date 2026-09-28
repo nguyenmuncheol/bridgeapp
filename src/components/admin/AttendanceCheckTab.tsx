@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { CheckSquare, Plus, Trash2 } from 'lucide-react'
-import { UserProfile, isApprovedMember, canEditChildAttendance } from '../../lib/mockData'
+import { UserProfile, canEditChildAttendance } from '../../lib/mockData'
 import {
   dbFetchAttendanceRecords, dbSaveAttendanceRecords,
   dbFetchChildAttendanceRecords, dbSaveChildAttendanceRecords,
   dbFetchVisitorRecords, dbSaveVisitorCounters, dbAddNamedVisitor, dbDeleteVisitorRecord,
   dbFetchAllNamedVisitors, AnonymousVisitorCategory, NamedVisitorCategory
 } from '../../lib/db'
-import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDisplay, sortChildrenForGroupDisplay, parseTeachGroups } from '../../lib/familyInfo'
+import { sortAdultsForGroupDisplay, sortChildrenForGroupDisplay } from '../../lib/familyInfo'
+import { attendanceChildren, attendanceMembers, checkGroupsFor, isChildGroup, useLastSunday } from '../../lib/attendanceStatus'
 import { useCachedQuery } from '../../lib/dataCache'
 import { askConfirm } from '../ConfirmDialog'
 import Toast from '../ui/Toast'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
-const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
 const ANONYMOUS_CATEGORIES: AnonymousVisitorCategory[] = ['성인', '학생']
 const NAMED_VISITOR_CATEGORIES: NamedVisitorCategory[] = ['성인', '중고등부', '초등부', '유아유치부']
 
@@ -24,15 +24,9 @@ interface AttendanceCheckTabProps {
   allUsers: UserProfile[]
 }
 
-/** 출석을 체크하는 자녀 그룹인지 ("출석 미적용"은 여기서 빠집니다) */
-function isChildGroup(group: string): boolean {
-  return (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(group)
-}
 
 // ── 출석체크 버튼 + 모달 (리더/관리자/선생님 전용, 자체 상태 관리) ──
 export default function AttendanceCheckTab({ currentUser, allUsers }: AttendanceCheckTabProps) {
-  const isLeader = currentUser.role === 'LEADER'
-  const isAdmin = currentUser.role === 'ADMIN'
   const isTeacher = currentUser.role === 'TEACHER'
   const canCheck = canEditChildAttendance(currentUser.role)
 
@@ -45,30 +39,14 @@ export default function AttendanceCheckTab({ currentUser, allUsers }: Attendance
   }
 
   // ── 교회학교 그룹이 지정된 자녀들 ──
-  const childEntries = useMemo(
-    () => buildDependentEntries(allUsers).filter(c => (CHILD_ATTENDANCE_GROUPS as readonly string[]).includes(c.childLabriId || '')),
-    [allUsers]
-  )
+  const childEntries = useMemo(() => attendanceChildren(allUsers), [allUsers])
 
   // ── 내가 출석을 입력할 수 있는 그룹 목록 + [방문자] 탭 ──
+  // (누가 어느 그룹을 맡는지는 헤더의 "출첵 미완료" 표시와 같은 규칙 — src/lib/attendanceStatus.ts)
   const availableGroups = useMemo(() => {
-    const activeChildGroups = CHILD_ATTENDANCE_GROUPS.filter(g => childEntries.some(c => c.childLabriId === g))
-
-    let groups: string[] = []
-    if (isTeacher) {
-      const mine = parseTeachGroups(currentUser.teachGroup)
-      groups = mine.length > 0 ? activeChildGroups.filter(g => mine.includes(g)) : [...activeChildGroups]
-    } else if (isAdmin) {
-      groups = [...ADULT_GROUPS, ...activeChildGroups]
-    } else if (isLeader) {
-      groups = [currentUser.labriId || '미정']
-    }
-
-    if (groups.length > 0) {
-      return [...groups, '방문자']
-    }
-    return []
-  }, [isTeacher, isAdmin, isLeader, currentUser.teachGroup, currentUser.labriId, childEntries])
+    const groups = checkGroupsFor(currentUser, childEntries)
+    return groups.length > 0 ? [...groups, '방문자'] : []
+  }, [currentUser, childEntries])
 
   const [selectedGroupOverride, setSelectedGroupOverride] = useState<string | null>(null)
   const selectedGroup =
@@ -80,26 +58,8 @@ export default function AttendanceCheckTab({ currentUser, allUsers }: Attendance
   const childMode = isChildGroup(selectedGroup)
   const isVisitorTab = selectedGroup === '방문자'
 
-  // 가장 최근 지난 주일 날짜 계산
-  const computeTargetSunday = () => {
-    const d = new Date()
-    const dayOfWeek = d.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
-    const daysToLastSunday = dayOfWeek === 0 ? 0 : dayOfWeek
-    const lastSun = new Date(d)
-    lastSun.setDate(d.getDate() - daysToLastSunday)
-    return `${lastSun.getFullYear()}-${String(lastSun.getMonth() + 1).padStart(2, '0')}-${String(lastSun.getDate()).padStart(2, '0')}`
-  }
-  const [targetSundayDateStr, setTargetSundayDateStr] = useState(computeTargetSunday)
-  useEffect(() => {
-    const sync = () => setTargetSundayDateStr(computeTargetSunday())
-    const timer = setInterval(sync, 60_000)
-    const onVisible = () => { if (document.visibilityState === 'visible') sync() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [])
+  // 가장 최근 지난 주일 (날이 바뀌면 저절로 따라갑니다)
+  const targetSundayDateStr = useLastSunday()
 
   const targetSundayShortLabel = useMemo(() => {
     const parts = targetSundayDateStr.split('-')
@@ -107,10 +67,7 @@ export default function AttendanceCheckTab({ currentUser, allUsers }: Attendance
   }, [targetSundayDateStr])
 
   // 주소록 및 출석체크: 승인대기자 및 쿠폰 관리자(COUPON) 제외
-  const members = useMemo(
-    () => allUsers.filter(u => isApprovedMember(u.role) && u.role !== 'COUPON'),
-    [allUsers]
-  )
+  const members = useMemo(() => attendanceMembers(allUsers), [allUsers])
 
   // ── DB에서 출석 기록 로드 ──
   const { data: rawRecords, refetch: refetchAttendance } = useCachedQuery(

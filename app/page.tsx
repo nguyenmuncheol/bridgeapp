@@ -16,6 +16,7 @@ import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
 import { isRunningStandalone } from '../src/lib/pwaInstall'
+import { useAttendanceCheckStatus } from '../src/lib/attendanceStatus'
 import { markLoginStarted, clearLoginStarted, loginStartedRecently, explainAuthError } from '../src/lib/loginReturn'
 import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
@@ -517,6 +518,10 @@ export default function Home() {
   // 승인 신청" 버튼을 안 누른 상태, ② 실제로 신청해서 관리자 승인을 기다리는 상태.
   // signupRequestedAt으로 이 둘을 구분해, ①일 때는 "승인 대기 중" 문구 대신 기본 화면을 보여줍니다.
   const isPending = !isGuest && currentUser.role === 'PENDING' && !!currentUser.signupRequestedAt
+  // 리더·선생님이 지난 주일 출석체크를 아직 다 못 했으면 헤더에 "출첵 미완료"를 띄웁니다.
+  // (관리자는 모든 부서를 총괄하므로 헤더에는 띄우지 않고, 관리 화면의 출첵 탭 빨간 점으로만 알립니다)
+  const attendanceStatus = useAttendanceCheckStatus(isGuest ? undefined : currentUser, users)
+  const showAttendanceAlert = attendanceStatus.applicable && !attendanceStatus.done && currentUser.role !== 'ADMIN'
   const isUnrequestedPending = !isGuest && currentUser.role === 'PENDING' && !currentUser.signupRequestedAt
   const isRejected = !isGuest && currentUser.role === 'REJECTED'
   // 관리자가 탈퇴 처리한 계정. 복구는 관리자만 할 수 있어 본인이 누르는 버튼은 없습니다
@@ -972,7 +977,7 @@ export default function Home() {
       </div>
 
       {/* 브랜드 헤더 */}
-      <div className="bg-white/85 backdrop-blur-md px-5 py-1.5 border-b border-gray-100 flex items-center justify-between sticky top-0 z-40">
+      <div className="bg-white/85 backdrop-blur-md px-5 py-1.5 border-b border-gray-100 flex items-center justify-between gap-2 sticky top-0 z-40">
         {/* 가로형 로고에 교회 이름이 이미 들어 있어 글자를 따로 쓰지 않습니다 */}
         <button
           onClick={() => handleSetCurrentTab('home')}
@@ -991,13 +996,25 @@ export default function Home() {
             <LogIn size={13} /> 로그인 / 가입
           </button>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {showAttendanceAlert && (
+              <button
+                onClick={() => handleSetCurrentTab('admin', 'check')}
+                className="shrink-0 flex items-center gap-1 pl-2 pr-2.5 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-2xs font-bold shadow-2xs active:scale-95 transition-transform"
+                aria-label="지난 주일 출석체크 미완료 — 출첵하러 가기"
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                {/* 좁은 폰(400px 이하)에서는 헤더가 넘치지 않게 "출첵"만 */}
+                <span className="max-[400px]:hidden">출첵 미완료</span>
+                <span className="min-[401px]:hidden">출첵</span>
+              </button>
+            )}
             {/* 내 이름 버튼 = 알림함. 안 읽은 알림이 있으면 종 위에 빨간 숫자가 붙습니다.
                 (내 정보 보기·로그아웃은 알림함 아래쪽으로 옮겼습니다)
                 🐛 예전엔 이름만 있어서 이 버튼이 알림함이라는 걸 알기 어려웠습니다 → 종 아이콘을 붙입니다. */}
             <button
               onClick={() => setShowNotifications(v => !v)}
-              className="relative flex items-center gap-1.5 bg-brand-50 text-brand font-bold pl-1 pr-2.5 py-1 rounded-full border border-brand-100/60 shadow-2xs hover:bg-brand-100/70 transition-all cursor-pointer max-w-[60vw]"
+              className="relative flex items-center gap-1.5 bg-brand-50 text-brand font-bold pl-1 pr-2.5 py-1 rounded-full border border-brand-100/60 shadow-2xs hover:bg-brand-100/70 transition-all cursor-pointer min-w-0 max-w-[60vw]"
               title="알림 · 내 정보"
               aria-label={unreadCount > 0 ? `알림 ${unreadCount}건 · 내 정보` : '알림 · 내 정보'}
             >
