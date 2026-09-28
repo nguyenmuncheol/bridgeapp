@@ -13,6 +13,7 @@ import MembersTab from './MembersTab'
 import StatsTab from './StatsTab'
 import NotificationJobsTab from './NotificationJobsTab'
 import BulletinTab from './BulletinTab'
+import Toast from '../ui/Toast'
 
 interface AdminDashboardProps {
   currentUser?: UserProfile
@@ -90,11 +91,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
   return (
     <div className="space-y-4 pb-6 relative">
       {/* 토스트 */}
-      {toastMsg && (
-        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       {/* 헤더 */}
       <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between shadow-md">

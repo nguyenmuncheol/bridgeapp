@@ -72,11 +72,14 @@ function PhotoSection({
   children,
   isLast = false,
   onFullyVisible,
+  scrollHint = false,
 }: {
   gradient: string
   children: ReactNode
   isLast?: boolean
   onFullyVisible?: () => void
+  /** 화면 맨 아래에 "아래로 내려 보세요" 화살표를 띄울지 (첫 화면용) */
+  scrollHint?: boolean
 }) {
   const sectionRef = useRef<HTMLDivElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -126,6 +129,14 @@ function PhotoSection({
       <div ref={bgRef} className="absolute inset-0 will-change-transform" style={{ background: gradient, transform: 'scale(1.15)' }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/70" />
       <div className="relative z-10 w-full max-w-lg mx-auto px-7">{children}</div>
+      {/* 🐛 예전엔 이 화살표를 children 안에 넣어서, 위치 기준이 섹션이 아니라 바로 위 글 상자가
+          됐습니다. 그래서 화면 맨 아래가 아니라 성경 구절 한가운데에 겹쳐 떴습니다.
+          → 섹션에 직접 붙이고, 아이폰 하단 안전영역만큼 띄웁니다. */}
+      {scrollHint && (
+        <div className="absolute z-10 bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 motion-safe:animate-bounce" aria-hidden="true">
+          <ChevronDown size={22} className="text-white/70" />
+        </div>
+      )}
     </section>
   )
 }
@@ -149,7 +160,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
   return (
     <div className="w-full max-w-lg md:max-w-xl mx-auto relative font-sans text-white">
       {/* 1. 히어로 */}
-      <PhotoSection gradient={GRADIENTS[0]}>
+      <PhotoSection gradient={GRADIENTS[0]} scrollHint>
         <div className="text-center space-y-5">
           <img src="/logo-wide.png" alt="더브릿지교회" className="h-14 w-auto mx-auto brightness-0 invert" />
           <Reveal from="scale" delay={150}>
@@ -163,9 +174,6 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
               하나님이 그 아들을 세상에 보내신 것은<br />세상을 심판하려 하심이 아니요<br />그로 말미암아 세상이<br />구원을 받게 하려 하심이라<br />— 요한복음 3:17 —
             </p>
           </Reveal>
-        </div>
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <ChevronDown size={22} className="text-white/70" />
         </div>
       </PhotoSection>
 

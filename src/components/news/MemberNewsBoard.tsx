@@ -12,6 +12,7 @@ import MemberNewsCard from './MemberNewsCard'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 interface MemberNewsBoardProps {
   currentUser: UserProfile
@@ -236,11 +237,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
 
   return (
     <div className="space-y-3">
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       <div className="flex justify-between items-center">
         <span className="text-xs text-gray-500 font-semibold">더브릿지 가족 News</span>

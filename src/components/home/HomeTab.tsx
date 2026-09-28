@@ -16,6 +16,7 @@ import ImageViewerModal from '../ImageViewerModal'
 import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 interface HomeTabProps {
   currentUser: UserProfile
@@ -265,11 +266,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
   return (
     <div className="space-y-5 pb-6">
       {/* 1초 소멸 토스트 */}
-      {toastMsg && (
-        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       {/* ─── 1. 교회소개 / 환영 섹션 ─── */}
       <section className="rounded-2xl overflow-hidden shadow-sm border border-blue-100 bg-white">

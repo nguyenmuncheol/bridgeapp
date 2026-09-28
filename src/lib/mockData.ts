@@ -122,6 +122,21 @@ export interface UserProfile {
   browserName?: string
 }
 
+/**
+ * 등급(role)을 성도에게 보여줄 한글 이름. 관리자 [성도 관리]의 등급 선택지와 같은 말을 씁니다.
+ * (🐛 예전엔 내정보에 'MEMBER'·'ADMIN' 같은 영문 코드가 그대로 보였습니다)
+ */
+export const ROLE_LABELS: Record<Role, string> = {
+  MEMBER: '일반 성도',
+  LEADER: '라브리 리더',
+  TEACHER: '교회학교 선생님',
+  COUPON: '쿠폰 관리자',
+  ADMIN: '총괄 관리자',
+  PENDING: '승인 대기',
+  REJECTED: '미승인',
+  LEFT: '탈퇴',
+}
+
 /** 성도 관리 화면(가입 승인·성도 수정·미가입 성도 추가)에서 고르는 직분 목록 */
 export const DUTY_OPTIONS = ['성도', '형제', '자매', '학생', '청년', '집사', '안수집사', '권사', '장로', '선생', '목사', '전도사', '사모']
 
@@ -130,12 +145,21 @@ export const DUTY_OPTIONS = ['성도', '형제', '자매', '학생', '청년', '
  *
  * 성을 빼고 **이름 두 글자**를 씁니다 (홍길동 → 길동).
  * 한 글자만 보여주면 김·이·박이 너무 많아 누가 누군지 구분이 안 됩니다.
+ *
+ * 🐛 과거 버그: 글·댓글의 작성자 이름은 "박서연 권사"처럼 직분까지 붙여 저장합니다.
+ *    그런데 마지막 낱말을 쓰다 보니 사진 없는 분의 동그라미에 이름 대신 "권사"·"집사"가
+ *    떠서, 기도제목 목록이 전부 "집사" 동그라미로 보였습니다.
+ * → 끝에 붙은 직분(·'님')은 떼고 이름에서 글자를 고릅니다.
  */
 export function getInitials(name?: string | null): string {
   const raw = (name || '').trim()
   if (!raw) return '성'
+  const words = raw.split(/\s+/)
+  const isTitle = (w: string) => w === '님' || DUTY_OPTIONS.includes(w.replace(/님$/, ''))
+  while (words.length > 1 && isTitle(words[words.length - 1])) words.pop()
   // 공백이 있으면 마지막 낱말을 씁니다 ("Nguyen 문철" → 문철)
-  const last = raw.split(/\s+/).pop() || raw
+  const lastWord = words[words.length - 1] || raw
+  const last = lastWord.length > 1 ? lastWord.replace(/님$/, '') : lastWord
   return last.length <= 2 ? last : last.slice(-2)
 }
 

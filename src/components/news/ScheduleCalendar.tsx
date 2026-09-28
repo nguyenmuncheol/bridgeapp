@@ -11,6 +11,7 @@ import BirthdayList from './BirthdayList'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 type EventType = 'sunday' | 'special'
 interface ChurchEvent {
@@ -149,11 +150,7 @@ export default function ScheduleCalendar({ isLeaderOrAdmin, addressBookEntries, 
 
   return (
     <div className="space-y-3">
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       <Card padding="none" className="overflow-hidden">
         <div className="bg-brand text-white px-4 py-3 flex items-center justify-between">

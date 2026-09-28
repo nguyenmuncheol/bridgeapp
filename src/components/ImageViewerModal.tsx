@@ -185,7 +185,7 @@ export default function ImageViewerModal({
       </div>
 
       {toastMsg && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-30 animate-fade-in whitespace-nowrap border border-white/10">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-2xl shadow-lg z-30 animate-fade-in w-max max-w-[calc(100%-2rem)] text-center break-keep leading-snug border border-white/10">
           {toastMsg}
         </div>
       )}

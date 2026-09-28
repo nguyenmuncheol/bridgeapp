@@ -9,6 +9,7 @@ import { familyKeyOf, resolveFamilyKey, staleFamilyKeys } from '../../lib/family
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 interface RequestTabProps {
   currentUser: UserProfile
@@ -272,11 +273,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
   return (
     <div className="space-y-5 pb-6">
       {/* 1초 소멸 토스트 */}
-      {toastMsg && (
-        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       {/* 서브탭 2종: 주일식사 | 교회행사 */}
       <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-bold text-center">

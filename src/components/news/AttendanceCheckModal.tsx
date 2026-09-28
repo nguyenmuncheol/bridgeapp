@@ -13,6 +13,7 @@ import { CHILD_ATTENDANCE_GROUPS, buildDependentEntries, sortAdultsForGroupDispl
 import { useCachedQuery } from '../../lib/dataCache'
 import { useModalDismiss, backdropClose } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
+import Toast from '../ui/Toast'
 
 const ABSENCE_TAGS = ['출근/출장', '여행', '아파요', '가족방문']
 const ADULT_GROUPS = ['라브리1', '라브리2', '라브리3', '미정']
@@ -402,11 +403,7 @@ export default function AttendanceCheckModal({ currentUser, allUsers }: Attendan
 
   return (
     <>
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       <button
         onClick={() => {

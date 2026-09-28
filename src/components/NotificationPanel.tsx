@@ -107,6 +107,17 @@ export default function NotificationPanel({
   //    순서와 무관하게 안전합니다.
   useBackgroundScrollLock()
 
+  // ESC 로 닫기 (PC·키보드 사용자). 위에 "모두 삭제" 확인창이 떠 있으면 그 창이 먼저입니다.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (document.querySelector('[aria-labelledby="confirm-dialog-title"]')) return
+      onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   // 열 때마다 최신 알림을 다시 받아옵니다.
   useEffect(() => {
     let cancelled = false
@@ -159,7 +170,10 @@ export default function NotificationPanel({
   return (
     <div className="fixed inset-0 z-[75]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/25" />
-      {/* 헤더 이름 버튼 바로 아래에 붙는 패널 */}
+      {/* 헤더 이름 버튼 바로 아래에 붙는 패널.
+          🐛 예전엔 브라우저 화면의 오른쪽 끝을 기준으로 붙여서, PC처럼 앱이 가운데 좁게 뜨는
+             화면에서는 이름 버튼과 멀리 떨어진 곳에 떴습니다. → 앱 본문과 같은 폭의 틀을 기준으로 붙입니다. */}
+      <div className="relative w-full max-w-lg md:max-w-xl mx-auto h-0">
       <div
         onClick={e => e.stopPropagation()}
         className="absolute top-[60px] right-3 w-[min(92vw,340px)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in"
@@ -199,13 +213,19 @@ export default function NotificationPanel({
             </div>
           )}
 
+          {/* 🐛 예전엔 지우기 아이콘이 알림 버튼 **안에** 들어 있었습니다(버튼 속 버튼). 화면 낭독기가
+                 둘을 하나로 읽었고, 12px 아이콘이라 손가락으로 누르면 알림이 열리기 일쑤였습니다.
+              → 알림 줄과 지우기 버튼을 나란히 두고, 지우기 버튼은 줄 높이 전체를 누를 수 있게 했습니다. */}
           {!isLoading && !error && items.map(n => (
-            <button
+            <div
               key={n.id}
-              onClick={() => handleOpen(n)}
-              className={`w-full text-left px-4 py-3 border-b border-gray-50 last:border-b-0 flex gap-2.5 hover:bg-gray-50 transition-colors ${
+              className={`flex border-b border-gray-50 last:border-b-0 transition-colors ${
                 n.isRead ? '' : 'bg-blue-50/40'
               }`}
+            >
+            <button
+              onClick={() => handleOpen(n)}
+              className="flex-1 min-w-0 text-left pl-4 pr-1 py-3 flex gap-2.5 hover:bg-gray-50 transition-colors"
             >
               {/* 교회 명의로 나간 알림은 이모지 대신 교회 로고를 보여줍니다 */}
               {n.actorName === CHURCH_NAME ? (
@@ -241,14 +261,16 @@ export default function NotificationPanel({
                 )}
                 <span className="block text-2xs text-gray-400">{whenText(n.createdAt)}</span>
               </span>
-              <span
-                onClick={e => handleDelete(e, n.id)}
-                className="p-1.5 -m-1 text-gray-300 hover:text-rose-500 shrink-0 self-start"
-                title="이 알림 지우기"
-              >
-                <Trash2 size={12} />
-              </span>
             </button>
+            <button
+              onClick={e => handleDelete(e, n.id)}
+              className="shrink-0 w-11 flex items-start justify-center pt-3.5 text-gray-300 hover:text-rose-500 hover:bg-gray-50 transition-colors"
+              aria-label="이 알림 지우기"
+              title="이 알림 지우기"
+            >
+              <Trash2 size={14} />
+            </button>
+            </div>
           ))}
         </div>
 
@@ -269,6 +291,7 @@ export default function NotificationPanel({
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import Avatar from '../news/Avatar'
 import { isChurchAuthor, CHURCH_AUTHOR_NAME } from '../../lib/churchIdentity'
 import { askConfirm } from '../ConfirmDialog'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 interface PhotoGalleryProps {
   currentUser: UserProfile
@@ -269,11 +270,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
 
   return (
     <div className="space-y-4">
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
         <Filter size={14} className="text-gray-400 shrink-0" />
@@ -617,7 +614,7 @@ function PhotoDetailModal({
       } : backdropClose(onClose)}
     >
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden space-y-3 p-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-full z-10 font-semibold whitespace-nowrap">{toastMsg}</div>}
+        {toastMsg && <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-2xs px-3 py-1.5 rounded-2xl z-10 font-semibold w-max max-w-[calc(100%-2rem)] text-center break-keep leading-snug">{toastMsg}</div>}
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <div className="min-w-0">
             <SectionTitle>{photo.title}</SectionTitle>

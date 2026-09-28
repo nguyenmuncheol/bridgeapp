@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Shield, Smartphone, ChevronDown, ChevronUp, MapPin, Ticket, X, Camera, Bell, Pencil } from 'lucide-react'
-import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt } from '../../lib/mockData'
+import { UserProfile, getUserDisplayName, PostItem, isApprovedMember, canOpenAdmin, getInitials, isAttendanceExempt, ROLE_LABELS } from '../../lib/mockData'
 import { FamilyChildInfo, CHILD_ATTENDANCE_GROUPS, buildFamilyStatusText, getSharedChildren, getMissingBirthdayChildren, buildFamilyInfoSyncUpdates, parseFamilyInfo, serializeFamilyInfo, findLinkedFamilyMembers } from '../../lib/familyInfo'
 import { parseBirthdayFlexible, daysInMonth, formatBirthdayShort } from '../../lib/dateUtils'
 import { dbUpdateProfile, dbFetchPosts, dbUpdatePost, dbFetchMealCoupons, dbSavePushSubscription, dbDeletePushSubscription } from '../../lib/db'
@@ -17,6 +17,7 @@ import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
 import SlidingText from '../ui/SlidingText'
+import Toast from '../ui/Toast'
 
 interface MyPageTabProps {
   currentUser: UserProfile
@@ -374,7 +375,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
   return (
     <div className="space-y-4 pb-6">
-      {toastMsg && <div className="fixed top-[88px] left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">{toastMsg}</div>}
+      <Toast message={toastMsg} />
 
       {/* ── 프로필 카드 ── */}
       <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4 relative">
@@ -393,7 +394,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-bold text-base text-gray-900">{getUserDisplayName(currentUser)}</h2>
-              <span className="text-2xs font-semibold bg-blue-50 text-brand px-2.5 py-0.5 rounded-full shrink-0">{currentUser.role}</span>
+              {/* 일반 성도는 이름 옆 직분으로 충분해 뱃지를 달지 않고, 맡은 역할이 있을 때만 보여줍니다. */}
+              {currentUser.role !== 'MEMBER' && ROLE_LABELS[currentUser.role] && (
+                <span className="text-2xs font-semibold bg-blue-50 text-brand px-2.5 py-0.5 rounded-full shrink-0">{ROLE_LABELS[currentUser.role]}</span>
+              )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5 truncate">{currentUser.email}</p>
           </div>

@@ -10,6 +10,7 @@ import PrayerCard from './PrayerCard'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 // 고정글 우선(최근 고정순), 그 다음 미완료(기도 중)를 완료보다 위로 정렬 (최신 작성순 유지)
 export const sortPrayers = (list: PostItem[]) =>
@@ -238,11 +239,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
 
   return (
     <div className="space-y-3">
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
 
       {/* 불러오기 실패는 "글이 없음"과 반드시 구분해서 보여줍니다 */}
       {error && (

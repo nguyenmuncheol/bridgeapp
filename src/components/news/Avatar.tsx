@@ -60,7 +60,8 @@ export default function Avatar({ allUsers, authorId, authorName, avatarUrl, size
         {resolvedAvatarUrl ? (
           <img src={resolvedAvatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
         ) : (
-          getInitials(authorName)
+          // 저장된 작성자 이름에는 직분이 붙어 있으므로("박서연 권사"), 계정을 찾았으면 실제 이름을 씁니다.
+          getInitials(user?.name || authorName)
         )}
       </div>
       {showLightbox && resolvedAvatarUrl && (

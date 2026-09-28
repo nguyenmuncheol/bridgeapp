@@ -13,6 +13,7 @@ import { useModalDismiss, backdropClose, useWriteModalGuard } from '../../lib/us
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
 import SectionTitle from '../ui/SectionTitle'
+import Toast from '../ui/Toast'
 
 interface PraiseBoardProps {
   currentUser: UserProfile
@@ -170,11 +171,7 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   return (
     <div className="space-y-4">
-      {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in whitespace-nowrap">
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} />
       {/* error 는 어떤 형태로든 올 수 있으므로(unknown) 반드시 참/거짓으로 바꿔서 씁니다.
           그냥 {error && ...} 로 쓰면 error 자체를 화면에 그리려는 코드가 되어 빌드가 실패합니다. */}
       {!!error && (

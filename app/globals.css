@@ -131,4 +131,23 @@
   --text-sm--line-height: 1.5rem;
   --text-base: 1.125rem;            /* 18px — 제목 */
   --text-base--line-height: 1.625rem;
+
+  /*
+   * ── 팝업·안내 카드가 나타날 때 ──
+   *
+   * 🐛 과거 문제: 25곳이 animate-fade-in 을 쓰고 있었지만 어디에도 정의돼 있지 않았습니다.
+   *    Tailwind v4 기본값에는 이 이름이 없어서, 클래스는 붙어 있어도 아무 효과가 없었고
+   *    팝업이 툭 튀어나오듯 떴습니다.
+   * → 살짝 떠오르며 나타나게 합니다(0.2초). 끝나면 transform 을 남기지 않습니다.
+   *   "움직임 줄이기"를 켠 분께는 아래 @media 에서 끕니다.
+   */
+  --animate-fade-in: fade-in 0.2s ease-out;
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in { animation: none; }
 }
