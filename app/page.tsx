@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import BottomNav from '../src/components/BottomNav'
 import HomeTab from '../src/components/home/HomeTab'
@@ -13,11 +13,11 @@ import { copyExternalImageToStorage } from '../src/lib/storage'
 import AuthPending from '../src/components/auth/AuthPending'
 import ProfileSetupModal from '../src/components/auth/ProfileSetupModal'
 import WelcomeModal from '../src/components/auth/WelcomeModal'
-import { UserProfile, Role, getUserDisplayName, isApprovedMember, hasCommunityAccess, NotificationItem, getInitials } from '../src/lib/mockData'
+import { UserProfile, Role, getUserDisplayName, isApprovedMember, hasCommunityAccess, canOpenAdmin, NotificationItem, getInitials } from '../src/lib/mockData'
 import { supabase } from '../src/lib/supabase'
 import { dbFetchProfiles, dbApproveUser, dbRejectUser, dbReapplyUser, dbFetchMyRole, dbFetchNotifications, dbMarkWelcomed } from '../src/lib/db'
-import NotificationPanel from '../src/components/NotificationPanel'
-import { clearCache } from '../src/lib/dataCache'
+import NotificationPanel, { destinationOf } from '../src/components/NotificationPanel'
+import { clearCache, ViewActiveContext } from '../src/lib/dataCache'
 import { toLocalDateStr } from '../src/lib/dateUtils'
 import { useModalDismiss, backdropClose } from '../src/lib/useModalDismiss'
 import { usePullToRefresh } from '../src/lib/usePullToRefresh'
@@ -26,6 +26,13 @@ import { trackUserActivity } from '../src/lib/activityTracker'
 import LandingPage from '../src/components/landing/LandingPage'
 import { LogIn, RefreshCw } from 'lucide-react'
 import { askConfirm, showAlert } from '../src/components/ConfirmDialog'
+
+/** 브라우저의 "기록 칸마다 스크롤 되돌리기"를 끕니다 — 화면별 스크롤은 Home 이 직접 기억합니다. */
+function setManualScrollRestoration() {
+  if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual'
+  }
+}
 
 export default function Home() {
   // 🐛 과거 불편: 어느 탭에 있는지가 화면 기억에만 있고 주소창에는 없어서,
@@ -40,6 +47,19 @@ export default function Home() {
   }
   const [currentTab, setCurrentTab] = useState<string>(() => (typeof window !== 'undefined' ? readTabFromHash() : 'home'))
 
+  // ── 휴대폰 뒤로가기·탭별 스크롤 기억에 쓰는 값들 (자세한 설명은 아래 handleSetCurrentTab 위 주석) ──
+  const navDepthRef = useRef(0)                       // 홈 위로 쌓아 둔 기록 칸 수 (0 홈 · 1 탭 · 2 관리 화면)
+  const currentTabRef = useRef(currentTab)            // 기록 이벤트 처리기가 읽는 "지금 탭"
+  const isAdminViewRef = useRef(false)                // 기록 이벤트 처리기가 읽는 "관리 화면 여부"
+  const scrollByViewRef = useRef<Record<string, number>>({})  // 화면별 마지막 스크롤 위치
+  const pendingScrollRef = useRef<number | null>(null)        // 다음 화면에서 되돌릴 스크롤 위치
+  const pendingTabReplaceRef = useRef<string | null>(null)    // 관리 칸을 걷어 낸 뒤 바꿔 넣을 탭
+  // 한 번 연 탭 목록. 이 탭들은 다른 탭으로 가도 숨겨 둔 채 살려 둡니다.
+  const [visitedTabs, setVisitedTabs] = useState<string[]>(() => [currentTab])
+  if (!visitedTabs.includes(currentTab)) setVisitedTabs([...visitedTabs, currentTab])
+  // 당겨서 새로고침 때 화면 부품을 통째로 새로 그리기 위한 번호
+  const [contentKey, setContentKey] = useState(0)
+
   // ── 알림을 눌렀을 때 "그 글이 있는 서브탭"까지 열어 주기 위한 요청값 ──
   // 큰 탭만 바꾸면 나눔은 늘 기도제목이, 우리소식은 늘 교회일정이 먼저 보입니다.
   // token은 같은 서브탭을 연달아 요청해도 다시 열리도록 하는 번호표입니다.
@@ -51,7 +71,13 @@ export default function Home() {
 
   // 현재 사용자 로그인 ID ('guest'는 비로그인)
   const [currentUserId, setCurrentUserId] = useState<string>('guest')
-  const [isAdminViewMode, setIsAdminViewMode] = useState<boolean>(false)
+  // 관리 화면에서 새로고침했으면 관리 화면으로 돌아옵니다(기록 칸에 adminView 표시가 남아 있음).
+  // 처음엔 로딩 화면만 그리므로 서버 렌더와 어긋나지 않습니다.
+  const [isAdminViewMode, setIsAdminViewMode] = useState<boolean>(
+    () => typeof window !== 'undefined' && !!(window.history.state as { adminView?: boolean } | null)?.adminView
+  )
+  // 알림을 눌러 관리자 대시보드의 특정 탭(승인·출석)을 열 때의 요청값 (subTabRequest 와 같은 방식)
+  const [adminTabRequest, setAdminTabRequest] = useState<{ tab: string; token: number }>({ tab: '', token: 0 })
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false)
   useModalDismiss(showAuthModal, () => setShowAuthModal(false))
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null)
@@ -90,10 +116,17 @@ export default function Home() {
     setSupabaseUser(null)
     setCurrentUserId('guest')
     setCurrentTab('home')
-    // 주소창도 홈으로 되돌려, 로그아웃 후 새로고침하면 다시 잠긴 탭으로 가지 않게 합니다.
-    if (typeof window !== 'undefined' && window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    // 기록·주소창도 홈으로 되돌립니다. 쌓아 둔 칸만큼 되돌려서, 로그아웃 뒤 뒤로가기 한 번에 앱이 닫히고
+    // 새로고침해도 다시 잠긴 탭으로 가지 않게 합니다.
+    if (typeof window !== 'undefined') {
+      if (navDepthRef.current > 0) window.history.go(-navDepthRef.current)
+      else if (window.location.hash) window.history.replaceState({ bridgeNav: 0 }, '', window.location.pathname + window.location.search)
+      navDepthRef.current = 0
     }
+    currentTabRef.current = 'home'
+    isAdminViewRef.current = false
+    scrollByViewRef.current = {}
+    setVisitedTabs(['home'])   // 살려 둔 탭도 모두 내립니다 — 다음 사람에게 이전 사용자의 화면이 남지 않게
     setIsAdminViewMode(false)
     setShowProfileSetup(false)
     setUsers([])       // 성도 개인정보 명단 제거
@@ -337,24 +370,89 @@ export default function Home() {
     resetToGuest()
   }
 
-  // 탭 전환: 관리자 대시보드 모드 자동 해제 + 주소창 갱신
-  const handleSetCurrentTab = (tab: string, subTab?: string) => {
-    setIsAdminViewMode(false)
+  // ─────────────────────────────────────────────────────────────
+  // 탭 전환 · 휴대폰 뒤로가기 · 탭별 스크롤 기억
+  //
+  // 🐛 과거 불편 (사용자의 대부분이 홈 화면에 설치한 앱으로 씁니다)
+  //  ① 탭을 옮길 때마다 기록이 한 칸씩 쌓여, 안드로이드에서 앱을 닫으려면 지나온 탭 수만큼
+  //     뒤로가기를 눌러야 했습니다.
+  //  ② 관리자 대시보드는 기록에 없어서, 뒤로가기를 누르면 대시보드는 그대로 두고 아래 메뉴
+  //     강조만 바뀌었습니다(쌓인 기록이 없으면 앱이 그냥 꺼짐).
+  //  ③ 탭을 옮기면 늘 맨 위부터 보였고, 다녀온 탭은 새로 그려져 "더보기"로 불러온 글과
+  //     고른 소메뉴까지 초기화됐습니다. 기도제목을 읽다 홈에 다녀오면 처음부터 다시 내려가야 했습니다.
+  //
+  // → 기록을 늘 [홈] ← [탭] ← [관리 화면] 모양으로 유지합니다(팝업은 그 위에 잠깐 얹혔다 빠짐).
+  //    · 홈 → 탭: 한 칸 쌓기 / 탭 → 탭: 제자리 바꾸기 / 탭 → 홈: 쌓은 만큼 되돌리기
+  //    · 뒤로가기: 관리 화면 → 내정보 → 홈 → 앱 종료 (휴대폰 앱들의 약속과 같게)
+  //   각 칸의 history.state.bridgeNav 에 "홈 위로 몇 칸째인지"를 적어 두어 새로고침해도 이어집니다.
+  //   한 번 연 탭은 숨겨 둔 채 살려 두고, 떠날 때 스크롤 위치를 적어 두었다가 돌아오면 되돌립니다.
+  //   지금 보고 있는 탭을 한 번 더 누르면 맨 위로 올라갑니다.
+  // ─────────────────────────────────────────────────────────────
+  const urlForTab = (tab: string) =>
+    window.location.pathname + window.location.search + (tab === 'home' ? '' : `#${tab}`)
+
+  // 보이는 화면만 바꿉니다(기록 조작은 부르는 쪽 책임). 떠나는 화면의 스크롤 위치를 먼저 적어 둡니다.
+  const showView = (tab: string, admin: boolean, scrollTo: number) => {
+    const leaving = isAdminViewRef.current ? 'admin' : currentTabRef.current
+    scrollByViewRef.current[leaving] = window.scrollY
+    currentTabRef.current = tab
+    isAdminViewRef.current = admin
+    pendingScrollRef.current = scrollTo
     setCurrentTab(tab)
-    if (subTab) {
-      setSubTabRequest(prev => ({ tab, sub: subTab, token: prev.token + 1 }))
+    setIsAdminViewMode(admin)
+  }
+  const savedScrollOf = (tab: string) => scrollByViewRef.current[tab] ?? 0
+
+  // 관리자 대시보드 열기. 관리 화면은 내정보 아래 한 칸입니다: [홈] ← [내정보] ← [관리]
+  const openAdmin = (adminTab?: string) => {
+    // (아래에서 만드는 currentUser 대신 명단에서 직접 찾습니다 — 선언 순서 때문에)
+    const myRole = users.find(u => u.id === currentUserId)?.role
+    if (!canOpenAdmin(myRole)) { handleSetCurrentTab('mypage'); return }
+    if (adminTab) setAdminTabRequest(prev => ({ tab: adminTab, token: prev.token + 1 }))
+    if (isAdminViewRef.current) { window.scrollTo({ top: 0 }); return }
+    if (navDepthRef.current === 0) window.history.pushState({ bridgeNav: 1 }, '', urlForTab('mypage'))
+    else if (currentTabRef.current !== 'mypage') window.history.replaceState({ bridgeNav: 1 }, '', urlForTab('mypage'))
+    window.history.pushState({ bridgeNav: 2, adminView: true }, '')
+    navDepthRef.current = 2
+    showView('mypage', true, 0)
+  }
+
+  // 관리자 대시보드의 ← 버튼. 뒤로가기와 똑같이 기록을 한 칸 되돌립니다(화면은 popstate 처리기가 바꿈).
+  const closeAdmin = () => {
+    if (isAdminViewRef.current && navDepthRef.current >= 2) window.history.back()
+    else showView(currentTabRef.current, false, savedScrollOf(currentTabRef.current))
+  }
+
+  // 탭 전환 (하단 메뉴·홈 카드·알림에서 부릅니다). tab 이 'admin' 이면 관리자 대시보드의 subTab 을 엽니다.
+  const handleSetCurrentTab = (tab: string, subTab?: string) => {
+    if (typeof window === 'undefined') return
+    if (tab === 'admin') { openAdmin(subTab); return }
+    if (subTab) setSubTabRequest(prev => ({ tab, sub: subTab, token: prev.token + 1 }))
+
+    // 지금 보고 있는 탭을 다시 누르면 맨 위로 (알림으로 소메뉴를 연 경우엔 바로 맨 위에서 시작)
+    if (tab === currentTabRef.current && !isAdminViewRef.current) {
+      window.scrollTo({ top: 0, behavior: subTab ? 'auto' : 'smooth' })
+      return
     }
-    // 🐛 과거 불편: 스크롤을 내린 채 다른 탭으로 가면 그 위치 그대로 보였습니다.
-    //    새 화면의 중간부터 보여서 "왜 위쪽이 잘렸지?" 하게 됩니다.
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
-    if (typeof window !== 'undefined') {
-      // pushState 를 쓰면 휴대폰 뒤로가기가 "이전 탭"으로 동작합니다.
-      // (기존에는 뒤로가기를 누르면 앱이 그냥 닫혔습니다)
-      const next = tab === 'home' ? window.location.pathname + window.location.search : `#${tab}`
-      if (window.location.hash.replace(/^#/, '') !== tab) {
-        window.history.pushState(null, '', next)
-      }
+
+    const depth = navDepthRef.current
+    if (tab === 'home') {
+      if (depth > 0) window.history.go(-depth)
+      else if (window.location.hash) window.history.replaceState({ bridgeNav: 0 }, '', urlForTab('home'))
+      navDepthRef.current = 0
+    } else if (depth === 0) {
+      window.history.pushState({ bridgeNav: 1 }, '', urlForTab(tab))
+      navDepthRef.current = 1
+    } else if (depth >= 2) {
+      // 관리 화면에서 곧장 다른 탭으로: 관리 칸을 걷어 낸 뒤 내정보 칸을 이 탭으로 바꿉니다(popstate 처리기).
+      pendingTabReplaceRef.current = tab
+      window.history.go(-(depth - 1))
+      navDepthRef.current = 1
+    } else {
+      window.history.replaceState({ bridgeNav: 1 }, '', urlForTab(tab))
     }
+    // 소메뉴를 지정해 들어오면(알림 등) 새 내용이므로 맨 위에서, 아니면 마지막으로 보던 위치에서 시작합니다.
+    showView(tab, false, subTab ? 0 : savedScrollOf(tab))
   }
 
   const isGuest = currentUserId === 'guest'
@@ -439,14 +537,159 @@ export default function Home() {
     dbMarkWelcomed(currentUserId).catch(() => { /* 실패하면 다음에 한 번 더 뜹니다 */ })
   }
 
-  // ── 주소창(#해시)과 현재 탭 맞추기 ──
+  // ── 휴대폰 푸시 알림을 눌렀을 때 (public/sw.js 의 notificationclick 과 짝) ──
+  // 앱이 떠 있으면 서비스워커가 메시지로, 꺼져 있었으면 주소의 ?n=<알림 번호> 로 알려 줍니다.
+  // 목적지는 앱 안 알림함과 **같은 규칙(destinationOf)** 으로 정합니다.
+  const pendingPushRef = useRef<{ notificationId?: string; url?: string } | null>(null)
+  const [pushTick, setPushTick] = useState(0)   // 앱이 떠 있을 때 도착한 알림을 처리하라는 신호
   useEffect(() => {
-    // 뒤로가기/앞으로가기로 주소가 바뀌면 화면도 따라갑니다
-    const onHashChange = () => setCurrentTab(readTabFromHash())
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
+    // 꺼져 있던 앱이 알림으로 켜진 경우: 주소의 알림 번호를 꺼내 둡니다.
+    // (주소에서 지우는 일은 아래 "기록 모양 맞추기"가 합니다 — 새로고침해도 다시 가지 않게)
+    const n = new URLSearchParams(window.location.search).get('n')
+    if (n) pendingPushRef.current = { notificationId: n, url: '/' + window.location.hash }
+  }, [])
+
+  const openFromPush = async ({ notificationId, url }: { notificationId?: string; url?: string }) => {
+    // 팝업(글쓰기 등)이 열려 있으면 화면을 바꾸지 않습니다 — 쓰던 내용이 사라지면 안 되니까요.
+    // (앱은 이미 앞으로 나와 있으므로 팝업을 닫은 뒤 알림함에서 확인할 수 있습니다)
+    if (document.body.style.overflow === 'hidden') return
+    let hashTab = ''
+    try { hashTab = new URL(url || '/', window.location.origin).hash.replace(/^#/, '') } catch { /* 주소가 이상하면 무시 */ }
+
+    if (!isGuest && notificationId) {
+      let found = notifications.find(item => item.id === notificationId)
+      if (!found) {
+        try {
+          const list = await dbFetchNotifications(currentUserId)
+          setNotifications(list)
+          found = list.find(item => item.id === notificationId)
+        } catch { /* 못 찾으면 아래 주소 기준으로 */ }
+      }
+      if (found) {
+        const { tab, sub } = destinationOf(found)
+        handleSetCurrentTab(tab, sub || undefined)
+        return
+      }
+      // 알림함에 없는 푸시 = "확인 안 하신 댓글·좋아요가 N건" 같은 요약 알림입니다.
+      // 🐛 예전엔 홈으로만 가서 무엇이 왔는지 알 수 없었습니다 → 알림함을 열어 목록을 보여 줍니다.
+      if (!hashTab || hashTab === 'home') {
+        setShowNotifications(true)
+        return
+      }
+    }
+    if (VALID_TABS.includes(hashTab)) handleSetCurrentTab(hashTab)
+  }
+  // 메시지 처리기는 한 번만 등록하므로, 늘 최신 화면 상태를 쓰도록 최신 함수를 가리켜 둡니다.
+  const openFromPushRef = useRef(openFromPush)
+  useEffect(() => { openFromPushRef.current = openFromPush })
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data as { type?: string; notificationId?: string; url?: string } | null
+      if (!d || d.type !== 'bridge:open-notification') return
+      e.ports?.[0]?.postMessage('ok')   // "받았어요" — 서비스워커가 앱을 다시 켜지 않게
+      pendingPushRef.current = { notificationId: d.notificationId, url: d.url }
+      setPushTick(t => t + 1)
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [])
+
+  // 로그인 확인이 끝난 뒤에 처리합니다(누구의 알림인지 알아야 하므로). 이미 끝났으면 바로 처리합니다.
+  useEffect(() => {
+    if (isLoading || !pendingPushRef.current) return
+    const pending = pendingPushRef.current
+    pendingPushRef.current = null
+    openFromPushRef.current(pending)
+  }, [isLoading, pushTick])
+
+  // ── 기록(history) 모양 맞추기 + 뒤로가기/앞으로가기 따라가기 ──
+  useEffect(() => {
+    // 스크롤 위치는 화면별로 우리가 직접 기억합니다(브라우저가 기록 칸마다 멋대로 되돌리지 않게).
+    setManualScrollRestoration()
+
+    type NavState = { bridgeNav?: number; adminView?: boolean } | null
+    // ⚠️ 기록 정리는 한 박자 뒤(setTimeout 0)에 합니다.
+    //    이 effect 는 Next.js 가 history.pushState/replaceState 에 자기 표식(__NA)을 붙여 주는 장치를
+    //    설치하기 **전에** 돕니다(자식 컴포넌트의 effect 가 부모보다 먼저 실행). 그때 기록을 고쳐 쓰면
+    //    표식이 빠지고, 나중에 그 칸으로 뒤로 가면 Next.js 가 페이지를 통째로 다시 불러옵니다.
+    const initTimer = setTimeout(() => {
+      // 알림으로 켜졌다면 주소의 ?n=<알림 번호> 를 지웁니다(위에서 이미 꺼내 둠).
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('n')) {
+        params.delete('n')
+        const rest = params.toString()
+        window.history.replaceState(window.history.state, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash)
+      }
+      const st = window.history.state as NavState
+      const initialTab = readTabFromHash()
+      if (typeof st?.bridgeNav === 'number') {
+        // 새로고침: 기록은 이미 규칙대로 쌓여 있습니다. 관리 화면에서 새로고침했으면 관리 화면으로 돌아옵니다.
+        navDepthRef.current = st.bridgeNav
+        isAdminViewRef.current = !!st.adminView   // 화면 상태는 useState 초기값이 이미 맞춰 둠
+      } else if (initialTab !== 'home') {
+        // 알림·바로가기로 탭 주소(#news)에 곧장 들어온 경우: 홈을 아래에 깔아 뒤로가기가 홈으로 가게 합니다.
+        window.history.replaceState({ bridgeNav: 0 }, '', urlForTab('home'))
+        window.history.pushState({ bridgeNav: 1 }, '', urlForTab(initialTab))
+        navDepthRef.current = 1
+      } else {
+        window.history.replaceState({ bridgeNav: 0 }, '')
+        navDepthRef.current = 0
+      }
+    }, 0)
+
+    const onPopState = () => {
+      const s = window.history.state as NavState
+      // 팝업이 쌓은 칸(bridgeNav 없음)으로 오간 것은 팝업이 알아서 처리합니다.
+      if (typeof s?.bridgeNav !== 'number') return
+      navDepthRef.current = s.bridgeNav
+      const replaceWith = pendingTabReplaceRef.current
+      if (replaceWith) {
+        pendingTabReplaceRef.current = null
+        window.history.replaceState({ bridgeNav: s.bridgeNav }, '', urlForTab(replaceWith))
+        return
+      }
+      const tab = readTabFromHash()
+      const admin = !!s.adminView
+      if (tab === currentTabRef.current && admin === isAdminViewRef.current) return   // 팝업이 닫혔을 뿐
+      showView(tab, admin, admin ? 0 : savedScrollOf(tab))
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => {
+      clearTimeout(initTimer)
+      window.removeEventListener('popstate', onPopState)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── 화면이 바뀌면 그 화면의 마지막 스크롤 위치로 ──
+  // 살려 둔 탭은 내용이 이미 그려져 있어 바로 돌아갑니다. 사진처럼 뒤늦게 높이가 생기는 경우를 위해
+  // 잠깐(최대 약 0.7초) 더 맞춰 보고, 그 사이 사용자가 화면을 만지면 곧바로 멈춥니다.
+  const viewKey = isAdminViewMode ? 'admin' : currentTab
+  useLayoutEffect(() => {
+    const target = pendingScrollRef.current
+    pendingScrollRef.current = null
+    if (target === null) return
+    window.scrollTo(0, target)
+    if (target <= 0) return
+    let frames = 0
+    let raf = 0
+    const stop = () => cancelAnimationFrame(raf)
+    const tick = () => {
+      if (Math.abs(window.scrollY - target) < 2 || ++frames > 40) return
+      window.scrollTo(0, target)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    window.addEventListener('touchstart', stop, { once: true, passive: true })
+    window.addEventListener('wheel', stop, { once: true, passive: true })
+    return () => {
+      stop()
+      window.removeEventListener('touchstart', stop)
+      window.removeEventListener('wheel', stop)
+    }
+  }, [viewKey])
 
   // ── 승인되면 화면이 저절로 바뀌도록 ──
   // 🐛 과거 불편: 관리자가 승인해도 성도 화면은 그대로 "승인 대기 중"이었고,
@@ -574,7 +817,48 @@ export default function Home() {
     return { error: null }
   }
 
-  const { pullPx, refreshing, threshold } = usePullToRefresh()
+  // ── 화면 구성 ──
+  const canUseCommunity = !isGuest && !isPending && !isUnrequestedPending && !isRejected && !isLeftBlocked
+  // 관리 화면 여부는 기록에서 되살아날 수도 있으므로(새로고침), 실제로 열 수 있는 권한일 때만 보여 줍니다.
+  const showAdmin = isAdminViewMode && canOpenAdmin(currentUser.role)
+  // 한 번 연 탭은 숨겨 둔 채 살려 둡니다. 보이는지 여부는 ViewActiveContext 로 알려 주어,
+  // 숨어 있다 다시 보일 때 오래된 데이터를 새로 받게 합니다(src/lib/dataCache.ts).
+  const tabPane = (id: string, node: ReactNode) => {
+    if (!visitedTabs.includes(id)) return null
+    const active = !showAdmin && currentTab === id
+    return (
+      <div hidden={!active}>
+        <ViewActiveContext.Provider value={active}>{node}</ViewActiveContext.Provider>
+      </div>
+    )
+  }
+
+  // ── 당겨서 새로고침: 앱을 다시 켜지 않고 데이터만 새로 받습니다 (usePullToRefresh 주석 참고) ──
+  const handleSoftRefresh = async () => {
+    clearCache()                    // 저장해 둔 조회 결과를 비우고
+    scrollByViewRef.current = {}    // 내용이 새로 오므로 탭마다 기억해 둔 위치도 버립니다
+    setContentKey(k => k + 1)       // 화면 부품을 새로 그려 각자 최신 데이터를 받게 합니다
+    if (!supabaseUser) return
+    // 내 등급(승인·탈퇴 등)과 알림, 성도 명단도 다시 확인합니다 — 예전 "앱 다시 켜기"가 하던 일.
+    const uMeta = supabaseUser.user_metadata || {}
+    const me = await fetchProfile(supabaseUser.id, supabaseUser.email || '', uMeta.full_name || uMeta.name || '')
+    const tasks: Promise<unknown>[] = [
+      dbFetchNotifications(supabaseUser.id).then(setNotifications),
+    ]
+    if (hasCommunityAccess(me)) {
+      tasks.push(dbFetchProfiles().then(dbUsers => {
+        if (!dbUsers || dbUsers.length === 0) return
+        setUsers(prev => {
+          const byId = new Map(dbUsers.map(u => [u.id, u]))
+          prev.forEach(u => { if (!byId.has(u.id)) byId.set(u.id, u) })
+          return Array.from(byId.values())
+        })
+        setRosterError(null)
+      }))
+    }
+    await Promise.allSettled(tasks)
+  }
+  const { pullPx, refreshing, threshold } = usePullToRefresh(handleSoftRefresh)
 
   // 비로그인 + 앱 미설치 방문자에게는 랜딩 페이지를 먼저 보여줍니다.
   // currentUserId는 세션 확인 전 기본값이 'guest'이므로(위 useState 초기값 참고),
@@ -706,29 +990,35 @@ export default function Home() {
             <div className="w-10 h-10 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
             <p className="text-xs text-gray-400 font-medium">더브릿지교회 로딩 중...</p>
           </div>
-        ) : isAdminViewMode ? (
-          <AdminDashboard
-            currentUser={currentUser}
-            allUsers={users}
-            onApproveUser={handleApproveUser}
-            onRejectUser={handleRejectUser}
-            onUpdateUsers={setUsers}
-            onBack={() => setIsAdminViewMode(false)}
-          />
         ) : (
-          <>
+          // 당겨서 새로고침하면 contentKey 가 바뀌어 아래 화면 부품이 모두 새로 그려집니다(각자 최신 데이터를 다시 받음).
+          <div key={contentKey}>
+            {/* 관리자 대시보드 — 탭들은 그 아래에 숨겨 둔 채 살려 둡니다(돌아오면 보던 자리 그대로) */}
+            {showAdmin && (
+              <AdminDashboard
+                currentUser={currentUser}
+                allUsers={users}
+                onApproveUser={handleApproveUser}
+                onRejectUser={handleRejectUser}
+                onUpdateUsers={setUsers}
+                onBack={closeAdmin}
+                openTab={adminTabRequest.tab}
+                openToken={adminTabRequest.token}
+              />
+            )}
+
             {/* 1. 홈 탭 (누구나 열람 가능) */}
-            {currentTab === 'home' && (
+            {tabPane('home', (
               <HomeTab
                 currentUser={currentUser}
                 allUsers={users}
                 isGuest={isGuest || isPending || isUnrequestedPending || isRejected || isLeftBlocked}
                 onNavigate={handleSetCurrentTab}
               />
-            )}
+            ))}
 
             {/* 2. 비회원(isGuest) 접근 차단 카드 */}
-            {currentTab !== 'home' && isGuest && (
+            {!showAdmin && currentTab !== 'home' && isGuest && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
                 <div className="text-4xl">🔒</div>
                 <div className="space-y-1.5">
@@ -746,7 +1036,7 @@ export default function Home() {
 
             {/* 2-1. 로그인은 했지만 아직 "가입 완료 및 승인 신청"을 안 누른 사람 —
                 이때는 아직 신청서를 낸 게 아니므로 "승인 대기 중"이 아니라 신청을 이어가라고 안내합니다. */}
-            {currentTab !== 'home' && isUnrequestedPending && (
+            {!showAdmin && currentTab !== 'home' && isUnrequestedPending && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-blue-50 shadow-2xs mt-2 animate-fade-in">
                 <div className="text-4xl">📝</div>
                 <div className="space-y-1.5">
@@ -767,7 +1057,7 @@ export default function Home() {
             )}
 
             {/* 3. 가입 승인 대기자(isPending) 접근 차단 및 대기 안내 카드 */}
-            {currentTab !== 'home' && isPending && (
+            {!showAdmin && currentTab !== 'home' && isPending && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-amber-100 shadow-2xs mt-2 animate-fade-in">
                 <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-3xl mx-auto animate-pulse">
                   ⏳
@@ -813,7 +1103,7 @@ export default function Home() {
             )}
 
             {/* 3-1. 가입이 거절된 계정 안내 */}
-            {currentTab !== 'home' && isRejected && (
+            {!showAdmin && currentTab !== 'home' && isRejected && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-rose-100 shadow-2xs mt-2 animate-fade-in">
                 <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-3xl mx-auto">
                   📬
@@ -847,7 +1137,7 @@ export default function Home() {
             {/* 3-2. 관리자가 탈퇴 처리한 계정 안내 — 커뮤니티 접근이 없는 경우에만 화면을 막습니다.
                 (REJECTED와 달리 본인이 되돌릴 수 없습니다 — 관리자만 [성도 관리 > 탈퇴 처리된 성도]
                 에서 복구합니다) */}
-            {currentTab !== 'home' && isLeftBlocked && (
+            {!showAdmin && currentTab !== 'home' && isLeftBlocked && (
               <div className="bg-white rounded-3xl p-8 text-center space-y-4 border border-gray-200 shadow-2xs mt-2 animate-fade-in">
                 <div className="w-16 h-16 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-3xl mx-auto">
                   🚪
@@ -864,40 +1154,41 @@ export default function Home() {
             )}
 
             {/* 4. 정회원 이상 승인 완료자만 접근 가능한 탭들 (커뮤니티 접근이 남은 탈퇴 계정도 포함 —
-                그 경우 신청 탭만 아래에서 따로 숨깁니다) */}
-            {currentTab !== 'home' && !isGuest && !isPending && !isUnrequestedPending && !isRejected && !isLeftBlocked && (
+                그 경우 신청 탭만 아래에서 따로 숨깁니다).
+                한 번 연 탭은 다른 탭으로 가도 숨겨 둔 채 살려 둡니다(tabPane). */}
+            {canUseCommunity && (
               <>
                 {/* 우리소식 탭 */}
-                {currentTab === 'news' && (
+                {tabPane('news', (
                   <NewsTab
                     currentUser={currentUser}
                     allUsers={users}
                     openSubTab={subTabRequest.tab === 'news' ? subTabRequest.sub : ''}
                     openToken={subTabRequest.token}
                   />
-                )}
+                ))}
 
                 {/* 나눔 탭 */}
-                {currentTab === 'sharing' && (
+                {tabPane('sharing', (
                   <SharingTab
                     currentUser={currentUser}
                     allUsers={users}
                     openSubTab={subTabRequest.tab === 'sharing' ? subTabRequest.sub : ''}
                     openToken={subTabRequest.token}
                   />
-                )}
+                ))}
 
                 {/* 신청 탭 — 탈퇴 처리된 계정(커뮤니티 접근을 유지 중이어도)은 식사 신청 대상이
                     아니므로 제외합니다. */}
-                {currentTab === 'request' && !isLeft && (
+                {!isLeft && tabPane('request', (
                   <RequestTab
                     currentUser={currentUser}
                     allUsers={users}
                     openSubTab={subTabRequest.tab === 'request' ? subTabRequest.sub : ''}
                     openToken={subTabRequest.token}
                   />
-                )}
-                {currentTab === 'request' && isLeft && (
+                ))}
+                {!showAdmin && currentTab === 'request' && isLeft && (
                   <div className="bg-white rounded-3xl p-8 text-center space-y-2 border border-gray-100 shadow-2xs mt-2 animate-fade-in">
                     <div className="w-14 h-14 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-2xl mx-auto">🍚</div>
                     <p className="text-xs text-gray-500">식사 신청은 현재 교회 명단에 계신 분들만 이용하실 수 있습니다.</p>
@@ -905,18 +1196,18 @@ export default function Home() {
                 )}
 
                 {/* 마이페이지 탭 */}
-                {currentTab === 'mypage' && (
+                {tabPane('mypage', (
                   <MyPageTab
                     currentUser={currentUser}
                     allUsers={users}
-                    onNavigateAdmin={() => setIsAdminViewMode(true)}
+                    onNavigateAdmin={() => openAdmin()}
                     onUpdateUsers={setUsers}
                     onLogout={supabaseUser ? handleLogout : undefined}
                   />
-                )}
+                ))}
               </>
             )}
-          </>
+          </div>
         )}
       </main>
 

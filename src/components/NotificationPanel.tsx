@@ -5,7 +5,7 @@ import { X, Trash2, Bell } from 'lucide-react'
 import { NotificationItem, UserProfile, getUserDisplayName } from '../lib/mockData'
 import { dbFetchNotifications, dbMarkAllNotificationsRead, dbDeleteNotification, dbDeleteAllNotifications } from '../lib/db'
 import { formatDateTimeShort } from '../lib/dateUtils'
-import { useBackgroundScrollLock } from '../lib/useModalDismiss'
+import { useModalDismiss, runAfterHistoryPop } from '../lib/useModalDismiss'
 import { askConfirm } from './ConfirmDialog'
 import SectionTitle from './ui/SectionTitle'
 
@@ -30,15 +30,19 @@ interface NotificationPanelProps {
  *
  * 큰 탭만 정하면 나눔은 늘 "기도제목"이, 우리소식은 늘 "교회일정"이 먼저 보입니다.
  * 그래서 **서브탭까지** 함께 정해서 돌려줍니다.
+ *
+ * 휴대폰 푸시 알림을 눌렀을 때도(app/page.tsx) 이 함수로 목적지를 정합니다 — 두 곳이 같은 규칙.
+ * tab 이 'admin' 이면 관리자 대시보드의 그 탭(sub)을 엽니다. 권한이 없으면 내정보로 갑니다.
  */
-function destinationOf(n: NotificationItem): { tab: string; sub: string } {
+export function destinationOf(n: NotificationItem): { tab: string; sub: string } {
   // ① 서버가 시간에 맞춰 보내는 알림은 글이 아니라 "할 일"이라 목적지가 정해져 있습니다.
   if (n.type === 'MEAL') return { tab: 'request', sub: 'meal' }
-  if (n.type === 'ATTENDANCE') return { tab: 'mypage', sub: '' }   // 관리 화면은 내 정보에서 들어갑니다
+  // 본문이 "(관리 화면 > 출석)" 이라고 안내하므로 그 탭을 바로 엽니다.
+  if (n.type === 'ATTENDANCE') return { tab: 'admin', sub: 'stats' }
   if (n.type === 'BULLETIN') return { tab: 'home', sub: '' }
   if (n.type === 'BIRTHDAY') return { tab: 'news', sub: 'memberNews' }
   if (n.type === 'MANUAL') return { tab: 'home', sub: '' }
-  if (n.type === 'SIGNUP_REQUEST') return { tab: 'mypage', sub: '' }   // 관리자 대시보드는 내 정보에서 들어갑니다
+  if (n.type === 'SIGNUP_REQUEST') return { tab: 'admin', sub: 'approval' }
 
   // ② 댓글·좋아요·공지는 그 글이 실제로 있는 게시판으로 보냅니다.
   switch (n.postCategory) {
@@ -98,14 +102,19 @@ export default function NotificationPanel({
   const [error, setError] = useState('')
 
   // 이 패널은 부모가 조건부로만 mount하므로(showNotifications && <NotificationPanel/>),
-  // mount ~ unmount 구간 동안 배경 스크롤을 잠급니다. 알림이 많아 목록이 내부 스크롤될 때
-  // 끝까지 당기면 그 드래그가 배경 페이지로 새어나가던 문제를 막습니다(다른 팝업들과 동일한 조치).
+  // mount ~ unmount 구간 동안 배경 스크롤을 잠급니다(공용 훅이 잠근 팝업 수를 세므로 겹쳐도 안전).
   //
-  // 🐛 예전엔 여기서 직접 body 스타일을 저장했다 되돌렸습니다. 그러면 "알림 모두 삭제"
-  //    확인창이 이 패널 위에 겹쳐 떴다가 둘이 거의 동시에 닫힐 때, 되돌리는 순서에 따라
-  //    페이지 스크롤이 잠긴 채로 남을 수 있었습니다. 공용 훅은 잠근 팝업 수를 세므로
-  //    순서와 무관하게 안전합니다.
-  useBackgroundScrollLock()
+  // 🐛 예전엔 스크롤만 잠그고 기록(history)은 쌓지 않아서, 안드로이드에서 패널을 연 채
+  //    뒤로가기를 누르면 패널은 그대로 떠 있고 뒤에서 탭만 바뀌었습니다.
+  // → 다른 팝업처럼 useModalDismiss 를 써서 뒤로가기 = 패널 닫기로 만듭니다.
+  useModalDismiss(true, onClose)
+
+  // 패널 안 버튼이 다른 화면으로 보내거나 확인창을 띄울 때는, 패널이 기록에서 빠진 **다음에** 실행합니다.
+  // (먼저 실행하면 패널이 닫히며 되돌리는 기록이 방금 옮긴 탭·확인창을 지워 버립니다 — runAfterHistoryPop 주석)
+  const closeThen = (fn: () => void) => {
+    runAfterHistoryPop(fn)
+    onClose()
+  }
 
   // ESC 로 닫기 (PC·키보드 사용자). 위에 "모두 삭제" 확인창이 떠 있으면 그 창이 먼저입니다.
   useEffect(() => {
@@ -143,8 +152,7 @@ export default function NotificationPanel({
   const handleOpen = (n: NotificationItem) => {
     setItems(items.map(x => (x.id === n.id ? { ...x, isRead: true } : x)))
     const { tab, sub } = destinationOf(n)
-    onNavigate(tab, sub || undefined)
-    onClose()
+    closeThen(() => onNavigate(tab, sub || undefined))
   }
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -277,14 +285,14 @@ export default function NotificationPanel({
         {/* 내 정보 / 로그아웃 — 예전에 이름 버튼이 하던 일을 여기로 옮겼습니다 */}
         <div className="border-t border-gray-100 p-2 space-y-1 bg-gray-50/60">
           <button
-            onClick={() => { onGoMyPage(); onClose() }}
+            onClick={() => closeThen(onGoMyPage)}
             className="w-full py-2 text-xs font-bold text-brand rounded-lg hover:bg-white transition-colors"
           >
             {getUserDisplayName(currentUser)} · 내 정보 보기
           </button>
           {canLogout && (
             <button
-              onClick={() => { onClose(); onLogout() }}
+              onClick={() => closeThen(onLogout)}
               className="w-full py-2 text-xs font-bold text-gray-400 rounded-lg hover:bg-white hover:text-rose-500 transition-colors"
             >
               로그아웃

@@ -77,7 +77,9 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: '/logo-square.png',
       badge: '/logo-square.png',
-      data: { url: data.url || '/' },
+      // tag 는 서버가 넣어 주는 알림 번호입니다(알림 1건짜리 발송일 때). 누르면 앱이 이 번호로
+      // 알림함과 같은 규칙(destinationOf)을 찾아 그 글이 있는 탭·소메뉴까지 엽니다.
+      data: { url: data.url || '/', notificationId: data.tag || '' },
       // 같은 알림이 혹시라도 두 번 전달돼도(드문 FCM 재전송 등) 기기에서 한 개로 합쳐지도록
       // 알림마다 고유한 tag를 붙입니다. tag가 없으면 매번 새 알림으로 쌓입니다.
       tag: data.tag || undefined,
@@ -85,20 +87,72 @@ self.addEventListener('push', (event) => {
   )
 })
 
+// 알림을 눌렀을 때.
+//
+// 🐛 과거 문제
+//  ① 앱이 이미 열려 있어도 client.navigate() 로 주소를 바꿔서, 주소가 조금만 달라도 앱이 통째로
+//     다시 켜졌습니다(로그인 확인·데이터 다시 받기, 보던 화면·쓰던 글 사라짐).
+//  ② 주소에는 큰 탭(#news)만 있어서, 알림함에서 누를 때와 달리 소메뉴(가족소식 등)나
+//     관리자 대시보드의 탭(가입 승인·출석)까지는 가지 못했습니다.
+//  ③ "확인 안 하신 댓글·좋아요가 N건" 요약 알림은 홈으로만 가서, 무엇이 왔는지 볼 수 없었습니다.
+//
+// → 열려 있는 앱에는 "이 알림을 열어 주세요"라고 **메시지만** 보냅니다(다시 켜지 않음).
+//   앱(app/page.tsx)이 알림함과 같은 규칙으로 목적지를 찾고, 요약 알림이면 알림함을 열어 줍니다.
+//   앱이 닫혀 있으면 주소에 알림 번호(?n=)를 붙여 열고, 앱이 켜진 뒤 같은 방식으로 찾아갑니다.
+//   (메시지를 못 알아듣는 옛 화면이 떠 있으면 1.5초 뒤 예전처럼 주소를 바꿉니다)
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = event.notification.data?.url || '/'
+  const data = event.notification.data || {}
+  const targetUrl = data.url || '/'
+  const notificationId = data.notificationId || ''
 
   event.waitUntil(
     (async () => {
       const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      for (const client of clientsList) {
-        if ('navigate' in client && 'focus' in client) {
-          await client.navigate(targetUrl)
-          return client.focus()
+      const client = clientsList.find((c) => c.url.startsWith(self.location.origin)) || clientsList[0]
+      if (client) {
+        try {
+          if ('focus' in client) await client.focus()
+        } catch {
+          // 초점을 못 옮겨도 아래 안내는 계속합니다
+        }
+        const handled = await askAppToOpen(client, { url: targetUrl, notificationId })
+        if (handled) return
+        if ('navigate' in client) {
+          try {
+            await client.navigate(withNotificationParam(targetUrl, notificationId))
+            return
+          } catch {
+            // 이 서비스워커가 관리하지 않는 창이면 navigate 가 실패합니다 → 새 창으로
+          }
         }
       }
-      return self.clients.openWindow(targetUrl)
+      return self.clients.openWindow(withNotificationParam(targetUrl, notificationId))
     })()
   )
 })
+
+/** '/#request' + 알림 번호 → '/?n=<번호>#request' */
+function withNotificationParam(url, notificationId) {
+  const u = new URL(url, self.location.origin)
+  if (notificationId) u.searchParams.set('n', notificationId)
+  return u.href
+}
+
+/** 열려 있는 앱에 알림을 열어 달라고 부탁합니다. 앱이 "받았다"고 답하면 true. */
+function askAppToOpen(client, payload) {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    const timer = setTimeout(() => resolve(false), 1500)
+    channel.port1.onmessage = () => {
+      clearTimeout(timer)
+      resolve(true)
+    }
+    try {
+      client.postMessage({ type: 'bridge:open-notification', ...payload }, [channel.port2])
+    } catch {
+      clearTimeout(timer)
+      resolve(false)
+    }
+  })
+}

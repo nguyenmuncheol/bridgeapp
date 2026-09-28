@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 
 const THRESHOLD = 70
 const MAX_PULL = 100
+/** 새로 받는 일이 금방 끝나도 돌아가는 표시를 이만큼은 보여 줍니다(눌린 건지 알 수 있게). */
+const MIN_SPIN_MS = 600
 
 /**
  * 아이폰 홈 화면에 설치된 앱(PWA)에서는 사파리와 달리 화면을 아래로 당겨도
@@ -12,12 +14,19 @@ const MAX_PULL = 100
  *
  * 페이지 맨 위(scrollY = 0)에서 아래로 당길 때만 반응하고, 다른 곳에서
  * 스크롤할 때는 평소와 똑같이 동작합니다.
+ *
+ * 🐛 예전엔 당기면 window.location.reload() 로 **앱 전체를 다시 켰습니다.** 로그인 확인부터 다시 하고
+ *    모든 화면 데이터를 처음부터 받느라 느렸고(베트남 모바일 데이터), 잠깐 흰 화면·로딩 표시가 떴습니다.
+ * → onRefresh 를 넘기면 그 함수로 **데이터만** 새로 받습니다. 넘기지 않으면 예전처럼 다시 불러옵니다.
  */
-export function usePullToRefresh() {
+export function usePullToRefresh(onRefresh?: () => Promise<unknown>) {
   const [pullPx, setPullPx] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const startYRef = useRef<number | null>(null)
   const pullRef = useRef(0)
+  // 최신 onRefresh 를 가리킵니다(아래 이벤트 등록을 매번 다시 하지 않으려고).
+  const onRefreshRef = useRef(onRefresh)
+  useEffect(() => { onRefreshRef.current = onRefresh })
 
   useEffect(() => {
     // 출석체크 등 내부 스크롤이 있는 모달은 열려 있는 동안 document.body.style.overflow를
@@ -67,7 +76,17 @@ export function usePullToRefresh() {
       if (pullRef.current >= THRESHOLD) {
         setRefreshing(true)
         setPullPx(THRESHOLD)
-        window.location.reload()
+        const refresh = onRefreshRef.current
+        if (!refresh) {
+          window.location.reload()
+          return
+        }
+        const minSpin = new Promise(resolve => setTimeout(resolve, MIN_SPIN_MS))
+        Promise.allSettled([refresh(), minSpin]).then(() => {
+          pullRef.current = 0
+          setPullPx(0)
+          setRefreshing(false)
+        })
       } else {
         pullRef.current = 0
         setPullPx(0)

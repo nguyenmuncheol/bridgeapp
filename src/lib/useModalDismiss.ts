@@ -80,15 +80,25 @@ export function useBackgroundScrollLock(isOpen: boolean = true) {
   }, [isOpen])
 }
 
+// 팝업마다 쌓는 기록 칸에 붙이는 이름표.
+// 🐛 과거 버그: 팝업 위에 확인창이 겹쳐 뜬 상태에서 확인창이 닫히면(취소·확인·뒤로가기 모두),
+//    그 기록 되돌리기(popstate)를 **아래 팝업도 자기 것으로 알고** 함께 닫혔습니다.
+//    예) 알림 [전체삭제] → [취소] 를 눌렀는데 알림 패널까지 닫힘.
+// → 되돌아온 칸이 내 이름표면 "내 위의 팝업이 닫힌 것"이므로 나는 그대로 둡니다.
+let popupSeq = 0
+const isMyEntry = (id: number) => (history.state as { popupId?: number } | null)?.popupId === id
+
 export function useModalDismiss(isOpen: boolean, onClose: () => void) {
   const closedByBackRef = useRef(false)
 
   useEffect(() => {
     if (!isOpen) return
     closedByBackRef.current = false
-    history.pushState({ modal: true }, '')
+    const popupId = ++popupSeq
+    history.pushState({ modal: true, popupId }, '')
 
     const onPopState = () => {
+      if (isMyEntry(popupId)) return
       closedByBackRef.current = true
       onClose()
     }
@@ -156,13 +166,16 @@ export function useWriteModalGuard(
 
     // 3. 폰 뒤로가기 키 처리
     closedByBackRef.current = false
-    history.pushState({ writeModal: true }, '')
+    const popupId = ++popupSeq
+    history.pushState({ writeModal: true, popupId }, '')
 
     const onPopState = () => {
+      // 이 창 위에 뜬 확인창이 닫힌 것뿐이면(되돌아온 칸이 내 것) 아무것도 하지 않습니다.
+      if (isMyEntry(popupId)) return
       if (hasUnsavedRef.current) {
         const leave = window.confirm('작성 중인 내용이 있습니다. 정말 창을 닫으시겠습니까?\n작성 중인 내용은 저장되지 않습니다.')
         if (!leave) {
-          history.pushState({ writeModal: true }, '')
+          history.pushState({ writeModal: true, popupId }, '')
           return
         }
       }
@@ -181,6 +194,34 @@ export function useWriteModalGuard(
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
+}
+
+/**
+ * 팝업을 닫은 **다음에** 할 일을 예약합니다. (팝업 안의 버튼이 다른 화면으로 보내거나, 다른 팝업을 띄울 때)
+ *
+ * 🐛 useModalDismiss 팝업은 열릴 때 기록을 한 칸 쌓고, 닫힐 때 history.back() 으로 그 칸을 지웁니다.
+ *    그런데 history.back() 은 **나중에** 처리되고 pushState 는 **즉시** 처리됩니다. 그래서 닫자마자
+ *    탭을 옮기거나(pushState) 확인창을 띄우면, 늦게 도착한 back() 이 방금 쌓은 칸을 지워 버립니다.
+ *    (탭 이동이 취소되거나, "로그아웃 하시겠습니까?" 창이 뜨자마자 닫힘)
+ * → 기록 되돌리기가 끝났다는 신호(popstate)를 받은 뒤에 실행합니다.
+ *   신호가 안 오는 드문 경우를 대비해 조금 기다렸다가 그래도 실행합니다.
+ *
+ *   runAfterHistoryPop(() => onNavigate('news'))
+ *   onClose()   // ← 반드시 예약 다음에 닫습니다
+ */
+export function runAfterHistoryPop(fn: () => void, fallbackMs = 700) {
+  let done = false
+  const run = () => {
+    if (done) return
+    done = true
+    window.removeEventListener('popstate', onPop)
+    clearTimeout(timer)
+    fn()
+  }
+  // popstate 를 받은 같은 순간에는 다른 처리기(화면 전환 등)가 아직 돌고 있으므로 한 박자 뒤에 실행합니다.
+  const onPop = () => { setTimeout(run, 0) }
+  window.addEventListener('popstate', onPop)
+  const timer = setTimeout(run, fallbackMs)
 }
 
 /** 팝업 바깥 배경(backdrop)을 눌렀을 때만 닫히는 클릭 핸들러 (안쪽 내용 클릭은 무시, 이벤트 전파 차단). */

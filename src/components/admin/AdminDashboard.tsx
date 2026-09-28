@@ -23,15 +23,44 @@ interface AdminDashboardProps {
   onRejectUser: (userId: string) => Promise<{ error: { message?: string } | null }>
   onUpdateUsers?: React.Dispatch<React.SetStateAction<UserProfile[]>>
   onBack: () => void
+  /**
+   * 알림(앱 안·휴대폰 푸시)을 눌러 들어왔을 때 바로 열어 줄 탭 ('approval' | 'stats' 등).
+   * 이 권한으로 볼 수 없는 탭이면 무시하고 기본 탭을 엽니다.
+   */
+  openTab?: string
+  /** 같은 탭을 연달아 요청해도 다시 열리도록 하는 번호표 (우리소식·나눔 탭과 같은 방식) */
+  openToken?: number
 }
 
-export default function AdminDashboard({ currentUser, allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack }: AdminDashboardProps) {
+type AdminTabId = 'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts' | 'bulletin'
+
+export default function AdminDashboard({ currentUser, allUsers, onApproveUser, onRejectUser, onUpdateUsers, onBack, openTab = '', openToken = 0 }: AdminDashboardProps) {
   const isLeader = currentUser?.role === 'LEADER'
   const isCouponManager = currentUser?.role === 'COUPON'
   // 선생님은 출석·식사 탭만 볼 수 있습니다 (성도 정보·식권은 안 보입니다)
   const isTeacher = currentUser?.role === 'TEACHER'
   const defaultTab = isCouponManager ? 'coupons' : isTeacher ? 'stats' : 'meals'
-  const [adminTab, setAdminTab] = useState<'meals' | 'approval' | 'stats' | 'coupons' | 'members' | 'alerts' | 'bulletin'>(defaultTab)
+
+  // 권한별로 보이는 탭 — 아래 탭 메뉴와 알림으로 여는 탭이 같은 기준을 씁니다.
+  const visibleTabIds: AdminTabId[] = [
+    !isCouponManager && 'meals',
+    !isLeader && !isCouponManager && !isTeacher && 'approval',
+    !isCouponManager && !isTeacher && 'members',
+    !isLeader && !isTeacher && 'coupons',
+    !isCouponManager && 'stats',
+    currentUser?.role === 'ADMIN' && 'bulletin',
+    currentUser?.role === 'ADMIN' && 'alerts',
+  ].filter(Boolean) as AdminTabId[]
+  const requestedTab = visibleTabIds.includes(openTab as AdminTabId) ? (openTab as AdminTabId) : null
+
+  // 🐛 예전엔 "출석체크가 아직 안 끝났습니다"·"새 가입 신청" 알림을 누르면 내정보 탭까지만 가서,
+  //    관리자 대시보드를 찾아 들어간 뒤 해당 탭을 다시 골라야 했습니다. → 알림이 가리키는 탭을 바로 엽니다.
+  const [adminTab, setAdminTab] = useState<AdminTabId>(requestedTab ?? defaultTab)
+  const [prevOpenToken, setPrevOpenToken] = useState(openToken)
+  if (openToken !== prevOpenToken) {
+    setPrevOpenToken(openToken)
+    if (requestedTab) setAdminTab(requestedTab)
+  }
 
   const pendingCount = allUsers.filter(u => u.role === 'PENDING' && !!u.signupRequestedAt).length
 
@@ -115,14 +144,14 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
           접어 두 줄로 보여 줍니다. 탭이 4개 이하인 권한에서는 예전처럼 한 줄입니다. */}
       {(() => {
         const tabs = [
-          { id: 'meals', label: '🍱 식사', show: !isCouponManager },
-          { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}`, show: !isLeader && !isCouponManager && !isTeacher },
-          { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}`, show: !isCouponManager && !isTeacher },
-          { id: 'coupons', label: '🎟️ 쿠폰', show: !isLeader && !isTeacher },
-          { id: 'stats', label: '📊 출석', show: !isCouponManager },
-          { id: 'bulletin', label: '📖 주보', show: currentUser?.role === 'ADMIN' },
-          { id: 'alerts', label: '🔔 알림', show: currentUser?.role === 'ADMIN' },
-        ].filter(t => t.show)
+          { id: 'meals', label: '🍱 식사' },
+          { id: 'approval', label: `👥 승인${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
+          { id: 'members', label: `📋 성도${unassignedChildren.length > 0 ? ` (${unassignedChildren.length})` : ''}` },
+          { id: 'coupons', label: '🎟️ 쿠폰' },
+          { id: 'stats', label: '📊 출석' },
+          { id: 'bulletin', label: '📖 주보' },
+          { id: 'alerts', label: '🔔 알림' },
+        ].filter(t => visibleTabIds.includes(t.id as AdminTabId))
 
         const cols = Math.min(4, tabs.length)
 

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { RecentPostItem } from '../../lib/db'
+import { ViewActiveContext } from '../../lib/dataCache'
 
 interface RecentPostsCarouselProps {
   posts: RecentPostItem[]
@@ -95,8 +96,10 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
   }, [animating])
 
   // ── 자동 전환 ──
+  // 홈 탭은 다른 탭으로 가도 숨겨 둔 채 살아 있으므로(app/page.tsx), 안 보이는 동안에는 멈춥니다.
+  const viewActive = useContext(ViewActiveContext)
   useEffect(() => {
-    if (!canSlide || paused || !animating) return
+    if (!canSlide || paused || !animating || !viewActive) return
     if (typeof window !== 'undefined'
       && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
 
@@ -106,7 +109,7 @@ export default function RecentPostsCarousel({ posts, onNavigate }: RecentPostsCa
       setIndex(prev => prev + 1)
     }, AUTO_SLIDE_MS)
     return () => clearInterval(timer)
-  }, [canSlide, paused, animating])
+  }, [canSlide, paused, animating, viewActive])
 
   // ── 손가락으로 밀어서 넘기기 (ImageSlider와 같은 조작감) ──
   const touchStartX = useRef<number | null>(null)

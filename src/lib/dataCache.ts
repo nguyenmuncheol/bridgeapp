@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
+import { createContext, useContext, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 
 // ────────────────────────────────────────────────────────────────────────
 // 아주 가벼운 클라이언트 데이터 캐싱 레이어 (React Query/SWR 미설치 환경 대응)
@@ -130,6 +130,16 @@ export function invalidateCache(keyOrPrefix: string, opts: { exact?: boolean } =
   })
 }
 
+/**
+ * 이 화면(탭)이 지금 사용자 눈앞에 보이는지.
+ *
+ * 한 번 연 탭은 숨겨 둔 채 살려 둡니다(app/page.tsx — 돌아왔을 때 스크롤 위치·"더보기"로 불러온 글을
+ * 그대로 보여 주려고). 예전엔 탭을 옮길 때마다 화면을 새로 그려서, 그때 오래된(15초 지난) 데이터를
+ * 새로 받아 왔습니다. 숨겨 둔 탭은 다시 그려지지 않으므로, 이 값이 false → true 로 바뀌는 순간
+ * 같은 기준으로 새로 받아 옵니다. 탭 밖(팝업 등)에서는 기본값 true 라 예전과 똑같이 동작합니다.
+ */
+export const ViewActiveContext = createContext(true)
+
 export interface UseCachedQueryResult<T> {
   data: T | undefined
   error: unknown
@@ -147,6 +157,7 @@ export function useCachedQuery<T>(
   opts: { staleMs?: number; enabled?: boolean } = {}
 ): UseCachedQueryResult<T> {
   const { staleMs = DEFAULT_STALE_MS, enabled = true } = opts
+  const viewActive = useContext(ViewActiveContext)
   const entry = getEntry<T>(key)
   const fetcherRef = useRef(fetcher)
 
@@ -168,13 +179,14 @@ export function useCachedQuery<T>(
   const getSnapshot = useCallback(() => entry.version, [entry])
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
+  // 처음 그려질 때, 그리고 숨겨 둔 탭이 다시 보일 때(viewActive) 오래된 데이터면 새로 받습니다.
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !viewActive) return
     const isStale = Date.now() - entry.timestamp > staleMs
     if ((isStale || entry.data === undefined) && !entry.promise) {
       revalidate(key, fetcherRef.current)
     }
-  }, [key, enabled, entry, staleMs])
+  }, [key, enabled, entry, staleMs, viewActive])
 
   const isLoading = enabled && entry.data === undefined && entry.error === null && (!!entry.promise || !entry.started)
 
