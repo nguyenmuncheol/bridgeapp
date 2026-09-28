@@ -156,6 +156,7 @@ export default function AdminDashboard({ currentUser, allUsers, onApproveUser, o
 
         return (
           <SegmentedTabs
+            sticky
             value={adminTab}
             onChange={setAdminTab}
             maxCols={4}

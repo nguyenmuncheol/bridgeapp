@@ -280,6 +280,7 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
 
       {/* 서브탭 2종: 주일식사 | 교회행사 */}
       <SegmentedTabs
+        sticky
         value={subTab}
         onChange={goSubTab}
         items={[
@@ -391,21 +392,25 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
                   min: 0
                 }
               ].map(({ label, val, onChange, min }) => (
-                <div key={label} className="flex items-center justify-between gap-1 bg-white px-2 py-1.5 rounded-lg border border-gray-100">
-                  <span className="text-gray-600 font-bold whitespace-nowrap shrink-0">{label}</span>
-                  <div className="flex items-center gap-1 shrink-0">
+                // 🐛 폭이 좁은 폰(360px 안팎, 갤럭시 등)에서는 "어린이 − 0 +"가 칸에 다 들어가지 않아
+                //    + 버튼이 흰 칸 밖으로 삐져나왔습니다.
+                //    → 좁은 화면(400px 이하)에서는 글자·버튼·간격을 조금 줄이고, 그래도 모자라는
+                //      아주 좁은 화면(320px 등)에서는 버튼 줄이 이름 아래로 내려가게 합니다(flex-wrap).
+                <div key={label} className="min-w-0 flex flex-wrap items-center justify-between gap-x-1 gap-y-1 bg-white px-2 max-[400px]:px-1.5 py-1.5 rounded-lg border border-gray-100">
+                  <span className="text-gray-600 font-bold whitespace-nowrap shrink-0 max-[400px]:text-2xs">{label}</span>
+                  <div className="flex items-center gap-1 max-[400px]:gap-0.5 shrink-0 ml-auto">
                     <button
                       disabled={isLocked}
                       onClick={() => onChange(Math.max(min, val - 1))}
                       aria-label={`${label} 인원 줄이기`}
-                      className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
+                      className="w-7 h-7 max-[400px]:w-6 max-[400px]:h-6 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base max-[400px]:text-sm leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >−</button>
-                    <span className="font-bold text-brand w-6 text-center text-sm tabular-nums">{val}</span>
+                    <span className="font-bold text-brand w-6 max-[400px]:w-5 text-center text-sm max-[400px]:text-xs tabular-nums">{val}</span>
                     <button
                       disabled={isLocked}
                       onClick={() => onChange(val + 1)}
                       aria-label={`${label} 인원 늘리기`}
-                      className="w-7 h-7 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base leading-none disabled:opacity-50 active:scale-95 transition-transform"
+                      className="w-7 h-7 max-[400px]:w-6 max-[400px]:h-6 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center font-bold text-base max-[400px]:text-sm leading-none disabled:opacity-50 active:scale-95 transition-transform"
                     >+</button>
                   </div>
                 </div>

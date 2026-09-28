@@ -74,6 +74,7 @@ export default function NewsTab({ currentUser, allUsers, openSubTab = '', openTo
 
       {/* 서브탭 3종: 교회일정 | 가족소식 | 주소록 */}
       <SegmentedTabs
+        sticky
         value={subTab}
         onChange={goSubTab}
         items={[

@@ -107,6 +107,7 @@ export default function SharingTab({ currentUser, allUsers = [], openSubTab = ''
     <div className="space-y-4 pb-24 relative">
       {/* 서브탭 */}
       <SegmentedTabs
+        sticky
         value={subTab}
         onChange={goSubTab}
         items={[
