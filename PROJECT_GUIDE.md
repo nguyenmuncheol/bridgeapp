@@ -48,6 +48,7 @@
 - **찬양/묵상나눔**:
   - 전체보기 텍스트 제거 ➔ 카드 전체 클릭 시 상세 모달 오픈 및 유튜브 영상 재생
   - 작성자/관리자 전용 **`[✏️ 수정]`** 버튼 지원
+  - **파일 첨부**: 악보 PDF·음원(mp3/m4a)·사진·문서(docx/pptx/hwp)를 파일당 5MB 이하, 글당 최대 3개까지 첨부 (상한은 `src/lib/storage.ts` 의 `ATTACHMENT_*` 상수, 서버 설정은 `supabase/migrations/20261003000000_post_attachments.sql`)
 
 ### 👤 5) MyPageTab (`src/components/mypage/MyPageTab.tsx`)
 - **프로필**: 프로필 사진 업로드 변경, 연락처/주소 수정

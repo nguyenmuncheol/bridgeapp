@@ -267,6 +267,16 @@ export interface AttendanceRecord {
   note?: string // 결석 사유
 }
 
+/** 글에 붙인 첨부파일(찬양/묵상나눔의 악보·음원·문서). 파일 자체는 저장소에, 글에는 이 정보만 담깁니다. */
+export interface PostAttachment {
+  url: string
+  /** 올릴 때의 원래 파일명(화면 표시용). 저장소 안의 실제 경로는 영문/숫자로 따로 만듭니다. */
+  name: string
+  size: number
+  /** 올릴 때 정해 둔 MIME 형식 (예: application/pdf, audio/mpeg) */
+  type: string
+}
+
 export interface PostItem {
   id: string
   authorId: string
@@ -285,6 +295,7 @@ export interface PostItem {
   pinnedAt?: string
   youtubeUrl?: string
   imageUrls?: string[]
+  attachments?: PostAttachment[]
   tags?: string[]
   comments?: CommentItem[]
 }

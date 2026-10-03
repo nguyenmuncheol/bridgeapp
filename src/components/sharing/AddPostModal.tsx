@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useId } from 'react'
-import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
+import { PostItem, PostAttachment, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { CHURCH_AUTHOR_ID, CHURCH_AUTHOR_NAME, CHURCH_AVATAR_URL } from '../../lib/churchIdentity'
 import { getYouTubeVideoId } from './youtube'
 import { dbCreatePost } from '../../lib/db'
-import { uploadMultipleImagesToStorage, deleteImagesFromStorage } from '../../lib/storage'
+import { uploadMultipleImagesToStorage, uploadMultipleAttachments, deleteImagesFromStorage, deleteFilesFromStorage } from '../../lib/storage'
 import { useWriteModalGuard } from '../../lib/useModalDismiss'
 import { askConfirm } from '../ConfirmDialog'
 import Modal from '../ui/Modal'
+import AttachmentPicker from './AttachmentPicker'
 
 interface AddPostModalProps {
   subTab: 'prayer' | 'photo' | 'praise'
@@ -44,17 +45,19 @@ export default function AddPostModal({
   const [customTag, setCustomTag] = useState('')
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  // 찬양/묵상나눔 첨부파일 (등록 버튼을 누를 때 올라갑니다)
+  const [attachFiles, setAttachFiles] = useState<File[]>([])
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; isUploading: boolean } | null>(null)
   const [postAsChurch, setPostAsChurch] = useState(false) // 교회 이름으로 올리기
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const hasUnsaved = Boolean(newTitle.trim() || newContent.trim() || photoFiles.length > 0)
+  const hasUnsaved = Boolean(newTitle.trim() || newContent.trim() || photoFiles.length > 0 || attachFiles.length > 0)
 
   const resetAndClose = () => {
     photoPreviews.forEach(url => { try { URL.revokeObjectURL(url) } catch { /* 무시 */ } })
-    setNewTitle(''); setNewContent(''); setIsSecret(false); setYoutubeUrl(''); setSelectedTagChip(''); setCustomTag(''); setPhotoFiles([]); setPhotoPreviews([])
+    setNewTitle(''); setNewContent(''); setIsSecret(false); setYoutubeUrl(''); setSelectedTagChip(''); setCustomTag(''); setPhotoFiles([]); setPhotoPreviews([]); setAttachFiles([])
     setUploadProgress(null)
     setErrorMsg('')
     setPostAsChurch(false)
@@ -130,6 +133,24 @@ export default function AddPostModal({
           comments: []
         })
       } else if (subTab === 'praise') {
+        // ── 첨부파일(악보·음원·문서) 먼저 올리기 ──
+        let uploadedAttachments: PostAttachment[] = []
+        if (attachFiles.length > 0) {
+          setUploadProgress({ current: 0, total: attachFiles.length, isUploading: true })
+          try {
+            uploadedAttachments = await uploadMultipleAttachments(
+              attachFiles,
+              (completed, total) => setUploadProgress({ current: completed, total, isUploading: true })
+            )
+          } catch (err: unknown) {
+            // 올리다 실패하면 글을 등록하지 않습니다(파일 빠진 글이 올라가면 안 됩니다).
+            setUploadProgress(null)
+            setErrorMsg((err as { message?: string })?.message || '파일 업로드에 실패했습니다.')
+            return
+          }
+          setUploadProgress(null)
+        }
+
         const res = await dbCreatePost({
           authorId: resolvedAuthorId,
           authorName: resolvedAuthorName,
@@ -137,9 +158,12 @@ export default function AddPostModal({
           title: newTitle.trim(),
           content: newContent.trim(),
           category: 'PRAISE',
-          youtubeUrl: youtubeUrl.trim() || undefined
+          youtubeUrl: youtubeUrl.trim() || undefined,
+          attachments: uploadedAttachments
         })
         if (res.error || !res.data?.id) {
+          // 글 저장이 실패했으면 방금 올린 파일들은 아무도 참조하지 않는 쓰레기가 되므로 정리합니다.
+          await deleteFilesFromStorage(uploadedAttachments.map(a => a.url)).catch(() => {})
           setErrorMsg('등록하지 못했습니다. 인터넷 상태를 확인한 뒤 다시 시도해 주세요.')
           return
         }
@@ -152,6 +176,7 @@ export default function AddPostModal({
           content: newContent.trim(),
           category: 'PRAISE',
           youtubeUrl: youtubeUrl.trim() || undefined,
+          attachments: uploadedAttachments,
           createdAt: '방금 전',
           likes: 0
         })
@@ -337,6 +362,32 @@ export default function AddPostModal({
                 유튜브 주소를 넣으면 앱 안에서 바로 재생되고, 그 외 주소는 새 창에서 열립니다.
               </p>
             </div>
+          )}
+
+          {subTab === 'praise' && (
+            <>
+              <AttachmentPicker
+                inputId={`${formId}-7`}
+                files={attachFiles}
+                onFilesChange={setAttachFiles}
+                onMessage={setErrorMsg}
+                disabled={isSubmitting}
+              />
+              {uploadProgress?.isUploading && (
+                <div className="bg-brand-50 border border-brand-100 p-3 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold text-brand">
+                    <span>📎 파일 업로드 중...</span>
+                    <span>{uploadProgress.current} / {uploadProgress.total}개</span>
+                  </div>
+                  <div className="w-full bg-brand-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-brand h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {subTab === 'photo' && (
