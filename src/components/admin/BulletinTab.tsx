@@ -69,7 +69,12 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 
   /** 주일 선택 목록: DB에 있는 모든 주보 날짜 + 새로 만들 수 있는 이번 주. 최신순(내림차순). */
   const sundays = useMemo(() => {
-    const dates = new Set([...dateStatuses.map(d => d.date), ...upcomingSundays.map(s => s.dateStr)])
+    // 이미 만들어 둔 미래 주보(예: 다음 주 임시저장)가 DB에 있어도 이번 주보다 뒤 날짜는 목록에서 뺍니다.
+    const lastAllowed = upcomingSundays[upcomingSundays.length - 1]?.dateStr ?? ''
+    const dates = new Set([
+      ...dateStatuses.map(d => d.date).filter(d => !lastAllowed || d <= lastAllowed),
+      ...upcomingSundays.map(s => s.dateStr),
+    ])
     return Array.from(dates).sort().reverse().map(sundayEntryFromDateStr)
   }, [dateStatuses, upcomingSundays])
 
