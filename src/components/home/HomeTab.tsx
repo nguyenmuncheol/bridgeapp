@@ -45,8 +45,8 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
   const [toastMsg, setToastMsg] = useState('')
   const [copied, setCopied] = useState(false)
 
-  // 향후 1~2주 일요일 날짜 동적 계산
-  const upcomingSundays = useMemo(() => getUpcomingSundays(2), [])
+  // 이번 주 일요일 날짜 동적 계산
+  const upcomingSundays = useMemo(() => getUpcomingSundays(1), [])
 
   // Supabase DB 주보 및 공지사항 로드 (다른 탭 갔다 와도 반복 조회하지 않도록 캐시 사용)
   const { data: latestBulletin } = useCachedQuery('bulletin:latest', () => dbFetchLatestBulletin())
@@ -589,12 +589,12 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
             </button>
           </>}
         >
-              {/* 주보 날짜: 향후 1~2주 일요일 버튼 선택 */}
+              {/* 주보 날짜: 이번 주 일요일 버튼 선택 */}
               <div>
                 <label className="text-2xs text-gray-500 font-bold block mb-1.5">
-                  주보 날짜 선택 (향후 1~2주 일요일)
+                  주보 날짜 선택 (이번 주 일요일)
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {upcomingSundays.map((s) => (
                     <button
                       key={s.dateStr}
