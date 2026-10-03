@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { UserProfile, PostItem, Role, MealCouponAccount, NotificationItem } from './mockData'
+import { UserProfile, PostItem, PostAttachment, Role, MealCouponAccount, NotificationItem } from './mockData'
 import { invalidateCache } from './dataCache'
 import { toLocalDateStr, bulletinDateToSortable } from './dateUtils'
 import { BulletinContent, normalizeBulletinContent } from './bulletinContent'
@@ -508,8 +508,31 @@ interface PostRow {
   is_pinned?: boolean
   youtube_url?: string | null
   image_urls: string[] | null
+  /** jsonb. 마이그레이션(20261003000000_post_attachments) 전에는 컬럼이 없어 undefined 입니다. */
+  attachments?: unknown
   tags: string[] | null
   post_comments?: PostCommentRow[]
+}
+
+/**
+ * posts.attachments(jsonb)를 화면용 목록으로. jsonb 는 무엇이든 들어 있을 수 있으므로
+ * 모양이 맞는 항목만 골라 냅니다. (http(s) 주소가 아니면 링크로 쓰지 않습니다.)
+ */
+function normalizeAttachments(raw: unknown): PostAttachment[] {
+  if (!Array.isArray(raw)) return []
+  const out: PostAttachment[] = []
+  for (const a of raw) {
+    if (!a || typeof a !== 'object') continue
+    const { url, name, size, type } = a as Record<string, unknown>
+    if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) continue
+    out.push({
+      url,
+      name: typeof name === 'string' && name ? name : '첨부파일',
+      size: typeof size === 'number' && Number.isFinite(size) ? size : 0,
+      type: typeof type === 'string' ? type : '',
+    })
+  }
+  return out
 }
 
 /**
@@ -601,6 +624,7 @@ function mapPostRow(d: PostRow): PostItem {
     pinnedAt,
     youtubeUrl: d.youtube_url || undefined,
     imageUrls: d.image_urls || [],
+    attachments: normalizeAttachments(d.attachments),
     tags: cleanTags,
     // 댓글은 PostgREST가 순서를 보장하지 않으므로 작성순(오래된 것 → 최근)으로 직접 정렬합니다.
     // (정렬 후 날짜만 잘라야 하므로, 원본 타임스탬프로 정렬한 뒤 표시용으로 변환)
@@ -801,6 +825,8 @@ export async function dbCreatePost(post: Partial<PostItem>) {
     category: post.category,
     youtube_url: post.youtubeUrl,
     image_urls: post.imageUrls || [],
+    // 첨부파일이 있을 때만 보냅니다. (컬럼이 아직 없는 환경에서도 첨부 없는 글은 그대로 등록되도록)
+    ...(post.attachments && post.attachments.length > 0 ? { attachments: post.attachments } : {}),
     tags: post.tags || [],
     is_secret: post.isSecret || false,
     is_completed: post.isCompleted || false,
@@ -842,6 +868,8 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
   if (updates.youtubeUrl !== undefined) payload.youtube_url = updates.youtubeUrl || null
   // 행사사진 개별 삭제/추가 반영용. 배열 전체를 통째로 교체합니다.
   if (updates.imageUrls !== undefined) payload.image_urls = updates.imageUrls
+  // 첨부파일 목록도 통째로 교체합니다. (빠진 파일을 스토리지에서 지우는 일은 호출하는 쪽이 합니다)
+  if (updates.attachments !== undefined) payload.attachments = updates.attachments
   // 🐛 과거 버그(조용한 실패): 권한이 없어 한 줄도 안 바뀌어도 서버는 "성공(204)"으로 답합니다.
   // 그래서 아멘/좋아요/축하응원을 눌러도 화면만 바뀌고 실제로는 저장이 안 됐는데,
   // 앱은 오류가 없으니 성공으로 알고 그대로 뒀습니다. (새로고침하면 원래대로 돌아감)
@@ -866,19 +894,24 @@ export async function dbUpdatePost(id: string, updates: Partial<PostItem>) {
  *   순서가 반대면 사진 삭제만 성공했을 때 글이 깨진 이미지를 가리키게 됩니다.
  */
 export async function dbDeletePost(id: string) {
-  // 삭제 전에 이미지 주소를 먼저 확보 (지운 뒤에는 조회할 수 없으므로)
-  let imageUrls: string[] = []
-  const before = await supabase.from('posts').select('image_urls').eq('id', id).maybeSingle()
-  if (!before.error && before.data) imageUrls = before.data.image_urls || []
+  // 삭제 전에 파일 주소(사진 + 첨부파일)를 먼저 확보 (지운 뒤에는 조회할 수 없으므로)
+  // 컬럼을 이름으로 고르지 않고 전체를 읽습니다. attachments 컬럼이 없는 환경에서
+  // 이름으로 고르면 조회가 통째로 실패해 사진 정리까지 건너뛰게 되기 때문입니다.
+  let fileUrls: string[] = []
+  const before = await supabase.from('posts').select('*').eq('id', id).maybeSingle()
+  if (!before.error && before.data) {
+    const row = before.data as PostRow
+    fileUrls = [...(row.image_urls || []), ...normalizeAttachments(row.attachments).map(a => a.url)]
+  }
 
   const res = await supabase.from('posts').delete().eq('id', id)
   if (!res.error) {
     invalidateCache('posts:')
     invalidateCache('postTags:')
-    if (imageUrls.length > 0) {
+    if (fileUrls.length > 0) {
       // 파일 정리는 실패해도 글 삭제 자체는 성공으로 봅니다(고아 파일이 남을 뿐).
-      const { deleteImagesFromStorage } = await import('./storage')
-      await deleteImagesFromStorage(imageUrls).catch(() => {})
+      const { deleteFilesFromStorage } = await import('./storage')
+      await deleteFilesFromStorage(fileUrls).catch(() => {})
     }
   }
   return res

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import type { PostAttachment } from './mockData'
 
 const DEFAULT_BUCKET = 'church-assets'
 
@@ -141,6 +142,152 @@ export async function uploadMultipleImagesToStorage(
   return urls
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 글 첨부파일 (찬양/묵상나눔의 악보·음원·문서)
+//
+// 서버에 부담이 가지 않도록 세 가지로 막습니다.
+//  ① 파일당 5MB 이하  ② 글 하나에 최대 3개  ③ 정해 둔 형식만
+// 사진은 올리기 전에 기존처럼 1600px JPEG 로 줄이므로 보통 1MB 안팎이 됩니다.
+// 음원은 줄일 방법이 없어 5MB(128kbps 기준 약 5분)가 사실상 상한입니다.
+//
+// ⚠️ 형식 목록(ATTACHMENT_TYPES)은 저장소 버킷의 allowed_mime_types 와 같아야 합니다.
+//    둘이 어긋나면 앱은 통과시켰는데 서버가 거절합니다.
+//    → supabase/migrations/20261003000000_post_attachments.sql
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 글 하나에 붙일 수 있는 첨부파일 개수 */
+export const ATTACHMENT_MAX_FILES = 3
+/** 첨부파일 하나의 최대 크기(압축 후 기준) */
+export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024 // 5MB
+/** 사진은 올리기 전에 줄어들므로, 고르는 시점에는 이 크기까지만 받아 둡니다(메모리 보호). */
+const ATTACHMENT_MAX_RAW_IMAGE_BYTES = 30 * 1024 * 1024
+
+/**
+ * 확장자 → 서버에 알려 줄 형식.
+ * 브라우저가 알려 주는 file.type 은 기기마다 다르고(hwp 는 거의 항상 빈 값) 믿을 수 없어서,
+ * 확장자로 직접 정합니다. 이렇게 하면 서버의 형식 검사와도 항상 맞습니다.
+ */
+const ATTACHMENT_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  hwp: 'application/x-hwp',
+  hwpx: 'application/hwp+zip',
+}
+
+/** <input type="file" accept=...> 에 넣을 값 */
+export const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES).map(ext => `.${ext}`).join(',')
+/** 안내 문구용 */
+export const ATTACHMENT_HELP_TEXT = 'PDF(악보) · 음원(mp3, m4a) · 사진 · 문서(docx, pptx, hwp)'
+
+/** 서버 버킷에 허용해 줘야 하는 형식 목록 (마이그레이션과 맞춰 둡니다) */
+export const ATTACHMENT_MIME_TYPES = Array.from(new Set(Object.values(ATTACHMENT_TYPES)))
+
+function extOf(fileName: string): string {
+  const parts = fileName.split('.')
+  return parts.length > 1 ? (parts.pop() || '').toLowerCase() : ''
+}
+
+/** 파일 이름(확장자)으로 형식을 알아냅니다. 허용하지 않는 형식이면 빈 문자열. */
+export function attachmentTypeOfName(fileName: string): string {
+  return ATTACHMENT_TYPES[extOf(fileName)] || ''
+}
+
+export function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return ''
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+}
+
+export function isAudioAttachment(att: Pick<PostAttachment, 'type'>): boolean {
+  return att.type.startsWith('audio/')
+}
+
+/**
+ * 파일을 고르는 순간 바로 확인합니다(올리기 전에 알려 주려는 것).
+ * 문제가 없으면 null, 있으면 사용자에게 보여 줄 문구를 돌려줍니다.
+ */
+export function validateAttachmentFile(file: File): string | null {
+  const ext = extOf(file.name)
+  const type = ATTACHMENT_TYPES[ext]
+  if (!type) {
+    return `'${file.name}' 은(는) 올릴 수 없는 형식입니다. (${ATTACHMENT_HELP_TEXT})`
+  }
+  const limit = type.startsWith('image/') ? ATTACHMENT_MAX_RAW_IMAGE_BYTES : ATTACHMENT_MAX_BYTES
+  if (file.size > limit) {
+    return `'${file.name}' 은(는) 용량이 너무 큽니다 (${formatFileSize(file.size)}). ${formatFileSize(limit)} 이하만 올릴 수 있어요.`
+  }
+  return null
+}
+
+/**
+ * 첨부파일 하나를 올리고 글에 저장할 정보를 돌려줍니다. 실패하면 예외를 던집니다.
+ * (이미지 업로드와 같은 이유로, 실패를 삼키고 넘어가지 않습니다)
+ *
+ * 저장소 안의 파일 경로에는 원래 파일명(한글·공백)을 쓰지 않습니다. 주소가 깨지거나 거절될 수 있어서
+ * 영문/숫자 이름을 새로 만들고, 원래 이름은 글에 따로 저장해 화면에 보여 줍니다.
+ */
+export async function uploadAttachmentToStorage(file: File, folder = 'attachments'): Promise<PostAttachment> {
+  const invalid = validateAttachmentFile(file)
+  if (invalid) throw new Error(invalid)
+
+  let ext = extOf(file.name)
+  let displayName = file.name.trim().slice(0, 100)
+  let body: File = file
+
+  // 사진은 기존 사진 업로드와 똑같이 줄여서 올립니다(결과는 jpg).
+  if (ATTACHMENT_TYPES[ext].startsWith('image/')) {
+    body = await compressImage(file)
+    if (body !== file) {
+      ext = 'jpg'
+      displayName = displayName.replace(/\.[^/.]+$/, '') + '.jpg'
+    }
+  }
+
+  const type = ATTACHMENT_TYPES[ext]
+  if (body.size > ATTACHMENT_MAX_BYTES) {
+    throw new Error(`'${file.name}' 은(는) 용량이 너무 큽니다 (${formatFileSize(body.size)}). ${formatFileSize(ATTACHMENT_MAX_BYTES)} 이하만 올릴 수 있어요.`)
+  }
+
+  const path = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`
+  const { data, error } = await supabase.storage
+    .from(DEFAULT_BUCKET)
+    .upload(path, body, { cacheControl: '3600', upsert: false, contentType: type })
+  if (error) {
+    throw new Error(`'${file.name}' 업로드에 실패했습니다: ${error.message}`)
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(DEFAULT_BUCKET).getPublicUrl(data.path)
+  return { url: publicUrlData.publicUrl, name: displayName, size: body.size, type }
+}
+
+/** 첨부파일 여러 개를 순서대로 올립니다. 중간에 실패하면 이미 올라간 것은 지우고 예외를 던집니다. */
+export async function uploadMultipleAttachments(
+  files: File[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<PostAttachment[]> {
+  const total = files.length
+  const done: PostAttachment[] = []
+  try {
+    for (let i = 0; i < total; i++) {
+      onProgress?.(i, total)
+      done.push(await uploadAttachmentToStorage(files[i]))
+      onProgress?.(i + 1, total)
+    }
+  } catch (err) {
+    if (done.length > 0) await deleteFilesFromStorage(done.map(a => a.url)).catch(() => {})
+    throw err
+  }
+  return done
+}
+
 /**
  * Supabase Storage에서 Public URL 목록에 해당하는 파일들을 삭제합니다.
  * URL에서 버킷 내부 경로를 추출하여 일괄 삭제합니다.
@@ -168,6 +315,9 @@ export async function deleteImagesFromStorage(publicUrls: string[]): Promise<voi
     console.warn('Storage 파일 삭제 실패:', error.message)
   }
 }
+
+/** 사진이 아닌 파일(첨부파일)에도 쓰는 같은 함수입니다. 공개 주소에서 경로를 뽑아 지웁니다. */
+export const deleteFilesFromStorage = deleteImagesFromStorage
 
 /**
  * 카카오 프로필 사진을 **우리 저장소로 한 번 복사**합니다.

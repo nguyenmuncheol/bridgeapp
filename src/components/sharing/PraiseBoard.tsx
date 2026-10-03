@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, Dispatch, SetStateAction, useId } from 'react'
-import { Play, Trash2, ExternalLink, Edit2, Heart, MessageCircle } from 'lucide-react'
-import { PostItem, UserProfile, getUserDisplayName } from '../../lib/mockData'
+import { Play, Trash2, ExternalLink, Edit2, Heart, MessageCircle, Paperclip } from 'lucide-react'
+import { PostItem, PostAttachment, UserProfile, getUserDisplayName } from '../../lib/mockData'
 import { dbUpdatePost, dbDeletePost, dbAddComment, dbTogglePostLike } from '../../lib/db'
+import { uploadMultipleAttachments, deleteFilesFromStorage } from '../../lib/storage'
 import { getYouTubeVideoId } from './youtube'
+import AttachmentList from './AttachmentList'
+import AttachmentPicker from './AttachmentPicker'
 import CommentList from '../CommentList'
 import Avatar from '../news/Avatar'
 import { SkeletonList } from '../SkeletonCard'
@@ -50,10 +53,18 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   const [editPraiseTitle, setEditPraiseTitle] = useState('')
   const [editPraiseContent, setEditPraiseContent] = useState('')
+  // 첨부파일: 남길 기존 파일 + 이번에 새로 고른 파일(저장할 때 올라갑니다)
+  const [editAttachments, setEditAttachments] = useState<PostAttachment[]>([])
+  const [editNewFiles, setEditNewFiles] = useState<File[]>([])
+  const [isSavingPraise, setIsSavingPraise] = useState(false)
 
+  const attachmentsChanged = Boolean(
+    editingPraise &&
+    (editNewFiles.length > 0 || editAttachments.length !== (editingPraise.attachments || []).length)
+  )
   const hasUnsavedPraiseEdit = Boolean(
     editingPraise &&
-    (editPraiseTitle !== editingPraise.title || editPraiseContent !== editingPraise.content)
+    (editPraiseTitle !== editingPraise.title || editPraiseContent !== editingPraise.content || attachmentsChanged)
   )
   useWriteModalGuard(Boolean(editingPraise), hasUnsavedPraiseEdit, () => setEditingPraise(null))
 
@@ -156,15 +167,48 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
 
   // ── 찬양/묵상 수정 저장 ──
   const handleSavePraiseEdit = async () => {
-    if (!editingPraise) return
+    if (!editingPraise || isSavingPraise) return
     const editId = editingPraise.id
-    const { error } = await dbUpdatePost(editId, { title: editPraiseTitle.trim(), content: editPraiseContent.trim() })
+    setIsSavingPraise(true)
+
+    // 새로 고른 파일을 먼저 올립니다. 실패하면 저장하지 않습니다.
+    let uploaded: PostAttachment[] = []
+    if (editNewFiles.length > 0) {
+      try {
+        uploaded = await uploadMultipleAttachments(editNewFiles)
+      } catch (err: unknown) {
+        setIsSavingPraise(false)
+        showToast((err as { message?: string })?.message || '파일 업로드에 실패했습니다.', true)
+        return
+      }
+    }
+
+    const nextAttachments = [...editAttachments, ...uploaded]
+    // 첨부파일을 건드리지 않았으면 그 항목은 보내지 않습니다(제목·내용만 고치는 수정은 그대로 동작).
+    const { error } = await dbUpdatePost(editId, {
+      title: editPraiseTitle.trim(),
+      content: editPraiseContent.trim(),
+      ...(attachmentsChanged ? { attachments: nextAttachments } : {}),
+    })
+    setIsSavingPraise(false)
     if (error) {
+      // 저장이 실패했으면 방금 올린 파일은 아무도 쓰지 않으므로 정리합니다.
+      if (uploaded.length > 0) deleteFilesFromStorage(uploaded.map(a => a.url)).catch(() => {})
       showToast('수정하지 못했습니다. 다시 시도해 주세요.', true)
       return
     }
+
+    // 저장에 성공했으면, 원래 있었는데 이번에 뺀 파일만 저장소에서 지웁니다(고아 파일 방지).
+    const removed = (editingPraise.attachments || []).filter(a => !editAttachments.some(k => k.url === a.url))
+    if (removed.length > 0) deleteFilesFromStorage(removed.map(a => a.url)).catch(() => {})
+
     setPraises(prev => prev.map(p => p.id === editId
-      ? { ...p, title: editPraiseTitle.trim(), content: editPraiseContent.trim() }
+      ? {
+          ...p,
+          title: editPraiseTitle.trim(),
+          content: editPraiseContent.trim(),
+          ...(attachmentsChanged ? { attachments: nextAttachments } : {}),
+        }
       : p
     ))
     setEditingPraise(null)
@@ -273,6 +317,11 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
             <span className="flex items-center gap-1 font-bold text-gray-500">
               <MessageCircle size={12} /> {(praise.comments || []).length}
             </span>
+            {(praise.attachments?.length ?? 0) > 0 && (
+              <span className="flex items-center gap-1 font-bold text-gray-500" aria-label={`첨부파일 ${praise.attachments?.length}개`}>
+                <Paperclip size={12} /> {praise.attachments?.length}
+              </span>
+            )}
           </div>
         </Card>
       ))}
@@ -305,6 +354,8 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                             setEditingPraise(target)
                             setEditPraiseTitle(target.title)
                             setEditPraiseContent(target.content)
+                            setEditAttachments(target.attachments || [])
+                            setEditNewFiles([])
                           }, 50)
                         }}
                         className="tap-area-y relative p-1.5 bg-brand/10 text-brand rounded-lg hover:bg-brand/15"
@@ -364,6 +415,8 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               })()}
               <p className="text-xs text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-xl whitespace-pre-wrap">{selectedPraise.content}</p>
 
+              <AttachmentList attachments={selectedPraise.attachments || []} />
+
               {/* 댓글 — 기도제목·교우소식과 같은 부품을 씁니다 */}
               <div className="pt-1 border-t border-gray-100 space-y-2">
                 <CommentList
@@ -410,9 +463,10 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
               <button
                 type="button"
                 onClick={handleSavePraiseEdit}
-                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+                disabled={isSavingPraise}
+                className="flex-1 py-3 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
-                저장하기
+                {isSavingPraise ? (editNewFiles.length > 0 ? '업로드 중...' : '저장 중...') : '저장하기'}
               </button>
         </>}
         >
@@ -438,6 +492,16 @@ export default function PraiseBoard({ currentUser, allUsers, isAdmin, praises, s
                   placeholder="내용"
                 />
               </div>
+
+              <AttachmentPicker
+                inputId={`${formId}-3`}
+                existing={editAttachments}
+                onRemoveExisting={url => setEditAttachments(prev => prev.filter(a => a.url !== url))}
+                files={editNewFiles}
+                onFilesChange={setEditNewFiles}
+                onMessage={msg => { if (msg) showToast(msg, true) }}
+                disabled={isSavingPraise}
+              />
         </Modal>
       )}
     </div>

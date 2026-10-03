@@ -65,7 +65,13 @@ async function collectReferencedText() {
       for (const c of cols) {
         const v = r[c]
         if (!v) continue
-        chunks.push(Array.isArray(v) ? v.join(' ') : String(v))
+        // 첨부파일(posts.attachments)은 객체 배열(jsonb)이라 join 하면 "[object Object]" 가 되어
+        // 주소가 통째로 빠집니다. 객체는 JSON 글자로 풀어 담습니다.
+        if (typeof v === 'object') {
+          chunks.push(Array.isArray(v) && v.every(x => typeof x === 'string') ? v.join(' ') : JSON.stringify(v))
+        } else {
+          chunks.push(String(v))
+        }
       }
     }
   }
@@ -76,7 +82,7 @@ async function collectReferencedText() {
     push(data, ...cols)
   }
 
-  await grab('posts', ['image_urls', 'content'])
+  await grab('posts', ['image_urls', 'attachments', 'content'])
   await grab('bulletins', ['image_urls', 'summary'])
   await grab('profiles', ['avatar_url', 'family_info'])
   await grab('event_forms', ['content', 'url'])
