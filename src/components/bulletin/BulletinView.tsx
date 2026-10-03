@@ -40,6 +40,16 @@ interface BulletinViewProps {
 /** A5 한 쪽의 너비(148.5mm)를 화면 픽셀로. 96dpi 기준 148.5 / 25.4 * 96 */
 const PAGE_WIDTH_PX = 561
 
+/** 한 쪽의 높이(mm) — CSS .page 의 height 와 같은 값 */
+const PAGE_HEIGHT_MM = 210
+
+/**
+ * 설교 메모 칸이 '한 줄' 이상 되려면 필요한 높이(mm).
+ * 위 여백 4.6 + 제목 ≈4 + 간격 2 + 줄 하나 9.6 + 아래 여백 5 ≈ 25mm.
+ * 남는 자리가 이보다 작으면 칸을 그리지 않습니다.
+ */
+const MEMO_MIN_MM = 25
+
 /**
  * memo 로 감싼 이유: 관리자 주보 탭이 글자 하나마다 새로 그리면 타이핑이 밀립니다.
  * content 가 그대로면 다시 그리지 않습니다(같은 객체일 때만 건너뜁니다).
@@ -52,6 +62,8 @@ function BulletinView({
   const c = content
   const wrapRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
+  const memoSlotRef = useRef<HTMLDivElement>(null)
+  const [memoFits, setMemoFits] = useState(true)
 
   // 담는 칸의 너비를 재서 그만큼 축소합니다.
   //
@@ -73,6 +85,28 @@ function BulletinView({
       setScale(prev => (Math.abs(prev - next) < 0.002 ? prev : next))
     })
     ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // 성경 본문 아래 남는 자리가 메모 한 줄도 안 되면 메모 칸을 뺍니다.
+  //
+  // 자리(.memo-slot)는 칸을 그리든 말든 늘 남는 공간을 채우고 있으므로, 칸을 빼도
+  // 자리 크기는 그대로입니다 — 재고 → 빼고 → 다시 재는 되먹임이 생기지 않습니다.
+  // 화면 축소(zoom)와 상관없도록 px 대신 **쪽 높이(210mm)에 대한 비율**로 잽니다.
+  useEffect(() => {
+    const slot = memoSlotRef.current
+    const page = slot?.parentElement
+    if (!slot || !page || typeof ResizeObserver === 'undefined') return
+
+    const measure = () => {
+      const pageH = page.getBoundingClientRect().height
+      if (pageH <= 0) return
+      const mm = (slot.getBoundingClientRect().height / pageH) * PAGE_HEIGHT_MM
+      setMemoFits(mm >= MEMO_MIN_MM)
+    }
+    const ro = new ResizeObserver(measure)
+    ro.observe(slot)
+    ro.observe(page)
     return () => ro.disconnect()
   }, [])
 
@@ -125,7 +159,8 @@ function BulletinView({
             {hasMessage ? (
               <div className="message">
                 <div className="dot" />
-                <div className="caps">{c.messageLabel}</div>
+                {/* 머리글(MESSAGE)을 비우면 그 줄을 빼고 제목·본문이 바로 올라옵니다 */}
+                {c.messageLabel.trim() && <div className="caps">{c.messageLabel}</div>}
                 <h2 className="t">{multiline(c.messageTitle)}</h2>
                 <div className="body">{multiline(c.messageBody)}</div>
               </div>
@@ -292,10 +327,16 @@ function BulletinView({
               ))}
             </ul>
 
-            {/* 성경 본문 길이에 따라 남는 공간을 아래 끝까지 자동으로 채웁니다 */}
-            <div className="memo">
-              <div className="lab">{MEMO_LABEL}</div>
-              <div className="lines" />
+            {/* 성경 본문 길이에 따라 남는 공간을 아래 끝까지 자동으로 채웁니다.
+                관리자가 메모 칸을 껐거나, 남는 자리가 메모 한 줄도 안 되면 칸을 그리지
+                않습니다(자리만 비워 둡니다). */}
+            <div className="memo-slot" ref={memoSlotRef}>
+              {c.showMemo && memoFits && (
+                <div className="memo">
+                  <div className="lab">{MEMO_LABEL}</div>
+                  <div className="lines" />
+                </div>
+              )}
             </div>
 
             {foot(3)}
@@ -468,8 +509,12 @@ const CSS = `
   font-variant-numeric:tabular-nums;margin-top:.9mm}
 .bl-root .verses .t{font-size:9.4pt;line-height:1.6;color:#365071}
 
-.bl-root .memo{margin-top:6mm;background:var(--beige-soft);padding:4.6mm 5.4mm 5mm;
-  flex:1 1 auto;min-height:24mm;display:flex;flex-direction:column}
+/* 자리(.memo-slot)는 남는 공간만큼 늘었다 줄었다 하고(최소 0 — 본문이 길면 사라짐),
+   칸(.memo)은 그 자리를 꽉 채웁니다. 예전에는 칸에 min-height:24mm 가 있어
+   본문이 길면 칸이 쪽 밖으로 밀려 잘렸습니다. */
+.bl-root .memo-slot{margin-top:6mm;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.bl-root .memo{background:var(--beige-soft);padding:4.6mm 5.4mm 5mm;
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .bl-root .memo .lab{font-size:8.4pt;letter-spacing:.3em;color:#8a7f6a;flex:0 0 auto}
 .bl-root .memo .lines{flex:1 1 auto;min-height:0;margin-top:2mm;
   --rule:9.6mm;

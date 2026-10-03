@@ -113,6 +113,11 @@ export interface BulletinContent {
   scriptureLabel: string
   scriptureRef: string
   verses: BulletinVerse[]
+  /**
+   * 본문 아래 '설교 메모' 칸을 둘지. 켜 두어도 본문이 길어 남는 자리가 메모 한 줄도
+   * 안 되면 칸은 저절로 빠집니다. 꺼 두면 자리가 남아도 그리지 않습니다.
+   */
+  showMemo: boolean
 
   // 4쪽 · 목회칼럼 · 섬김 · 공지 · 헌금
   messageLabel: string
@@ -197,6 +202,7 @@ export const EMPTY_BULLETIN_CONTENT: BulletinContent = {
   scriptureLabel: '성경말씀',
   scriptureRef: '',
   verses: [],
+  showMemo: true,
 
   messageLabel: 'MESSAGE',
   messageTitle: '',
@@ -222,6 +228,7 @@ type Unknown = Record<string, unknown>
 const asObj = (v: unknown): Unknown => (v && typeof v === 'object' && !Array.isArray(v) ? v as Unknown : {})
 const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 const asStr = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback)
+const asBool = (v: unknown, fallback: boolean): boolean => (typeof v === 'boolean' ? v : fallback)
 
 const asOrderList = (v: unknown, fallback: BulletinOrderItem[]): BulletinOrderItem[] => {
   const arr = asArr(v)
@@ -323,6 +330,8 @@ export function normalizeBulletinContent(raw: unknown): BulletinContent {
     scriptureLabel: asStr(c.scriptureLabel, d.scriptureLabel),
     scriptureRef:   asStr(c.scriptureRef),
     verses:         asVerses(c.verses),
+    // 옛 주보에는 이 값이 없습니다 — 예전처럼 메모 칸을 둡니다
+    showMemo:       asBool(c.showMemo, d.showMemo),
 
     messageLabel:  asStr(c.messageLabel, d.messageLabel),
     messageTitle:  asStr(c.messageTitle),

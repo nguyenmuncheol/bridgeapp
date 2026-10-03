@@ -700,12 +700,33 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               <Plus size={12} /> 절 추가
             </button>
           </div>
+
+          {/* 본문이 길어 남는 자리가 메모 한 줄도 안 되면 켜 두어도 칸은 저절로 빠집니다 */}
+          <label className="flex items-start gap-1.5 text-2xs text-gray-600 px-0.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={content.showMemo}
+              onChange={e => patch({ showMemo: e.target.checked })}
+              className="mt-0.5 rounded border-gray-300"
+            />
+            <span>
+              <strong>설교 메모 칸</strong> 넣기
+              <span className="block text-3xs text-gray-500">
+                켜 두어도 본문이 길어 메모 한 줄 자리가 안 남으면 칸은 자동으로 빠집니다.
+              </span>
+            </span>
+          </label>
         </>
       ))}
 
       {/* ── ④ 메시지 · 섬김 · 공지 · 헌금 ── */}
       {section('back', '④ 메시지 · 섬김 · 공지 · 헌금', `공지 ${content.notices.length}건 · 대표기도 ${content.prayerAssignments.length}명 지정`, (
         <>
+          <div>
+            <label htmlFor={`${formId}-7`} className="block text-2xs font-bold text-gray-500 mb-1">메시지 머리글 (비우면 그 줄을 빼고 메시지가 위로 올라옵니다)</label>
+            <input id={`${formId}-7`} className={inputCls + ' w-full'} value={content.messageLabel} placeholder="예: MESSAGE"
+              onChange={e => patch({ messageLabel: e.target.value })} />
+          </div>
           <div>
             <label htmlFor={`${formId}-4`} className="block text-2xs font-bold text-gray-500 mb-1">메시지 제목 (줄바꿈 가능)</label>
             <textarea id={`${formId}-4`} className={inputCls + ' w-full font-bold'} rows={2} value={content.messageTitle}
@@ -764,7 +785,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                 />
                 <div className="flex items-center gap-1.5 px-0.5">
                   <span className="w-12 shrink-0 text-3xs font-bold text-gray-500">주일</span>
-                  <span className="w-24 shrink-0 text-3xs font-bold text-gray-500">성도 선택</span>
+                  <span className="w-16 shrink-0 text-3xs font-bold text-gray-500">성도</span>
                   <span className="flex-1 text-3xs font-bold text-gray-500">주보 표기명</span>
                   <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-500">식사</span>
                   <span className="w-[26px] shrink-0" />
@@ -773,11 +794,13 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                   <div key={ri} className="flex items-center gap-1.5">
                     <span className="w-12 text-2xs font-bold text-gray-500 shrink-0 tabular-nums">{r[0]}</span>
                     <select
-                      className={inputCls + ' bg-white w-24 shrink-0 cursor-pointer'}
+                      className={inputCls + ' bg-white w-16 shrink-0 px-1 cursor-pointer'}
+                      aria-label="대표기도 성도 선택"
+                      title="대표기도 성도 선택"
                       value={prayerUserIdAt(mi, ri)}
                       onChange={e => assignPrayer(mi, ri, e.target.value)}
                     >
-                      <option value="">— 선택 안 함 —</option>
+                      <option value="">—</option>
                       {selectableMembers.map(u => (
                         <option key={u.id} value={u.id}>{u.name}{u.duty ? ` ${u.duty}` : ''}</option>
                       ))}
