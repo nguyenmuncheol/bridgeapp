@@ -89,11 +89,14 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
     })
   }, [accountsById])
 
-  // 상단 드롭박스는 이름 가나다순이 찾기 쉽습니다.
-  const pickerEntries = useMemo(
-    () => [...sortedEntries].sort((a, b) => a.familyName.localeCompare(b.familyName, 'ko')),
-    [sortedEntries]
-  )
+  // 상단 드롭박스는 이름 가나다순입니다. (하단 목록은 최근 처리순이라 별도로 정렬)
+  // 끝의 "님 가정"/" 가정"은 빼고 이름만 비교해, "이민아님 가정"과 "이민아 · 김영희 가정"처럼
+  // 꼬리 글자 때문에 순서가 어긋나지 않게 합니다.
+  const pickerEntries = useMemo(() => {
+    const nameKey = (acc: MealCouponAccount) => acc.familyName.replace(/(님)? 가정$/, '')
+    const collator = new Intl.Collator('ko')
+    return [...sortedEntries].sort((a, b) => collator.compare(nameKey(a), nameKey(b)))
+  }, [sortedEntries])
 
   // ── 발급/차감 입력 (가정 선택 + 수량) ──
   const formId = useId()
@@ -108,12 +111,9 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
   const handleSubmitAmount = async (sign: 1 | -1) => {
     if (!selectedAccount || amount < 1) return
     const ok = await handleUpdateCoupon(selectedAccount.familyGroupId, selectedAccount.familyName, sign * amount)
-    // 성공하면 다음 가정을 바로 처리할 수 있게 입력을 비웁니다. (실패하면 그대로 두어 다시 시도)
-    // 가정 선택까지 비우는 이유: 확인창이 없으므로 이전 가정에 실수로 또 처리하는 것을 막습니다.
-    if (ok) {
-      setSelectedFamId('')
-      setAmountText('')
-    }
+    // 성공하면 수량만 비웁니다. 가정은 그대로 두어, 아래 "현재 수량"에서 처리 결과를 바로 확인할 수 있게 합니다.
+    // (실패하거나 막혔을 때는 수량도 그대로 두어 다시 시도할 수 있습니다)
+    if (ok) setAmountText('')
   }
 
   // ── 되돌리기 ──
@@ -276,12 +276,22 @@ export default function CouponsTab({ allUsers, showToast }: CouponsTabProps) {
             >
               <option value="">{pickerEntries.length === 0 ? '승인된 성도가 없습니다' : '가정을 선택하세요'}</option>
               {pickerEntries.map(acc => (
-                <option key={acc.familyGroupId} value={acc.familyGroupId}>
-                  {acc.familyName} (잔여 {acc.balance}장)
-                </option>
+                <option key={acc.familyGroupId} value={acc.familyGroupId}>{acc.familyName}</option>
               ))}
             </select>
           </div>
+
+          {/* 고른 가정의 현재 수량. 발급/차감하면 곧바로 바뀝니다. */}
+          <div
+            aria-live="polite"
+            className="px-3 py-2.5 bg-white rounded-lg border border-gray-200 flex items-center justify-between text-xs"
+          >
+            <span className="text-gray-500 font-semibold">현재 수량</span>
+            {selectedAccount
+              ? <strong className="text-brand text-sm">{selectedAccount.balance}장</strong>
+              : <span className="text-gray-400">가정을 선택하면 표시됩니다</span>}
+          </div>
+
           <div className="flex items-end gap-2">
             <div className="w-24 shrink-0">
               <label htmlFor={`${formId}-amount`} className="text-2xs text-gray-500 font-semibold">수량 (장)</label>
