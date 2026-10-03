@@ -113,7 +113,7 @@ export default function Home() {
   const [contentKey, setContentKey] = useState(0)
 
   // ── 알림을 눌렀을 때 "그 글이 있는 서브탭"까지 열어 주기 위한 요청값 ──
-  // 큰 탭만 바꾸면 나눔은 늘 기도제목이, 우리소식은 늘 교회일정이 먼저 보입니다.
+  // 큰 탭만 바꾸면 나눔은 늘 기도제목이, 우리소식은 늘 가족소식이 먼저 보입니다.
   // token은 같은 서브탭을 연달아 요청해도 다시 열리도록 하는 번호표입니다.
   const [subTabRequest, setSubTabRequest] = useState<{ tab: string; sub: string; token: number }>(
     { tab: '', sub: '', token: 0 }
