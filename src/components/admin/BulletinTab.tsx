@@ -49,13 +49,13 @@ interface BulletinTabProps {
 export default function BulletinTab({ currentUser, allUsers, showToast }: BulletinTabProps) {
   // 라벨을 누르면 해당 입력칸으로 가고, 화면 낭독기가 칸 이름을 읽도록 라벨과 입력칸을 이어 줍니다.
   const formId = useId()
-  // 새로 만들 수 있는 미래 주일: 이번 주 포함 2주치만. 내용은 보통 해당 주일
+  // 새로 만들 수 있는 미래 주일: 이번 주 1주치만. 내용은 보통 해당 주일
   // 2~3일 전에 확정되므로 그보다 멀리 미리 만들어 둘 일이 없습니다.
-  const upcomingSundays = useMemo(() => getUpcomingSundays(2), [])
+  const upcomingSundays = useMemo(() => getUpcomingSundays(1), [])
 
   // DB에 실제로 있는 주보 날짜(상태 포함) — 과거분은 전부 이 목록에서만 가져옵니다.
   // 없는 과거 주일을 후보로 미리 만들어 두지 않으므로(어차피 다시 쓸 일 없음),
-  // 목록이 실제 있었던 주보 + 앞으로 2주치 후보로만 채워집니다.
+  // 목록이 실제 있었던 주보 + 이번 주 1주치 후보로만 채워집니다.
   const [dateStatuses, setDateStatuses] = useState<BulletinDateStatus[]>([])
   useEffect(() => {
     dbFetchBulletinDateStatuses(104).then(setDateStatuses).catch(() => {})
@@ -67,7 +67,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     [dateStatuses]
   )
 
-  /** 주일 선택 목록: DB에 있는 모든 주보 날짜 + 새로 만들 수 있는 앞으로 2주. 최신순(내림차순). */
+  /** 주일 선택 목록: DB에 있는 모든 주보 날짜 + 새로 만들 수 있는 이번 주. 최신순(내림차순). */
   const sundays = useMemo(() => {
     const dates = new Set([...dateStatuses.map(d => d.date), ...upcomingSundays.map(s => s.dateStr)])
     return Array.from(dates).sort().reverse().map(sundayEntryFromDateStr)
