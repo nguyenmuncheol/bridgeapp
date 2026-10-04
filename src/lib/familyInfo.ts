@@ -455,6 +455,10 @@ function buildAllDependentEntries(users: UserProfile[]): UserProfile[] {
   )
 
   users.forEach(u => {
+    // 탈퇴(role='LEFT') 처리된 가정의 자녀는 주소록·생일·출석에서 함께 빠집니다.
+    // (계정은 keep_app_access로 남겨 두더라도, 자녀 정보는 부모의 family_info에 들어 있어서
+    //  여기서 걸러 주지 않으면 출석체크 명단에 계속 남습니다.)
+    if (u.role === 'LEFT') return
     const shared = getSharedChildren(u, users)
     const linked = findLinkedFamilyMembers(u, users)
     const effectiveFamilyGroupId = u.familyGroupId || familyKeyOf(u)
