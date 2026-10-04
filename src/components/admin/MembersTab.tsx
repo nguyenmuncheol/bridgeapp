@@ -817,54 +817,6 @@ export default function MembersTab({
           </div>
         </div>
 
-        {/* 탈퇴 처리된 성도 — 명단·출석에는 안 보이지만 여기서 복구하거나(기록 보존)
-            기록이 전혀 없는 경우에 한해 완전 삭제할 수 있습니다. */}
-        {!isLeader && leftMembers.length > 0 && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowLeftMembers(v => !v)}
-              className="w-full p-3 flex items-center justify-between text-left"
-            >
-              <span className="text-2xs font-bold text-gray-500">🚪 탈퇴 처리된 성도 ({leftMembers.length}명)</span>
-              <span className="text-2xs text-gray-500">{showLeftMembers ? '접기 ▲' : '펼치기 ▼'}</span>
-            </button>
-            {showLeftMembers && (
-              <div className="px-3 pb-3 space-y-1.5">
-                {leftMembers.map(member => (
-                  <div key={member.id} className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-700 truncate">{member.name}</p>
-                      <p className="text-2xs text-gray-500">
-                        {member.previousRole ? `이전 등급: ${member.previousRole}` : ''}
-                        {member.isUnregistered ? ' · 미가입' : ''}
-                        {member.keepAppAccess ? ' · 🟢 커뮤니티 접근 유지' : ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleRestoreMember(member)}
-                        disabled={restoringId === member.id}
-                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-2xs font-bold rounded-lg disabled:opacity-50"
-                      >
-                        복구
-                      </button>
-                      <button aria-label="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
-                        onClick={() => handleDeletePermanently(member)}
-                        disabled={deletingId === member.id}
-                        title="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
-                        className="tap-area-y relative p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg disabled:opacity-50"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* 성도 리스트 (장기결석자 우선 정렬 + 부부는 한 쌍으로 묶어서 표시) */}
         {sortedMemberUnits.map(unit => {
           const cards = unit.members.map(({ member }) => (
@@ -938,6 +890,54 @@ export default function MembersTab({
 
         {filteredMembers.length === 0 && (
           <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-xs text-gray-500">검색 결과가 없습니다.</div>
+        )}
+
+        {/* 탈퇴 처리된 성도 — 명단·출석에는 안 보이지만 여기서 복구하거나(기록 보존)
+            기록이 전혀 없는 경우에 한해 완전 삭제할 수 있습니다. */}
+        {!isLeader && leftMembers.length > 0 && (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowLeftMembers(v => !v)}
+              className="w-full p-3 flex items-center justify-between text-left"
+            >
+              <span className="text-2xs font-bold text-gray-500">🚪 탈퇴 처리된 성도 ({leftMembers.length}명)</span>
+              <span className="text-2xs text-gray-500">{showLeftMembers ? '접기 ▲' : '펼치기 ▼'}</span>
+            </button>
+            {showLeftMembers && (
+              <div className="px-3 pb-3 space-y-1.5">
+                {leftMembers.map(member => (
+                  <div key={member.id} className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-700 truncate">{member.name}</p>
+                      <p className="text-2xs text-gray-500">
+                        {member.previousRole ? `이전 등급: ${member.previousRole}` : ''}
+                        {member.isUnregistered ? ' · 미가입' : ''}
+                        {member.keepAppAccess ? ' · 🟢 커뮤니티 접근 유지' : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleRestoreMember(member)}
+                        disabled={restoringId === member.id}
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-2xs font-bold rounded-lg disabled:opacity-50"
+                      >
+                        복구
+                      </button>
+                      <button aria-label="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
+                        onClick={() => handleDeletePermanently(member)}
+                        disabled={deletingId === member.id}
+                        title="출석 기록이 없을 때만 완전 삭제할 수 있습니다"
+                        className="tap-area-y relative p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg disabled:opacity-50"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
