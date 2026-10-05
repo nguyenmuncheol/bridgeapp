@@ -454,6 +454,25 @@ function buildAllDependentEntries(users: UserProfile[]): UserProfile[] {
       .map(u => `${(u.familyGroupId || familyKeyOf(u)).trim()}|${u.name.trim()}`)
   )
 
+  // 부부 두 계정에 저장된 같은 자녀의 부서 값이 서로 다르면(동기화 실패 등) 한 값으로 정합니다.
+  // ⚠️ DB 함수 public.assigned_children 과 **같은 규칙이어야 합니다**
+  //    (supabase/migrations/20261004120000_sync_family_children.sql) — 출석 명단(화면)과
+  //    미완료 알림(서버)이 서로 다른 사람을 세지 않도록:
+  //    ① 어느 한 쪽이라도 '출석 미적용'이면 미적용  ② 아니면 부서가 있는 값 중 계정 id가 가장 작은 쪽
+  const resolvedLabri = new Map<string, { labri: string; owner: string }>()
+  users.forEach(u => {
+    if (u.role === 'LEFT') return
+    parseFamilyInfo(u.familyInfo).children.forEach(c => {
+      const labri = c.labriId || ''
+      const prev = resolvedLabri.get(c.id)
+      if (!prev) { resolvedLabri.set(c.id, { labri, owner: u.id }); return }
+      if (prev.labri === CHILD_LABRI_NO_ATTENDANCE) return
+      if (labri === CHILD_LABRI_NO_ATTENDANCE || (labri && (!prev.labri || u.id < prev.owner))) {
+        resolvedLabri.set(c.id, { labri, owner: u.id })
+      }
+    })
+  })
+
   users.forEach(u => {
     // 탈퇴(role='LEFT') 처리된 가정의 자녀는 주소록·생일·출석에서 함께 빠집니다.
     // (계정은 keep_app_access로 남겨 두더라도, 자녀 정보는 부모의 family_info에 들어 있어서
@@ -481,7 +500,7 @@ function buildAllDependentEntries(users: UserProfile[]): UserProfile[] {
         avatarUrl: c.avatarUrl || '',
         createdAt: '',
         isDependent: true,
-        childLabriId: c.labriId || '',
+        childLabriId: resolvedLabri.get(c.id)?.labri ?? (c.labriId || ''),
         familyGroupId: effectiveFamilyGroupId,
         parentName: buildParentLabel(u, linked)
       })
