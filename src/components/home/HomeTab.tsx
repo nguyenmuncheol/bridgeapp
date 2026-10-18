@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useId } from 'react'
-import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info } from 'lucide-react'
+import { Check, Copy, ChevronRight, FileText, Megaphone, CreditCard, Church, Info, ZoomIn } from 'lucide-react'
 import { UserProfile, PostItem, getUserDisplayName, KAKAO_OPEN_CHAT_URL, getSimpleUserName } from '../../lib/mockData'
 import { getUpcomingSundays, bulletinDateToSortable, formatBulletinDisplay, todayLocalDateStr } from '../../lib/dateUtils'
 import { dbFetchLatestBulletin, dbUpsertBulletin, dbFetchPosts, dbFetchRecentPosts, dbCreatePost, dbUpdatePost, dbDeletePost } from '../../lib/db'
@@ -10,6 +10,7 @@ import { uploadMultipleImagesToStorage } from '../../lib/storage'
 import RecentPostsCarousel from './RecentPostsCarousel'
 import ImageSlider from '../ImageSlider'
 import BulletinView from '../bulletin/BulletinView'
+import BulletinViewerModal from '../bulletin/BulletinViewerModal'
 import { normalizeBulletinContent, BulletinContent, OFFERING_ACCOUNT_LINES } from '../../lib/bulletinContent'
 import ImageViewerModal from '../ImageViewerModal'
 import { useModalDismiss, useWriteModalGuard } from '../../lib/useModalDismiss'
@@ -78,6 +79,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
   useModalDismiss(showBulletinModal, () => setShowBulletinModal(false))
   const [activeBulletinImgIdx, setActiveBulletinImgIdx] = useState(0)
   const [isEnlargedBulletinOpen, setIsEnlargedBulletinOpen] = useState(false)
+  const [isBulletinViewerOpen, setIsBulletinViewerOpen] = useState(false)
 
   // 주보 편집 모달 상태
   const [showBulletinEditModal, setShowBulletinEditModal] = useState(false)
@@ -523,10 +525,32 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
 
             {/* 앱에서 작성한 주보 — 1 → 2 → 3 → 4쪽 순서로 이어서 보여 줍니다.
                 (사진으로 올린 주보는 아래 슬라이드로 계속 보입니다) */}
+            {/* 팝업 폭에 맞춰 줄어들어 글씨가 작으므로, 탭하거나 [크게 보기]를 누르면 전체화면으로 키워 봅니다. */}
             {bulletin.content && (
-              <div className="-mx-2">
-                <BulletinView content={normalizeBulletinContent(bulletin.content)} mode="web" />
-              </div>
+              <>
+                <div
+                  className="-mx-2 cursor-zoom-in"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="주보 크게 보기"
+                  onClick={() => setIsBulletinViewerOpen(true)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setIsBulletinViewerOpen(true)
+                    }
+                  }}
+                >
+                  <BulletinView content={normalizeBulletinContent(bulletin.content)} mode="web" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBulletinViewerOpen(true)}
+                  className="w-full py-2.5 bg-brand-50 text-brand text-xs font-bold rounded-xl hover:bg-brand-100 flex items-center justify-center gap-1.5 active:scale-[0.99] transition-all"
+                >
+                  <ZoomIn size={14} /> 주보 크게 보기
+                </button>
+              </>
             )}
 
             {/* 다중 이미지 슬라이드 */}
@@ -767,7 +791,16 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
           images={bulletin.imageUrls}
           initialIndex={activeBulletinImgIdx}
           onClose={() => setIsEnlargedBulletinOpen(false)}
+          onIndexChange={setActiveBulletinImgIdx}
           alt="주보 크게 보기"
+        />
+      )}
+
+      {/* ─── 앱에서 작성한 주보 전체화면 확대 뷰어 ─── */}
+      {isBulletinViewerOpen && bulletin?.content && (
+        <BulletinViewerModal
+          content={normalizeBulletinContent(bulletin.content)}
+          onClose={() => setIsBulletinViewerOpen(false)}
         />
       )}
     </div>
