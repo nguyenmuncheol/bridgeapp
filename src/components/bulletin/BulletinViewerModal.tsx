@@ -20,15 +20,16 @@ interface BulletinViewerModalProps {
  * 확대할 방법이 없었습니다. 게다가 주보 팝업(max-w-sm) 폭에 맞춰 약 55%로 줄어 보이기 때문에
  * 섬김표·공지·헌금 계좌 글씨를 읽을 수 없었습니다.
  *
- * → 처음에는 실물 크기(A5 한 쪽 = PAGE_WIDTH_PX)로 보여 주고, 상하좌우로 밀어서 봅니다.
- *   [화면 맞춤] 으로 한 화면 너비에 맞춘 크기로 바꿀 수 있습니다.
+ * → 처음에는 한 화면 너비에 맞춰(화면 맞춤) 보여 주고, [실물 크기] 를 누르면 A5 한 쪽 실물
+ *   크기(PAGE_WIDTH_PX)로 키워 상하좌우로 밀어서 봅니다.
  *   BulletinView 는 담는 칸의 너비를 재서 스스로 축소하므로, 칸 너비만 바꿔 주면 됩니다.
  *
  * createPortal 로 document.body 에 붙이는 이유는 ProfileImageLightbox 와 같습니다 —
  * 조상의 transform 에 fixed 위치가 휘둘리지 않게 하기 위함입니다.
  */
 export default function BulletinViewerModal({ content, onClose }: BulletinViewerModalProps) {
-  const [actualSize, setActualSize] = useState(true)
+  // 처음에는 화면 너비에 맞춰 한 쪽 전체가 보이게 하고, 더 키우려면 [실물 크기]를 누릅니다.
+  const [actualSize, setActualSize] = useState(false)
 
   // 배경 스크롤 잠금 · 뒤로가기로 닫기. 아래 주보 팝업과 겹쳐도 서로 간섭하지 않습니다.
   useModalDismiss(true, onClose)
