@@ -38,7 +38,7 @@ interface BulletinViewProps {
 }
 
 /** A5 한 쪽의 너비(148.5mm)를 화면 픽셀로. 96dpi 기준 148.5 / 25.4 * 96 */
-const PAGE_WIDTH_PX = 561
+export const PAGE_WIDTH_PX = 561
 
 /** 한 쪽의 높이(mm) — CSS .page 의 height 와 같은 값 */
 const PAGE_HEIGHT_MM = 210
