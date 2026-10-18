@@ -40,7 +40,7 @@ export function attendanceChildren(allUsers: UserProfile[]) {
 /**
  * 이 사람이 출석을 입력하는 그룹(방문자 제외).
  *  · 관리자: 모든 어른 그룹 + 자녀가 있는 교회학교 그룹
- *  · 리더: 자기 라브리
+ *  · 리더: 자기 라브리 + 담당 교회학교 그룹(지정한 경우)
  *  · 선생님: 맡은 교회학교 그룹(정해지지 않았으면 모든 교회학교 그룹)
  */
 export function checkGroupsFor(user: UserProfile, children: ReturnType<typeof attendanceChildren>): string[] {
@@ -50,7 +50,12 @@ export function checkGroupsFor(user: UserProfile, children: ReturnType<typeof at
     return mine.length > 0 ? activeChildGroups.filter(g => mine.includes(g)) : [...activeChildGroups]
   }
   if (user.role === 'ADMIN') return [...ADULT_GROUPS, ...activeChildGroups]
-  if (user.role === 'LEADER') return [user.labriId || '미정']
+  if (user.role === 'LEADER') {
+    // 리더도 담당 교회학교 부서(teachGroup)를 지정했으면 그 부서를 함께 맡습니다
+    // (서버의 notify_attendance_pending 알림 대상과 같은 규칙).
+    const mine = parseTeachGroups(user.teachGroup)
+    return [user.labriId || '미정', ...activeChildGroups.filter(g => mine.includes(g))]
+  }
   return []
 }
 
