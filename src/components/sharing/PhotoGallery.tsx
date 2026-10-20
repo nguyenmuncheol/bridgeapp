@@ -453,7 +453,7 @@ export default function PhotoGallery({ currentUser, allUsers, isAdmin, photos, s
                   rows={6}
                   value={editPhotoContent}
                   onChange={e => setEditPhotoContent(e.target.value)}
-                  className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-35 text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="사진 설명이나 나눔 내용을 적어주세요..."
                 />
               </div>

@@ -477,7 +477,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
 
             {/* 마감 뒤에도 입력할 수 있지만, 주방 집계가 이미 넘어갔을 수 있어 알려 드립니다. */}
             {selectedSundayLocked && (
-              <div className="flex items-start gap-1.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800">
+              <div className="flex items-start gap-1.5 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-3xs text-amber-800">
                 <Lock size={12} className="shrink-0 mt-0.5" />
                 <span>
                   이미 마감(토요일 오후 2시)된 주일입니다. 관리자·리더는 계속 입력할 수 있지만,
@@ -488,7 +488,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
 
             {/* 식사함 / 안함 */}
             <div className="space-y-1.5">
-              <label className="text-[10px] text-gray-500 font-bold">참석 여부</label>
+              <label className="text-3xs text-gray-500 font-bold">참석 여부</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {[
                   { attending: true, label: '🍚 식사함', on: 'bg-brand text-white' },
@@ -498,7 +498,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
                     key={String(opt.attending)}
                     type="button"
                     onClick={() => setProxyTarget(prev => prev ? { ...prev, attending: opt.attending } : null)}
-                    className={`py-2 rounded-xl text-[12px] font-bold transition-all border ${
+                    className={`py-2 rounded-xl text-2xs font-bold transition-all border ${
                       proxyTarget.attending === opt.attending
                         ? `${opt.on} border-transparent shadow-xs`
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
@@ -539,7 +539,7 @@ export default function MealsTab({ showToast, allUsers, currentUser }: MealsTabP
               </div>
             )}
 
-            <p className="text-[10px] text-gray-500">
+            <p className="text-3xs text-gray-500">
               최종 신청자는 <strong className="text-gray-500">{currentUser ? getSimpleUserName(currentUser) : '성도님'}</strong>
               으로 남습니다. 그 가정 화면에도 이 이름이 보입니다.
             </p>

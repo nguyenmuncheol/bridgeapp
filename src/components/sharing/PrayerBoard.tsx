@@ -344,7 +344,7 @@ export default function PrayerBoard({ currentUser, allUsers, isAdmin, prayers, s
                   rows={6}
                   value={editPrayerContent}
                   onChange={e => setEditPrayerContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-35 max-h-65 text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="내용"
                 />
               </div>

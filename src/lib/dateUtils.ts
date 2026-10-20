@@ -247,7 +247,8 @@ export function isMealRegistrationLocked(
 
   let remainingText = ''
   if (diffDays > 0) {
-    remainingText = `토 14시 마감 (D-${diffDays})`
+    // \u2060(보이지 않는 글자 이음표): 글씨가 커져 줄이 바뀔 때 "(D-" 와 "3)" 이 갈라지지 않게
+    remainingText = `토 14시 마감 (D-\u2060${diffDays})`
   } else if (diffHours > 0) {
     remainingText = `마감까지 ${remHours}시간 남음`
   } else {

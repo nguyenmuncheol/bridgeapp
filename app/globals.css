@@ -107,6 +107,31 @@
       scale: 0.98;
     }
   }
+
+  /*
+   * ── 아이콘도 글씨와 함께 커지게 ──
+   *
+   * 아이콘은 <Bell size={16} /> 처럼 px 로 크기를 받아 width="16" 속성을 답니다. 그대로 두면 큰 글씨
+   * 모드에서 글씨만 커지고 옆의 아이콘은 그대로라 상대적으로 작아 보입니다.
+   * → 쓰고 있는 크기마다 같은 값의 rem 으로 바꿔 줍니다(16px → 1rem). 보통(2단계)에서는 크기가 똑같습니다.
+   *   :where() 라 우선순위가 0 이어서, className 으로 크기를 따로 준 아이콘(w-4 h-4 등)은 그쪽이 이깁니다.
+   *   새 크기를 쓰면 여기에도 한 줄 추가해 주세요 — npm run check:tokens 가 빠진 크기를 알려 줍니다.
+   */
+  :where(svg.lucide[width="9"]) { width: 0.5625rem; height: 0.5625rem; }
+  :where(svg.lucide[width="10"]) { width: 0.625rem; height: 0.625rem; }
+  :where(svg.lucide[width="11"]) { width: 0.6875rem; height: 0.6875rem; }
+  :where(svg.lucide[width="12"]) { width: 0.75rem; height: 0.75rem; }
+  :where(svg.lucide[width="13"]) { width: 0.8125rem; height: 0.8125rem; }
+  :where(svg.lucide[width="14"]) { width: 0.875rem; height: 0.875rem; }
+  :where(svg.lucide[width="15"]) { width: 0.9375rem; height: 0.9375rem; }
+  :where(svg.lucide[width="16"]) { width: 1rem; height: 1rem; }
+  :where(svg.lucide[width="18"]) { width: 1.125rem; height: 1.125rem; }
+  :where(svg.lucide[width="20"]) { width: 1.25rem; height: 1.25rem; }
+  :where(svg.lucide[width="22"]) { width: 1.375rem; height: 1.375rem; }
+  :where(svg.lucide[width="24"]) { width: 1.5rem; height: 1.5rem; }
+  :where(svg.lucide[width="26"]) { width: 1.625rem; height: 1.625rem; }
+  :where(svg.lucide[width="28"]) { width: 1.75rem; height: 1.75rem; }
+  :where(svg.lucide[width="32"]) { width: 2rem; height: 2rem; }
 }
 
 /*
@@ -118,7 +143,7 @@
  * → 한 단계씩 키웁니다. (본문 12→14, 보조 9~11→12, 소제목 14→16, 제목 16→18)
  *
  * 값은 전부 rem(브라우저 기본 글씨 배수)으로 적었습니다.
- * 나중에 "큰 글씨 모드"를 넣을 때 html 의 글씨 크기 한 줄만 바꾸면
+ * 그래서 "큰 글씨 모드"(아래 html[data-font-scale])가 html 의 글씨 크기만 바꾸면
  * 글자와 버튼·여백이 **함께** 커집니다.
  */
 @theme {
@@ -176,6 +201,17 @@
   --color-accent-50: #fdf1ea;
   --color-accent-100: #fbdcc9;
 
+  /*
+   * ── 앱 틀의 폭 ──
+   * 기본값은 rem 이라 큰 글씨 모드에서 단계를 올리면 PC 화면의 앱 틀(max-w-lg 등)까지 넓어집니다.
+   * 폭은 단계와 상관없이 그대로 두고 안의 글씨만 커지게 px 로 고정합니다(값은 Tailwind 기본값과 같음).
+   * 휴대폰은 화면 폭이 이보다 좁아 어차피 꽉 차므로 달라지는 것이 없습니다.
+   */
+  --container-sm: 384px;
+  --container-md: 448px;
+  --container-lg: 512px;
+  --container-xl: 576px;
+
   --text-3xs: 0.625rem;             /* 10px — 매우 작은 보조 라벨 */
   --text-3xs--line-height: 0.875rem;
   --text-2xs: 0.75rem;              /* 12px — 날짜·작성자·작은 라벨 */
@@ -206,6 +242,28 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in { animation: none; }
 }
+
+/*
+ * ── 큰 글씨 모드 (마이페이지 → 글씨 크기, src/lib/fontScale.ts) ──
+ *
+ * html 의 글씨 크기만 바꿉니다. 글자·버튼·여백이 전부 rem 이라 화면 전체가 함께 커집니다.
+ *   1 작게 90% · 2 보통 100%(표시 없음 = 기본) · 3 크게 112.5% · 4 아주 크게 125%
+ * px 가 아니라 % 로 적어서, 휴대폰·브라우저에서 기본 글씨를 키워 둔 분은 그 위에 한 번 더 곱해집니다.
+ */
+html[data-font-scale="1"] {
+  font-size: 90%;
+  /* 가장 작은 라벨(10px)은 더 줄이지 않습니다. 9px 는 접근성 권장 최저선(12px)과 너무 멀어 읽기 어렵습니다. */
+  --text-3xs: calc(0.625rem / 0.9);
+  --text-3xs--line-height: calc(0.875rem / 0.9);
+}
+html[data-font-scale="3"] { font-size: 112.5%; }
+html[data-font-scale="4"] { font-size: 125%; }
+/*
+ * 크게·아주 크게(3·4단계)일 때만 칸 배치를 바꾸고 싶은 곳에 씁니다.
+ *   <div className="grid-cols-3 bigtext:grid-cols-2">
+ * 웬만한 화면은 글씨가 커지면 저절로 줄이 바뀌므로, 칸이 좁아 글씨가 잘리는 곳에만 아껴 씁니다.
+ */
+@custom-variant bigtext (&:where(html[data-font-scale="3"] *, html[data-font-scale="4"] *));
 
 /*
  * ── 팝업 높이: 화면에 "실제로 보이는" 높이 기준 ──

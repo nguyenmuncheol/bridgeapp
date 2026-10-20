@@ -1028,7 +1028,7 @@ export default function Home() {
               <span className="relative shrink-0 flex items-center" aria-hidden="true">
                 <Bell size={16} strokeWidth={2.2} className={unreadCount > 0 ? 'text-brand' : 'text-brand/70'} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-2 -right-2.5 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                  <span className="absolute -top-2 -right-2.5 min-w-4.25 h-4.25 px-1 bg-rose-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}

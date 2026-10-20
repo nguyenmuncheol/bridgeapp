@@ -3,6 +3,7 @@ import "./globals.css";
 import PwaRegister from "../src/components/PwaRegister";
 import UserActivityTracker from "../src/components/UserActivityTracker";
 import { ConfirmProvider } from "../src/components/ConfirmDialog";
+import { FONT_SCALE_SCRIPT } from "../src/lib/fontScale";
 
 // 본문 글꼴은 globals.css 가 Pretendard 로 지정합니다.
 //
@@ -169,11 +170,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning: 아래 <head> 스크립트가 React 보다 먼저 html 에 글씨 크기 단계
+    // (data-font-scale)를 달아 둡니다. 서버가 보낸 html 과 달라도 그대로 두라는 표시입니다.
     <html
       lang="ko"
       className="h-full antialiased"
+      suppressHydrationWarning
     >
       <head>
+        {/* 큰 글씨 모드: 저장된 단계를 화면이 그려지기 전에 적용합니다(src/lib/fontScale.ts) */}
+        <script dangerouslySetInnerHTML={{ __html: FONT_SCALE_SCRIPT }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

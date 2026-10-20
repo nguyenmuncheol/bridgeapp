@@ -348,8 +348,11 @@ export default function RequestTab({ currentUser, allUsers, openSubTab = '', ope
         <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-gray-100 rounded-xl text-xs font-medium">
           {sundayDates.map((dateStr, idx) => (
             <button key={idx} onClick={() => handleSelectWeek(idx)}
-              className={`py-1.5 rounded-lg transition-all ${selectedWeek === idx ? 'bg-brand text-white font-bold shadow-xs' : 'text-gray-500'}`}
-            >{dateStr}</button>
+              className={`py-1.5 rounded-lg transition-all whitespace-nowrap ${selectedWeek === idx ? 'bg-brand text-white font-bold shadow-xs' : 'text-gray-500'}`}
+            >
+              {/* 글씨가 커져 한 줄에 안 들어가면 "10/25(" · "일)" 처럼 아무 데서나 끊기지 않고, 날짜와 요일 사이에서만 줄을 바꿉니다 */}
+              {dateStr.replace(/\(.*$/, '')}<wbr />{dateStr.match(/\(.*$/)?.[0]}
+            </button>
           ))}
         </div>
 

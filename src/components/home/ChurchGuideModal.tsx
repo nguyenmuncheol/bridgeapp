@@ -104,7 +104,7 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   <ul className="space-y-1.5 pl-1">
                     {section.items.map((text, ii) => (
                       <li key={ii} className="flex gap-2 items-start">
-                        <span className="mt-[3px] shrink-0 w-[18px] h-[18px] rounded-md bg-brand-50 text-brand text-2xs font-bold flex items-center justify-center">
+                        <span className="mt-0.75 shrink-0 size-4.5 rounded-md bg-brand-50 text-brand text-2xs font-bold flex items-center justify-center">
                           {ii + 1}
                         </span>
                         <p className="text-xs text-gray-700 leading-relaxed flex-1">{text}</p>
@@ -126,12 +126,12 @@ export default function ChurchGuideModal({ onClose }: ChurchGuideModalProps) {
                   {CORE_MINISTRIES.map((m, i) => (
                     <div key={m.name} className="p-3 bg-gray-50 rounded-xl space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-[18px] h-[18px] shrink-0 rounded-md bg-white border border-gray-200 text-brand text-2xs font-bold flex items-center justify-center">
+                        <span className="size-4.5 shrink-0 rounded-md bg-white border border-gray-200 text-brand text-2xs font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
                         <span className="font-bold text-gray-900 text-xs">{m.name}</span>
                       </div>
-                      <p className="text-2xs text-gray-600 leading-relaxed pl-[26px]">{m.desc}</p>
+                      <p className="text-2xs text-gray-600 leading-relaxed pl-6.5">{m.desc}</p>
                     </div>
                   ))}
                 </div>
