@@ -331,7 +331,7 @@ export default function AddPostModal({
               value={newContent}
               onChange={e => setNewContent(e.target.value)}
               className={`w-full text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed ${
-                subTab === 'photo' ? 'min-h-[90px] max-h-[160px]' : 'min-h-[140px] max-h-[260px]'
+                subTab === 'photo' ? 'min-h-22.5 max-h-40' : 'min-h-35 max-h-65'
               }`}
             />
           </div>

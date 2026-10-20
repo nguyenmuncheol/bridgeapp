@@ -793,7 +793,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
                   <span className="w-16 shrink-0 text-3xs font-bold text-gray-500">성도</span>
                   <span className="flex-1 text-3xs font-bold text-gray-500">주보 표기명</span>
                   <span className="w-[4.5rem] shrink-0 text-3xs font-bold text-gray-500">식사</span>
-                  <span className="w-[26px] shrink-0" />
+                  <span className="w-6.5 shrink-0" />
                 </div>
                 {m.rows.map((r, ri) => (
                   <div key={ri} className="flex items-center gap-1.5">

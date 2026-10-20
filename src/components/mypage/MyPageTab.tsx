@@ -12,6 +12,7 @@ import { FAMILY_ROLE_ORDER } from '../../lib/adminHelpers'
 import { getPushUiState, subscribeToPush, unsubscribeFromPush, type PushUiState } from '../../lib/push'
 import { useModalDismiss } from '../../lib/useModalDismiss'
 import PwaInstallButton from '../PwaInstallButton'
+import FontScaleCard from './FontScaleCard'
 import ProfileImageLightbox from '../ProfileImageLightbox'
 import { askConfirm } from '../ConfirmDialog'
 import Card from '../ui/Card'
@@ -419,9 +420,10 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
 
         {/* 칸 폭 배분: 짧은 값(라브리·생일·가족)은 좁게, 긴 값(연락처·주소)은 넓게.
             예전엔 똑같이 나눠서 전화번호가 한 칸에 안 들어가 항상 흘러갔습니다.
-            (두 줄 구성과 넘칠 때 흐르는 방식은 그대로입니다) */}
+            (두 줄 구성과 넘칠 때 흐르는 방식은 그대로입니다)
+            큰 글씨(3·4단계)에서는 세 칸이 너무 좁아 이름표까지 잘리므로, 라브리·생년월일을 한 줄에 두고 연락처를 아래 한 줄로 내립니다. */}
         <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 text-xs">
-          <div className="grid grid-cols-[1fr_1.35fr_1fr] gap-2">
+          <div className="grid grid-cols-[1fr_1.35fr_1fr] bigtext:grid-cols-2 bigtext:grid-flow-row-dense gap-2">
             <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
               <span className="text-gray-500 text-3xs flex items-center gap-1 truncate">
                 <span className="shrink-0">⛪</span>소속 라브리
@@ -432,7 +434,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 text={(isAttendanceExempt(currentUser) ? '' : currentUser.labriId) || '미정'}
               />
             </div>
-            <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0">
+            <div className="bg-gray-50 p-2.5 rounded-xl flex flex-col gap-0.5 min-w-0 bigtext:col-span-2">
               <span className="text-gray-500 text-3xs flex items-center gap-1 truncate">
                 <Smartphone size={11} className="text-brand shrink-0" />연락처
               </span>
@@ -578,6 +580,9 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
         </div>
       </Card>
 
+      {/* ── 글씨 크기 (큰 글씨 모드) ── */}
+      <FontScaleCard />
+
       {/* ── 휴대폰 알림(푸시) 스위치 ── */}
       {pushState !== 'unsupported' && pushState !== 'loading' && (
         <Card as="section" className="space-y-2">
@@ -595,7 +600,7 @@ export default function MyPageTab({ currentUser, allUsers = [], onNavigateAdmin,
                 aria-label="휴대폰 알림 받기"
                 className={`w-11 h-6 rounded-full shrink-0 transition-all relative disabled:opacity-40 ${pushState === 'on' ? 'bg-brand' : 'bg-gray-200'}`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${pushState === 'on' ? 'left-[22px]' : 'left-0.5'}`} />
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${pushState === 'on' ? 'left-5.5' : 'left-0.5'}`} />
               </button>
             )}
           </div>

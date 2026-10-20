@@ -367,7 +367,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   placeholder="축하, 기도, 소식 등 성도들과 함께 나눌 상세 내용을 작성해 주세요..."
                   value={newNewsContent}
                   onChange={e => setNewNewsContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-35 max-h-65 text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
         </Modal>
@@ -426,7 +426,7 @@ export default function MemberNewsBoard({ currentUser, allUsers, isAdmin }: Memb
                   rows={6}
                   value={editNewsContent}
                   onChange={e => setEditNewsContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-35 max-h-65 text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                   placeholder="내용"
                 />
               </div>

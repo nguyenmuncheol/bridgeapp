@@ -189,7 +189,7 @@ export default function NotificationPanel({
         role="dialog"
         aria-modal="true"
         aria-label="알림"
-        className="absolute top-[60px] right-3 w-[min(92vw,340px)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in"
+        className="absolute top-[var(--app-header-h)] right-3 w-[min(92vw,21.25rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-1.5">

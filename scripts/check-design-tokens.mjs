@@ -9,6 +9,8 @@
  *
  *  - 임의 px 글자 크기는 rem 스케일과 달리 "큰 글씨 모드"에서 혼자 안 커집니다.
  *  - 손으로 적은 색은 시간이 지나며 값이 갈라집니다(같은 hover 에 #2b5072 와 #284b6b 가 공존했습니다).
+ *  - 아이콘 크기(size={14})는 globals.css 가 크기별로 rem 으로 바꿔 줘야 큰 글씨 모드에서 함께 커집니다.
+ *    목록에 없는 크기를 새로 쓰면 그 아이콘만 안 커집니다.
  *
  * 실행: npm run check:tokens
  */
@@ -45,6 +47,17 @@ const RULES = [
   },
 ]
 
+// globals.css 가 rem 으로 바꿔 주는 아이콘 크기 목록 (:where(svg.lucide[width="14"]) …)
+const ICON_SIZES = new Set(
+  [...readFileSync('app/globals.css', 'utf8').matchAll(/svg\.lucide\[width="(\d+)"\]/g)].map(m => m[1])
+)
+RULES.push({
+  id: 'icon',
+  re: /\bsize=\{(\d+)\}/g,
+  skip: hit => ICON_SIZES.has(hit[1]),
+  msg: '아이콘 크기가 globals.css 의 "아이콘도 글씨와 함께 커지게" 목록에 없습니다 — 큰 글씨 모드에서 안 커집니다. 목록에 한 줄 추가하세요',
+})
+
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name)
@@ -68,6 +81,7 @@ for (const root of ROOTS) {
       if (isAllowed(file, rule.id)) continue
       lines.forEach((line, i) => {
         for (const hit of line.matchAll(rule.re)) {
+          if (rule.skip?.(hit)) continue
           const rel = relative('.', file).split('\\').join('/')
           console.error(`${rel}:${i + 1}  ${hit[0]}\n    → ${rule.msg}`)
           problems++
@@ -83,4 +97,4 @@ if (problems > 0) {
   process.exit(1)
 }
 
-console.log('디자인 토큰 검사 통과 — 임의 글자 크기·브랜드 색 하드코딩 없음')
+console.log('디자인 토큰 검사 통과 — 임의 글자 크기·브랜드 색 하드코딩·빠진 아이콘 크기 없음')

@@ -138,8 +138,8 @@ export default function CommentList({
                         )}
                       </div>
                     </div>
-                    {/* 아바타(24px) + 간격(6px) = 30px 만큼 밀어, 윗줄 이름과 같은 위치에서 글이 시작합니다 */}
-                    <p className="text-gray-600 break-words leading-relaxed pl-[30px]">{c.content}</p>
+                    {/* 아바타(w-6) + 간격(1.5) 만큼 밀어, 윗줄 이름과 같은 위치에서 글이 시작합니다 */}
+                    <p className="text-gray-600 break-words leading-relaxed pl-7.5">{c.content}</p>
                   </div>
                 )}
               </div>

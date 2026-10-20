@@ -356,8 +356,9 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
         {!isGuest && (
           <div className="p-3 bg-gray-50 flex gap-2 items-stretch">
             <button onClick={() => setShowChurchGuideModal(true)}
-              className="basis-4/5 grow-0 py-2 px-2 bg-white border border-gray-200 text-brand text-2xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1 whitespace-nowrap">
+              className="basis-4/5 grow-0 min-w-0 py-2 px-2 bg-white border border-gray-200 text-brand text-2xs font-bold rounded-xl hover:bg-gray-100 flex items-center justify-center gap-1">
               <Info size={14} className="shrink-0" />
+              {/* 한 줄 고정(nowrap)이면 큰 글씨에서 옆의 카카오 버튼을 카드 밖으로 밀어냅니다 → 넘치면 두 줄로 */}
               <span className="text-left">교회안내 (비전 · 사역자 · 예배시간)</span>
               <ChevronRight size={14} className="shrink-0" />
             </button>
@@ -501,7 +502,9 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
           </div>
           <div className="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl gap-2">
             <span className="tabular-nums text-xs font-bold text-gray-800 leading-relaxed">
-              {OFFERING_ACCOUNT_LINES[0]}<br />
+              {/* 글씨가 커져 줄이 바뀌어도 계좌번호 중간("100-100-" | "299053")에서 끊기지 않게, 은행 이름 뒤에서만 바꿉니다 */}
+              {OFFERING_ACCOUNT_LINES[0].replace(/ .*$/, '')}{' '}
+              <span className="whitespace-nowrap">{OFFERING_ACCOUNT_LINES[0].replace(/^\S+ /, '')}</span><br />
               <span className="text-2xs font-sans font-semibold text-gray-500">{OFFERING_ACCOUNT_LINES[1]}</span>
             </span>
             <button onClick={handleCopyAccount}
@@ -700,7 +703,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   rows={6}
                   value={editBulletinSummary}
                   onChange={e => setEditBulletinSummary(e.target.value)}
-                  className="w-full min-h-[140px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-35 text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
         </Modal>
@@ -744,7 +747,7 @@ export default function HomeTab({ currentUser, isGuest, onNavigate }: HomeTabPro
                   placeholder="공지 상세 내용 입력..."
                   value={newNoticeContent}
                   onChange={e => setNewNoticeContent(e.target.value)}
-                  className="w-full min-h-[140px] max-h-[260px] text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
+                  className="w-full min-h-35 max-h-65 text-xs sm:text-sm p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:border-brand resize-y text-gray-900 font-medium leading-relaxed"
                 />
               </div>
         </Modal>
