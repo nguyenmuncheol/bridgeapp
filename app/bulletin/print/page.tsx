@@ -16,6 +16,7 @@ import { ArrowLeft, Lock, Printer, RefreshCw } from 'lucide-react'
 import { supabase } from '../../../src/lib/supabase'
 import { dbFetchBulletinByDate, dbFetchLatestBulletin, BulletinData } from '../../../src/lib/db'
 import { normalizeBulletinContent } from '../../../src/lib/bulletinContent'
+import { bulletinDateToSortable } from '../../../src/lib/dateUtils'
 import BulletinView from '../../../src/components/bulletin/BulletinView'
 
 type Gate = 'checking' | 'denied' | 'ok'
@@ -76,6 +77,17 @@ function BulletinPrintScreen() {
     run()
     return () => { cancelled = true }
   }, [dateParam])
+
+  // 'PDF로 저장' 의 기본 파일 이름은 브라우저가 문서 제목에서 가져옵니다.
+  // 제목이 '주보 인쇄' 뿐이면 매주 같은 이름이 되므로 주보 날짜를 붙입니다
+  // (예: '주보 인쇄 2026-11-01'). 옛 표기 '8/17(일)' 도 파일 이름에 쓸 수 있게 바꿉니다.
+  useEffect(() => {
+    if (!bulletin?.date) return
+    const prev = document.title
+    const date = bulletinDateToSortable(bulletin.date) || bulletin.date.replace(/[\\/:*?"<>|]/g, '-')
+    document.title = `주보 인쇄 ${date}`
+    return () => { document.title = prev }
+  }, [bulletin?.date])
 
   if (gate === 'checking' || isLoading) {
     return (
