@@ -123,10 +123,14 @@ function BulletinView({
     )
   }
 
-  /** \n 을 <br> 로. dangerouslySetInnerHTML 을 쓰지 않으려고 조각으로 나눕니다. */
+  /**
+   * \n 을 <br> 로. dangerouslySetInnerHTML 을 쓰지 않으려고 조각으로 나눕니다.
+   * 줄마다 .ml(white-space:pre-wrap)을 붙여 일부러 넣은 공백(특히 줄 맨 앞 들여쓰기)을
+   * 브라우저가 하나로 뭉개거나 지우지 않게 합니다.
+   */
   const multiline = (s: string) =>
     s.split('\n').map((line, i, arr) => (
-      <span key={i}>
+      <span key={i} className="ml">
         {line}
         {i < arr.length - 1 && <br />}
       </span>
@@ -287,7 +291,7 @@ function BulletinView({
             <div className="news-in">
               {c.churchNews.map((n, i) => (
                 <div className="block" key={i}>
-                  <h3>{n.title}</h3>
+                  <h3>{multiline(n.title)}</h3>
                   <p>{multiline(n.body)}</p>
                 </div>
               ))}
@@ -299,7 +303,7 @@ function BulletinView({
               <div className="newsbox">
                 {c.memberNews.map((n, i) => (
                   <div className="block" key={i}>
-                    <h3>{n.title}</h3>
+                    <h3>{multiline(n.title)}</h3>
                     <p>{multiline(n.body)}</p>
                   </div>
                 ))}
@@ -459,6 +463,8 @@ const CSS = `
   padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:10pt}
 .bl-root .order li:last-child{border-bottom:0}
 .bl-root .order .bul{width:2.4mm;height:2.4mm;border-radius:50%;background:var(--mid);flex:0 0 auto}
+/* 작성자가 넣은 공백을 그대로 — 줄 맨 앞 들여쓰기, 단어 사이 여러 칸 */
+.bl-root .ml{white-space:pre-wrap}
 .bl-root .order .it{font-weight:700;color:var(--navy);white-space:pre}
 .bl-root .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
 
