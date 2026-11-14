@@ -30,11 +30,30 @@ import { BulletinContent, BulletinOrderItem, MEMO_LABEL } from '../../lib/bullet
  * 디자인 원본은 public/bulletin.html 입니다. 그쪽을 고치면 여기도 같이 고쳐 주세요.
  */
 
+/**
+ * 이 주보에 실제로 걸린 글씨 크기와 그렇게 된 까닭 — 관리자 미리보기 아래 안내에 씁니다.
+ */
+export interface BulletinFit {
+  /** 주보 전체 글씨 배율 (TYPE_STEPS 중 하나) */
+  ts: number
+  /** 성경 본문 배율 (1 또는 VERSE_STEPS 중 하나) */
+  vs: number
+  /** 최대 배율에서 넘쳐 줄이게 만든 쪽 번호(1~4). 최대 배율이 그대로 들어가면 null */
+  limitedBy: number | null
+  /** 가장 작은 배율(1)로도 넘쳐 아래가 잘리는 쪽 번호. 없으면 null */
+  overflowPage: number | null
+}
+
+/** 글씨 배율 후보 중 가장 큰 값(목표 크기). 안내 문구에서 "최대 ○배" 로 씁니다. */
+export const MAX_TYPE_SCALE = 1.08
+
 interface BulletinViewProps {
   content: BulletinContent
   mode?: 'web' | 'print'
   /** 로고 파일 경로. 기본값은 public/ 의 홈페이지 로고입니다. */
   logoSrc?: string
+  /** 글씨 크기를 고를 때마다(내용이 바뀔 때마다) 결과를 알려 줍니다. */
+  onFit?: (fit: BulletinFit) => void
 }
 
 /** A5 한 쪽의 너비(148.5mm)를 화면 픽셀로. 96dpi 기준 148.5 / 25.4 * 96 */
@@ -59,13 +78,20 @@ const MEMO_MIN_MM = 25
  * 잘린 글은 오류 없이 조용히 사라지므로, 넘치는 주만 **주보 전체를 같이** 조금
  * 줄입니다. 쪽마다 따로 줄이면 쪽끼리 글씨가 달라져 균형이 깨집니다.
  */
-const TYPE_STEPS = [1.08, 1.06, 1.04, 1.02, 1] as const
+const TYPE_STEPS = [MAX_TYPE_SCALE, 1.06, 1.04, 1.02, 1] as const
 
 /**
  * 쪽 아래쪽에서 본문이 들어가면 안 되는 높이(mm) — CSS 의 --pad(10) + --footh(9).
  * 넘침을 잴 때 이 선을 기준으로 삼습니다. CSS 값을 바꾸면 여기도 바꿔 주세요.
  */
 const PAGE_BOTTOM_RESERVED_MM = 19
+
+/**
+ * '잘린다'고 경고할 선(mm, 쪽 아래끝에서). 꼬릿말 글자 바로 위입니다.
+ * PAGE_BOTTOM_RESERVED_MM 은 글씨를 줄일지 정하는 넉넉한 선이고, 이 선은 그보다 아래라
+ * 상자 배경이 여백에 조금 걸치는 정도로는 경고하지 않습니다(지금도 그런 주가 있습니다).
+ */
+const PAGE_CLIP_MM = 11
 
 /** 넘침으로 치지 않는 오차(mm). 반올림 때문에 생기는 소수점 차이를 걸러냅니다. */
 const OVERFLOW_TOLERANCE_MM = 0.5
@@ -91,6 +117,7 @@ function BulletinView({
   content,
   mode = 'web',
   logoSrc = '/logo-wide@2x.png',
+  onFit,
 }: BulletinViewProps) {
   const c = content
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -99,7 +126,13 @@ function BulletinView({
   const [memoFits, setMemoFits] = useState(true)
   const versesRef = useRef<HTMLUListElement>(null)
   /** 고른 글씨 배율 — ts: 주보 전체, vs: 성경 본문 (아래 useLayoutEffect 가 정합니다) */
-  const [fit, setFit] = useState<{ ts: number; vs: number }>({ ts: TYPE_STEPS[0], vs: 1 })
+  const [fit, setFit] = useState<BulletinFit>({ ts: TYPE_STEPS[0], vs: 1, limitedBy: null, overflowPage: null })
+
+  // 부모에게 결과 알리기. onFit 이 매번 새 함수여도 결과가 같으면 다시 부르지 않도록
+  // ref 로 들고 있다가 fit 이 바뀔 때만 부릅니다.
+  const onFitRef = useRef(onFit)
+  useEffect(() => { onFitRef.current = onFit })
+  useEffect(() => { onFitRef.current?.(fit) }, [fit])
 
   // 담는 칸의 너비를 재서 그만큼 축소합니다.
   //
@@ -164,12 +197,12 @@ function BulletinView({
     if (!root || !ul || !slot) return
     const pages = Array.from(root.querySelectorAll<HTMLElement>('.page'))
 
-    /** 넘친 쪽이 하나라도 있는지 */
-    const anyOverflow = () => pages.some(page => {
+    /** 아래끝에서 reservedMm 위의 선을 넘은 첫 쪽. 없으면 undefined */
+    const overflowPage = (reservedMm = PAGE_BOTTOM_RESERVED_MM) => pages.find(page => {
       const pr = page.getBoundingClientRect()
       if (pr.height <= 0) return false
       const pxPerMm = pr.height / PAGE_HEIGHT_MM
-      const limit = pr.bottom - (PAGE_BOTTOM_RESERVED_MM - OVERFLOW_TOLERANCE_MM) * pxPerMm
+      const limit = pr.bottom - (reservedMm - OVERFLOW_TOLERANCE_MM) * pxPerMm
       // 장식(blob)·꼬릿말은 원래 바깥에 걸치고, 메모 자리는 남는 만큼 줄어들며,
       // 교우소식 바깥 여백(.membernews 의 padding)은 보이지 않는 빈칸이라 뺍니다.
       return Array.from(page.querySelectorAll<HTMLElement>('*')).some(el => {
@@ -178,6 +211,8 @@ function BulletinView({
         return r.height > 0 && r.bottom > limit
       })
     })
+    const pageNo = (page: HTMLElement | undefined) =>
+      page ? Number(page.style.getPropertyValue('--o')) || 0 : 0
 
     const slotMm = () => {
       const pageH = slot.parentElement?.getBoundingClientRect().height ?? 0
@@ -187,13 +222,33 @@ function BulletinView({
     const pick = () => {
       if (!pages.length || pages[0].getBoundingClientRect().height <= 0) return
 
+      // 🐛 화면에 맞춰 줄인 상태(zoom < 1)로 재면 글자 크기가 반올림되어 줄바꿈이
+      //    실물과 달라집니다. 같은 주보가 미리보기에서는 1.02배, 인쇄(실물 크기)에서는
+      //    1.06배로 갈렸습니다. → 재는 동안만 실물 크기(zoom 1)로 펴 놓고 잽니다.
+      //    그려지기 전에 되돌리므로 화면에는 보이지 않습니다.
+      const doc = root.querySelector<HTMLElement>('.doc')
+      const prevZoom = doc?.style.zoom ?? ''
+      if (doc) doc.style.zoom = '1'
+      try {
+        measure()
+      } finally {
+        if (doc) doc.style.zoom = prevZoom
+      }
+    }
+
+    const measure = () => {
       ul.style.setProperty('--vs', '1')
       let ts: number = TYPE_STEPS[TYPE_STEPS.length - 1]
+      let limitedBy: number | null = null
       for (const step of TYPE_STEPS) {
         root.style.setProperty('--ts', String(step))
-        if (!anyOverflow()) { ts = step; break }
+        const over = pageNo(overflowPage())
+        if (!over) { ts = step; break }
+        if (limitedBy === null) limitedBy = over   // 최대 배율에서 넘친 쪽
       }
       root.style.setProperty('--ts', String(ts))
+      // 가장 작게 해도 꼬릿말 선까지 내려오면 정말 잘리는 것 — 경고용
+      const stillOver = pageNo(overflowPage(PAGE_CLIP_MM))
 
       const need = c.showMemo ? VERSE_MEMO_KEEP_MM : 5
       let vs = 1
@@ -203,7 +258,12 @@ function BulletinView({
       }
       ul.style.setProperty('--vs', String(vs))
 
-      setFit(prev => (prev.ts === ts && prev.vs === vs ? prev : { ts, vs }))
+      const overflow = stillOver || null
+      setFit(prev => (
+        prev.ts === ts && prev.vs === vs && prev.limitedBy === limitedBy && prev.overflowPage === overflow
+          ? prev
+          : { ts, vs, limitedBy, overflowPage: overflow }
+      ))
     }
 
     pick()
@@ -492,6 +552,12 @@ const CSS = `
   width:100%;
   min-width:0;
   font-family:var(--sans);
+  /* 줄간격을 주보 안에서 직접 정합니다. 정하지 않으면 감싸는 칸의 값을 물려받아
+     같은 주보가 놓이는 곳마다 높이가 달라졌습니다 — 인쇄 화면은 1.5(앱 기본값),
+     관리자 미리보기는 text-xs 의 22px 고정, 큰 글씨 모드에서는 27.5px.
+     높이가 다르면 글씨 배율을 고르는 결과도 달라지므로, 인쇄 화면과 같은 1.5 로
+     못박습니다. 배수(단위 없는 값)라 글씨가 커지면 줄도 같이 커집니다. */
+  line-height:1.5;
   color:var(--ink);
   word-break:keep-all;
   overflow-wrap:break-word;

@@ -6,6 +6,8 @@
  * 주보 4쪽 구조 그대로 네 개 섹션으로 나눠 입력합니다. 저장하면 bulletins.content
  * (jsonb) 에 통째로 들어가고, 같은 데이터로 성도용 웹 화면과 A4 인쇄본이 만들어집니다.
  *
+ * 고친 내용은 손을 멈추고 AUTOSAVE_DELAY_MS 가 지나면 자동으로 저장됩니다(별도 저장 버튼 없음).
+ *
  * 매주 쓰게 만드는 장치 세 가지를 우선으로 넣었습니다.
  *   · [지난 주보 불러오기] — 예배순서·섬김표·헌금계좌는 거의 안 바뀝니다.
  *   · [절 나누기]          — 성경 본문을 통째로 붙여넣으면 절 단위로 잘라 줍니다.
@@ -15,16 +17,16 @@
  * 계정과 연결되어(prayerAssignments) 나중에 그 사람에게만 알림을 보낼 수 있습니다.
  */
 
-import { useDeferredValue, useEffect, useMemo, useState, useId } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useId } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Save, Eye, EyeOff, Printer,
-  RefreshCw, Copy, Sparkles, ChevronRight, Undo2, AlignCenter,
+  RefreshCw, Copy, ChevronRight, Undo2, AlignCenter, Check, AlertTriangle,
 } from 'lucide-react'
 import { UserProfile } from '../../lib/mockData'
 import {
   BulletinContent, BulletinOrderItem, BulletinNewsItem,
   EMPTY_BULLETIN_CONTENT, normalizeBulletinContent,
-  parseVersesFromText, buildServingMonths, sampleBulletinContent,
+  parseVersesFromText, buildServingMonths,
   makeServingMonth, nextServingDate, ymOf, MEAL_OPTIONS,
   rollServingForDate, servingMonthsMatchDate,
   prayerLeaderForDate, applyPrayerLeaderToOrder,
@@ -38,7 +40,20 @@ import {
   getUpcomingSundays, formatBulletinDisplay,
   sundayEntryFromDateStr, todayChurchDateStr, formatSundayCompact,
 } from '../../lib/dateUtils'
-import BulletinView from '../bulletin/BulletinView'
+import BulletinView, { BulletinFit, MAX_TYPE_SCALE } from '../bulletin/BulletinView'
+
+/** 마지막으로 고친 뒤 이만큼(ms) 손을 멈추면 자동 저장합니다 */
+const AUTOSAVE_DELAY_MS = 1500
+
+/** 쪽 번호 → 안내 문구에 쓸 이름 */
+const PAGE_NAMES: Record<number, string> = {
+  1: '1쪽(표지·예배 순서)',
+  2: '2쪽(교회소식·교우소식)',
+  3: '3쪽(성경말씀)',
+  4: '4쪽(메시지·섬김표·공지)',
+}
+
+type AutosaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
 interface BulletinTabProps {
   currentUser?: UserProfile
@@ -89,8 +104,22 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
   // 저장할 때 빈 배열로 덮어쓰면 홈탭에서 올린 사진이 지워집니다. 그대로 되돌려 줍니다.
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  /** 미리보기에 실제로 걸린 글씨 배율 — 미리보기 아래 안내에 씁니다 */
+  const [fit, setFit] = useState<BulletinFit | null>(null)
   const [open, setOpen] = useState<Record<string, boolean>>({ cover: true })
   const [versePaste, setVersePaste] = useState('')
+
+  // 자동 저장 상태 — 자세한 설명은 아래 '저장' 부분에 있습니다.
+  const [autosave, setAutosave] = useState<AutosaveState>('idle')
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
+
+  type Snapshot = { dateStr: string; content: BulletinContent; status: 'draft' | 'published'; imageUrls: string[] }
+  const latestRef = useRef<Snapshot | null>(null)
+  /** 주일별로 마지막에 저장한(또는 불러온) 내용 — 같으면 저장하지 않습니다 */
+  const savedRef = useRef<Record<string, string>>({})
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveChainRef = useRef<Promise<unknown>>(Promise.resolve())
+
 
   /** 대표기도자로 고를 수 있는 사람: 실제 계정이 있는 성도만 (자녀 가상항목·미가입자 제외) */
   const selectableMembers = useMemo(
@@ -110,17 +139,25 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
       if (cancelled) return
       const display = formatBulletinDisplay(dateStr)
       setExistingImageUrls(row?.imageUrls || [])
+      // 불러온 그대로를 '저장된 내용'으로 기억해 둡니다 — 열어 보기만 해서는
+      // 자동 저장이 돌지 않습니다(새 주일이면 빈 주보가 DB 에 생기지 않습니다).
+      let loaded: BulletinContent
+      let loadedStatus: 'draft' | 'published'
       if (row?.content) {
-        setContent(normalizeBulletinContent(row.content))
-        setStatus(row.status === 'draft' ? 'draft' : 'published')
+        loaded = normalizeBulletinContent(row.content)
+        loadedStatus = row.status === 'draft' ? 'draft' : 'published'
       } else {
-        setContent({
+        loaded = {
           ...EMPTY_BULLETIN_CONTENT,
           date: display,
           servingMonths: buildServingMonths(dateStr),
-        })
-        setStatus('draft')
+        }
+        loadedStatus = 'draft'
       }
+      savedRef.current[dateStr] = JSON.stringify([loaded, loadedStatus])
+      setContent(loaded)
+      setStatus(loadedStatus)
+      setAutosave('idle')
       setLoadedFor(dateStr)
     }
 
@@ -212,39 +249,116 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
     showToast(`📋 ${formatBulletinDisplay(source.date)} 주보를 불러왔습니다`)
   }
 
-  const handleFillSample = () => {
-    setContent(sampleBulletinContent(dateStr, formatBulletinDisplay(dateStr)))
-    setStatus('draft')
-    showToast('✨ 샘플 내용을 채웠습니다 (저장 전에는 반영되지 않습니다)')
+  // ── 저장 ──────────────────────────────────────────────────────────────
+  //
+  // 자동 저장: 내용이 바뀌고 AUTOSAVE_DELAY_MS 동안 더 고치지 않으면 저장합니다.
+  //
+  //   · 무엇을 저장할지는 ref(latestRef)에 늘 최신으로 들고 있습니다. 타이머가 울릴 때
+  //     화면을 그리던 시점의 오래된 값이 아니라 **지금** 값을 저장하기 위해서입니다.
+  //   · 마지막으로 저장한(또는 불러온) 내용을 savedRef 에 JSON 으로 기억해, 같으면
+  //     저장하지 않습니다. 그래서 주보를 불러오기만 해서는 DB 에 아무것도 쓰지 않고,
+  //     새 주일을 열어 두기만 해서는 빈 주보가 생기지 않습니다.
+  //   · 주일을 바꾸거나 탭을 떠나기 전에 기다리던 저장을 **바로** 내보냅니다(flush).
+  //     그러지 않으면 마지막 1.5초 동안 고친 내용이 사라집니다.
+  //   · 저장은 한 번에 하나씩 차례로(saveChainRef) — 늦게 끝난 앞 저장이 뒤 저장을
+  //     덮어쓰지 않게 합니다.
+  //   · 발행 상태(status)는 그대로 둡니다. 발행된 주보를 고치면 고친 내용이 그대로
+  //     성도 화면에 반영됩니다(발행 알림은 주보당 한 번뿐이라 다시 나가지 않습니다).
+  /** 스냅샷 하나를 DB 에 씁니다. 실패하면 error 를 돌려줍니다. */
+  const writeSnapshot = useCallback((snap: Snapshot) => {
+    const run = async () => {
+      // 기존 칼럼(title/preacher/passage)에도 같이 써 줍니다.
+      // 홈 화면 미리보기와 알림 트리거가 이 칼럼들을 읽고 있습니다.
+      const { error } = await dbUpsertBulletin({
+        date: snap.dateStr,
+        title: snap.content.sermon.title,
+        preacher: snap.content.sermon.by,
+        passage: snap.content.scriptureRef,
+        summary: snap.content.messageTitle.replace(/\n/g, ' '),
+        imageUrls: snap.imageUrls,   // 사진으로 올린 주보를 지우지 않습니다
+        content: snap.content,
+        status: snap.status,
+      })
+      if (!error) savedRef.current[snap.dateStr] = JSON.stringify([snap.content, snap.status])
+      return error
+    }
+    const next = saveChainRef.current.then(run, run)
+    saveChainRef.current = next
+    return next
+  }, [])
+
+  /**
+   * 기다리던 자동 저장이 있으면 지금 바로 저장합니다.
+   * force 면 기다리던 것이 없어도 최신 내용을 저장합니다(저장 실패 후 [다시 시도]).
+   */
+  const flushAutosave = useCallback(async (force = false) => {
+    if (!timerRef.current && !force) return
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = null
+    const snap = latestRef.current
+    if (!snap) return
+    setAutosave('saving')
+    const error = await writeSnapshot(snap)
+    setAutosave(error ? 'error' : 'saved')
+    if (!error) setSavedAt(new Date())
+  }, [writeSnapshot])
+
+  // 내용이 바뀔 때마다 최신 스냅샷을 갱신하고, 저장한 것과 다르면 타이머를 겁니다.
+  useEffect(() => {
+    if (isLoading || isReadOnly || !dateStr) return
+    const snap: Snapshot = { dateStr, content, status, imageUrls: existingImageUrls }
+    latestRef.current = snap
+    if (savedRef.current[dateStr] === JSON.stringify([content, status])) {
+      // 고쳤다가 원래대로 되돌린 경우 — 기다리던 저장을 거둡니다
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+      return
+    }
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => { flushAutosave() }, AUTOSAVE_DELAY_MS)
+    setAutosave('pending')
+  }, [content, status, dateStr, existingImageUrls, isLoading, isReadOnly, flushAutosave])
+
+  // 탭을 떠나거나(언마운트) 앱을 백그라운드로 보낼 때 남은 저장을 내보냅니다.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flushAutosave() }
+    document.addEventListener('visibilitychange', onHide)
+    const onPageHide = () => { flushAutosave() }
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', onPageHide)
+      flushAutosave()
+    }
+  }, [flushAutosave])
+
+  /** 주일을 바꿀 때: 지금 주일의 남은 저장을 먼저 내보내고 넘어갑니다. */
+  const changeDate = (next: string) => {
+    flushAutosave()
+    setDateStr(next)
   }
 
-  // ── 저장 ──────────────────────────────────────────────────────────────
+  /** 발행/발행 취소 — 지금 내용을 새 상태로 바로 저장합니다(자동 저장을 기다리지 않음). */
   const handleSave = async (nextStatus: 'draft' | 'published') => {
     if (isSaving || isReadOnly) return
     if (!dateStr) {
       showToast('⚠️ 주일 날짜를 먼저 골라 주세요')
       return
     }
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
     setIsSaving(true)
+    setAutosave('saving')
     try {
-      // 기존 칼럼(title/preacher/passage)에도 같이 써 줍니다.
-      // 홈 화면 미리보기와 알림 트리거가 이 칼럼들을 읽고 있습니다.
-      const { error } = await dbUpsertBulletin({
-        date: dateStr,
-        title: content.sermon.title,
-        preacher: content.sermon.by,
-        passage: content.scriptureRef,
-        summary: content.messageTitle.replace(/\n/g, ' '),
-        imageUrls: existingImageUrls,   // 사진으로 올린 주보를 지우지 않습니다
-        content,
-        status: nextStatus,
-      })
+      const error = await writeSnapshot({ dateStr, content, status: nextStatus, imageUrls: existingImageUrls })
       if (error) {
+        setAutosave('error')
         showToast(`❌ 저장 실패: ${error.message || '알 수 없는 오류'}`)
         return
       }
       setStatus(nextStatus)
-      showToast(nextStatus === 'published' ? '✅ 주보를 발행했습니다' : '💾 임시저장했습니다')
+      setAutosave('saved')
+      setSavedAt(new Date())
+      showToast(nextStatus === 'published' ? '✅ 주보를 발행했습니다' : '↩️ 발행을 취소했습니다')
     } finally {
       setIsSaving(false)
     }
@@ -507,7 +621,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
         <div className="flex items-center gap-2">
           <select
             value={dateStr}
-            onChange={e => setDateStr(e.target.value)}
+            onChange={e => changeDate(e.target.value)}
             className={inputCls + ' flex-1 basis-0 font-bold cursor-pointer'}
           >
             {sundays.map(s => (
@@ -522,31 +636,18 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
               ? 'bg-slate-200 text-slate-600'
               : status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
           }`}>
-            {isReadOnly ? '지난 주보 · 읽기전용' : status === 'published' ? '발행됨' : '임시저장'}
+            {isReadOnly ? '지난 주보 · 읽기전용' : status === 'published' ? '발행됨' : '발행 전'}
           </span>
           {isLoading && <RefreshCw size={14} className="animate-spin text-brand-light shrink-0" />}
         </div>
 
         {/* 이미 지난 주일의 발행 완료 주보는 새로 쓰는 화면이 아니라 참고용 열람이므로,
-            불러오기·샘플·저장·발행 버튼을 아예 숨깁니다(뒤 섹션은 fieldset 으로 잠깁니다). */}
+            불러오기·발행 버튼을 아예 숨깁니다(뒤 섹션은 fieldset 으로 잠깁니다). */}
         {!isReadOnly && (
           <>
             <div className="grid grid-cols-2 gap-1.5">
-              <button onClick={handleCopyPrevious} className="py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-2xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1">
-                <Copy size={12} /> 지난 주보 불러오기
-              </button>
-              <button onClick={handleFillSample} className="py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-2xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1">
-                <Sparkles size={12} /> 샘플 내용 채우기
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                onClick={() => handleSave('draft')}
-                disabled={isSaving}
-                className="py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                <Save size={13} /> 임시저장
+              <button onClick={handleCopyPrevious} className="py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1.5">
+                <Copy size={13} /> 지난 주보 불러오기
               </button>
               {/* 누를 때마다 발행 ↔ 발행 전이 뒤집힙니다 */}
               <button
@@ -591,10 +692,33 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           </p>
         ) : (
           <p className="text-3xs text-gray-500 leading-relaxed">
-            임시저장한 주보는 성도 화면에 나오지 않고 알림도 가지 않습니다.
-            내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면 &ldquo;이번 주 주보&rdquo;에
-            올라갑니다. 한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
+            고친 내용은 자동으로 저장됩니다. 발행 전 주보는 성도 화면에 나오지 않고
+            알림도 가지 않습니다. 내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면
+            &ldquo;이번 주 주보&rdquo;에 올라가고, 그 뒤에 고친 내용도 자동으로 반영됩니다.
+            한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
           </p>
+        )}
+
+        {/* 자동 저장 상태 */}
+        {!isReadOnly && !isLoading && autosave !== 'idle' && (
+          <div className={`flex items-center gap-1.5 text-2xs font-semibold ${
+            autosave === 'error' ? 'text-rose-600' : 'text-slate-500'
+          }`}>
+            {autosave === 'pending' && <><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> 저장 대기 중…</>}
+            {autosave === 'saving' && <><RefreshCw size={11} className="animate-spin" /> 저장 중…</>}
+            {autosave === 'saved' && (
+              <><Check size={12} className="text-emerald-600" /> 자동 저장됨
+                {savedAt && ` · ${savedAt.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}`}</>
+            )}
+            {autosave === 'error' && (
+              <>
+                <AlertTriangle size={12} /> 저장하지 못했습니다 — 인터넷 연결을 확인해 주세요
+                <button onClick={() => flushAutosave(true)} className="ml-auto px-2 py-1 bg-rose-50 hover:bg-rose-100 rounded-md cursor-pointer">
+                  다시 시도
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -921,13 +1045,51 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           </p>
           {/* flex 로 감싸면 BulletinView 가 내용 너비(561px)로 부풀어 축소가 걸리지
               않습니다. 가운데 정렬은 BulletinView 안쪽(.doc)이 이미 합니다. */}
-          <BulletinView content={previewContent} mode="web" />
+          <BulletinView content={previewContent} mode="web" onFit={setFit} />
+          {fit && <FitNotice fit={fit} />}
         </div>
       )}
 
       {currentUser?.role !== 'ADMIN' && (
         <p className="text-2xs text-rose-500 font-semibold">이 탭은 관리자만 저장할 수 있습니다.</p>
       )}
+    </div>
+  )
+}
+
+/**
+ * 미리보기 아래 안내 — 이 주보에 걸린 글씨 크기와 그렇게 된 까닭.
+ * 글씨가 줄었으면 어느 쪽 때문인지 알려 줘서, 그 쪽 내용을 조금 덜어 내면
+ * 다시 커진다는 것을 바로 알 수 있게 합니다.
+ */
+function FitNotice({ fit }: { fit: BulletinFit }) {
+  const x = (n: number) => `${Number(n.toFixed(2))}배`
+  const isMax = fit.ts >= MAX_TYPE_SCALE
+  return (
+    <div className="mt-3 bg-white/70 rounded-xl px-3 py-2.5 space-y-1.5 text-2xs leading-relaxed text-slate-600">
+      {fit.overflowPage ? (
+        <p className="flex gap-1.5 font-bold text-rose-600">
+          <AlertTriangle size={13} className="shrink-0 mt-px" />
+          <span>{PAGE_NAMES[fit.overflowPage]} 글이 넘쳐 아래가 잘립니다. 글씨를 가장 작게(1배) 해도
+            들어가지 않으니 이 쪽 내용을 줄여 주세요.</span>
+        </p>
+      ) : (
+        <p>
+          <strong className="text-slate-800">글씨 크기 {x(fit.ts)}</strong>
+          {isMax ? (
+            <> (최대) — 모든 쪽에 여유가 있어 가장 크게 넣었습니다.</>
+          ) : (
+            <> (최대 {x(MAX_TYPE_SCALE)}) — {fit.limitedBy ? PAGE_NAMES[fit.limitedBy] : '내용'}이 꽉 차서
+              주보 전체를 조금 줄였습니다. 이 쪽 내용을 덜어 내면 다시 커집니다.</>
+          )}
+        </p>
+      )}
+      <p>
+        <strong className="text-slate-800">성경 본문 {fit.vs > 1 ? x(fit.vs) : '기본 크기'}</strong>
+        {fit.vs > 1
+          ? <> — 구절이 짧아 본문만 더 크게 넣었습니다.</>
+          : <> — 구절이 길어 따로 키우지 않았습니다.</>}
+      </p>
     </div>
   )
 }
