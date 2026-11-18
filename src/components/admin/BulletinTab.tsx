@@ -40,7 +40,7 @@ import {
   getUpcomingSundays, formatBulletinDisplay,
   sundayEntryFromDateStr, todayChurchDateStr, formatSundayCompact,
 } from '../../lib/dateUtils'
-import BulletinView, { BulletinFit, MAX_TYPE_SCALE } from '../bulletin/BulletinView'
+import BulletinView, { BulletinFit, MAX_TYPE_SCALE, PAGE_WIDTH_PX } from '../bulletin/BulletinView'
 
 /** 마지막으로 고친 뒤 이만큼(ms) 손을 멈추면 자동 저장합니다 */
 const AUTOSAVE_DELAY_MS = 1500
@@ -691,12 +691,8 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
             필요한 부분만 <strong>지난 주보 불러오기</strong>로 앞으로 만들 주보에 복사해 쓰세요.
           </p>
         ) : (
-          <p className="text-3xs text-gray-500 leading-relaxed">
-            고친 내용은 자동으로 저장됩니다. 발행 전 주보는 성도 화면에 나오지 않고
-            알림도 가지 않습니다. 내용을 다 채운 뒤 <strong>발행하기</strong>를 누르면 홈 화면
-            &ldquo;이번 주 주보&rdquo;에 올라가고, 그 뒤에 고친 내용도 자동으로 반영됩니다.
-            한 번 더 누르면 <strong>발행 취소</strong>되어 다시 내려갑니다.
-          </p>
+          // 이 주보에 걸린 글씨 배율 — 미리보기를 닫아 둬도 보이도록 버튼 바로 아래에 둡니다
+          fit && <FitNotice fit={fit} />
         )}
 
         {/* 자동 저장 상태 */}
@@ -1046,7 +1042,18 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
           {/* flex 로 감싸면 BulletinView 가 내용 너비(561px)로 부풀어 축소가 걸리지
               않습니다. 가운데 정렬은 BulletinView 안쪽(.doc)이 이미 합니다. */}
           <BulletinView content={previewContent} mode="web" onFit={setFit} />
-          {fit && <FitNotice fit={fit} />}
+        </div>
+      )}
+
+      {/* 미리보기를 닫아 둔 동안에도 위쪽 배율 안내가 맞도록, 보이지 않는 주보를 하나
+          그려 재기만 합니다. display:none 이면 크기를 잴 수 없어 화면 밖에 둡니다.
+          (배율은 늘 실물 크기로 재므로 폭만 한 쪽 너비로 맞춰 두면 됩니다) */}
+      {!showPreview && !isReadOnly && !isLoading && (
+        <div
+          aria-hidden="true"
+          style={{ position: 'fixed', left: -10000, top: 0, width: PAGE_WIDTH_PX, visibility: 'hidden', pointerEvents: 'none' }}
+        >
+          <BulletinView content={previewContent} mode="web" onFit={setFit} />
         </div>
       )}
 
@@ -1058,7 +1065,7 @@ export default function BulletinTab({ currentUser, allUsers, showToast }: Bullet
 }
 
 /**
- * 미리보기 아래 안내 — 이 주보에 걸린 글씨 크기와 그렇게 된 까닭.
+ * 상단 버튼 아래 안내 — 이 주보에 걸린 글씨 크기와 그렇게 된 까닭.
  * 글씨가 줄었으면 어느 쪽 때문인지 알려 줘서, 그 쪽 내용을 조금 덜어 내면
  * 다시 커진다는 것을 바로 알 수 있게 합니다.
  */
@@ -1066,7 +1073,7 @@ function FitNotice({ fit }: { fit: BulletinFit }) {
   const x = (n: number) => `${Number(n.toFixed(2))}배`
   const isMax = fit.ts >= MAX_TYPE_SCALE
   return (
-    <div className="mt-3 bg-white/70 rounded-xl px-3 py-2.5 space-y-1.5 text-2xs leading-relaxed text-slate-600">
+    <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 space-y-1.5 text-2xs leading-relaxed text-slate-600">
       {fit.overflowPage ? (
         <p className="flex gap-1.5 font-bold text-rose-600">
           <AlertTriangle size={13} className="shrink-0 mt-px" />
