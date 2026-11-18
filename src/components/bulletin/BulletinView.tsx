@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { BulletinContent, BulletinOrderItem, MEMO_LABEL } from '../../lib/bulletinContent'
 
 /**
@@ -30,11 +30,30 @@ import { BulletinContent, BulletinOrderItem, MEMO_LABEL } from '../../lib/bullet
  * 디자인 원본은 public/bulletin.html 입니다. 그쪽을 고치면 여기도 같이 고쳐 주세요.
  */
 
+/**
+ * 이 주보에 실제로 걸린 글씨 크기와 그렇게 된 까닭 — 관리자 미리보기 아래 안내에 씁니다.
+ */
+export interface BulletinFit {
+  /** 주보 전체 글씨 배율 (TYPE_STEPS 중 하나) */
+  ts: number
+  /** 성경 본문 배율 (1 또는 VERSE_STEPS 중 하나) */
+  vs: number
+  /** 최대 배율에서 넘쳐 줄이게 만든 쪽 번호(1~4). 최대 배율이 그대로 들어가면 null */
+  limitedBy: number | null
+  /** 가장 작은 배율(1)로도 넘쳐 아래가 잘리는 쪽 번호. 없으면 null */
+  overflowPage: number | null
+}
+
+/** 글씨 배율 후보 중 가장 큰 값(목표 크기). 안내 문구에서 "최대 ○배" 로 씁니다. */
+export const MAX_TYPE_SCALE = 1.08
+
 interface BulletinViewProps {
   content: BulletinContent
   mode?: 'web' | 'print'
   /** 로고 파일 경로. 기본값은 public/ 의 홈페이지 로고입니다. */
   logoSrc?: string
+  /** 글씨 크기를 고를 때마다(내용이 바뀔 때마다) 결과를 알려 줍니다. */
+  onFit?: (fit: BulletinFit) => void
 }
 
 /** A5 한 쪽의 너비(148.5mm)를 화면 픽셀로. 96dpi 기준 148.5 / 25.4 * 96 */
@@ -51,6 +70,46 @@ const PAGE_HEIGHT_MM = 210
 const MEMO_MIN_MM = 25
 
 /**
+ * 글씨 배율(--ts) 후보 — 큰 것부터 걸어 보고, 네 쪽 중 하나라도 넘치면 한 단계씩
+ * 내립니다. 맨 앞이 목표 크기이고 맨 끝(1)은 처음 디자인 크기입니다.
+ *
+ * 왜 고정값 하나가 아닌가: 실제 주보(2026년 9~11월)로 재 보니 1.08 배로 고정하면
+ * 소식이 많은 주는 2쪽 끝이, 본문이 14절쯤 되는 주는 3쪽 끝이 잘렸습니다.
+ * 잘린 글은 오류 없이 조용히 사라지므로, 넘치는 주만 **주보 전체를 같이** 조금
+ * 줄입니다. 쪽마다 따로 줄이면 쪽끼리 글씨가 달라져 균형이 깨집니다.
+ */
+const TYPE_STEPS = [MAX_TYPE_SCALE, 1.06, 1.04, 1.02, 1] as const
+
+/**
+ * 쪽 아래쪽에서 본문이 들어가면 안 되는 높이(mm) — CSS 의 --pad(10) + --footh(9).
+ * 넘침을 잴 때 이 선을 기준으로 삼습니다. CSS 값을 바꾸면 여기도 바꿔 주세요.
+ */
+const PAGE_BOTTOM_RESERVED_MM = 19
+
+/**
+ * '잘린다'고 경고할 선(mm, 쪽 아래끝에서). 꼬릿말 글자 바로 위입니다.
+ * PAGE_BOTTOM_RESERVED_MM 은 글씨를 줄일지 정하는 넉넉한 선이고, 이 선은 그보다 아래라
+ * 상자 배경이 여백에 조금 걸치는 정도로는 경고하지 않습니다(지금도 그런 주가 있습니다).
+ */
+const PAGE_CLIP_MM = 11
+
+/** 넘침으로 치지 않는 오차(mm). 반올림 때문에 생기는 소수점 차이를 걸러냅니다. */
+const OVERFLOW_TOLERANCE_MM = 0.5
+
+/**
+ * 성경 본문을 키워 볼 배율들(큰 것부터). 구절이 적어 자리가 남으면 큰 배율을 씁니다.
+ * 1.3 이면 본문 글씨가 다른 본문보다 30% 큽니다 — 그 이상은 제목보다 커져 어색합니다.
+ */
+const VERSE_STEPS = [1.3, 1.2, 1.1] as const
+
+/**
+ * 성경 본문을 키워도 설교 메모 칸이 이만큼(mm)은 남아야 합니다. 대략 메모 넉 줄.
+ * 키우면 이보다 작아지는 주에는 키우지 않고 기본 크기(1)로 둡니다 — 메모 칸을
+ * 줄여 가며까지 본문을 키우지는 않습니다.
+ */
+const VERSE_MEMO_KEEP_MM = 50
+
+/**
  * memo 로 감싼 이유: 관리자 주보 탭이 글자 하나마다 새로 그리면 타이핑이 밀립니다.
  * content 가 그대로면 다시 그리지 않습니다(같은 객체일 때만 건너뜁니다).
  */
@@ -58,12 +117,22 @@ function BulletinView({
   content,
   mode = 'web',
   logoSrc = '/logo-wide@2x.png',
+  onFit,
 }: BulletinViewProps) {
   const c = content
   const wrapRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const memoSlotRef = useRef<HTMLDivElement>(null)
   const [memoFits, setMemoFits] = useState(true)
+  const versesRef = useRef<HTMLUListElement>(null)
+  /** 고른 글씨 배율 — ts: 주보 전체, vs: 성경 본문 (아래 useLayoutEffect 가 정합니다) */
+  const [fit, setFit] = useState<BulletinFit>({ ts: TYPE_STEPS[0], vs: 1, limitedBy: null, overflowPage: null })
+
+  // 부모에게 결과 알리기. onFit 이 매번 새 함수여도 결과가 같으면 다시 부르지 않도록
+  // ref 로 들고 있다가 fit 이 바뀔 때만 부릅니다.
+  const onFitRef = useRef(onFit)
+  useEffect(() => { onFitRef.current = onFit })
+  useEffect(() => { onFitRef.current?.(fit) }, [fit])
 
   // 담는 칸의 너비를 재서 그만큼 축소합니다.
   //
@@ -110,6 +179,99 @@ function BulletinView({
     return () => ro.disconnect()
   }, [])
 
+  // 글씨 크기 고르기 — ① 주보 전체 배율(--ts) ② 성경 본문 배율(--vs)
+  //
+  // 큰 배율부터 하나씩 **실제로 걸어 보고** 잽니다. 줄바꿈이 어디서 일어날지는
+  // 계산으로 알 수 없어서, 어림셈 대신 재는 쪽을 택했습니다.
+  //   ① 네 쪽 모두 넘치지 않는 가장 큰 --ts 를 고릅니다(본문 배율은 1 로 두고).
+  //   ② 그 크기에서, 메모 칸이 VERSE_MEMO_KEEP_MM 이상 남는 가장 큰 --vs 를 고릅니다.
+  //      본문이 넘치면 메모 자리는 0 이 되므로 '넘침'도 같은 잣대로 걸러집니다.
+  //
+  // useLayoutEffect 라 화면에 그려지기 전에 끝나 깜빡이지 않습니다. 글꼴이 늦게
+  // 들어오면 글자 폭이 바뀌므로 document.fonts.ready 뒤에 한 번 더 잽니다.
+  // 화면 축소(zoom)와 상관없도록 px 대신 쪽 높이(210mm)에 대한 비율로 잽니다.
+  useLayoutEffect(() => {
+    const root = wrapRef.current
+    const ul = versesRef.current
+    const slot = memoSlotRef.current
+    if (!root || !ul || !slot) return
+    const pages = Array.from(root.querySelectorAll<HTMLElement>('.page'))
+
+    /** 아래끝에서 reservedMm 위의 선을 넘은 첫 쪽. 없으면 undefined */
+    const overflowPage = (reservedMm = PAGE_BOTTOM_RESERVED_MM) => pages.find(page => {
+      const pr = page.getBoundingClientRect()
+      if (pr.height <= 0) return false
+      const pxPerMm = pr.height / PAGE_HEIGHT_MM
+      const limit = pr.bottom - (reservedMm - OVERFLOW_TOLERANCE_MM) * pxPerMm
+      // 장식(blob)·꼬릿말은 원래 바깥에 걸치고, 메모 자리는 남는 만큼 줄어들며,
+      // 교우소식 바깥 여백(.membernews 의 padding)은 보이지 않는 빈칸이라 뺍니다.
+      return Array.from(page.querySelectorAll<HTMLElement>('*')).some(el => {
+        if (el.closest('.blob, .foot, .memo-slot') || el.classList.contains('membernews')) return false
+        const r = el.getBoundingClientRect()
+        return r.height > 0 && r.bottom > limit
+      })
+    })
+    const pageNo = (page: HTMLElement | undefined) =>
+      page ? Number(page.style.getPropertyValue('--o')) || 0 : 0
+
+    const slotMm = () => {
+      const pageH = slot.parentElement?.getBoundingClientRect().height ?? 0
+      return pageH > 0 ? (slot.getBoundingClientRect().height / pageH) * PAGE_HEIGHT_MM : 0
+    }
+
+    const pick = () => {
+      if (!pages.length || pages[0].getBoundingClientRect().height <= 0) return
+
+      // 🐛 화면에 맞춰 줄인 상태(zoom < 1)로 재면 글자 크기가 반올림되어 줄바꿈이
+      //    실물과 달라집니다. 같은 주보가 미리보기에서는 1.02배, 인쇄(실물 크기)에서는
+      //    1.06배로 갈렸습니다. → 재는 동안만 실물 크기(zoom 1)로 펴 놓고 잽니다.
+      //    그려지기 전에 되돌리므로 화면에는 보이지 않습니다.
+      const doc = root.querySelector<HTMLElement>('.doc')
+      const prevZoom = doc?.style.zoom ?? ''
+      if (doc) doc.style.zoom = '1'
+      try {
+        measure()
+      } finally {
+        if (doc) doc.style.zoom = prevZoom
+      }
+    }
+
+    const measure = () => {
+      ul.style.setProperty('--vs', '1')
+      let ts: number = TYPE_STEPS[TYPE_STEPS.length - 1]
+      let limitedBy: number | null = null
+      for (const step of TYPE_STEPS) {
+        root.style.setProperty('--ts', String(step))
+        const over = pageNo(overflowPage())
+        if (!over) { ts = step; break }
+        if (limitedBy === null) limitedBy = over   // 최대 배율에서 넘친 쪽
+      }
+      root.style.setProperty('--ts', String(ts))
+      // 가장 작게 해도 꼬릿말 선까지 내려오면 정말 잘리는 것 — 경고용
+      const stillOver = pageNo(overflowPage(PAGE_CLIP_MM))
+
+      const need = c.showMemo ? VERSE_MEMO_KEEP_MM : 5
+      let vs = 1
+      for (const step of VERSE_STEPS) {
+        ul.style.setProperty('--vs', String(step))
+        if (slotMm() >= need) { vs = step; break }
+      }
+      ul.style.setProperty('--vs', String(vs))
+
+      const overflow = stillOver || null
+      setFit(prev => (
+        prev.ts === ts && prev.vs === vs && prev.limitedBy === limitedBy && prev.overflowPage === overflow
+          ? prev
+          : { ts, vs, limitedBy, overflowPage: overflow }
+      ))
+    }
+
+    pick()
+    let alive = true
+    document.fonts?.ready.then(() => { if (alive) pick() })
+    return () => { alive = false }
+  }, [c])
+
   /** 예배 순서 한 줄. center 가 있으면 설교처럼 가운데를 크게 씁니다. */
   const orderRow = (o: BulletinOrderItem, key: string) => {
     const center = (o.center || '').trim()
@@ -147,7 +309,7 @@ function BulletinView({
   )
 
   return (
-    <div className={`bl-root bl-${mode}`} ref={wrapRef}>
+    <div className={`bl-root bl-${mode}`} ref={wrapRef} style={{ ['--ts' as string]: fit.ts }}>
       <style>{mode === 'print' ? CSS + PRINT_CSS : CSS}</style>
 
       <div className="doc" style={{ zoom: scale }}>
@@ -322,7 +484,7 @@ function BulletinView({
 
             <div className="refline"><span className="ref">{c.scriptureRef}</span></div>
 
-            <ul className="verses">
+            <ul className="verses" ref={versesRef} style={{ ['--vs' as string]: fit.vs }}>
               {c.verses.map((v, i) => (
                 <li key={i}>
                   <span className="n">{v.n}</span>
@@ -369,7 +531,15 @@ const CSS = `
   --muted:#9aa7b4;
   --rulec:rgba(30,58,95,.16);
   --sans:"Pretendard Variable",Pretendard,"맑은 고딕","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
-  --pad:11mm;
+  /* 글씨 배율 — 모든 font-size 가 이 값을 곱합니다. 글씨끼리의 비율(제목:본문:표)은
+     그대로 둔 채 전체만 키우고 줄이려고 하나로 묶었습니다. 특정 칸만 따로 키우면
+     균형이 무너지니, 크기를 바꿀 때는 이 숫자 하나만 바꾸세요.
+     (1 = 처음 디자인 크기. 본문 9.4pt × 배율. 실제 값은 컴포넌트가 TYPE_STEPS 에서
+     골라 .bl-root 에 직접 넣습니다 — 여기 1 은 그 전의 기본값입니다.) */
+  --ts:1;
+  /* 성경 본문만 따로 곱하는 배율. 구절이 적어 자리가 남을 때 컴포넌트가 키웁니다. */
+  --vs:1;
+  --pad:10mm;         /* 11 → 10: 글씨를 키우며 쓸 자리를 1mm 씩 더 냈습니다 */
   --footh:9mm;
   --footdrop:3.2mm;    /* 꼬릿말을 쪽 아래로 더 내리는 양 (한 줄 ≈ 7.5pt × 1.2) */
   --seam-top:58mm;
@@ -382,6 +552,12 @@ const CSS = `
   width:100%;
   min-width:0;
   font-family:var(--sans);
+  /* 줄간격을 주보 안에서 직접 정합니다. 정하지 않으면 감싸는 칸의 값을 물려받아
+     같은 주보가 놓이는 곳마다 높이가 달라졌습니다 — 인쇄 화면은 1.5(앱 기본값),
+     관리자 미리보기는 text-xs 의 22px 고정, 큰 글씨 모드에서는 27.5px.
+     높이가 다르면 글씨 배율을 고르는 결과도 달라지므로, 인쇄 화면과 같은 1.5 로
+     못박습니다. 배수(단위 없는 값)라 글씨가 커지면 줄도 같이 커집니다. */
+  line-height:1.5;
   color:var(--ink);
   word-break:keep-all;
   overflow-wrap:break-word;
@@ -415,10 +591,10 @@ const CSS = `
 .bl-root .page > *:not(.blob){position:relative;z-index:1}
 
 .bl-root .pill{display:inline-block;background:var(--navy);color:var(--cream);
-  font-size:12.5pt;font-weight:700;letter-spacing:.02em;padding:2.8mm 5.4mm;line-height:1}
+  font-size:calc(12.5pt * var(--ts));font-weight:700;letter-spacing:.02em;padding:2.8mm 5.4mm;line-height:1}
 .bl-root .pill.soft{background:var(--mid)}
 
-.bl-root .caps{font-size:8pt;letter-spacing:.34em;color:var(--mid);text-transform:uppercase}
+.bl-root .caps{font-size:calc(8pt * var(--ts));letter-spacing:.34em;color:var(--mid);text-transform:uppercase}
 
 /* 교우소식은 교회소식이 끝난 뒤 남는 공간의 **가운데**에 놓입니다.
    위아래 margin 을 auto 로 두면 남는 공간이 반씩 나뉘어 자동으로 자리를 잡고,
@@ -429,7 +605,7 @@ const CSS = `
   position:absolute;left:var(--pad);right:var(--pad);
   bottom:calc(var(--pad) - var(--footdrop));
   height:var(--footh);display:flex;align-items:flex-end;
-  font-size:7.5pt;letter-spacing:.26em;color:var(--mid);z-index:2;
+  font-size:calc(7.5pt * var(--ts));letter-spacing:.26em;color:var(--mid);z-index:2;
 }
 /* 점을 mm 로 밀어 맞추지 마세요 — 두 번 실패했습니다.
    점은 flex 칸(=별도의 줄)에 있었고 글자는 자기 줄 안에 있어서, 두 줄의 아래끝만
@@ -453,20 +629,20 @@ const CSS = `
 
 .bl-root .datebar{margin-top:6mm;background:var(--navy);color:#fff;padding:3.4mm 5.4mm;
   display:flex;align-items:baseline;gap:5mm}
-.bl-root .datebar .d{font-size:15pt;font-weight:700;letter-spacing:.01em;
+.bl-root .datebar .d{font-size:calc(15pt * var(--ts));font-weight:700;letter-spacing:.01em;
   font-variant-numeric:tabular-nums;white-space:nowrap}
-.bl-root .datebar .s{font-size:10pt;color:var(--light);letter-spacing:.06em;
+.bl-root .datebar .s{font-size:calc(10pt * var(--ts));color:var(--light);letter-spacing:.06em;
   margin-left:auto;text-align:right}
 
 .bl-root .order{margin-top:5mm;display:flex;flex-direction:column}
 .bl-root .order li{list-style:none;display:flex;align-items:center;gap:3.2mm;
-  padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:10pt}
+  padding:2.1mm 0;border-bottom:.3mm solid var(--rulec);font-size:calc(10pt * var(--ts))}
 .bl-root .order li:last-child{border-bottom:0}
 .bl-root .order .bul{width:2.4mm;height:2.4mm;border-radius:50%;background:var(--mid);flex:0 0 auto}
 /* 작성자가 넣은 공백을 그대로 — 줄 맨 앞 들여쓰기, 단어 사이 여러 칸 */
 .bl-root .ml{white-space:pre-wrap}
 .bl-root .order .it{font-weight:700;color:var(--navy);white-space:pre}
-.bl-root .order .by{margin-left:auto;color:#44648a;font-size:9.4pt;text-align:right}
+.bl-root .order .by{margin-left:auto;color:#44648a;font-size:calc(9.4pt * var(--ts));text-align:right}
 
 /* 설교 행 : 설교 | 제목(가운데) | 설교자 — 별도 박스 없이 목록 안에 들어갑니다 */
 /* 가운데를 크게 쓰는 줄 : 이름 | 강조할 글(가운데) | 담당
@@ -482,14 +658,14 @@ const CSS = `
    만큼을 더해 줘야 가운데 글이 지면의 진짜 한가운데에 옵니다. */
 .bl-root .order li.has-center .by{flex:0 0 calc(20mm + 2.4mm + 3.2mm);margin-left:0}
 .bl-root .order .ctr{flex:1 1 auto;min-width:0;text-align:center;padding:0 3mm;
-  font-size:11.5pt;font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
-.bl-root .order .ctr-sub{display:block;margin-top:1.2mm;font-size:8.4pt;font-weight:600;
+  font-size:calc(11.5pt * var(--ts));font-weight:800;color:var(--navy);line-height:1.25;letter-spacing:-.01em}
+.bl-root .order .ctr-sub{display:block;margin-top:1.2mm;font-size:calc(8.4pt * var(--ts));font-weight:600;
   color:var(--mid);letter-spacing:.02em}
 
 /* 2쪽 · 소식 */
 .bl-root .block{margin-top:5.2mm}
-.bl-root .block h3{font-size:10.6pt;font-weight:800;color:var(--navy);letter-spacing:-.01em}
-.bl-root .block p{margin-top:1.6mm;font-size:9.4pt;line-height:1.62;color:#41617f}
+.bl-root .block h3{font-size:calc(10.6pt * var(--ts));font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.bl-root .block p{margin-top:1.6mm;font-size:calc(9.4pt * var(--ts));line-height:calc(1.62 / var(--ts));color:#41617f}
 /* 제목 박스(교회소식·교우소식 라벨)는 쪽 여백에 딱 붙여 두고, 그 아래 **글만**
    5.4mm 들여씁니다. 교우소식은 상자 안쪽 여백이 그 역할을 하므로, 교회소식 쪽에만
    같은 값을 따로 줍니다(.news-in). 두 소식의 글이 같은 선에서 시작합니다. */
@@ -501,19 +677,19 @@ const CSS = `
 /* 성경 위치(요한복음 3:1-12)는 박스 없이 진한 남색 글자로만 둡니다.
    위의 '성경말씀' 라벨까지 박스라 두 개가 겹쳐 답답해 보였습니다. */
 .bl-root .refline{margin-top:4.5mm}
-.bl-root .refline .ref{display:inline-block;font-size:11pt;font-weight:800;
+.bl-root .refline .ref{display:inline-block;font-size:calc(11pt * var(--ts));font-weight:800;
   color:var(--navy);letter-spacing:.01em}
 
-.bl-root .verses{margin-top:4.5mm;display:flex;flex-direction:column;gap:1.6mm}
+.bl-root .verses{margin-top:4.5mm;display:flex;flex-direction:column;gap:calc(1.6mm * var(--vs))}
 /* 🐛 예전에는 align-items:baseline 이었습니다. 절이 두 줄이 되면 번호가 첫 줄
    글자의 기준선에 붙는데, 번호는 배경이 있는 네모라 한 줄짜리와 두 줄짜리가
    서로 다른 높이에 놓여 목록 전체가 어긋나 보였습니다.
    → 위쪽 정렬로 바꾸고, 번호를 첫 줄 글자 높이에 맞춰 살짝만 내립니다. */
 .bl-root .verses li{list-style:none;display:flex;gap:3mm;align-items:flex-start}
 .bl-root .verses .n{flex:0 0 auto;min-width:6.4mm;text-align:center;background:var(--navy);color:#fff;
-  font-size:7pt;font-weight:700;line-height:1;border-radius:1.4mm;padding:.9mm 1.1mm;
-  font-variant-numeric:tabular-nums;margin-top:.9mm}
-.bl-root .verses .t{font-size:9.4pt;line-height:1.6;color:#365071}
+  font-size:calc(7pt * var(--ts) * var(--vs));font-weight:700;line-height:1;border-radius:1.4mm;padding:.9mm 1.1mm;
+  font-variant-numeric:tabular-nums;margin-top:calc(.9mm * var(--ts) * var(--vs))}
+.bl-root .verses .t{font-size:calc(9.4pt * var(--ts) * var(--vs));line-height:calc(1.6 / var(--ts));color:#365071}
 
 /* 자리(.memo-slot)는 남는 공간만큼 늘었다 줄었다 하고(최소 0 — 본문이 길면 사라짐),
    칸(.memo)은 그 자리를 꽉 채웁니다. 예전에는 칸에 min-height:24mm 가 있어
@@ -521,7 +697,7 @@ const CSS = `
 .bl-root .memo-slot{margin-top:6mm;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .bl-root .memo{background:var(--beige-soft);padding:4.6mm 5.4mm 5mm;
   flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-.bl-root .memo .lab{font-size:8.4pt;letter-spacing:.3em;color:#8a7f6a;flex:0 0 auto}
+.bl-root .memo .lab{font-size:calc(8.4pt * var(--ts));letter-spacing:.3em;color:#8a7f6a;flex:0 0 auto}
 .bl-root .memo .lines{flex:1 1 auto;min-height:0;margin-top:2mm;
   --rule:9.6mm;
   background-image:repeating-linear-gradient(to bottom,
@@ -535,31 +711,31 @@ const CSS = `
 .bl-root .message{text-align:center}
 .bl-root .message .dot{width:4.4mm;height:4.4mm;border-radius:50%;background:var(--navy);margin:0 auto}
 .bl-root .message .caps{margin-top:2.6mm;letter-spacing:.42em}
-.bl-root .message .t{margin-top:3.2mm;font-size:13.5pt;font-weight:800;color:var(--navy);
+.bl-root .message .t{margin-top:3.2mm;font-size:calc(13.5pt * var(--ts));font-weight:800;color:var(--navy);
   line-height:1.35;letter-spacing:-.01em}
-.bl-root .message .body{margin-top:4.5mm;font-size:9.4pt;line-height:1.72;color:#41617f;
+.bl-root .message .body{margin-top:4.5mm;font-size:calc(9.4pt * var(--ts));line-height:calc(1.72 / var(--ts));color:#41617f;
   text-align:center;padding:0 2mm}
 
-.bl-root .sec-title{display:flex;align-items:center;gap:2.6mm;font-size:11pt;font-weight:800;
+.bl-root .sec-title{display:flex;align-items:center;gap:2.6mm;font-size:calc(11pt * var(--ts));font-weight:800;
   color:var(--navy)}
 .bl-root .sec-title::before{content:"";width:2.8mm;height:2.8mm;background:var(--mid);
   transform:rotate(45deg);flex:0 0 auto}
 
 .bl-root .tables{margin-top:3.4mm;display:flex;gap:4mm}
 .bl-root .tables table{flex:1;min-width:0;border-collapse:collapse;table-layout:fixed}
-.bl-root .tables th{background:var(--navy);color:#fff;font-size:8pt;font-weight:700;
+.bl-root .tables th{background:var(--navy);color:#fff;font-size:calc(8pt * var(--ts));font-weight:700;
   padding:1.9mm .6mm;letter-spacing:.02em}
 .bl-root .tables th:first-child{width:11mm}
 .bl-root .tables th:last-child{width:16mm}
 .bl-root .tables td{border:.3mm solid rgba(91,131,173,.45);background:rgba(255,255,255,.68);
-  height:6.8mm;font-size:8pt;text-align:center;color:#365071;padding:.5mm}
+  height:6.8mm;font-size:calc(8pt * var(--ts));text-align:center;color:#365071;padding:.5mm}
 .bl-root .tables td:first-child{font-weight:700;color:var(--navy);background:rgba(255,255,255,.38);
-  font-size:7.6pt}
+  font-size:calc(7.6pt * var(--ts))}
 
 .bl-root .notice{margin-top:5mm;background:var(--beige);padding:4.6mm 5.4mm}
-.bl-root .notice h4{font-size:10.4pt;font-weight:800;color:var(--navy)}
+.bl-root .notice h4{font-size:calc(10.4pt * var(--ts));font-weight:800;color:var(--navy)}
 .bl-root .notice ul{margin-top:2.4mm;display:flex;flex-direction:column;gap:1.4mm}
-.bl-root .notice li{list-style:none;font-size:9pt;line-height:1.55;color:#574e3d;
+.bl-root .notice li{list-style:none;font-size:calc(9pt * var(--ts));line-height:calc(1.55 / var(--ts));color:#574e3d;
   padding-left:3.4mm;position:relative}
 .bl-root .notice li::before{content:"·";position:absolute;left:.6mm;color:#8a7f6a;font-weight:700}
 
@@ -574,17 +750,17 @@ const CSS = `
 .bl-root .offering .cap{grid-column:2;grid-row:1}
 .bl-root .offering .lab{grid-column:3;grid-row:1;text-align:right}
 .bl-root .offering .ln{grid-column:3;grid-row:2;text-align:right;
-  margin-top:1.8mm;font-size:8.8pt;color:#41617f;line-height:1.5;
+  margin-top:1.8mm;font-size:calc(8.8pt * var(--ts));color:#41617f;line-height:calc(1.5 / var(--ts));
   font-variant-numeric:tabular-nums}
 .bl-root .offering .off-qr{grid-column:4;grid-row:1 / span 2;margin-left:2mm}
 /* 두 이름표는 같은 글씨(10pt·굵게·남색)로, 같은 줄에 놓입니다 */
 .bl-root .offering .lab,
-.bl-root .offering .cap{font-size:10pt;font-weight:800;color:var(--navy);
+.bl-root .offering .cap{font-size:calc(10pt * var(--ts));font-weight:800;color:var(--navy);
   white-space:nowrap}
 .bl-root .offering .qr{position:relative;width:22mm;height:22mm;
   border:.3mm solid var(--mid);background:#fff;display:flex;align-items:center;
   justify-content:center;overflow:hidden}
-.bl-root .offering .qr .ph{font-size:7pt;letter-spacing:.2em;color:var(--muted)}
+.bl-root .offering .qr .ph{font-size:calc(7pt * var(--ts));letter-spacing:.2em;color:var(--muted)}
 .bl-root .offering .qr img{position:absolute;inset:0;width:100%;height:100%;
   object-fit:contain;background:#fff}
 `
